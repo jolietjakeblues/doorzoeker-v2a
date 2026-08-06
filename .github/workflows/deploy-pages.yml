@@ -35,6 +35,10 @@ jobs:
         run: npm run pages:build
       - name: Test export
         run: npm run test:pages
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser smoke test
+        run: npm run test:browser
       - name: Configure Pages
         uses: actions/configure-pages@v6
       - name: Upload artifact
