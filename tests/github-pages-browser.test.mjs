@@ -8,6 +8,12 @@ import { chromium } from "playwright";
 
 const outputDirectory = path.resolve("dist/pages");
 const basePath = "/doorzoeker_v2";
+const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
+const rceFixture = [
+  { "@id": "bag:1", [`${CEO}openbareRuimte`]: [{ "@value": "Brigittenstraat" }], [`${CEO}huisnummer`]: [{ "@value": "18" }], [`${CEO}postcode`]: [{ "@value": "3512KM" }] },
+  { "@id": "basis:1", [`${CEO}heeftBAGRelatie`]: [{ "@id": "bag:1" }] },
+  { "@id": "rm:38342", "@type": [`${CEO}Rijksmonument`], [`${CEO}rijksmonumentnummer`]: [{ "@value": "https://monumentenregister.cultureelerfgoed.nl/monumenten/36046" }], [`${CEO}cultuurhistorischObjectnummer`]: [{ "@value": "38342" }], [`${CEO}datumInschrijvingInMonumentenregister`]: [{ "@value": "1967-06-20" }], [`${CEO}heeftBasisregistratieRelatie`]: [{ "@id": "basis:1" }] },
+];
 const contentTypes = {
   ".css": "text/css; charset=utf-8",
   ".gif": "image/gif",
@@ -55,6 +61,10 @@ test("GitHub Pages export loads and remains interactive in Chromium", { timeout:
 
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
+  await page.route("https://api.linkeddata.cultureelerfgoed.nl/**", (route) => route.fulfill({
+    contentType: "application/ld+json",
+    body: JSON.stringify(rceFixture),
+  }));
   const runtimeErrors = [];
   page.on("pageerror", (error) => runtimeErrors.push(`pageerror: ${error.message}`));
   page.on("console", (message) => {
@@ -69,8 +79,9 @@ test("GitHub Pages export loads and remains interactive in Chromium", { timeout:
 
     await page.locator("#q").fill("36046");
     await page.getByRole("button", { name: "Zoeken", exact: true }).click();
-    await assert.doesNotReject(() => page.getByText("Domtoren", { exact: true }).waitFor({ state: "visible" }));
+    await assert.doesNotReject(() => page.getByText("Rijksmonument 36046", { exact: true }).waitFor({ state: "visible" }));
     await assert.doesNotReject(() => page.getByText(/1 resultaat/).waitFor({ state: "visible" }));
+    await assert.doesNotReject(() => page.getByText("Resultaten rechtstreeks uit RCE Linked Data").waitFor({ state: "visible" }));
 
     assert.deepEqual(runtimeErrors, [], runtimeErrors.join("\n"));
   } finally {

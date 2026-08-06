@@ -2,12 +2,14 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { HeritageMap } from "./HeritageMap";
+import { searchRceMonuments } from "@/lib/rce";
 
 type Item = {
   id: string; objectNumber: string; title: string; kind: string; address: string;
   postalCode: string; place: string; municipality: string; province: string;
   type: "Gebouwd" | "Archeologisch"; period: string; description: string;
   lat: number; lng: number;
+  monumentNumber?: string; registrationDate?: string; official?: boolean; sourceUrl?: string;
 };
 
 const ITEMS: Item[] = [
@@ -41,6 +43,8 @@ export default function Home() {
   const [view, setView] = useState<"list" | "map">(initial.view);
   const [selected, setSelected] = useState<Item | null>(() => ITEMS.find((item) => item.id === initial.selectedId) ?? null);
   const [filters, setFilters] = useState(false);
+  const [remoteResults, setRemoteResults] = useState<Item[] | null>(null);
+  const [remoteState, setRemoteState] = useState<"idle" | "loading" | "error" | "success">("idle");
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -53,7 +57,7 @@ export default function Home() {
   }, [active, municipality, selected, type, view]);
 
   const choose = useCallback((item: Item) => setSelected(item), []);
-  const results = useMemo(() => {
+  const localResults = useMemo(() => {
     const needle = active.trim().toLocaleLowerCase("nl");
     return ITEMS.filter((item) => {
       const haystack = [item.title, item.kind, item.address, item.postalCode, item.place, item.id].join(" ").toLocaleLowerCase("nl");
@@ -62,12 +66,44 @@ export default function Home() {
         (!needle || haystack.includes(needle));
     });
   }, [active, municipality, type]);
+  const results = remoteResults ?? localResults;
 
-  function submitSearch(event: FormEvent) {
-    event.preventDefault(); setActive(query.trim()); setSelected(null);
+  async function submitSearch(event: FormEvent) {
+    event.preventDefault();
+    const term = query.trim();
+    setActive(term); setSelected(null); setView("list");
+    if (!term) { setRemoteResults(null); setRemoteState("idle"); return; }
+    setRemoteState("loading");
+    try {
+      const records = await searchRceMonuments(term);
+      setRemoteResults(records.map((record) => ({
+        id: record.choNumber,
+        monumentNumber: record.monumentNumber,
+        objectNumber: record.choNumber,
+        title: `Rijksmonument ${record.monumentNumber}`,
+        kind: "Rijksmonument",
+        address: [record.street, record.houseNumber].filter(Boolean).join(" ") || "Adres niet opgenomen",
+        postalCode: record.postalCode,
+        place: /^\d/.test(term) ? "" : term,
+        municipality: /^\d/.test(term) ? "" : term,
+        province: "",
+        type: "Gebouwd",
+        period: record.registrationDate ? `Ingeschreven ${record.registrationDate}` : "Datering niet opgenomen",
+        description: "Actueel record uit de Linked Data Voorziening van de Rijksdienst voor het Cultureel Erfgoed.",
+        registrationDate: record.registrationDate,
+        official: true,
+        sourceUrl: record.sourceUrl,
+        lat: 0,
+        lng: 0,
+      })));
+      setRemoteState("success");
+    } catch {
+      setRemoteResults(null);
+      setRemoteState("error");
+    }
   }
   function reset() {
-    setQuery(""); setActive(""); setType("Alle"); setMunicipality("Alle"); setSelected(null);
+    setQuery(""); setActive(""); setType("Alle"); setMunicipality("Alle"); setSelected(null); setRemoteResults(null); setRemoteState("idle");
   }
 
   return <main>
@@ -83,6 +119,7 @@ export default function Home() {
       <small>ZOEK DOOR MONUMENTEN, PLAATSEN EN VERHALEN</small><h1>Wat wil je ontdekken?</h1>
       <form onSubmit={submitSearch}><span aria-hidden="true">⌕</span><label className="sr" htmlFor="q">Zoeken</label><input id="q" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Bijvoorbeeld Domtoren, Utrecht of 36046" />{query && <button type="button" className="clear" onClick={() => setQuery("")} aria-label="Zoekveld wissen">×</button>}<button type="submit">Zoeken</button></form>
       <nav aria-label="Voorbeeldzoekopdrachten">Probeer: {["Utrecht", "Kasteel", "Romeins"].map((term) => <button type="button" key={term} onClick={() => { setQuery(term); setActive(term); }}>{term}</button>)}</nav>
+      <p className={`source-status ${remoteState}`} aria-live="polite">{remoteState === "loading" ? "RCE Linked Data wordt doorzocht…" : remoteState === "error" ? "De live bron is tijdelijk niet bereikbaar; voorbeelddata wordt getoond." : remoteState === "success" ? "Resultaten rechtstreeks uit RCE Linked Data" : "Zoeken gebruikt de actuele Linked Data Voorziening van de RCE"}</p>
     </section>
     <section className="work">
       <aside className={filters ? "show" : ""} aria-label="Zoekfilters">
@@ -95,9 +132,9 @@ export default function Home() {
       </aside>
       <div className="results">
         <div className="toolbar"><div><small>RIJKSMONUMENTEN</small><h2 aria-live="polite">{results.length} {results.length === 1 ? "resultaat" : "resultaten"}{active ? ` voor “${active}”` : ""}</h2></div><div><button className="mobile-filter" type="button" onClick={() => setFilters(true)}>☰ Filters</button><span className="switch" aria-label="Weergave"><button type="button" className={view === "list" ? "on" : ""} onClick={() => setView("list")} aria-label="Lijstweergave" aria-pressed={view === "list"}>☷</button><button type="button" className={view === "map" ? "on" : ""} onClick={() => setView("map")} aria-label="Kaartweergave" aria-pressed={view === "map"}>⌖</button></span></div></div>
-        {results.length === 0 ? <div className="empty"><b>0</b><h3>Geen monumenten gevonden</h3><p>Probeer een plaats, adres, postcode, functie of monumentnummer.</p><button type="button" onClick={reset}>Toon alle monumenten</button></div> : view === "list" ? <div className="cards">{results.map((item) => <article key={item.id}><div className={item.type === "Archeologisch" ? "tile sand" : "tile"}><b>{item.type === "Archeologisch" ? "A" : "M"}</b><small>{item.type}</small></div><div className="copy"><small>{item.kind}<code>RM {item.id}</code></small><h3>{item.title}</h3><p className="address">● {item.address}, {item.postalCode} {item.place}</p><p>{item.description}</p><span>{item.kind}</span><span>{item.period}</span></div><button className="open" type="button" onClick={() => setSelected(item)} aria-label={`Details van ${item.title}`}>→</button></article>)}</div> : <HeritageMap items={results} onSelect={(mapItem) => { const item = ITEMS.find((candidate) => candidate.id === mapItem.id); if (item) choose(item); }} />}
+        {remoteState === "loading" ? <div className="empty"><b>…</b><h3>RCE Linked Data doorzoeken</h3><p>Een ogenblik; de officiële bron wordt geraadpleegd.</p></div> : results.length === 0 ? <div className="empty"><b>0</b><h3>Geen monumenten gevonden</h3><p>Probeer een plaats, adres, postcode, functie of monumentnummer.</p><button type="button" onClick={reset}>Toon alle monumenten</button></div> : view === "list" ? <div className="cards">{results.map((item) => <article key={item.id}><div className={item.type === "Archeologisch" ? "tile sand" : "tile"}><b>{item.type === "Archeologisch" ? "A" : "M"}</b><small>{item.official ? "RCE Live" : item.type}</small></div><div className="copy"><small>{item.kind}<code>RM {item.monumentNumber ?? item.id}</code></small><h3>{item.title}</h3><p className="address">● {item.address}{item.postalCode || item.place ? `, ${item.postalCode} ${item.place}` : ""}</p><p>{item.description}</p><span>{item.kind}</span><span>{item.period}</span></div><button className="open" type="button" onClick={() => setSelected(item)} aria-label={`Details van ${item.title}`}>→</button></article>)}</div> : <HeritageMap items={results.filter((item) => item.lat && item.lng)} onSelect={(mapItem) => { const item = results.find((candidate) => candidate.id === mapItem.id); if (item) choose(item); }} />}
       </div>
     </section>
-    {selected && <div className="backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><aside className="detail" role="dialog" aria-modal="true" aria-labelledby="detail-title"><button className="x" type="button" onClick={() => setSelected(null)} aria-label="Details sluiten">×</button><div className={selected.type === "Archeologisch" ? "detail-head sand" : "detail-head"}><b>{selected.type === "Archeologisch" ? "A" : "M"}</b><small>{selected.type} erfgoed</small></div><div className="detail-copy"><small>RIJKSMONUMENT {selected.id}</small><h2 id="detail-title">{selected.title}</h2><p>{selected.address}<br />{selected.postalCode} {selected.place}, {selected.province}</p><hr /><p>{selected.description}</p><dl><div><dt>Status</dt><dd>Rijksmonument</dd></div><div><dt>Objectnummer</dt><dd>{selected.objectNumber}</dd></div><div><dt>Oorspronkelijke functie</dt><dd>{selected.kind}</dd></div><div><dt>Datering</dt><dd>{selected.period}</dd></div><div><dt>Monumentaard</dt><dd>{selected.type}</dd></div></dl><a href={`https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/rijksmonument/${selected.id}`} target="_blank" rel="noreferrer">Bekijk de canonieke bron bij RCE <b>→</b></a><blockquote>Voorbeeldrecord. De gegevens worden in een volgende stap gekoppeld aan RCE Linked Data.</blockquote></div></aside></div>}
+    {selected && <div className="backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><aside className="detail" role="dialog" aria-modal="true" aria-labelledby="detail-title"><button className="x" type="button" onClick={() => setSelected(null)} aria-label="Details sluiten">×</button><div className={selected.type === "Archeologisch" ? "detail-head sand" : "detail-head"}><b>{selected.type === "Archeologisch" ? "A" : "M"}</b><small>{selected.official ? "RCE Linked Data" : `${selected.type} erfgoed`}</small></div><div className="detail-copy"><small>RIJKSMONUMENT {selected.monumentNumber ?? selected.id}</small><h2 id="detail-title">{selected.title}</h2><p>{selected.address}<br />{selected.postalCode} {selected.place}{selected.province ? `, ${selected.province}` : ""}</p><hr /><p>{selected.description}</p><dl><div><dt>Status</dt><dd>Rijksmonument</dd></div><div><dt>CHO-nummer</dt><dd>{selected.objectNumber}</dd></div><div><dt>Functie</dt><dd>{selected.kind}</dd></div><div><dt>Registratie / datering</dt><dd>{selected.registrationDate ?? selected.period}</dd></div><div><dt>Bron</dt><dd>{selected.official ? "RCE Linked Data" : "Voorbeelddata"}</dd></div></dl><a href={selected.sourceUrl ?? `https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/rijksmonument/${selected.id}`} target="_blank" rel="noreferrer">Bekijk de canonieke bron bij RCE <b>→</b></a><blockquote>{selected.official ? "Actueel record uit de officiële Linked Data Voorziening van de RCE." : "Voorbeeldrecord; nog niet alle zoekvelden zijn live gekoppeld."}</blockquote></div></aside></div>}
   </main>;
 }
