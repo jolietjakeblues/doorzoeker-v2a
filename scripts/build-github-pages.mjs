@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -11,6 +11,22 @@ const clientDirectory = path.resolve("dist/client");
 const workerUrl = pathToFileURL(path.resolve("dist/server/index.js"));
 
 const { default: worker } = await import(workerUrl.href);
+
+async function rewriteAssetPaths(directory) {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const filePath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      await rewriteAssetPaths(filePath);
+    } else if (/\.(?:css|js|json|map)$/i.test(entry.name)) {
+      const contents = await readFile(filePath, "utf8");
+      const rewritten = contents
+        .replaceAll("/_next/", `${normalizedBasePath}/_next/`)
+        .replaceAll("/logo-rce.gif", `${normalizedBasePath}/logo-rce.gif`)
+        .replaceAll("/favicon.svg", `${normalizedBasePath}/favicon.svg`);
+      if (rewritten !== contents) await writeFile(filePath, rewritten);
+    }
+  }
+}
 const response = await worker.fetch(
   new Request(`${origin}/`, {
     headers: { accept: "text/html" },
@@ -55,6 +71,7 @@ await rm(outputDirectory, { force: true, recursive: true });
 await mkdir(outputDirectory, { recursive: true });
 await cp(clientDirectory, outputDirectory, { recursive: true });
 await writeFile(path.join(outputDirectory, "index.html"), html);
+if (normalizedBasePath) await rewriteAssetPaths(outputDirectory);
 await writeFile(path.join(outputDirectory, ".nojekyll"), "");
 
 console.log(`GitHub Pages export created in ${outputDirectory}`);
