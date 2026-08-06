@@ -39,10 +39,16 @@ if (!response.ok) {
 let html = await response.text();
 
 if (normalizedBasePath) {
-  html = html.replace(/((?:src|href)=")\/(?!\/)/g, `$1${normalizedBasePath}/`);
-  html = html.replaceAll('"/logo-rce.gif', `"${normalizedBasePath}/logo-rce.gif`);
-  html = html.replaceAll('"/favicon.svg', `"${normalizedBasePath}/favicon.svg`);
+  // vinext records asset URLs both in HTML attributes and in the embedded RSC
+  // payload. Rewrite every occurrence so hydration uses the Pages base path too.
+  html = html.replaceAll("/_next/", `${normalizedBasePath}/_next/`);
+  html = html.replaceAll("/logo-rce.gif", `${normalizedBasePath}/logo-rce.gif`);
+  html = html.replaceAll("/favicon.svg", `${normalizedBasePath}/favicon.svg`);
   html = html.replaceAll('"assetPrefix":""', `"assetPrefix":"${normalizedBasePath}"`);
+}
+
+if (normalizedBasePath && html.includes('"/_next/')) {
+  throw new Error("GitHub Pages export still contains root-relative framework assets");
 }
 
 await rm(outputDirectory, { force: true, recursive: true });
