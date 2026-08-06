@@ -21,6 +21,8 @@ async function rewriteAssetPaths(directory) {
       const contents = await readFile(filePath, "utf8");
       const rewritten = contents
         .replaceAll("/_next/", `${normalizedBasePath}/_next/`)
+        .replaceAll('"_next/', `"${normalizedBasePath.slice(1)}/_next/`)
+        .replaceAll("'_next/", `'${normalizedBasePath.slice(1)}/_next/`)
         .replaceAll("/logo-rce.gif", `${normalizedBasePath}/logo-rce.gif`)
         .replaceAll("/favicon.svg", `${normalizedBasePath}/favicon.svg`);
       if (rewritten !== contents) await writeFile(filePath, rewritten);
