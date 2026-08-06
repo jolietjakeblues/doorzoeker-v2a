@@ -14,6 +14,7 @@ const rceFixture = [
   { "@id": "basis:1", [`${CEO}heeftBAGRelatie`]: [{ "@id": "bag:1" }] },
   { "@id": "rm:38342", "@type": [`${CEO}Rijksmonument`], [`${CEO}rijksmonumentnummer`]: [{ "@value": "https://monumentenregister.cultureelerfgoed.nl/monumenten/36046" }], [`${CEO}cultuurhistorischObjectnummer`]: [{ "@value": "38342" }], [`${CEO}datumInschrijvingInMonumentenregister`]: [{ "@value": "1967-06-20" }], [`${CEO}heeftBasisregistratieRelatie`]: [{ "@id": "basis:1" }] },
 ];
+const rceSparqlFixture = { results: { bindings: [{ cho: { value: "rm:38342" }, choi: { value: "38342" }, rmnr: { value: "36046" }, functie: { value: "Woonhuis(K)" }, omschrijving: { value: "Pand met 17e eeuwse lijstgevel." }, monumentaard: { value: "onroerend gebouwd" }, volledigAdres: { value: "Brigittenstraat 18" }, postcode: { value: "3512KM" }, woonplaats: { value: "Utrecht" }, wkt: { value: "POINT(5.1267842049703 52.088895166661)" }, inschrijving: { value: "1967-06-20" } }] } };
 const contentTypes = {
   ".css": "text/css; charset=utf-8",
   ".gif": "image/gif",
@@ -62,8 +63,8 @@ test("GitHub Pages export loads and remains interactive in Chromium", { timeout:
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   await page.route("https://api.linkeddata.cultureelerfgoed.nl/**", (route) => route.fulfill({
-    contentType: "application/ld+json",
-    body: JSON.stringify(rceFixture),
+    contentType: route.request().url().includes("/sparql") ? "application/sparql-results+json" : "application/ld+json",
+    body: JSON.stringify(route.request().url().includes("/sparql") ? rceSparqlFixture : rceFixture),
   }));
   const runtimeErrors = [];
   page.on("pageerror", (error) => runtimeErrors.push(`pageerror: ${error.message}`));
@@ -79,7 +80,7 @@ test("GitHub Pages export loads and remains interactive in Chromium", { timeout:
 
     await page.locator("#q").fill("36046");
     await page.getByRole("button", { name: "Zoeken", exact: true }).click();
-    await assert.doesNotReject(() => page.getByText("Rijksmonument 36046", { exact: true }).waitFor({ state: "visible" }));
+    await assert.doesNotReject(() => page.getByText("Woonhuis(K)", { exact: true }).first().waitFor({ state: "visible" }));
     await assert.doesNotReject(() => page.getByText(/1 resultaat/).waitFor({ state: "visible" }));
     await assert.doesNotReject(() => page.getByText("Resultaten rechtstreeks uit RCE Linked Data").waitFor({ state: "visible" }));
 
