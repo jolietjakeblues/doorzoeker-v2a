@@ -11,17 +11,20 @@
         "pages:build": "vinext build && node scripts/build-github-pages.mjs",
         "start": "vinext start",
         "test": "npm run build && node --test tests/rendered-html.test.mjs",
+        "test:pages": "node --test tests/github-pages-export.test.mjs",
+        "typecheck": "tsc --noEmit --incremental false",
         "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
         "db:generate": "drizzle-kit generate"
     },
     "dependencies": {
         "drizzle-orm": "0.45.2",
         "leaflet": "^1.9.4",
-        "react": "19.2.6",
-        "react-dom": "19.2.6"
+        "react": "^19.2.8",
+        "react-dom": "^19.2.8"
     },
     "devDependencies": {
-        "@cloudflare/vite-plugin": "1.37.1",
+        "@cloudflare/vite-plugin": "^1.51.0",
+        "@cloudflare/workers-types": "^5.20260804.1",
         "@eslint/js": "9.39.4",
         "@next/eslint-plugin-next": "16.2.6",
         "@tailwindcss/postcss": "4.2.1",
@@ -37,13 +40,13 @@
         "eslint-plugin-react": "7.37.5",
         "eslint-plugin-react-hooks": "7.1.1",
         "globals": "16.4.0",
-        "react-server-dom-webpack": "19.2.6",
+        "react-server-dom-webpack": "^19.2.8",
         "tailwindcss": "4.2.1",
         "typescript": "5.9.3",
         "typescript-eslint": "8.59.3",
-        "vinext": "1.0.0-beta.2",
-        "vite": "8.0.13",
-        "wrangler": "4.92.0"
+        "vinext": "^1.0.0-beta.4",
+        "vite": "^8.2.1",
+        "wrangler": "^4.119.0"
     },
     "type": "module"
 }

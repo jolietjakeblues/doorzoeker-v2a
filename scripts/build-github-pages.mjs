@@ -29,6 +29,26 @@ async function rewriteAssetPaths(directory) {
     }
   }
 }
+
+async function findInvalidAssetPaths(directory, invalidFiles = []) {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const filePath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      await findInvalidAssetPaths(filePath, invalidFiles);
+    } else if (/\.(?:css|html|js|json|map)$/i.test(entry.name)) {
+      const contents = await readFile(filePath, "utf8");
+      const withoutExpectedPrefix = normalizedBasePath
+        ? contents
+            .replaceAll(`${normalizedBasePath}/_next/`, "")
+            .replaceAll(`${normalizedBasePath.slice(1)}/_next/`, "")
+        : contents;
+      if (withoutExpectedPrefix.includes("/_next/") || /["']_next\//.test(contents)) {
+        invalidFiles.push(path.relative(outputDirectory, filePath));
+      }
+    }
+  }
+  return invalidFiles;
+}
 const response = await worker.fetch(
   new Request(`${origin}/`, {
     headers: { accept: "text/html" },
@@ -75,5 +95,10 @@ await cp(clientDirectory, outputDirectory, { recursive: true });
 await writeFile(path.join(outputDirectory, "index.html"), html);
 if (normalizedBasePath) await rewriteAssetPaths(outputDirectory);
 await writeFile(path.join(outputDirectory, ".nojekyll"), "");
+
+const invalidFiles = await findInvalidAssetPaths(outputDirectory);
+if (invalidFiles.length > 0) {
+  throw new Error(`GitHub Pages export contains invalid framework asset paths in: ${invalidFiles.join(", ")}`);
+}
 
 console.log(`GitHub Pages export created in ${outputDirectory}`);

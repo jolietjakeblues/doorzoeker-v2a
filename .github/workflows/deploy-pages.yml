@@ -27,8 +27,14 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
       - name: Build and export
         run: npm run pages:build
+      - name: Test export
+        run: npm run test:pages
       - name: Configure Pages
         uses: actions/configure-pages@v6
       - name: Upload artifact
