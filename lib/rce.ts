@@ -52,8 +52,8 @@ export function parseSparqlResults(document: unknown): RceMonument[] {
   });
 }
 
-async function searchRceByNumber(monumentNumber: string, signal?: AbortSignal) {
-  const query = `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
+export function buildRceNumberQuery(monumentNumber: string) {
+  return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX geo: <http://www.opengis.net/ont/geosparql#>
 SELECT ?cho ?choi ?rmnr
@@ -71,7 +71,11 @@ WHERE {
   FILTER(?rmnr = "${monumentNumber}")
   OPTIONAL { ?cho ceo:heeftNaam/ceo:naam ?naamValue . }
   OPTIONAL { ?cho ceo:heeftOorspronkelijkeFunctie/ceo:heeftFunctieNaam/skos:prefLabel ?functieValue . }
-  OPTIONAL { ?cho ceo:heeftOmschrijving/ceo:omschrijving ?omschrijvingValue . }
+  OPTIONAL {
+    ?cho ceo:heeftOmschrijving ?omschrijvingNode .
+    ?omschrijvingNode ceo:omschrijving ?omschrijvingValue ;
+                      ceo:formeelStandpunt true .
+  }
   OPTIONAL { ?cho ceo:heeftMonumentAard/skos:prefLabel ?monumentaardValue . }
   OPTIONAL {
     ?cho ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie ?bag .
@@ -84,6 +88,10 @@ WHERE {
 }
 GROUP BY ?cho ?choi ?rmnr
 LIMIT 10`;
+}
+
+async function searchRceByNumber(monumentNumber: string, signal?: AbortSignal) {
+  const query = buildRceNumberQuery(monumentNumber);
   const response = await fetch(`${SPARQL_ENDPOINT}?query=${encodeURIComponent(query)}`, {
     headers: { Accept: "application/sparql-results+json" },
     signal,
