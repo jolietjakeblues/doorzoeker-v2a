@@ -73,3 +73,12 @@ eerste technische spike en stackkeuze zijn afgerond.
 
 Initiatiefase. De scope en architectuur worden momenteel vastgesteld.
 
+## GitHub Pages
+
+Een push naar `main` bouwt en publiceert de statische startpagina via GitHub
+Actions. Kies eenmalig in de repository-instellingen bij **Pages** voor
+**GitHub Actions** als bron. De lokale export kan worden gecontroleerd met:
+
+```sh
+npm run pages:build
+```
