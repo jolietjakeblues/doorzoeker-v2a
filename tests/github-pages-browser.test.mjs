@@ -83,12 +83,18 @@ test("GitHub Pages export loads and remains interactive in Chromium", { timeout:
 
     await page.locator("#q").fill("36046");
     await page.getByRole("button", { name: "Zoeken", exact: true }).click();
-    await assert.doesNotReject(() => page.getByText("Woonhuis(K)", { exact: true }).first().waitFor({ state: "visible" }));
+    await assert.doesNotReject(() => page.locator("article").getByText("Woonhuis(K)", { exact: true }).first().waitFor({ state: "visible" }));
     await assert.doesNotReject(() => page.getByText(/1 resultaat/).waitFor({ state: "visible" }));
     await assert.doesNotReject(() => page.getByText("Resultaten rechtstreeks uit RCE Linked Data").waitFor({ state: "visible" }));
     await page.getByRole("button", { name: "Details van Woonhuis(K)" }).click();
     await assert.doesNotReject(() => page.getByText("POINT(5.1267842049703 52.088895166661)").waitFor({ state: "visible" }));
     await assert.doesNotReject(() => page.getByText("Utrecht B 358 (UT)").waitFor({ state: "visible" }));
+    await page.getByRole("button", { name: "Details sluiten" }).click();
+    await page.locator("#q").fill("lijstgevel");
+    await page.getByRole("button", { name: "Zoeken", exact: true }).click();
+    await assert.doesNotReject(() => page.locator("article").getByText("Pand met 17e eeuwse lijstgevel.", { exact: true }).waitFor({ state: "visible" }));
+    await page.getByRole("combobox", { name: "Filter op functie" }).selectOption("Woonhuis(K)");
+    await assert.doesNotReject(() => page.getByText(/1 resultaat/).waitFor({ state: "visible" }));
 
     assert.deepEqual(runtimeErrors, [], runtimeErrors.join("\n"));
   } finally {

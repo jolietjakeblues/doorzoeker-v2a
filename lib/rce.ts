@@ -24,6 +24,8 @@ export type RceMonument = {
   lng?: number;
   wkt?: string;
   parcels?: RceParcel[];
+  matchSource?: string;
+  matchedText?: string;
 };
 
 export type RceParcel = {
@@ -35,6 +37,54 @@ export type RceParcel = {
 };
 
 type SparqlBinding = Record<string, { value?: string }>;
+
+type DiscoveryMatch = { monumentNumber: string; matchSource: string; matchedText: string };
+
+function escapeSparqlString(value: string) {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/[\r\n]+/g, " ");
+}
+
+export function parseDiscoveryResults(document: unknown): DiscoveryMatch[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  const priority: Record<string, number> = { "oorspronkelijke functie": 1, "huidige functie": 2, type: 3, "formele omschrijving": 4, woonplaats: 5 };
+  const matches = new Map<string, DiscoveryMatch>();
+  for (const binding of bindings) {
+    const monumentNumber = binding.rmnr?.value ?? "";
+    const candidate = { monumentNumber, matchSource: binding.bron?.value ?? "", matchedText: binding.match?.value ?? "" };
+    const current = matches.get(monumentNumber);
+    if (monumentNumber && (!current || (priority[candidate.matchSource] ?? 99) < (priority[current.matchSource] ?? 99))) matches.set(monumentNumber, candidate);
+  }
+  return [...matches.values()];
+}
+
+export function buildRceDiscoveryQuery(term: string) {
+  const needle = escapeSparqlString(term.trim());
+  return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT DISTINCT ?rmnr ?match ?bron WHERE {
+  ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr .
+  {
+    ?cho ceo:heeftOorspronkelijkeFunctie/ceo:heeftFunctieNaam/skos:prefLabel ?match .
+    BIND("oorspronkelijke functie" AS ?bron)
+  } UNION {
+    ?cho ceo:heeftHuidigeFunctie/ceo:heeftFunctieNaam/skos:prefLabel ?match .
+    BIND("huidige functie" AS ?bron)
+  } UNION {
+    ?cho ceo:heeftType/ceo:heeftTypeNaam/skos:prefLabel ?match .
+    BIND("type" AS ?bron)
+  } UNION {
+    ?cho ceo:heeftOmschrijving ?omschrijvingNode .
+    ?omschrijvingNode ceo:omschrijving ?match ; ceo:formeelStandpunt true .
+    BIND("formele omschrijving" AS ?bron)
+  } UNION {
+    ?cho ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?match .
+    BIND("woonplaats" AS ?bron)
+  }
+  FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))
+}
+LIMIT 100`;
+}
 
 export function parseSparqlResults(document: unknown): RceMonument[] {
   const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
@@ -75,7 +125,8 @@ export function parseParcelResults(document: unknown): RceParcel[] {
   }));
 }
 
-export function buildRceNumberQuery(monumentNumber: string) {
+export function buildRceDetailsQuery(monumentNumbers: string[]) {
+  const values = monumentNumbers.map((number) => `"${escapeSparqlString(number)}"`).join(" ");
   return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX geo: <http://www.opengis.net/ont/geosparql#>
@@ -91,7 +142,7 @@ SELECT ?cho ?choi ?rmnr
   (SAMPLE(STR(?inschrijvingValue)) AS ?inschrijving)
 WHERE {
   ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ; ceo:cultuurhistorischObjectnummer ?choi .
-  FILTER(?rmnr = "${monumentNumber}")
+  VALUES ?rmnr { ${values} }
   OPTIONAL { ?cho ceo:heeftNaam/ceo:naam ?naamValue . }
   OPTIONAL { ?cho ceo:heeftOorspronkelijkeFunctie/ceo:heeftFunctieNaam/skos:prefLabel ?functieValue . }
   OPTIONAL {
@@ -110,7 +161,11 @@ WHERE {
   OPTIONAL { ?cho ceo:datumInschrijvingInMonumentenregister ?inschrijvingValue . }
 }
 GROUP BY ?cho ?choi ?rmnr
-LIMIT 10`;
+LIMIT 100`;
+}
+
+export function buildRceNumberQuery(monumentNumber: string) {
+  return buildRceDetailsQuery([monumentNumber]);
 }
 
 export function buildRceParcelQuery(monumentNumber: string) {
@@ -123,6 +178,19 @@ WHERE {
   ?brk ceo:gemeentenaam ?gemeente ;
        ceo:sectie ?sectie ;
        ceo:perceelnummer ?perceel .
+  OPTIONAL { ?brk ceo:gemeentecode ?gemeentecode . }
+  OPTIONAL { ?brk ceo:provinciecode ?provinciecode . }
+}`;
+}
+
+function buildRceParcelsQuery(monumentNumbers: string[]) {
+  const values = monumentNumbers.map((number) => `"${escapeSparqlString(number)}"`).join(" ");
+  return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
+SELECT DISTINCT ?rmnr ?gemeente ?gemeentecode ?sectie ?perceel ?provinciecode WHERE {
+  VALUES ?rmnr { ${values} }
+  ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ;
+       ceo:heeftBasisregistratieRelatie/ceo:heeftBRKRelatie ?brk .
+  ?brk ceo:gemeentenaam ?gemeente ; ceo:sectie ?sectie ; ceo:perceelnummer ?perceel .
   OPTIONAL { ?brk ceo:gemeentecode ?gemeentecode . }
   OPTIONAL { ?brk ceo:provinciecode ?provinciecode . }
 }`;
@@ -144,6 +212,23 @@ async function searchRceByNumber(monumentNumber: string, signal?: AbortSignal) {
   ]);
   const parcels = parseParcelResults(parcelsDocument);
   return parseSparqlResults(monumentsDocument).map((monument) => ({ ...monument, parcels }));
+}
+
+async function searchRceByText(term: string, signal?: AbortSignal) {
+  const discovery = parseDiscoveryResults(await fetchSparql(buildRceDiscoveryQuery(term), signal)).slice(0, 25);
+  if (!discovery.length) return [];
+  const numbers = discovery.map((match) => match.monumentNumber);
+  const [detailsDocument, parcelsDocument] = await Promise.all([
+    fetchSparql(buildRceDetailsQuery(numbers), signal),
+    fetchSparql(buildRceParcelsQuery(numbers), signal),
+  ]);
+  const matchByNumber = new Map(discovery.map((match) => [match.monumentNumber, match]));
+  const parcelBindings = (parcelsDocument as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings ?? [];
+  return parseSparqlResults(detailsDocument).map((monument) => {
+    const match = matchByNumber.get(monument.monumentNumber);
+    const parcels = parseParcelResults({ results: { bindings: parcelBindings.filter((binding) => binding.rmnr?.value === monument.monumentNumber) } });
+    return { ...monument, ...match, parcels };
+  });
 }
 
 function values(node: JsonLdNode | undefined, property: string): JsonLdValue[] {
@@ -184,9 +269,8 @@ export function parseRceMonuments(document: unknown): RceMonument[] {
 export async function searchRceMonuments(query: string, signal?: AbortSignal) {
   const trimmed = query.trim();
   if (/^\d{4,6}$/.test(trimmed)) return searchRceByNumber(trimmed, signal);
-  const params = new URLSearchParams({ page: "1", pageSize: "100" });
-  if (/^\d{4}\s?[A-Za-z]{2}$/.test(trimmed)) params.set("postcode", trimmed.replace(/\s/g, "").toUpperCase());
-  else params.set("woonplaatsnaam", trimmed);
+  if (!/^\d{4}\s?[A-Za-z]{2}$/.test(trimmed)) return searchRceByText(trimmed, signal);
+  const params = new URLSearchParams({ page: "1", pageSize: "100", postcode: trimmed.replace(/\s/g, "").toUpperCase() });
 
   const response = await fetch(`${ENDPOINT}?${params}`, {
     headers: { Accept: "application/ld+json" },

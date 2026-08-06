@@ -10,6 +10,7 @@ type Item = {
   type: "Gebouwd" | "Archeologisch"; period: string; description: string;
   lat: number; lng: number;
   monumentNumber?: string; registrationDate?: string; official?: boolean; sourceUrl?: string; wkt?: string;
+  matchSource?: string; matchedText?: string;
   parcels?: Array<{ municipality: string; municipalityCode: string; section: string; parcelNumber: string; provinceCode: string }>;
 };
 
@@ -41,6 +42,7 @@ export default function Home() {
   const [active, setActive] = useState(initial.query);
   const [type, setType] = useState(initial.type);
   const [municipality, setMunicipality] = useState(initial.municipality);
+  const [functionFilter, setFunctionFilter] = useState("Alle");
   const [view, setView] = useState<"list" | "map">(initial.view);
   const [selected, setSelected] = useState<Item | null>(() => ITEMS.find((item) => item.id === initial.selectedId) ?? null);
   const [filters, setFilters] = useState(false);
@@ -67,12 +69,15 @@ export default function Home() {
         (!needle || haystack.includes(needle));
     });
   }, [active, municipality, type]);
-  const results = remoteResults ?? localResults;
+  const baseResults = remoteResults ?? localResults;
+  const functions = useMemo(() => [...new Set(baseResults.map((item) => item.kind).filter((kind) => kind !== "Functie niet opgenomen"))].sort((a, b) => a.localeCompare(b, "nl")), [baseResults]);
+  const results = useMemo(() => baseResults.filter((item) => functionFilter === "Alle" || item.kind === functionFilter), [baseResults, functionFilter]);
 
   async function submitSearch(event: FormEvent) {
     event.preventDefault();
     const term = query.trim();
     setActive(term); setSelected(null); setView("list");
+    setFunctionFilter("Alle");
     if (!term) { setRemoteResults(null); setRemoteState("idle"); return; }
     setRemoteState("loading");
     try {
@@ -96,6 +101,8 @@ export default function Home() {
         sourceUrl: record.sourceUrl,
         wkt: record.wkt,
         parcels: record.parcels,
+        matchSource: record.matchSource,
+        matchedText: record.matchedText,
         lat: record.lat ?? 0,
         lng: record.lng ?? 0,
       })));
@@ -106,7 +113,7 @@ export default function Home() {
     }
   }
   function reset() {
-    setQuery(""); setActive(""); setType("Alle"); setMunicipality("Alle"); setSelected(null); setRemoteResults(null); setRemoteState("idle");
+    setQuery(""); setActive(""); setType("Alle"); setMunicipality("Alle"); setFunctionFilter("Alle"); setSelected(null); setRemoteResults(null); setRemoteState("idle");
   }
 
   return <main>
@@ -129,6 +136,7 @@ export default function Home() {
         <div className="aside-title"><div><small>VERFIJN</small><h2>Filters</h2></div><button type="button" onClick={() => setFilters(false)} aria-label="Filters sluiten">×</button></div>
         <fieldset><legend>Soort monument</legend>{["Alle", "Gebouwd", "Archeologisch"].map((option) => <label key={option}><input type="radio" name="type" checked={type === option} onChange={() => setType(option)} /><span>{option === "Alle" ? "Alle monumenten" : option}</span><em>{option === "Alle" ? ITEMS.length : ITEMS.filter((item) => item.type === option).length}</em></label>)}</fieldset>
         <fieldset><legend>Gemeente</legend>{["Alle", "Utrecht", "Bunnik"].map((option) => <label key={option}><input type="radio" name="municipality" checked={municipality === option} onChange={() => setMunicipality(option)} /><span>{option === "Alle" ? "Alle gemeenten" : option}</span><em>{option === "Alle" ? ITEMS.length : ITEMS.filter((item) => item.municipality === option).length}</em></label>)}</fieldset>
+        <fieldset><legend>Functie</legend><label className="select-label"><span className="sr">Filter op functie</span><select aria-label="Filter op functie" value={functionFilter} onChange={(event) => setFunctionFilter(event.target.value)}><option value="Alle">Alle functies</option>{functions.map((option) => <option key={option} value={option}>{option}</option>)}</select></label></fieldset>
         <fieldset><legend>Provincie</legend><label><input type="checkbox" checked readOnly /><span>Utrecht</span><em>{ITEMS.length}</em></label></fieldset>
         <fieldset><legend>Status</legend><label><input type="checkbox" checked readOnly /><span>Rijksmonument</span><em>{ITEMS.length}</em></label></fieldset>
         <button className="reset" type="button" onClick={reset}>Wis alle filters</button>

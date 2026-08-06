@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildRceNumberQuery, buildRceParcelQuery, parseParcelResults, parseRceMonuments, parseSparqlResults } from "../lib/rce.ts";
+import { buildRceDiscoveryQuery, buildRceNumberQuery, buildRceParcelQuery, parseDiscoveryResults, parseParcelResults, parseRceMonuments, parseSparqlResults } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -31,4 +31,21 @@ test("only queries formally established descriptions", () => {
   assert.match(query, /ceo:heeftOmschrijving \?omschrijvingNode/);
   assert.match(query, /ceo:omschrijving \?omschrijvingValue/);
   assert.match(query, /ceo:formeelStandpunt true/);
+});
+
+test("discovers functions, types and only formal descriptions", () => {
+  const query = buildRceDiscoveryQuery('woonhuis "K"');
+  assert.match(query, /ceo:heeftOorspronkelijkeFunctie/);
+  assert.match(query, /ceo:heeftHuidigeFunctie/);
+  assert.match(query, /ceo:heeftType/);
+  assert.match(query, /ceo:formeelStandpunt true/);
+  assert.match(query, /woonhuis \\"K\\"/);
+});
+
+test("deduplicates matches and prefers a function over a description", () => {
+  const document = { results: { bindings: [
+    { rmnr: { value: "36046" }, match: { value: "Pand met lijstgevel" }, bron: { value: "formele omschrijving" } },
+    { rmnr: { value: "36046" }, match: { value: "Woonhuis(K)" }, bron: { value: "oorspronkelijke functie" } },
+  ] } };
+  assert.deepEqual(parseDiscoveryResults(document), [{ monumentNumber: "36046", matchSource: "oorspronkelijke functie", matchedText: "Woonhuis(K)" }]);
 });
