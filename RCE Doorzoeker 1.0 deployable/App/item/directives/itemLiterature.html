@@ -1,0 +1,25 @@
+﻿<div class="item-tab">
+	<i ng-show="loading" class="fa fa-spinner fa-2x fa-spin active"></i>
+	<div ng-if="literature && literature.length > 0" class="item-literature-list">
+		<ul class="pagination">
+			<li ng-repeat="page in pages" ng-class="{ active: currentPage == page.link, disabled: !page.link }">
+				<a ng-click="gotoPage(page.link)">{{page.caption}}</a>
+			</li>
+		</ul>
+		<table class="table table-striped">
+			<tbody>
+				<tr ng-repeat="literatureItem in literature">
+					<td class="item-literature">
+						<a ng-href="http://cultureelerfgoed.adlibsoft.com/dispatcher.aspx?action=search&database=ChoiceFullCatalogue&search=priref={{literatureItem.priref}}">
+							{{literatureItem.title}}
+						</a>
+						<span>{{literatureItem.author}} {{publicationString(literatureItem)}}</span>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+
+	<div ng-if="literature == null || literature.length === 0">Geen literatuur gevonden</div>
+</div>
+

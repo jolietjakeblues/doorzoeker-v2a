@@ -1,0 +1,25 @@
+syntax: glob
+_ReSharper.*
+*.suo
+packages\
+obj/
+*.user
+**/bin/
+readme-MarkdownPadPreview.html
+**/App_Data/
+Documents/**
+Deploy/
+RCEDoorzoeker/RceDoorzoeker/build
+Planning\
+RCEDoorzoeker/Util/*.dll
+RCEDoorzoeker/Util/*.pdb
+RCEDoorzoeker/Util/*.exe
+RCEDoorzoeker/Util/util.exe.config
+RCEDoorzoeker/Util/util.vshost.exe.config
+RCEDoorzoeker/Util/readme.txt
+RCEDoorzoeker/Util/*.xml
+RCEDoorzoeker/Util/NLog.config
+*.exe.manifest
+RCEDoorzoeker/RceDoorzoeker/readme.html
+cfg backup/**
+*.bak*.cfg

@@ -1,0 +1,14 @@
+﻿<div class="thesauri-structure-node">
+	<h5 ng-if="node.name !== 'root'">{{node.name}}</h5>
+	<div class="child-nodes">
+		<!--
+			angularjs doesn't handle recursive directives, it will get stuck in the compile cycle entering an infinite loop
+			this directive will dynamically compile and insert itself recursively inside this div to go around this limitation
+		-->
+	</div>
+	<ol class="list-unstyled thesauri-list">
+		<li ng-repeat="thesaurus in node.thesauri" ng-class="{ selected: isSelected(thesaurus.uri)}">
+			<a ng-href="/#/thesaurus?uri={{thesaurus.uri}}">{{thesaurus.name}}</a>
+		</li>
+	</ol>
+</div>

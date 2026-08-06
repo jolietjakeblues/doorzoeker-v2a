@@ -1,0 +1,18 @@
+﻿<div class="row">
+	<div class="col-md-3 left-column">
+		<div class="home-button"><a class="btn btn-default" href="/#search"><i class="glyphicon glyphicon-home"></i></a></div>
+	</div>
+	<div class="col-md-9 main-column"> 
+		<dz:searchbox disable-thesauri-search="true" />
+	</div>
+</div>
+<div class="row">
+	<div class="col-md-3 left-column">
+	    <dz:thesauri-structure-node class="thesauri-structure" node="thesauri" ng-if="thesauri" selected="selected" />
+	</div>
+	<div class="col-md-9 main-column">
+		<div ng-if="rootNode">
+			<dz:thesaurus-node class="root-node node" node="rootNode" paging-handler="gotoPage(node, link)" />
+		</div>
+	</div>
+</div>

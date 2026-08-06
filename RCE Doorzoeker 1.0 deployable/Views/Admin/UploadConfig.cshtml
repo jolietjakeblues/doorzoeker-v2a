@@ -1,0 +1,22 @@
+﻿@model string
+
+@{
+	Layout = null;
+}
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Upload result</title>
+	</head>
+	<body>
+		<script language="javascript" type="text/javascript">
+			if (window.top.window.configUploadCompleted) {
+			    window.top.window.configUploadCompleted(@Html.Raw(Model));
+			} else {
+			    console.log('no configUploadCompleted callback found!');
+			}
+
+		</script> 
+	</body>
+</html>

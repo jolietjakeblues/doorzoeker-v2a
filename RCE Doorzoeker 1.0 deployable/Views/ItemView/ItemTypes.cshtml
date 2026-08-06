@@ -1,0 +1,14 @@
+﻿@model RceDoorzoeker.Models.Item.ItemTypeCollectionModel
+
+@foreach (var itemType in Model.ItemType)
+{
+	<tr>
+		<td class="item-label" title="@Model.Label">
+			@Model.Label
+		</td>
+		<td class="value">
+			@{ Html.RenderPartial("ResourceValue", itemType); }	
+		</td>
+	</tr>	
+
+}	

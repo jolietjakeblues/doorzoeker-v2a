@@ -1,0 +1,443 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>
+    </ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{7A507E17-9771-4488-BF2A-BED6336ECD11}</ProjectGuid>
+    <ProjectTypeGuids>{E3E379DF-F4C6-4180-9B81-6769533ABE47};{349c5851-65df-11da-9384-00065b846f21};{fae04ec0-301f-11d3-bf4b-00c04f79efbc}</ProjectTypeGuids>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>RceDoorzoeker</RootNamespace>
+    <AssemblyName>RceDoorzoeker</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <MvcBuildViews>false</MvcBuildViews>
+    <UseIISExpress>false</UseIISExpress>
+    <IISExpressSSLPort />
+    <IISExpressAnonymousAuthentication />
+    <IISExpressWindowsAuthentication />
+    <IISExpressUseClassicPipelineMode />
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
+    <WebGreaseLibPath>..\packages\WebGrease.1.5.2\lib</WebGreaseLibPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\</OutputPath>
+    <DefineConstants>TRACE;RELEASE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Antlr3.Runtime, Version=3.4.1.9004, Culture=neutral, PublicKeyToken=eb42632606e9261f, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\Antlr.3.4.1.9004\lib\Antlr3.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="AutoMapper, Version=3.2.1.0, Culture=neutral, PublicKeyToken=be96cd2c38ef1005, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\AutoMapper.3.2.1\lib\net40\AutoMapper.dll</HintPath>
+    </Reference>
+    <Reference Include="AutoMapper.Net4, Version=3.2.1.0, Culture=neutral, PublicKeyToken=be96cd2c38ef1005, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\AutoMapper.3.2.1\lib\net40\AutoMapper.Net4.dll</HintPath>
+    </Reference>
+    <Reference Include="Elmah">
+      <HintPath>..\packages\elmah.corelibrary.1.2.2\lib\Elmah.dll</HintPath>
+    </Reference>
+    <Reference Include="Elmah.Mvc">
+      <HintPath>..\packages\Elmah.MVC.2.1.1\lib\net40\Elmah.Mvc.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Newtonsoft.Json, Version=4.5.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\Newtonsoft.Json.5.0.8\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="NLog">
+      <HintPath>..\packages\NLog.2.1.0\lib\net45\NLog.dll</HintPath>
+    </Reference>
+    <Reference Include="SimpleInjector">
+      <HintPath>..\packages\SimpleInjector.2.3.6\lib\net40-client\SimpleInjector.dll</HintPath>
+    </Reference>
+    <Reference Include="SimpleInjector.Integration.Web">
+      <HintPath>..\packages\SimpleInjector.Integration.Web.2.3.6\lib\net40\SimpleInjector.Integration.Web.dll</HintPath>
+    </Reference>
+    <Reference Include="SimpleInjector.Integration.Web.Mvc">
+      <HintPath>..\packages\SimpleInjector.Integration.Web.Mvc.2.3.6\lib\net40\SimpleInjector.Integration.Web.Mvc.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Runtime.Caching" />
+    <Reference Include="System.Web.DynamicData" />
+    <Reference Include="System.Web.Entity" />
+    <Reference Include="System.Web.ApplicationServices" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Web.Http, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.AspNet.WebApi.Core.4.0.30506.0\lib\net40\System.Web.Http.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.WebPages.Deployment, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Web.Abstractions" />
+    <Reference Include="System.Web.Routing" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Web.Services" />
+    <Reference Include="Microsoft.Web.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <Private>True</Private>
+      <HintPath>..\packages\Microsoft.Web.Infrastructure.1.0.0.0\lib\net40\Microsoft.Web.Infrastructure.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Web.Mvc.FixedDisplayModes, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <Private>True</Private>
+      <HintPath>..\packages\Microsoft.AspNet.Mvc.FixedDisplayModes.1.0.0\lib\net40\Microsoft.Web.Mvc.FixedDisplayModes.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Net.Http">
+    </Reference>
+    <Reference Include="System.Net.Http.Formatting, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.AspNet.WebApi.Client.4.0.20710.0\lib\net40\System.Net.Http.Formatting.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Net.Http.WebRequest">
+    </Reference>
+    <Reference Include="System.Web.Helpers, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <Private>True</Private>
+      <HintPath>..\packages\Microsoft.AspNet.WebPages.2.0.20710.0\lib\net40\System.Web.Helpers.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.Http.WebHost, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.AspNet.WebApi.WebHost.4.0.20710.0\lib\net40\System.Web.Http.WebHost.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.Mvc, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <Private>True</Private>
+      <HintPath>..\packages\Microsoft.AspNet.Mvc.4.0.20710.0\lib\net40\System.Web.Mvc.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.Optimization">
+      <HintPath>..\packages\Microsoft.AspNet.Web.Optimization.1.0.0\lib\net40\System.Web.Optimization.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.Razor, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <Private>True</Private>
+      <HintPath>..\packages\Microsoft.AspNet.Razor.2.0.20715.0\lib\net40\System.Web.Razor.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.WebPages, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <Private>True</Private>
+      <HintPath>..\packages\Microsoft.AspNet.WebPages.2.0.20710.0\lib\net40\System.Web.WebPages.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.WebPages.Razor, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <Private>True</Private>
+      <HintPath>..\packages\Microsoft.AspNet.WebPages.2.0.20710.0\lib\net40\System.Web.WebPages.Razor.dll</HintPath>
+    </Reference>
+    <Reference Include="Trezorix.RnaRemote">
+      <HintPath>..\lib\rna remote 3.9\Trezorix.RnaRemote.dll</HintPath>
+    </Reference>
+    <Reference Include="WebAPI.OutputCache">
+      <HintPath>..\packages\Strathweb.CacheOutput.0.5\lib\net40\WebAPI.OutputCache.dll</HintPath>
+    </Reference>
+    <Reference Include="WebApi.OutputCache.Core">
+      <HintPath>..\packages\Strathweb.CacheOutput.0.5\lib\net40\WebApi.OutputCache.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="WebGrease, Version=1.5.2.14234, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\WebGrease.1.5.2\lib\WebGrease.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="WebActivator">
+      <Private>True</Private>
+      <HintPath>..\packages\WebActivator.1.5.3\lib\net40\WebActivator.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="App_Start\Bootstrapper.cs" />
+    <Compile Include="ErrorLoggingAttribute.cs" />
+    <Compile Include="App_Start\SimpleInjectorWebApiDependencyResolver.cs" />
+    <Compile Include="Configuration\AdlibConfig.cs" />
+    <Compile Include="Configuration\FacetEntry.cs" />
+    <Compile Include="Configuration\GoogleAnalyticsConfig.cs" />
+    <Compile Include="Configuration\ItemClassificationConfig.cs" />
+    <Compile Include="Configuration\ItemTypeEntry.cs" />
+    <Compile Include="Configuration\MapCoordinatePredicateConfig.cs" />
+    <Compile Include="Configuration\MapResultClusteringConfig.cs" />
+    <Compile Include="Configuration\PredicateEntry.cs" />
+    <Compile Include="Configuration\ReferenceStructureEntry.cs" />
+    <Compile Include="Configuration\RnaToolsetConfig.cs" />
+    <Compile Include="Configuration\Thesauri\Node.cs" />
+    <Compile Include="Configuration\Thesauri\Thesaurus.cs" />
+    <Compile Include="Controllers\AccountController.cs" />
+    <Compile Include="Controllers\AdminController.cs" />
+    <Compile Include="Services\LatLongHelper.cs" />
+    <Compile Include="Models\Item\ItemViewModel.cs" />
+    <Compile Include="Models\Search\ClusteredMapResultModel.cs" />
+    <Compile Include="Models\Item\InfoWindowModel.cs" />
+    <Compile Include="Models\Search\ClusterModel.cs" />
+    <Compile Include="Models\Search\TermSuggestModel.cs" />
+    <Compile Include="Models\Search\ViewportSearchGroupingItemsSpec.cs" />
+    <Compile Include="Models\Thesaurus\ThesauriNodeModel.cs" />
+    <Compile Include="Models\Thesaurus\ThesaurusModel.cs" />
+    <Compile Include="Models\GroupedResults\ReferrerGroupResultModel.cs" />
+    <Compile Include="Models\Search\GroupingItemsModel.cs" />
+    <Compile Include="Models\Search\SearchGroupingItemsSpec.cs" />
+    <Compile Include="Models\Search\SearchGroupsModel.cs" />
+    <Compile Include="Models\Search\SearchFacetsModel.cs" />
+    <Compile Include="Models\Search\SearchFacetsSpec.cs" />
+    <Compile Include="Models\Search\SearchGroupingsSpec.cs" />
+    <Compile Include="Models\Search\SearchResultViewType.cs" />
+    <Compile Include="Models\Search\SearchSpec.cs" />
+    <Compile Include="Models\Item\ItemPositionModel.cs" />
+    <Compile Include="Models\Item\StructureNodeModel.cs" />
+    <Compile Include="Models\Search\GroupByModel.cs" />
+    <Compile Include="Models\Thesaurus\ItemPathModel.cs" />
+    <Compile Include="Controllers\ThesaurusController.cs" />
+    <Compile Include="Models\Thesaurus\ItemPathNode.cs" />
+    <Compile Include="Models\Item\ChildItemModel.cs" />
+    <Compile Include="Models\Item\ChildrenResultModel.cs" />
+    <Compile Include="Models\Search\FacetExpansionModel.cs" />
+    <Compile Include="Models\Search\FacetFilterModel.cs" />
+    <Compile Include="Controllers\ItemController.cs" />
+    <Compile Include="Controllers\SearchController.cs" />
+    <Compile Include="Models\Search\FacetModel.cs" />
+    <Compile Include="Models\Search\FacetResultModel.cs" />
+    <Compile Include="Models\Search\FacetValueModel.cs" />
+    <Compile Include="Services\AdlibQuerying\AdlibLiteratureQueryer.cs" />
+    <Compile Include="Services\AdlibQuerying\ItemImage.cs" />
+    <Compile Include="Services\AdlibQuerying\ItemLiterature.cs" />
+    <Compile Include="Services\AdlibQuerying\PublicationEvent.cs" />
+    <Compile Include="Services\ConfigSwitcher\ConfigSwitcher.cs" />
+    <Compile Include="Services\ConfigSwitcher\ValidationResult.cs" />
+    <Compile Include="Services\Facet.cs" />
+    <Compile Include="Services\MapItemClustering\ClusteredItems.cs" />
+    <Compile Include="Services\MapItemClustering\MapPoint.cs" />
+    <Compile Include="Services\MapItemClustering\PointState.cs" />
+    <Compile Include="Services\MapItemClustering\Cluster.cs" />
+    <Compile Include="Services\Mappers\FacetMapper.cs" />
+    <Compile Include="Services\Mappers\GroupingsResultMapper.cs" />
+    <Compile Include="Services\MapItemClustering\MapItemClusterer.cs" />
+    <Compile Include="Services\Mappers\SearchResultItemClassificationResolver.cs" />
+    <Compile Include="Services\FacetRegistry.cs" />
+    <Compile Include="Services\Querying\GroupedItemsQueryer.cs" />
+    <Compile Include="Services\Querying\ItemSuggestQueryer.cs" />
+    <Compile Include="Services\Querying\FacetResult.cs" />
+    <Compile Include="Services\Querying\ItemFilter.cs" />
+    <Compile Include="Services\Querying\ItemSuggestResult.cs" />
+    <Compile Include="Services\Querying\LatLong.cs" />
+    <Compile Include="Services\Querying\LiteratureReferrerQueryer.cs" />
+    <Compile Include="Services\Querying\FacetsResultParser.cs" />
+    <Compile Include="Services\Querying\FacetValue.cs" />
+    <Compile Include="Services\Querying\MapSearchResultParser.cs" />
+    <Compile Include="Services\Querying\ReferrerQueryer.cs" />
+    <Compile Include="Configuration\DoorzoekerConfig.cs" />
+    <Compile Include="App_Start\BundleConfig.cs" />
+    <Compile Include="App_Start\FilterConfig.cs" />
+    <Compile Include="App_Start\RouteConfig.cs" />
+    <Compile Include="App_Start\SimpleInjectorInitializer.cs" />
+    <Compile Include="App_Start\WebApiConfig.cs" />
+    <Compile Include="Controllers\HomeController.cs" />
+    <Compile Include="Services\Querying\FacetQueryer.cs" />
+    <Compile Include="Controllers\ItemViewController.cs" />
+    <Compile Include="Global.asax.cs">
+      <DependentUpon>Global.asax</DependentUpon>
+    </Compile>
+    <Compile Include="Configuration\InstanceRegistry.cs" />
+    <Compile Include="Models\Item\ContentItemModel.cs" />
+    <Compile Include="Models\Item\ItemModel.cs" />
+    <Compile Include="Models\Item\ItemTypeCollectionModel.cs" />
+    <Compile Include="Models\Item\ItemTypeModel.cs" />
+    <Compile Include="Models\Item\PredicateModel.cs" />
+    <Compile Include="Models\Item\ReferenceStructureModel.cs" />
+    <Compile Include="Models\Item\ResourceValueModel.cs" />
+    <Compile Include="Models\Item\SimpleNodeModel.cs" />
+    <Compile Include="Models\Item\SkosPropertyListModel.cs" />
+    <Compile Include="Models\Item\StatementModel.cs" />
+    <Compile Include="Models\Item\StringListModel.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\Mappers\DoorzoekerModelMapper.cs" />
+    <Compile Include="Services\Querying\ItemsResultParser.cs" />
+    <Compile Include="Services\Querying\ResultItemGroup.cs" />
+    <Compile Include="Services\Querying\SearchResultItem.cs" />
+    <Compile Include="Models\GroupedResults\GroupingResultModel.cs" />
+    <Compile Include="Services\Querying\XmlReaderItemResultParser.cs" />
+    <Compile Include="Services\QueryStringHelper.cs" />
+    <Compile Include="Services\AdlibQuerying\AdlibImageQueryer.cs" />
+    <Compile Include="Services\RnaApiClient\BaseWebApiV1Client.cs" />
+    <Compile Include="Services\RnaApiClient\DTO\ChildItem.cs" />
+    <Compile Include="Services\RnaApiClient\DTO\PagedList.cs" />
+    <Compile Include="Services\RnaApiClient\DTO\PageSpec.cs" />
+    <Compile Include="Services\RnaApiClient\LocalWebApiV2Client.cs" />
+    <Compile Include="Services\RnaApiClient\LocalWebApiV1Client.cs" />
+    <Compile Include="Services\WritingsFixup.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="AdminConsoleApp\admin-console.js" />
+    <Content Include="AdminConsoleApp\controllers\appController.js" />
+    <Content Include="AdminConsoleApp\controllers\configController.js" />
+    <Content Include="App\App.js" />
+    <Content Include="App\AppController.js" />
+    <Content Include="App\components\directives\resourceValue.js" />
+    <Content Include="App\components\directives\searchbox.html" />
+    <Content Include="App\components\directives\searchbox.js" />
+    <Content Include="App\components\itemClassifier.js" />
+    <Content Include="App\components\paramHandler.js" />
+    <Content Include="App\item\lightbox.html" />
+    <Content Include="App\item\directives\itemLiterature.js" />
+    <Content Include="App\item\directives\itemImages.js" />
+    <Content Include="App\item\directives\itemMap.js" />
+    <Content Include="App\item\ItemController.js" />
+    <Content Include="App\item\directives\itemMap.html" />
+    <Content Include="App\item\directives\itemLiterature.html" />
+    <Content Include="App\item\itemPosition.html" />
+    <Content Include="App\item\directives\itemImages.html" />
+    <Content Include="AdminConsoleApp\admin-console.css" />
+    <Content Include="App\item\ReferrerGrouping.js" />
+    <Content Include="App\search\directives\queriedThumbnail.js" />
+    <Content Include="App\search\directives\resultMap.js" />
+    <Content Include="App\search\directives\searchResult.html" />
+    <Content Include="App\search\directives\searchResult.js" />
+    <Content Include="App\search\directives\resultMap.html" />
+    <Content Include="App\search\Grouping.js" />
+    <Content Include="App\search\MapResultQueryObject.js" />
+    <Content Include="App\search\PagedGroupingResultQueryObject.js" />
+    <Content Include="App\components\PagingSet.js" />
+    <Content Include="App\search\search.html" />
+    <Content Include="App\search\SearchController.js" />
+    <None Include="App\_references.js" />
+    <Content Include="App\thesaurus\NodeHandler.js" />
+    <Content Include="App\thesaurus\directives\thesauriStructureNode.html" />
+    <Content Include="App\thesaurus\directives\thesauriStructureNodes.html" />
+    <Content Include="App\thesaurus\directives\thesauriStructureNodes.js" />
+    <Content Include="App\thesaurus\directives\thesaurusNode.js" />
+    <Content Include="App\thesaurus\directives\thesaurusNodeChildren.html" />
+    <Content Include="App\thesaurus\directives\thesaurusNodeChildren.js" />
+    <Content Include="App\thesaurus\thesaurus.html" />
+    <Content Include="App\thesaurus\directives\thesaurusNode.html" />
+    <Content Include="App\thesaurus\directives\thesauriStructureNode.js" />
+    <Content Include="App\thesaurus\ThesaurusController.js" />
+    <Content Include="Content\bootstrap-theme.css" />
+    <Content Include="Content\bootstrap-theme.min.css" />
+    <Content Include="Content\bootstrap.css" />
+    <Content Include="Content\bootstrap.min.css" />
+    <Content Include="Content\font-awesome.css" />
+    <Content Include="Content\font-awesome.min.css" />
+    <Content Include="Content\images\afbeeldingladen.png" />
+    <Content Include="Content\images\B_icon_38_38_v2.png" />
+    <Content Include="Content\images\doorzoeker-logo-2a.png" />
+    <Content Include="Content\images\geenafbeelding.png" />
+    <Content Include="Content\images\icon_kaart_20_20.png" />
+    <Content Include="Content\images\icon_lijst_20_20.png" />
+    <Content Include="Content\images\icon_tegels_20_20.png" />
+    <Content Include="Content\images\T_icon_38_38_v2.png" />
+    <Content Include="Content\typeahead.css" />
+    <Content Include="fonts\fontawesome-webfont.svg" />
+    <Content Include="fonts\glyphicons-halflings-regular.svg" />
+    <Content Include="Scripts\angular-mocks.js" />
+    <Content Include="Scripts\angular-route.js" />
+    <Content Include="Scripts\angular-route.min.js" />
+    <Content Include="Scripts\angular.js" />
+    <Content Include="Scripts\angular.min.js" />
+    <Content Include="Scripts\bloodhound.js" />
+    <Content Include="Scripts\angular.min.js.map" />
+    <Content Include="Scripts\angular-route.min.js.map" />
+    <Content Include="fonts\fontawesome-webfont.woff" />
+    <Content Include="fonts\fontawesome-webfont.ttf" />
+    <Content Include="fonts\fontawesome-webfont.eot" />
+    <Content Include="fonts\FontAwesome.otf" />
+    <Content Include="fonts\glyphicons-halflings-regular.woff" />
+    <Content Include="fonts\glyphicons-halflings-regular.ttf" />
+    <Content Include="fonts\glyphicons-halflings-regular.eot" />
+    <Content Include="Scripts\bootstrap.js" />
+    <Content Include="Scripts\bootstrap.min.js" />
+    <None Include="Scripts\jquery-2.1.1.intellisense.js" />
+    <Content Include="Scripts\jquery-2.1.1.js" />
+    <Content Include="Scripts\jquery-2.1.1.min.js" />
+    <Content Include="Scripts\jquery-deparam.js" />
+    <Content Include="Scripts\jquery-deparam.min.js" />
+    <Content Include="Scripts\typeahead.bundle.js" />
+    <Content Include="Scripts\typeahead.bundle.min.js" />
+    <Content Include="Scripts\typeahead.jquery.js" />
+    <Content Include="Scripts\jquery-2.1.1.min.map" />
+    <None Include="Scripts\_references.js" />
+    <Content Include="App\item\item.html" />
+    <Content Include="App\doorzoeker.css" />
+    <Content Include="Global.asax" />
+    <Content Include="Web.config">
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="Web.Debug.config">
+      <DependentUpon>Web.config</DependentUpon>
+    </Content>
+    <Content Include="Web.Release.config">
+      <DependentUpon>Web.config</DependentUpon>
+    </Content>
+    <Content Include="Views\Web.config" />
+    <Content Include="Views\Home\Home.cshtml" />
+    <Content Include="Views\ItemView\InfoWindow.cshtml" />
+    <Content Include="Views\Admin\Index.cshtml" />
+    <Content Include="Views\Admin\UploadConfig.cshtml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="App_Data\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Views\ItemView\Item.cshtml" />
+    <Content Include="Views\ItemView\ItemTypes.cshtml" />
+    <Content Include="Views\Shared\ResourceValue.cshtml" />
+    <Content Include="Views\ItemView\SkosProperyList.cshtml" />
+    <Content Include="Views\ItemView\StatementList.cshtml" />
+    <Content Include="Views\ItemView\StringList.cshtml" />
+    <Content Include="Views\ItemView\Writing.cshtml" />
+    <Content Include="Views\ItemView\AnnexItem.cshtml" />
+  </ItemGroup>
+  <PropertyGroup>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
+    <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
+  </PropertyGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(VSToolsPath)\WebApplications\Microsoft.WebApplication.targets" Condition="'$(VSToolsPath)' != ''" />
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v10.0\WebApplications\Microsoft.WebApplication.targets" Condition="false" />
+  <Target Name="MvcBuildViews" AfterTargets="AfterBuild" Condition="'$(MvcBuildViews)'=='true'">
+    <AspNetCompiler VirtualPath="temp" PhysicalPath="$(WebProjectOutputDir)" />
+  </Target>
+  <ProjectExtensions>
+    <VisualStudio>
+      <FlavorProperties GUID="{349c5851-65df-11da-9384-00065b846f21}">
+        <WebProjectProperties>
+          <UseIIS>True</UseIIS>
+          <AutoAssignPort>True</AutoAssignPort>
+          <DevelopmentServerPort>4325</DevelopmentServerPort>
+          <DevelopmentServerVPath>/</DevelopmentServerVPath>
+          <IISUrl>http://rcedoorzoeker</IISUrl>
+          <NTLMAuthentication>False</NTLMAuthentication>
+          <UseCustomServer>False</UseCustomServer>
+          <CustomServerUrl>
+          </CustomServerUrl>
+          <SaveServerSettingsInUserFile>False</SaveServerSettingsInUserFile>
+        </WebProjectProperties>
+      </FlavorProperties>
+    </VisualStudio>
+  </ProjectExtensions>
+  <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
+  <PropertyGroup>
+    <PostBuildEvent>
+    </PostBuildEvent>
+  </PropertyGroup>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.                                                                                      
+       Other similar extension points exist, see Microsoft.Common.targets.                                                                                                                
+  <Target Name="BeforeBuild">                                                                                                                                                             
+  </Target>                                                                                                                                                                               
+  <Target Name="AfterBuild">                                                                                                                                                              
+  </Target> -->
+</Project>

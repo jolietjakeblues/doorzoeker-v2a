@@ -1,0 +1,20 @@
+﻿@model RceDoorzoeker.Models.Item.SkosPropertyListModel
+
+@foreach (var label in Model.Labels.Where(l => !string.Equals(l.Language, "sys", StringComparison.InvariantCultureIgnoreCase)))
+{
+	<tr>
+		<td class="item-label" title="@Model.Caption.Label">@Model.Caption.Label
+		</td>
+		<td class="value">
+			@if (label.Value != null)
+			{
+			    <text>@label.Value</text>
+			    if (!string.Equals(label.Language, "dut", StringComparison.OrdinalIgnoreCase))
+			    {
+			        <text> (@label.Language)</text>
+			    }
+			}
+		</td>
+	</tr>
+}
+		

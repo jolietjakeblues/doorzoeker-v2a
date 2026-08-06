@@ -1,0 +1,99 @@
+﻿<div class="row">
+	<div class="col-md-3 left-column">
+		<div class="home-button"><a class="btn btn-default" href="/#/search"><i class="glyphicon glyphicon-home"></i></a></div>
+	</div>
+	<div class="col-md-9 main-column">
+		<dz:searchbox disable-thesauri-search="true" />
+	</div>
+</div>
+<div class="row">
+	<div class="col-md-3 left-column items-side-column">
+		<div ng-if="showPosition">
+			<div class="item-view-mode">
+				<a class="btn btn-default" ng-href="/#/thesaurus?uri={{uri}}">Weergeven in structuur</a>
+			</div>
+			<div class="panel panel-default">
+				<div class="panel-heading">
+					<h4 class="panel-title">
+						<a class="accordion-toggle" data-toggle="collapse" href="#collapsePosition">structuur positie...</a>
+					</h4>
+				</div>
+				<div id="collapsePosition" class="panel-collapse collapse in">
+					<div class="panel-body" ng-include="'/App/item/itemPosition.html'">
+						<i class="fa fa-spinner fa-spin active"></i>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="referrers panel panel-default">
+			<div class="panel-heading">
+				<h4 class="panel-title">
+					<a class="accordion-toggle" data-toggle="collapse" href="#collapseLinks">
+						komt voor als link in...
+					</a>
+				</h4>
+			</div>
+			<div id="collapseLinks" class="panel-collapse collapse in">
+				<div class="panel-body referrers">
+					<dz:search-result class="referrer-results" groups="groups" viewstyle="list" />
+				</div>
+			</div>
+		</div>
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				<h4 class="panel-title">
+					<a class="accordion-toggle" data-toggle="collapse" href="#collapseInText">
+						komt voor in tekst van...
+					</a>
+				</h4>
+			</div>
+			<div id="collapseInText" class="panel-collapse collapse in">
+				<div class="panel-body referrers">
+					<dz:search-result class="referrer-results" groups="textualReferrerGroups" viewstyle="list" />
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="col-md-9 main-column">
+		<div class="item-view">
+			<ol class="path" ng-if="showPosition">
+				<li ng-repeat="item in path">
+					<a ng-href="/#/thesaurus?uri={{item.uri}}">{{item.label}}</a>
+				</li>
+			</ol>
+			<div ng-bind-html="itemView">
+				<i class="fa fa-spinner fa-spin active"></i>
+			</div>
+
+			<div class="tabs-pane" ng-show="!appstate.navigating">
+				<ul class="nav nav-tabs">
+					<li ng-class="{ active: isImagesView()}">
+						<a ng-click="setImagesView()">Afbeeldingen</a>
+					</li>
+					<li ng-class="{ active: isLiteratureView()}">
+						<a ng-click="setLiteratureView()">Literatuur</a>
+					</li>
+					<li ng-class="{ active: isMapView()}">
+						<a ng-click="setMapView()">Kaart</a>
+					</li>
+				</ul>
+				<div class="tabbed-view">
+					<div ng-if="isImagesView()">
+						<dz:item-images />
+					</div>
+
+					<div ng-if="isLiteratureView()">
+						<dz:item-literature />
+					</div>
+
+					<div ng-if="isMapView() && !isThesaurusterm && coordinate">
+						<dz:item-map />
+					</div>
+					<div ng-if="isMapView() && (isThesaurusterm || !coordinate)">
+						<dz:result-map query-object="mapResultQueryObject" />
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>

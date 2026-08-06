@@ -1,0 +1,86 @@
+﻿@using RceDoorzoeker.Models.Item
+
+@model ItemModel
+
+@{
+	var contentItemModel = Model as ContentItemModel;
+	var predicateModel = Model as PredicateModel;
+	Layout = null;
+}
+
+<div class="item-details">
+	@{
+		string cssClass;
+		switch (Model.Classification)
+		{
+			case ItemClassification.None:
+				cssClass = "unclassified-resource";
+				break;
+			case ItemClassification.BronRecord:
+				cssClass = "bronrecord-resource";
+				break;
+			case ItemClassification.ThesaurusTerm:
+				cssClass = "thesaurusterm-resource";
+				break;
+			default:
+				cssClass = "unclassified-resource";
+				break;
+		}
+	}
+	<h1 class="item-label resource-link @cssClass">@Model.ItemPrefLabel</h1>
+	<div class="item-data" data-uri="@Model.Uri">
+		<table class="table table-striped">				
+			@*<tr>
+				<td class="item-label" title="id">uri</td>
+				<td class="value">@Model.Uri</td>
+			</tr>*@
+			<tr>
+					<td class="item-label" title="structuur">structuur</td>
+					<td class="value">
+						@{ Html.RenderPartial("ResourceValue", Model.ReferenceStructure); }
+					</td>
+				</tr>
+			@if (contentItemModel != null && !contentItemModel.IsAnnexItem)
+			{
+				<tr>
+					<td class="item-label" title="item type">item type</td>
+					<td class="value">
+						@if (contentItemModel.ItemTypeResource != null)
+						{
+							<span data-uri="@contentItemModel.ItemTypeResource.Link" data-resolved="@(!contentItemModel.ItemTypeResource.IsUnresolved)">@contentItemModel.ItemTypeResource.Label</span>
+							//Html.RenderPartial("ResourceValue", contentItemModel.ItemTypeResource);	
+						}
+					</td>
+				</tr>
+			}
+			@{ Html.RenderPartial("SkosProperyList", Model.PrefLabels); }
+			@{ Html.RenderPartial("SkosProperyList", Model.AltLabels); }
+			@{ Html.RenderPartial("SkosProperyList", Model.HiddenLabels); }
+			@{ Html.RenderPartial("SkosProperyList", Model.Definitions); }
+			
+			
+			@if (contentItemModel != null)
+			{
+				Html.RenderPartial("StatementList", contentItemModel.Statements);
+			}
+			
+			@{ Html.RenderPartial("StringList", Model.Note);}
+			@{ Html.RenderPartial("StringList", Model.Specification);}
+			@{ Html.RenderPartial("StringList", Model.Source);}
+			@{ Html.RenderPartial("StringList", Model.SourceId);}
+
+			@if (predicateModel != null)
+			{
+				Html.RenderPartial("ItemTypes", predicateModel.Domain); 
+				Html.RenderPartial("ItemTypes", predicateModel.Range); 
+			}
+		</table>
+		@if (contentItemModel != null && !contentItemModel.IsAnnexItem && contentItemModel.Writing != null)
+		{
+			<h5 class="writings-title"></h5>
+			<div class="item-writing">
+				@{ Html.RenderPartial("Writing", contentItemModel.Writing); }  	
+			</div>	
+		}
+	</div>
+</div>

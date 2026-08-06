@@ -1,0 +1,21 @@
+﻿<div class="modal fade" id="imageLightbox" tabindex="-1" role="dialog" aria-labelledby="imageLabel" aria-hidden="true">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+				<h4 class="modal-title" id="imageLabel">{{image.description}}</h4>
+			</div>
+			<div class="modal-body">
+				<div >{{image.name}}</div>
+				<div ng-if="image.monumentNr">Monument nummer: {{image.monumentNr}}</div>
+				<div class="image-container">
+					<img class="memorix-image" ng-src="{{image.url}}" />
+				</div>
+			</div>
+			<div class="modal-footer">
+				<div class="beeldbank-link"><a ng-href="{{image.beeldbankUrl}}">Bekijk de foto in de beeldbank van de RCE</a></div>
+				<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+			</div>
+		</div>
+	</div>
+</div>

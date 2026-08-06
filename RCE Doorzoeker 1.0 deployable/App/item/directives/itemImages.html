@@ -1,0 +1,22 @@
+﻿<div class="item-tab">
+	<i ng-show="loading" class="fa fa-spinner fa-2x fa-spin active"></i>
+	<div ng-if="images && images.length > 0" class="item-images-list">
+		<ul class="pagination">
+			<li ng-repeat="page in pages" ng-class="{ active: currentPage == page.link, disabled: !page.link }">
+				<a ng-click="gotoPage(page.link)">{{page.caption}}</a>
+			</li>
+		</ul>
+		<ul class="list-unstyled">
+			<li ng-repeat="image in images" class="item-image">
+				<div class="thumbnail-container">
+					<img ng-click="showImage(image)" ng-src="{{image.thumbnailUrl}}" alt="" />
+				</div>
+				<div class="image-label">{{image.description}}</div>
+			</li>
+		</ul>
+	</div>
+
+	<div ng-if="images == null || images.length == 0">Geen afbeeldingen gevonden</div>
+</div>
+
+

@@ -1,0 +1,23 @@
+﻿@model IEnumerable<RceDoorzoeker.Models.Item.StatementModel>
+
+@foreach (var statement in Model)
+{
+	<tr>
+		<td class="item-label" title="@statement.PredicateResource.Label">
+			<span data-uri="@statement.PredicateResource.Link" data-resolved="@(!statement.PredicateResource.IsUnresolved)">@statement.PredicateResource.Label</span>
+			@*@{ Html.RenderPartial("ResourceValue", statement.PredicateResource);} *@
+		</td>
+		<td class="value">
+			@if (statement.IsObjectAnnexItem)
+			{
+				Html.RenderPartial("AnnexItem", statement.AnnexItemValue);
+			}
+			else
+			{
+				Html.RenderPartial("ResourceValue", statement.Object);
+			}
+		
+		</td>
+	</tr>	
+
+}	

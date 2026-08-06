@@ -1,0 +1,19 @@
+﻿<div class="node">
+	<div class="node-label">
+		<div class="thesaurus-node" ng-class="{ selected: node.selected }">
+			<i class="expander glyphicon" 
+			   ng-class="{ 'glyphicon-chevron-up': node.hasChildren && !node.expanded, 'glyphicon-chevron-down': node.hasChildren && node.expanded }" 
+			   ng-click="NodeHandler.fold(node)"></i>
+			<span dz:resource-value resource="node.value"></span>
+		</div>
+		<ul ng-if="node.expanded" class="pagination pagination-xsm">
+			<li ng-repeat="page in node.pages" ng-class="{ active: node.currentPage == page.link, disabled: !page.link }">
+				<a ng-click="NodeHandler.gotoPage(node, page.link)">{{page.caption}}</a>
+			</li>
+		</ul>
+		<i class="child-loader fa fa-spinner fa-spin active" ng-show="node.loadingChildren"></i>
+	</div>
+	<div class="child-node-list" ng-show="node.expanded">
+		<!-- children lists get dynamically inserted here (directives can't recurse) -->
+	</div>
+</div>

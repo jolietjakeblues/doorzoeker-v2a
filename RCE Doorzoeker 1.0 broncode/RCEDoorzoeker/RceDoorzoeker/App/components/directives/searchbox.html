@@ -1,0 +1,22 @@
+﻿<div class="search-box">
+	<div class="search-input">
+		<div class="input-group">
+		    <input id="search-term-input" type="text" class="form-control typeahead" ng-model="currentQuery" ng-keyup="keyPressed($event)" />
+			<span class="input-group-btn">
+				<button class="btn btn-default" ng-click="launchSearch()" type="button">Zoek</button>
+				<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+					Zoek elders
+					<span class="caret"></span>
+					<span class="sr-only">Open zoek elders uitklaplijst</span>
+				</button>
+				<ul class="dropdown-menu pull-right" role="menu">
+					<li><a ng-click="externalSearch('dimcon')">Zoek in DiMCoN</a></li>
+					<li><a ng-click="externalSearch('gahetna')">Zoek in Ga het na.</a></li>
+				</ul>
+			</span>
+		</div>
+	</div>
+	<div class="btn-group">
+		<a class="btn btn-default" href="/#/thesaurus" ng-hide="disableThesauriSearch">Zoek in thesauri</a>
+	</div>
+</div>

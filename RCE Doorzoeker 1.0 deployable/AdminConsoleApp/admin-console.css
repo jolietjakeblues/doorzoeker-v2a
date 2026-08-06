@@ -1,0 +1,23 @@
+﻿.row.operation {
+	border-top: 1px solid #eee;
+	padding: 20px 0;
+}
+
+.busy-indicator {
+	visibility: hidden;
+}
+
+	.busy-indicator.active {
+		visibility: visible;
+	}
+
+.btn {
+	font-size: 16px;
+}
+
+.nav-info-row {
+	padding: 20px 0;
+}
+	.nav-info-row .alert {
+		margin-bottom: 0;
+	}

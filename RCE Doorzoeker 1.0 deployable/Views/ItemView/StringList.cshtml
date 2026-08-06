@@ -1,0 +1,11 @@
+﻿@model RceDoorzoeker.Models.Item.StringListModel
+
+@foreach (var stringValue in Model.StringValues)
+{
+	<tr>
+	    <td class="item-label">@Model.Caption.Label</td>
+		<td class="value">
+			@stringValue
+		</td>
+	</tr>
+}

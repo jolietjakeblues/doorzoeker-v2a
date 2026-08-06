@@ -1,0 +1,54 @@
+﻿@using RceDoorzoeker.Models.Item
+@model ResourceValueModel
+
+@if (Model.IsUnresolved)
+{
+	<span class="unresolved" data-qtip="Cannot resolve item" data-unresolved="true" data-uri="@Model.Link">@Model.Label</span>
+}
+else
+{
+	if (string.IsNullOrWhiteSpace(Model.Link))
+	{
+		if (Model.Label.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+		{
+			<a href="@Model.Label" class="extern" target="_blank">@Model.Label</a>
+		}
+		else
+		{
+			@Model.Label
+		}
+	}
+	else
+	{
+		string cssClass;
+		switch (Model.Classification)
+		{
+			case ItemClassification.None:
+				cssClass = "unclassified-resource";
+				break;
+			case ItemClassification.BronRecord:
+				cssClass = "bronrecord-resource";
+				break;
+			case ItemClassification.ThesaurusTerm:
+				cssClass = "thesaurusterm-resource";
+				break;
+			default:
+				cssClass = "unclassified-resource";
+				break;
+		}
+		if (Model.IsInRecycleBin)
+		{
+			<div class="resource-link @cssClass">
+				 <a class="sitelink" href="/#item/?uri=@Model.Link" data-uri="@Model.Link" data-qtip="Item is in recycle bin" data-inrecyclebin="true">@Model.Label</a>
+			</div>
+		}
+		else
+		{
+			<div class="resource-link @cssClass">
+				<a class="sitelink" href="/#item/?uri=@Model.Link" data-uri="@Model.Link">@Model.Label</a>
+			</div>
+		}
+	
+	}    
+
+}

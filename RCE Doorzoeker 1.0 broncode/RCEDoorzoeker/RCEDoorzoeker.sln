@@ -1,0 +1,56 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.30501.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RceDoorzoeker", "RceDoorzoeker\RceDoorzoeker.csproj", "{7A507E17-9771-4488-BF2A-BED6336ECD11}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{998C1A61-BCC9-4AE0-8E65-CCEDEB2278A1}"
+	ProjectSection(SolutionItems) = preProject
+		.nuget\NuGet.Config = .nuget\NuGet.Config
+		.nuget\NuGet.exe = .nuget\NuGet.exe
+		.nuget\NuGet.targets = .nuget\NuGet.targets
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RceDoorzoeker.Tests", "RceDoorzoeker.Tests\RceDoorzoeker.Tests.csproj", "{7BC6E1E1-5809-4255-930D-B431BF921336}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Util", "Util\Util.csproj", "{662FC113-1DC2-430B-AA31-CB16C40AD8D8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Config", "Config", "{EBAAEC43-8D16-4454-AE21-0C62D60DE3AE}"
+	ProjectSection(SolutionItems) = preProject
+		..\Doorzoeker.dev-local.cfg = ..\Doorzoeker.dev-local.cfg
+		..\Doorzoeker.dev-prod.cfg = ..\Doorzoeker.dev-prod.cfg
+		..\InstanceRegistry.cfg = ..\InstanceRegistry.cfg
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Demo|Any CPU = Demo|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7A507E17-9771-4488-BF2A-BED6336ECD11}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7A507E17-9771-4488-BF2A-BED6336ECD11}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7A507E17-9771-4488-BF2A-BED6336ECD11}.Demo|Any CPU.ActiveCfg = Debug|Any CPU
+		{7A507E17-9771-4488-BF2A-BED6336ECD11}.Demo|Any CPU.Build.0 = Debug|Any CPU
+		{7A507E17-9771-4488-BF2A-BED6336ECD11}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7A507E17-9771-4488-BF2A-BED6336ECD11}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7A507E17-9771-4488-BF2A-BED6336ECD11}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{7BC6E1E1-5809-4255-930D-B431BF921336}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7BC6E1E1-5809-4255-930D-B431BF921336}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7BC6E1E1-5809-4255-930D-B431BF921336}.Demo|Any CPU.ActiveCfg = Debug|Any CPU
+		{7BC6E1E1-5809-4255-930D-B431BF921336}.Demo|Any CPU.Build.0 = Debug|Any CPU
+		{7BC6E1E1-5809-4255-930D-B431BF921336}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7BC6E1E1-5809-4255-930D-B431BF921336}.Release|Any CPU.Build.0 = Release|Any CPU
+		{662FC113-1DC2-430B-AA31-CB16C40AD8D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{662FC113-1DC2-430B-AA31-CB16C40AD8D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{662FC113-1DC2-430B-AA31-CB16C40AD8D8}.Demo|Any CPU.ActiveCfg = Debug|Any CPU
+		{662FC113-1DC2-430B-AA31-CB16C40AD8D8}.Demo|Any CPU.Build.0 = Debug|Any CPU
+		{662FC113-1DC2-430B-AA31-CB16C40AD8D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{662FC113-1DC2-430B-AA31-CB16C40AD8D8}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

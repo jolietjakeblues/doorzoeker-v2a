@@ -1,0 +1,9 @@
+﻿<div class="map-group">
+	<div class="map-query-info">
+		<div class="alert"
+			 ng-show="queryObject.queryResultInfo" ng-class=" { 'alert-warning' : queryObject.queryResultTooLarge, 'alert-info' : !queryObject.queryResultTooLarge }">
+			{{queryObject.queryResultInfo}}
+		</div>
+	</div>
+	<div class="map"></div>
+</div>

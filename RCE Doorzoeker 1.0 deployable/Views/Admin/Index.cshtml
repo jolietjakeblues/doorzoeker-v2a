@@ -1,0 +1,85 @@
+﻿@using System.Web.Optimization
+@model dynamic
+
+@{
+	Layout = null;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+	<title>RCE Doorzoeker beheer pagina</title>
+	<link rel="stylesheet" href="~/Content/bootstrap.min.css" />
+	<link rel="stylesheet" href="~/AdminConsoleApp/admin-console.css" />
+
+	@Styles.Render("~/Content/css")
+</head>
+<body ng-app="admin-console">
+	<div class="container" ng-controller="AppController">
+		<div class="row">
+			<h1 class="col-md-12"><img src="~/Content/images/doorzoeker-logo-2a.png" alt="Dóórzoeker - Erfgoed digitaal" /></h1>
+		</div>
+		<div class="row nav-info-row">
+			<div class="col-md-1">
+				<i ng-class="{ 'active': appStatus.busy }" class="busy-indicator fa fa-spinner fa-3x fa-spin"></i>
+			</div>
+			<div class="col-md-1">
+				<div class="home-button"><a class="btn btn-default" href="/#search"><i class="glyphicon glyphicon-home"></i></a></div>
+			</div>
+			<div class="col-md-10">
+				<div id="operation-result-info" class="alert alert-info"
+					 ng-show="appStatus.operationResult"
+					 ng-class="{ 'alert-info': appStatus.operationResult.level == 'info', 'alert-danger': appStatus.operationResult.level == 'error' }"
+					 ng-bind-html="appStatus.operationResult.message">
+				</div>
+			</div>
+		</div>
+		<div class="row operation">
+			<div class="col-md-12">
+				<div class="operation">
+					<h2>Applicatie herstarten</h2>
+					<div class="well clearfix">
+						<button class="btn btn-primary" id="restart" ng-click="restartApp()"><i class="glyphicon glyphicon-repeat"></i> Herstart applicatie</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="row operation" ng-controller="ConfigController">
+			<div class="col-md-6">
+				<div class="operation">
+					<h2>Configuratie downloaden</h2>
+					<div class="well clearfix"><a class="btn btn-primary" href="@Url.Action("Config")"><i class="glyphicon glyphicon-download"></i> Download</a></div>
+				</div>
+				<div class="operation">
+					<h2>Configuratie aanpassen</h2>
+					@using (Html.BeginForm("UploadConfig", null, FormMethod.Post, new { enctype = "multipart/form-data", target = "upload-target", @class = "well clearfix" }))
+					{
+						<label for="file">Upload configuratie bestand</label>
+						<input type="file" name="File" id="file" />
+					    <hr />
+					    <div class="pull-right">
+							<button class="btn btn-primary" ng-click="uploadSubmit()" type="submit"><i class="glyphicon glyphicon-upload"></i> Upload</button>    
+					    </div>
+					}
+					<iframe id="upload-target" name="upload-target" src="" style="width:0;height:0;border:0 solid #fff;"></iframe>
+				</div>
+
+			</div>
+			<div class="col-md-6">
+				<h2>Configuratie herstellen</h2>
+				<div class="well clearfix">
+					<p>Verwijder de huidige configuratie en herstel de voorgaande versie.</p>
+					<hr />
+					<div class="pull-right">
+						<button id="restoreConfig" class="btn btn-primary" ng-click="restoreBackup()">Herstel vorige configuratie</button>
+					</div>
+				</div>
+			</div>
+
+		</div>
+	</div>
+
+	@Scripts.Render("~/bundled/admin-console")
+
+</body>
+</html>

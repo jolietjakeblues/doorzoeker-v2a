@@ -1,0 +1,55 @@
+﻿@using RceDoorzoeker.Models.Item
+
+@model InfoWindowModel
+
+@{
+	Layout = null;
+}
+		   
+<div class="item-info-window">
+	@{
+		string cssClass;
+		switch (Model.Classification)
+		{
+			case ItemClassification.None:
+				cssClass = "unclassified-resource";
+				break;
+			case ItemClassification.BronRecord:
+				cssClass = "bronrecord-resource";
+				break;
+			case ItemClassification.ThesaurusTerm:
+				cssClass = "thesaurusterm-resource";
+				break;
+			default:
+				cssClass = "unclassified-resource";
+				break;
+		}
+	}
+	<h1 class="item-label resource-link @cssClass">@Model.ItemPrefLabel</h1>
+	<div class="item-data" data-uri="@Model.Uri">
+		<table class="table table-striped">
+			@*<tr>
+					<td class="item-label" title="id">uri</td>
+					<td class="value">@Model.Uri</td>
+				</tr>*@
+			<tr>
+				<td class="item-label" title="structuur">structuur</td>
+				<td class="value">
+					@{ Html.RenderPartial("ResourceValue", Model.ReferenceStructure); }
+				</td>
+			</tr>
+			@*<tr>
+				<td class="item-label" title="item type">item type</td>
+				<td class="value">
+					<span data-uri="@Model.ItemTypeResource.Link" data-resolved="@(!Model.ItemTypeResource.IsUnresolved)">@Model.ItemTypeResource.Label</span>
+				</td>
+			</tr>*@
+			
+		    @{ Html.RenderPartial("StatementList", Model.Statements); }
+			
+		    
+
+		</table>
+		<a href="/#item/?uri=@Model.Uri">Meer..</a>
+	</div>
+</div>
