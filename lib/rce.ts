@@ -2,6 +2,8 @@ const ENDPOINT = "https://api.linkeddata.cultureelerfgoed.nl/queries/rce/rest-ap
 const SPARQL_ENDPOINT = "https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/cho/sparql";
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const RM_TYPE = `${CEO}Rijksmonument`;
+const INSTANCES_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce";
+const RIJKSMONUMENT_STATUS = "https://data.cultureelerfgoed.nl/term/id/rn/2/b2d9a59a-fe1e-4552-9a05-3c2acddff864";
 
 type JsonLdValue = { "@id"?: string; "@value"?: string };
 type JsonLdNode = Record<string, unknown> & { "@id": string; "@type"?: string[] };
@@ -47,7 +49,7 @@ function escapeSparqlString(value: string) {
 export function parseDiscoveryResults(document: unknown): DiscoveryMatch[] {
   const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
   if (!Array.isArray(bindings)) return [];
-  const priority: Record<string, number> = { "oorspronkelijke functie": 1, "huidige functie": 2, type: 3, "formele omschrijving": 4, woonplaats: 5 };
+  const priority: Record<string, number> = { "oorspronkelijke functie": 1, "huidige functie": 2, type: 3, monumentaard: 4, "formele omschrijving": 5, woonplaats: 6 };
   const matches = new Map<string, DiscoveryMatch>();
   for (const binding of bindings) {
     const monumentNumber = binding.rmnr?.value ?? "";
@@ -62,27 +64,42 @@ export function buildRceDiscoveryQuery(term: string) {
   const needle = escapeSparqlString(term.trim());
   return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-SELECT DISTINCT ?rmnr ?match ?bron WHERE {
-  ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr .
+SELECT DISTINCT ?rmnr ?match ?bron ?rang WHERE {
+ GRAPH <${INSTANCES_GRAPH}> {
+  ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ;
+       ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> .
   {
-    ?cho ceo:heeftOorspronkelijkeFunctie/ceo:heeftFunctieNaam/skos:prefLabel ?match .
+    ?cho ceo:heeftOorspronkelijkeFunctie ?functieNode .
+    ?functieNode ceo:formeelStandpunt true ; ceo:heeftFunctieNaam/skos:prefLabel ?match .
     BIND("oorspronkelijke functie" AS ?bron)
+    BIND(1 AS ?rang)
   } UNION {
-    ?cho ceo:heeftHuidigeFunctie/ceo:heeftFunctieNaam/skos:prefLabel ?match .
+    ?cho ceo:heeftHuidigeFunctie ?functieNode .
+    ?functieNode ceo:formeelStandpunt true ; ceo:heeftFunctieNaam/skos:prefLabel ?match .
     BIND("huidige functie" AS ?bron)
+    BIND(2 AS ?rang)
   } UNION {
     ?cho ceo:heeftType/ceo:heeftTypeNaam/skos:prefLabel ?match .
     BIND("type" AS ?bron)
+    BIND(3 AS ?rang)
+  } UNION {
+    ?cho ceo:heeftMonumentAard/skos:prefLabel ?match .
+    BIND("monumentaard" AS ?bron)
+    BIND(4 AS ?rang)
   } UNION {
     ?cho ceo:heeftOmschrijving ?omschrijvingNode .
     ?omschrijvingNode ceo:omschrijving ?match ; ceo:formeelStandpunt true .
     BIND("formele omschrijving" AS ?bron)
+    BIND(5 AS ?rang)
   } UNION {
     ?cho ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?match .
     BIND("woonplaats" AS ?bron)
+    BIND(6 AS ?rang)
   }
   FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))
+ }
 }
+ORDER BY ?rang
 LIMIT 100`;
 }
 
@@ -141,10 +158,15 @@ SELECT ?cho ?choi ?rmnr
   (SAMPLE(STR(?wktValue)) AS ?wkt)
   (SAMPLE(STR(?inschrijvingValue)) AS ?inschrijving)
 WHERE {
-  ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ; ceo:cultuurhistorischObjectnummer ?choi .
+ GRAPH <${INSTANCES_GRAPH}> {
+  ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ; ceo:cultuurhistorischObjectnummer ?choi ;
+       ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> .
   VALUES ?rmnr { ${values} }
   OPTIONAL { ?cho ceo:heeftNaam/ceo:naam ?naamValue . }
-  OPTIONAL { ?cho ceo:heeftOorspronkelijkeFunctie/ceo:heeftFunctieNaam/skos:prefLabel ?functieValue . }
+  OPTIONAL {
+    ?cho ceo:heeftOorspronkelijkeFunctie ?functieNode .
+    ?functieNode ceo:formeelStandpunt true ; ceo:heeftFunctieNaam/skos:prefLabel ?functieValue .
+  }
   OPTIONAL {
     ?cho ceo:heeftOmschrijving ?omschrijvingNode .
     ?omschrijvingNode ceo:omschrijving ?omschrijvingValue ;
@@ -159,6 +181,7 @@ WHERE {
   }
   OPTIONAL { ?cho ceo:heeftGeometrie/geo:asWKT ?wktValue . }
   OPTIONAL { ?cho ceo:datumInschrijvingInMonumentenregister ?inschrijvingValue . }
+ }
 }
 GROUP BY ?cho ?choi ?rmnr
 LIMIT 100`;
@@ -172,14 +195,17 @@ export function buildRceParcelQuery(monumentNumber: string) {
   return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
 SELECT DISTINCT ?gemeente ?gemeentecode ?sectie ?perceel ?provinciecode
 WHERE {
+ GRAPH <${INSTANCES_GRAPH}> {
   ?cho a ceo:Rijksmonument ;
        ceo:rijksmonumentnummer "${monumentNumber}" ;
+       ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> ;
        ceo:heeftBasisregistratieRelatie/ceo:heeftBRKRelatie ?brk .
   ?brk ceo:gemeentenaam ?gemeente ;
        ceo:sectie ?sectie ;
        ceo:perceelnummer ?perceel .
   OPTIONAL { ?brk ceo:gemeentecode ?gemeentecode . }
   OPTIONAL { ?brk ceo:provinciecode ?provinciecode . }
+ }
 }`;
 }
 
@@ -187,12 +213,15 @@ function buildRceParcelsQuery(monumentNumbers: string[]) {
   const values = monumentNumbers.map((number) => `"${escapeSparqlString(number)}"`).join(" ");
   return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
 SELECT DISTINCT ?rmnr ?gemeente ?gemeentecode ?sectie ?perceel ?provinciecode WHERE {
+ GRAPH <${INSTANCES_GRAPH}> {
   VALUES ?rmnr { ${values} }
   ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ;
+       ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> ;
        ceo:heeftBasisregistratieRelatie/ceo:heeftBRKRelatie ?brk .
   ?brk ceo:gemeentenaam ?gemeente ; ceo:sectie ?sectie ; ceo:perceelnummer ?perceel .
   OPTIONAL { ?brk ceo:gemeentecode ?gemeentecode . }
   OPTIONAL { ?brk ceo:provinciecode ?provinciecode . }
+ }
 }`;
 }
 

@@ -36,8 +36,13 @@ test("only queries formally established descriptions", () => {
 test("discovers functions, types and only formal descriptions", () => {
   const query = buildRceDiscoveryQuery('woonhuis "K"');
   assert.match(query, /ceo:heeftOorspronkelijkeFunctie/);
+  assert.match(query, /graph\/instanties-rce/);
+  assert.match(query, /ceo:heeftJuridischeStatus/);
+  assert.match(query, /ceo:heeftOorspronkelijkeFunctie \?functieNode/);
+  assert.match(query, /\?functieNode ceo:formeelStandpunt true/);
   assert.match(query, /ceo:heeftHuidigeFunctie/);
   assert.match(query, /ceo:heeftType/);
+  assert.match(query, /ceo:heeftMonumentAard/);
   assert.match(query, /ceo:formeelStandpunt true/);
   assert.match(query, /woonhuis \\"K\\"/);
 });

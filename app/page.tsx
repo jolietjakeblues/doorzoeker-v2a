@@ -71,7 +71,11 @@ export default function Home() {
   }, [active, municipality, type]);
   const baseResults = remoteResults ?? localResults;
   const functions = useMemo(() => [...new Set(baseResults.map((item) => item.kind).filter((kind) => kind !== "Functie niet opgenomen"))].sort((a, b) => a.localeCompare(b, "nl")), [baseResults]);
-  const results = useMemo(() => baseResults.filter((item) => functionFilter === "Alle" || item.kind === functionFilter), [baseResults, functionFilter]);
+  const results = useMemo(() => baseResults.filter((item) =>
+    (functionFilter === "Alle" || item.kind === functionFilter) &&
+    (type === "Alle" || item.type === type) &&
+    (municipality === "Alle" || item.municipality === municipality)
+  ), [baseResults, functionFilter, municipality, type]);
 
   async function submitSearch(event: FormEvent) {
     event.preventDefault();
