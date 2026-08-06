@@ -22,6 +22,16 @@ export type RceMonument = {
   place?: string;
   lat?: number;
   lng?: number;
+  wkt?: string;
+  parcels?: RceParcel[];
+};
+
+export type RceParcel = {
+  municipality: string;
+  municipalityCode: string;
+  section: string;
+  parcelNumber: string;
+  provinceCode: string;
 };
 
 type SparqlBinding = Record<string, { value?: string }>;
@@ -48,8 +58,21 @@ export function parseSparqlResults(document: unknown): RceMonument[] {
       place: binding.woonplaats?.value,
       lng: point ? Number(point[1]) : undefined,
       lat: point ? Number(point[2]) : undefined,
+      wkt: wkt || undefined,
     };
   });
+}
+
+export function parseParcelResults(document: unknown): RceParcel[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.map((binding) => ({
+    municipality: binding.gemeente?.value ?? "",
+    municipalityCode: binding.gemeentecode?.value ?? "",
+    section: binding.sectie?.value ?? "",
+    parcelNumber: binding.perceel?.value ?? "",
+    provinceCode: binding.provinciecode?.value ?? "",
+  }));
 }
 
 export function buildRceNumberQuery(monumentNumber: string) {
@@ -90,14 +113,37 @@ GROUP BY ?cho ?choi ?rmnr
 LIMIT 10`;
 }
 
-async function searchRceByNumber(monumentNumber: string, signal?: AbortSignal) {
-  const query = buildRceNumberQuery(monumentNumber);
+export function buildRceParcelQuery(monumentNumber: string) {
+  return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
+SELECT DISTINCT ?gemeente ?gemeentecode ?sectie ?perceel ?provinciecode
+WHERE {
+  ?cho a ceo:Rijksmonument ;
+       ceo:rijksmonumentnummer "${monumentNumber}" ;
+       ceo:heeftBasisregistratieRelatie/ceo:heeftBRKRelatie ?brk .
+  ?brk ceo:gemeentenaam ?gemeente ;
+       ceo:sectie ?sectie ;
+       ceo:perceelnummer ?perceel .
+  OPTIONAL { ?brk ceo:gemeentecode ?gemeentecode . }
+  OPTIONAL { ?brk ceo:provinciecode ?provinciecode . }
+}`;
+}
+
+async function fetchSparql(query: string, signal?: AbortSignal) {
   const response = await fetch(`${SPARQL_ENDPOINT}?query=${encodeURIComponent(query)}`, {
     headers: { Accept: "application/sparql-results+json" },
     signal,
   });
   if (!response.ok) throw new Error(`RCE SPARQL-service antwoordde met ${response.status}`);
-  return parseSparqlResults(await response.json());
+  return response.json();
+}
+
+async function searchRceByNumber(monumentNumber: string, signal?: AbortSignal) {
+  const [monumentsDocument, parcelsDocument] = await Promise.all([
+    fetchSparql(buildRceNumberQuery(monumentNumber), signal),
+    fetchSparql(buildRceParcelQuery(monumentNumber), signal),
+  ]);
+  const parcels = parseParcelResults(parcelsDocument);
+  return parseSparqlResults(monumentsDocument).map((monument) => ({ ...monument, parcels }));
 }
 
 function values(node: JsonLdNode | undefined, property: string): JsonLdValue[] {

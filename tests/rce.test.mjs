@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildRceNumberQuery, parseRceMonuments, parseSparqlResults } from "../lib/rce.ts";
+import { buildRceNumberQuery, buildRceParcelQuery, parseParcelResults, parseRceMonuments, parseSparqlResults } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -15,7 +15,15 @@ test("parses an official RCE JSON-LD graph", () => {
 
 test("parses rich SPARQL results", () => {
   const document = { results: { bindings: [{ cho: { value: "rm:38342" }, choi: { value: "38342" }, rmnr: { value: "36046" }, functie: { value: "Woonhuis(K)" }, omschrijving: { value: "Pand met 17e eeuwse lijstgevel." }, monumentaard: { value: "onroerend gebouwd" }, volledigAdres: { value: "Brigittenstraat 18" }, postcode: { value: "3512KM" }, woonplaats: { value: "Utrecht" }, wkt: { value: "POINT(5.1267842049703 52.088895166661)" }, inschrijving: { value: "1967-06-20" } }] } };
-  assert.deepEqual(parseSparqlResults(document), [{ choNumber: "38342", monumentNumber: "36046", registrationDate: "1967-06-20", street: "", houseNumber: "", postalCode: "3512KM", sourceUrl: "rm:38342", name: undefined, functionName: "Woonhuis(K)", description: "Pand met 17e eeuwse lijstgevel.", monumentNature: "onroerend gebouwd", fullAddress: "Brigittenstraat 18", place: "Utrecht", lng: 5.1267842049703, lat: 52.088895166661 }]);
+  assert.deepEqual(parseSparqlResults(document), [{ choNumber: "38342", monumentNumber: "36046", registrationDate: "1967-06-20", street: "", houseNumber: "", postalCode: "3512KM", sourceUrl: "rm:38342", name: undefined, functionName: "Woonhuis(K)", description: "Pand met 17e eeuwse lijstgevel.", monumentNature: "onroerend gebouwd", fullAddress: "Brigittenstraat 18", place: "Utrecht", lng: 5.1267842049703, lat: 52.088895166661, wkt: "POINT(5.1267842049703 52.088895166661)" }]);
+});
+
+test("queries and parses BRK parcels separately", () => {
+  const query = buildRceParcelQuery("36046");
+  assert.match(query, /ceo:heeftBRKRelatie/);
+  assert.doesNotMatch(query, /ceo:heeftBAGRelatie/);
+  const document = { results: { bindings: [{ gemeente: { value: "Utrecht" }, gemeentecode: { value: "996" }, sectie: { value: "B" }, perceel: { value: "358" }, provinciecode: { value: "UT" } }] } };
+  assert.deepEqual(parseParcelResults(document), [{ municipality: "Utrecht", municipalityCode: "996", section: "B", parcelNumber: "358", provinceCode: "UT" }]);
 });
 
 test("only queries formally established descriptions", () => {

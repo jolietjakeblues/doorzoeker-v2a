@@ -15,6 +15,7 @@ const rceFixture = [
   { "@id": "rm:38342", "@type": [`${CEO}Rijksmonument`], [`${CEO}rijksmonumentnummer`]: [{ "@value": "https://monumentenregister.cultureelerfgoed.nl/monumenten/36046" }], [`${CEO}cultuurhistorischObjectnummer`]: [{ "@value": "38342" }], [`${CEO}datumInschrijvingInMonumentenregister`]: [{ "@value": "1967-06-20" }], [`${CEO}heeftBasisregistratieRelatie`]: [{ "@id": "basis:1" }] },
 ];
 const rceSparqlFixture = { results: { bindings: [{ cho: { value: "rm:38342" }, choi: { value: "38342" }, rmnr: { value: "36046" }, functie: { value: "Woonhuis(K)" }, omschrijving: { value: "Pand met 17e eeuwse lijstgevel." }, monumentaard: { value: "onroerend gebouwd" }, volledigAdres: { value: "Brigittenstraat 18" }, postcode: { value: "3512KM" }, woonplaats: { value: "Utrecht" }, wkt: { value: "POINT(5.1267842049703 52.088895166661)" }, inschrijving: { value: "1967-06-20" } }] } };
+const rceParcelFixture = { results: { bindings: [{ gemeente: { value: "Utrecht" }, gemeentecode: { value: "996" }, sectie: { value: "B" }, perceel: { value: "358" }, provinciecode: { value: "UT" } }] } };
 const contentTypes = {
   ".css": "text/css; charset=utf-8",
   ".gif": "image/gif",
@@ -62,10 +63,12 @@ test("GitHub Pages export loads and remains interactive in Chromium", { timeout:
 
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
-  await page.route("https://api.linkeddata.cultureelerfgoed.nl/**", (route) => route.fulfill({
-    contentType: route.request().url().includes("/sparql") ? "application/sparql-results+json" : "application/ld+json",
-    body: JSON.stringify(route.request().url().includes("/sparql") ? rceSparqlFixture : rceFixture),
-  }));
+  await page.route("https://api.linkeddata.cultureelerfgoed.nl/**", (route) => {
+    const requestUrl = decodeURIComponent(route.request().url());
+    const isSparql = requestUrl.includes("/sparql");
+    const body = isSparql ? (requestUrl.includes("heeftBRKRelatie") ? rceParcelFixture : rceSparqlFixture) : rceFixture;
+    return route.fulfill({ contentType: isSparql ? "application/sparql-results+json" : "application/ld+json", body: JSON.stringify(body) });
+  });
   const runtimeErrors = [];
   page.on("pageerror", (error) => runtimeErrors.push(`pageerror: ${error.message}`));
   page.on("console", (message) => {
@@ -83,6 +86,9 @@ test("GitHub Pages export loads and remains interactive in Chromium", { timeout:
     await assert.doesNotReject(() => page.getByText("Woonhuis(K)", { exact: true }).first().waitFor({ state: "visible" }));
     await assert.doesNotReject(() => page.getByText(/1 resultaat/).waitFor({ state: "visible" }));
     await assert.doesNotReject(() => page.getByText("Resultaten rechtstreeks uit RCE Linked Data").waitFor({ state: "visible" }));
+    await page.getByRole("button", { name: "Details van Woonhuis(K)" }).click();
+    await assert.doesNotReject(() => page.getByText("POINT(5.1267842049703 52.088895166661)").waitFor({ state: "visible" }));
+    await assert.doesNotReject(() => page.getByText("Utrecht B 358 (UT)").waitFor({ state: "visible" }));
 
     assert.deepEqual(runtimeErrors, [], runtimeErrors.join("\n"));
   } finally {
