@@ -61,13 +61,16 @@ RCE-query's, resultaatvormen, prestaties en kaartdata heeft gevalideerd.
 ## Repositorystructuur
 
 ```text
+app/                   Applicatieroutes en componenten
+public/                Publiek geserveerde afbeeldingen en iconen
+tests/                 Geautomatiseerde tests
+scripts/               Build- en exportscripts
 docs/
   adr/                 Architectuurbesluiten
+  reference/           Ontwerp- en huisstijlbronnen
   vertical-slices/     End-to-end productdoorsneden
+.github/workflows/     CI en GitHub Pages-publicatie
 ```
-
-Applicatiecode, tests en deploymentconfiguratie worden toegevoegd zodra de
-eerste technische spike en stackkeuze zijn afgerond.
 
 ## Status
 
