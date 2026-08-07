@@ -116,6 +116,27 @@ test("returns undefined for unrecognized WKT", () => {
   assert.equal(parseWktGeometry(""), undefined);
 });
 
+test("returns undefined for WKT variants outside the supported RCE profile", () => {
+  // Doorzoeker ondersteunt bewust alleen Point/Polygon/MultiPolygon in
+  // lng/lat, zoals de RCE-data die daadwerkelijk levert. Dit vergrendelt die
+  // grens: als RCE ooit een van deze varianten gaat leveren, faalt deze test
+  // zichtbaar in plaats van dat de kaart stilzwijgend verkeerd gaat renderen.
+  assert.equal(parseWktGeometry("SRID=4326;POINT (5 52)"), undefined);
+  assert.equal(parseWktGeometry("POINT Z (5 52 0)"), undefined);
+  assert.equal(parseWktGeometry("GEOMETRYCOLLECTION (POINT (5 52))"), undefined);
+  assert.equal(parseWktGeometry("POLYGON EMPTY"), undefined);
+});
+
+test("does not throw on malformed or garbage WKT", () => {
+  // Geen enkele van deze invoer mag de applicatie laten crashen, ook al is
+  // het resultaat voor sommige daarvan geen bruikbare geometrie.
+  assert.doesNotThrow(() => parseWktGeometry("Polygon ((1 2, 3 4)"));
+  assert.doesNotThrow(() => parseWktGeometry("Polygon((((("));
+  assert.doesNotThrow(() => parseWktGeometry("MultiPolygon ()"));
+  assert.doesNotThrow(() => parseWktGeometry("volstrekte onzin"));
+  assert.doesNotThrow(() => parseWktGeometry("Point ()"));
+});
+
 test("leaves lat/lng undefined when there is no geometry at all", () => {
   const document = { results: { bindings: [{ rmnr: { value: "1" } }] } };
   const [monument] = parseSparqlResults(document);

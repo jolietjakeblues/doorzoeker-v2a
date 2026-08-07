@@ -189,11 +189,20 @@ function parseMultiPolygonPolygons(text: string): WktRing[][] {
   return splitTopLevel(text).map((polygon) => parsePolygonRings(stripOuterParens(polygon)));
 }
 
-// RCE geeft geometrie als Point, Polygon of MultiPolygon WKT, bv.
-// "Point (lng lat)" of "Polygon ((lng lat, lng lat, ...))" - met een spatie
-// voor de haakjes. Dit behoudt de volledige ringstructuur (inclusief gaten
-// en losse deelpolygonen), zodat de kaart de echte vorm kan tekenen in
-// plaats van hem plat te slaan tot één punt.
+// Doorzoeker ondersteunt bewust alleen het WKT-profiel dat de huidige RCE
+// CHO-data daadwerkelijk levert: Point, Polygon en MultiPolygon, plat in
+// lng/lat (geen Z-coördinaat, geen SRID-prefix, geen GEOMETRYCOLLECTION,
+// geen wetenschappelijke notatie). Dat is een bewuste grens, geen toevallige
+// beperking - zodra RCE een ander profiel levert, moet dit expliciet worden
+// uitgebreid in plaats van dat de parser er stilzwijgend op struikelt. Bij
+// wat dan ook buiten dit profiel geeft deze functie undefined terug in
+// plaats van te gooien.
+//
+// RCE geeft geometrie als "Point (lng lat)" of
+// "Polygon ((lng lat, lng lat, ...))" - met een spatie voor de haakjes. Dit
+// behoudt de volledige ringstructuur (inclusief gaten en losse
+// deelpolygonen), zodat de kaart de echte vorm kan tekenen in plaats van hem
+// plat te slaan tot één punt.
 export function parseWktGeometry(wkt: string): WktGeometry | undefined {
   const trimmed = wkt.trim();
   const point = /^POINT\s*\(\s*(-?[\d.]+)\s+(-?[\d.]+)\s*\)/i.exec(trimmed);

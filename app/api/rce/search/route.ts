@@ -5,7 +5,16 @@ export const runtime = "edge";
 const CACHE_SECONDS = 300;
 const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT = 30;
+// Best-effort per-isolate limiter. Dit is geen globale rate limit: Cloudflare
+// kan verzoeken van dezelfde client over meerdere Worker-isolates en
+// locaties verspreiden, elk met hun eigen lege Map. Een gebruiker kan dus in
+// werkelijkheid ruimschoots boven RATE_LIMIT/minuut komen. Voor een echte
+// globale limiet is Cloudflare Rate Limiting of een Durable Object nodig.
 const requests = new Map<string, { count: number; resetAt: number }>();
+// Zelfde beperking: dit is een microcache per isolate, geen gedeelde cache.
+// caches.default (readCache/writeCache hieronder) is de laag die dat wél is
+// en blijft leidend; deze Map bespaart alleen een edge-cache-lookup binnen
+// dezelfde isolate.
 const responseCache = new Map<string, { body: string; expiresAt: number }>();
 
 function clientId(request: Request) {
