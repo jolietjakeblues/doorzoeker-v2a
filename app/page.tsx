@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 import { HeritageMap } from "./HeritageMap";
 import { searchRceMonuments } from "@/lib/rce-client";
 import type { RceMonument } from "@/lib/rce";
+import { fetchTermSuggestions, type TermSuggestion } from "@/lib/terms-client";
 
 type Item = {
   id: string; objectNumber: string; title: string; kind: string; address: string;
@@ -79,6 +80,8 @@ export default function Home() {
   const [resultPage, setResultPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [suggestions, setSuggestions] = useState<TermSuggestion[]>([]);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const searchController = useRef<AbortController | null>(null);
   const searchSequence = useRef(0);
   const pendingSelectedId = useRef(EMPTY_URL_STATE.selectedId);
@@ -185,6 +188,22 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, []);
   useEffect(() => () => searchController.current?.abort(), []);
+  useEffect(() => {
+    const term = query.trim();
+    if (term.length < 2 || term === active) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      const nextSuggestions = await fetchTermSuggestions(term, controller.signal).catch(() => []);
+      if (!controller.signal.aborted) {
+        setSuggestions(nextSuggestions);
+        setSuggestionsOpen(nextSuggestions.length > 0);
+      }
+    }, 250);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [active, query]);
   function reset() {
     setQuery(""); setActive(""); setType("Alle"); setMunicipality("Alle"); setFunctionFilter("Alle"); setMatchSourceFilter("Alle"); setSelected(null); setRemoteResults(null); setRemoteState("idle"); setResultPage(1); setHasMore(false);
   }
@@ -201,7 +220,7 @@ export default function Home() {
     <section className="hero">
       <small>DE OFFICIËLE RIJKSMONUMENTEN DOORZOEKEN</small><h1>Vind het monument.<br /><span>Begrijp de registratie.</span></h1>
       <p className="hero-intro">Zoek op monumentnummer, plaats, oorspronkelijke functie, monumentaard of woorden uit de formele omschrijving.</p>
-      <form onSubmit={submitSearch}><span aria-hidden="true">⌕</span><label className="sr" htmlFor="q">Zoeken</label><input id="q" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Bijvoorbeeld 36046, woonhuis, lijstgevel of Utrecht" />{query && <button type="button" className="clear" onClick={() => setQuery("")} aria-label="Zoekveld wissen">×</button>}<button type="submit">Doorzoek RCE</button></form>
+      <div className="search-combobox"><form onSubmit={(event) => { setSuggestionsOpen(false); submitSearch(event); }}><span aria-hidden="true">⌕</span><label className="sr" htmlFor="q">Zoeken</label><input id="q" role="combobox" aria-autocomplete="list" aria-expanded={suggestionsOpen} aria-controls="term-suggestions" value={query} onFocus={() => setSuggestionsOpen(suggestions.length > 0)} onChange={(event) => setQuery(event.target.value)} placeholder="Bijvoorbeeld 36046, woonhuis, lijstgevel of Utrecht" />{query && <button type="button" className="clear" onClick={() => { setQuery(""); setSuggestionsOpen(false); }} aria-label="Zoekveld wissen">×</button>}<button type="submit">Doorzoek RCE</button></form>{suggestionsOpen && <ul id="term-suggestions" className="term-suggestions" role="listbox" aria-label="Termsuggesties">{suggestions.map((suggestion) => <li key={suggestion.uri} role="option" aria-selected="false"><button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => { setQuery(suggestion.label); setSuggestionsOpen(false); }}>{suggestion.label}<small>{suggestion.sourceName}</small></button></li>)}</ul>}</div>
       <nav aria-label="Direct zoeken">Direct zoeken: {["36046", "Woonhuis", "Archeologisch", "Utrecht"].map((term) => <button type="button" key={term} onClick={() => void executeSearch(term)}>{term}</button>)}</nav>
       <p className={`source-status ${remoteState}`} aria-live="polite">{remoteState === "loading" ? "De actuele RCE-registratie wordt doorzocht…" : remoteState === "error" ? "De RCE Linked Data-service is momenteel niet bereikbaar. Probeer het later opnieuw." : remoteState === "success" ? "Resultaten rechtstreeks uit de actuele RCE Linked Data" : "Actuele brondata · formele registraties · juridische status rijksmonument"}</p>
     </section>

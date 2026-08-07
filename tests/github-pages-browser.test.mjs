@@ -75,6 +75,11 @@ test("GitHub Pages export loads and remains interactive in Chromium", { timeout:
     const fixture = new URL(route.request().url()).searchParams.get("q") === "cluster" ? clusterApiFixture : rceApiFixture;
     return route.fulfill({ contentType: "application/json", body: JSON.stringify(fixture) });
   });
+  await page.route("**/api/terms/suggest?**", (route) => {
+    const query = new URL(route.request().url()).searchParams.get("q") ?? "";
+    const suggestions = query.startsWith("woon") ? [{ uri: "urn:term:woonhuis", label: "Woonhuis", sourceUri: "https://data.cultureelerfgoed.nl/term/id/cht", sourceName: "Cultuurhistorische Thesaurus" }] : [];
+    return route.fulfill({ contentType: "application/json", body: JSON.stringify({ suggestions, unavailable: false }) });
+  });
   await page.route("https://api.linkeddata.cultureelerfgoed.nl/**", (route) => {
     const requestUrl = decodeURIComponent(route.request().url());
     const isSparql = requestUrl.includes("/sparql");
@@ -94,6 +99,11 @@ test("GitHub Pages export loads and remains interactive in Chromium", { timeout:
     assert.equal(await page.getByText("This page couldn’t load").count(), 0);
     assert.equal(await page.getByText("Prototype met voorbeelddata").count(), 0);
     await assert.doesNotReject(() => page.getByText("Van zoekwoord naar officiële registratie", { exact: true }).waitFor({ state: "visible" }));
+
+    await page.locator("#q").fill("woon");
+    await assert.doesNotReject(() => page.getByRole("option").getByRole("button", { name: /Woonhuis/ }).waitFor({ state: "visible" }));
+    await page.getByRole("option").getByRole("button", { name: /Woonhuis/ }).click();
+    assert.equal(await page.locator("#q").evaluate((input) => input.value), "Woonhuis");
 
     await page.getByRole("button", { name: "36046", exact: true }).click();
     await assert.doesNotReject(() => page.locator("article").getByText("Woonhuis", { exact: true }).first().waitFor({ state: "visible" }));
