@@ -21,7 +21,10 @@ test("returns a stable application API contract for a monument number", async (c
   globalThis.fetch = async (input) => {
     const url = decodeURIComponent(String(input));
     assert.match(url, new RegExp(`^${SPARQL.replaceAll(".", "\\.")}`));
-    if (url.includes("heeftBRKRelatie")) {
+    // The details query now also joins heeftBRKRelatie (for a gemeente
+    // fallback), so match on "perceelnummer" - only the dedicated parcel
+    // query selects it - instead of "heeftBRKRelatie".
+    if (url.includes("perceelnummer")) {
       return Response.json({ results: { bindings: [{ gemeente: { value: "Utrecht" }, sectie: { value: "B" }, perceel: { value: "358" } }] } });
     }
     if (url.includes("GROUP_CONCAT")) {
