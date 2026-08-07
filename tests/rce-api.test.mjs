@@ -37,4 +37,8 @@ test("returns a stable application API contract for a monument number", async (c
   const document = await response.json();
   assert.equal(document.results[0].monumentNumber, "36046");
   assert.equal(document.results[0].parcels[0].section, "B");
+
+  const cached = await GET(new Request("https://doorzoeker.test/api/rce/search?q=36046&page=1", { headers: { "cf-connecting-ip": "test-success" } }));
+  assert.equal(cached.status, 200);
+  assert.equal(cached.headers.get("x-doorzoeker-cache"), "HIT");
 });

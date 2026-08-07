@@ -6,6 +6,7 @@ const CACHE_SECONDS = 300;
 const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT = 30;
 const requests = new Map<string, { count: number; resetAt: number }>();
+const responseCache = new Map<string, { body: string; expiresAt: number }>();
 
 function clientId(request: Request) {
   return request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
@@ -57,18 +58,29 @@ export async function GET(request: Request) {
   }
 
   const cacheKey = new Request(`${url.origin}/api/rce/search?q=${encodeURIComponent(query.toLocaleLowerCase("nl"))}&page=${page}`);
+  const memoryCached = responseCache.get(cacheKey.url);
+  if (memoryCached && memoryCached.expiresAt > Date.now()) {
+    return new Response(memoryCached.body, {
+      headers: { "Content-Type": "application/json", "Cache-Control": `public, max-age=60, s-maxage=${CACHE_SECONDS}`, "X-Doorzoeker-Cache": "HIT" },
+    });
+  }
+  if (memoryCached) responseCache.delete(cacheKey.url);
   const cached = await readCache(cacheKey);
   if (cached) return cached;
 
   try {
     const results = await searchRceMonuments(query, request.signal, page);
-    const response = Response.json({ results }, {
+    const body = JSON.stringify({ results });
+    const response = new Response(body, {
       headers: {
+        "Content-Type": "application/json",
         "Cache-Control": `public, max-age=60, s-maxage=${CACHE_SECONDS}`,
         "Server-Timing": `rce;dur=${Date.now() - startedAt}`,
         "X-Doorzoeker-Cache": "MISS",
       },
     });
+    if (responseCache.size >= 500) responseCache.delete(responseCache.keys().next().value ?? "");
+    responseCache.set(cacheKey.url, { body, expiresAt: Date.now() + CACHE_SECONDS * 1000 });
     const cachedResponse = response.clone();
     cachedResponse.headers.set("X-Doorzoeker-Cache", "HIT");
     await writeCache(cacheKey, cachedResponse);
