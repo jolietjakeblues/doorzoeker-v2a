@@ -58,11 +58,7 @@ export async function GET(request: Request) {
 
   const cacheKey = new Request(`${url.origin}/api/rce/search?q=${encodeURIComponent(query.toLocaleLowerCase("nl"))}&page=${page}`);
   const cached = await readCache(cacheKey);
-  if (cached) {
-    const response = new Response(cached.body, cached);
-    response.headers.set("X-Doorzoeker-Cache", "HIT");
-    return response;
-  }
+  if (cached) return cached;
 
   try {
     const results = await searchRceMonuments(query, request.signal, page);
@@ -73,7 +69,9 @@ export async function GET(request: Request) {
         "X-Doorzoeker-Cache": "MISS",
       },
     });
-    await writeCache(cacheKey, response.clone());
+    const cachedResponse = response.clone();
+    cachedResponse.headers.set("X-Doorzoeker-Cache", "HIT");
+    await writeCache(cacheKey, cachedResponse);
     console.info(JSON.stringify({ event: "rce.search", durationMs: Date.now() - startedAt, queryLength: query.length, resultCount: results.length }));
     return response;
   } catch (error) {
