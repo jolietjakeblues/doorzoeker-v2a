@@ -122,7 +122,7 @@ export function parseSparqlResults(document: unknown): RceMonument[] {
   if (!Array.isArray(bindings)) return [];
   return bindings.map((binding) => {
     const wkt = binding.wkt?.value ?? "";
-    const point = /POINT\(\s*([\d.-]+)\s+([\d.-]+)\s*\)/i.exec(wkt);
+    const point = /POINT\s*\(\s*([\d.-]+)\s+([\d.-]+)\s*\)/i.exec(wkt);
     return {
       choNumber: binding.choi?.value ?? "",
       monumentNumber: binding.rmnr?.value ?? "",
