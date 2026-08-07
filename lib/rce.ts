@@ -4,6 +4,7 @@ const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const RM_TYPE = `${CEO}Rijksmonument`;
 const INSTANCES_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce";
 const RIJKSMONUMENT_STATUS = "https://data.cultureelerfgoed.nl/term/id/rn/2/b2d9a59a-fe1e-4552-9a05-3c2acddff864";
+const REQUEST_TIMEOUT_MS = 20_000;
 
 export const RCE_SEMANTICS = Object.freeze({
   instancesGraph: INSTANCES_GRAPH,
@@ -256,7 +257,7 @@ SELECT DISTINCT ?gemeente ?gemeentecode ?sectie ?perceel ?provinciecode
 WHERE {
  GRAPH <${INSTANCES_GRAPH}> {
   ?cho a ceo:Rijksmonument ;
-       ceo:rijksmonumentnummer "${monumentNumber}" ;
+       ceo:rijksmonumentnummer "${escapeSparqlString(monumentNumber)}" ;
        ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> ;
        ceo:heeftBasisregistratieRelatie/ceo:heeftBRKRelatie ?brk .
   ?brk ceo:gemeentenaam ?gemeente ;
@@ -285,9 +286,12 @@ SELECT DISTINCT ?rmnr ?gemeente ?gemeentecode ?sectie ?perceel ?provinciecode WH
 }
 
 async function fetchSparql(query: string, signal?: AbortSignal) {
+  const requestSignal = signal
+    ? AbortSignal.any([signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)])
+    : AbortSignal.timeout(REQUEST_TIMEOUT_MS);
   const response = await fetch(`${SPARQL_ENDPOINT}?query=${encodeURIComponent(query)}`, {
     headers: { Accept: "application/sparql-results+json" },
-    signal,
+    signal: requestSignal,
   });
   if (!response.ok) throw new Error(`RCE SPARQL-service antwoordde met ${response.status}`);
   return response.json();
@@ -364,10 +368,13 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
   if (/^\d{4,6}$/.test(trimmed)) return searchRceByNumber(trimmed, signal);
   if (!/^\d{4}\s?[A-Za-z]{2}$/.test(trimmed)) return searchRceByText(trimmed, signal, page);
   const params = new URLSearchParams({ page: "1", pageSize: "100", postcode: trimmed.replace(/\s/g, "").toUpperCase() });
+  const requestSignal = signal
+    ? AbortSignal.any([signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)])
+    : AbortSignal.timeout(REQUEST_TIMEOUT_MS);
 
   const response = await fetch(`${ENDPOINT}?${params}`, {
     headers: { Accept: "application/ld+json" },
-    signal,
+    signal: requestSignal,
   });
   if (!response.ok) throw new Error(`RCE-service antwoordde met ${response.status}`);
   return parseRceMonuments(await response.json());

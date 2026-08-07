@@ -26,6 +26,12 @@ test("queries and parses BRK parcels separately", () => {
   assert.deepEqual(parseParcelResults(document), [{ municipality: "Utrecht", municipalityCode: "996", section: "B", parcelNumber: "358", provinceCode: "UT" }]);
 });
 
+test("escapes monument numbers in BRK parcel queries", () => {
+  const query = buildRceParcelQuery('36046" . ?subject ?predicate ?object #');
+  assert.match(query, /36046\\" \. \?subject \?predicate \?object #/);
+  assert.doesNotMatch(query, /rijksmonumentnummer "36046" \. \?subject/);
+});
+
 test("only queries formally established descriptions", () => {
   const query = buildRceNumberQuery("36046");
   assert.match(query, new RegExp(`GRAPH <${RCE_SEMANTICS.instancesGraph}>`));

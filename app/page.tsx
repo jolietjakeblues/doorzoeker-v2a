@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HeritageMap } from "./HeritageMap";
 import { searchRceMonuments, type RceMonument } from "@/lib/rce";
 
@@ -16,6 +16,7 @@ type Item = {
 };
 
 const EMPTY_ITEMS: Item[] = [];
+const EMPTY_URL_STATE = { query: "", type: "Alle", municipality: "Alle", functionFilter: "Alle", matchSourceFilter: "Alle", view: "list" as const, selectedId: "" };
 
 function toItem(record: RceMonument, term: string): Item {
   return {
@@ -37,7 +38,7 @@ function toItem(record: RceMonument, term: string): Item {
 }
 
 function readUrlState() {
-  if (typeof window === "undefined") return { query: "", type: "Alle", municipality: "Alle", functionFilter: "Alle", matchSourceFilter: "Alle", view: "list" as const, selectedId: "" };
+  if (typeof window === "undefined") return EMPTY_URL_STATE;
   const params = new URLSearchParams(window.location.search);
   const type = params.get("type");
   const municipality = params.get("gemeente");
@@ -53,14 +54,13 @@ function readUrlState() {
 }
 
 export default function Home() {
-  const initial = useMemo(() => readUrlState(), []);
-  const [query, setQuery] = useState(initial.query);
-  const [active, setActive] = useState(initial.query);
-  const [type, setType] = useState(initial.type);
-  const [municipality, setMunicipality] = useState(initial.municipality);
-  const [functionFilter, setFunctionFilter] = useState(initial.functionFilter);
-  const [matchSourceFilter, setMatchSourceFilter] = useState(initial.matchSourceFilter);
-  const [view, setView] = useState<"list" | "map">(initial.view);
+  const [query, setQuery] = useState(EMPTY_URL_STATE.query);
+  const [active, setActive] = useState(EMPTY_URL_STATE.query);
+  const [type, setType] = useState(EMPTY_URL_STATE.type);
+  const [municipality, setMunicipality] = useState(EMPTY_URL_STATE.municipality);
+  const [functionFilter, setFunctionFilter] = useState(EMPTY_URL_STATE.functionFilter);
+  const [matchSourceFilter, setMatchSourceFilter] = useState(EMPTY_URL_STATE.matchSourceFilter);
+  const [view, setView] = useState<"list" | "map">(EMPTY_URL_STATE.view);
   const [selected, setSelected] = useState<Item | null>(null);
   const [filters, setFilters] = useState(false);
   const [remoteResults, setRemoteResults] = useState<Item[] | null>(null);
@@ -68,8 +68,13 @@ export default function Home() {
   const [resultPage, setResultPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const searchController = useRef<AbortController | null>(null);
+  const searchSequence = useRef(0);
+  const pendingSelectedId = useRef(EMPTY_URL_STATE.selectedId);
+  const urlStateHydrated = useRef(false);
 
   useEffect(() => {
+    if (!urlStateHydrated.current) return;
     const params = new URLSearchParams();
     if (active) params.set("q", active);
     if (type !== "Alle") params.set("type", type);
@@ -94,6 +99,10 @@ export default function Home() {
   ), [baseResults, functionFilter, matchSourceFilter, municipality, type]);
 
   async function executeSearch(term: string) {
+    searchController.current?.abort();
+    const controller = new AbortController();
+    searchController.current = controller;
+    const sequence = ++searchSequence.current;
     setQuery(term);
     setActive(term); setSelected(null); setView("list");
     setType("Alle");
@@ -105,11 +114,18 @@ export default function Home() {
     if (!term) { setRemoteResults(null); setRemoteState("idle"); return; }
     setRemoteState("loading");
     try {
-      const records = await searchRceMonuments(term);
-      setRemoteResults(records.map((record) => toItem(record, term)));
+      const records = await searchRceMonuments(term, controller.signal);
+      if (sequence !== searchSequence.current) return;
+      const items = records.map((record) => toItem(record, term));
+      setRemoteResults(items);
+      if (pendingSelectedId.current) {
+        setSelected(items.find((item) => item.id === pendingSelectedId.current || item.monumentNumber === pendingSelectedId.current) ?? null);
+        pendingSelectedId.current = "";
+      }
       setHasMore(false);
       setRemoteState("success");
     } catch {
+      if (controller.signal.aborted || sequence !== searchSequence.current) return;
       setRemoteResults([]);
       setRemoteState("error");
     }
@@ -145,12 +161,19 @@ export default function Home() {
   }
   useEffect(() => {
     const timer = window.setTimeout(() => {
+      const initial = readUrlState();
+      urlStateHydrated.current = true;
+      pendingSelectedId.current = initial.selectedId;
       if (initial.query) void executeSearch(initial.query);
+      setType(initial.type);
+      setMunicipality(initial.municipality);
+      setFunctionFilter(initial.functionFilter);
+      setMatchSourceFilter(initial.matchSourceFilter);
+      setView(initial.view);
     }, 0);
     return () => window.clearTimeout(timer);
-    // The initial URL query is intentionally executed only once on hydration.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  useEffect(() => () => searchController.current?.abort(), []);
   function reset() {
     setQuery(""); setActive(""); setType("Alle"); setMunicipality("Alle"); setFunctionFilter("Alle"); setMatchSourceFilter("Alle"); setSelected(null); setRemoteResults(null); setRemoteState("idle"); setResultPage(1); setHasMore(false);
   }

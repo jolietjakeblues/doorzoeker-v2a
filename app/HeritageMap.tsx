@@ -11,7 +11,7 @@ export function HeritageMap({items,onSelect}:{items:MapItem[];onSelect:(item:Map
    map=leafletMap;
    L.tileLayer("https://service.pdok.nl/kadaster/brt-achtergrondkaart/wmts/v2_0?service=WMTS&request=GetTile&version=1.0.0&layer=grijs&style=default&tilematrixset=EPSG:3857&format=image/png&tilematrix={z}&tilerow={y}&tilecol={x}",{maxZoom:19,attribution:'Kaart: <a href="https://www.pdok.nl/">PDOK</a> · BRT Kadaster'}).addTo(leafletMap);
    const bounds:L.LatLngExpression[]=[];
-   items.forEach(item=>{bounds.push([item.lat,item.lng]);const marker=L.circleMarker([item.lat,item.lng],{radius:9,color:"#fff",weight:3,fillColor:item.type==="Archeologisch"?"#ffb612":"#154273",fillOpacity:1}).addTo(leafletMap);marker.bindTooltip("<strong>"+item.title+"</strong><br>"+item.address+", "+item.place);marker.on("click",()=>onSelect(item))});
+   items.forEach(item=>{bounds.push([item.lat,item.lng]);const marker=L.circleMarker([item.lat,item.lng],{radius:9,color:"#fff",weight:3,fillColor:item.type==="Archeologisch"?"#ffb612":"#154273",fillOpacity:1}).addTo(leafletMap);const tooltip=document.createElement("div");const title=document.createElement("strong");title.textContent=item.title;tooltip.appendChild(title);tooltip.appendChild(document.createElement("br"));tooltip.appendChild(document.createTextNode([item.address,item.place].filter(Boolean).join(", ")));marker.bindTooltip(tooltip);marker.on("click",()=>onSelect(item))});
    if(bounds.length)leafletMap.fitBounds(L.latLngBounds(bounds),{padding:[45,45],maxZoom:14});
   });
   return()=>{cancelled=true;map?.remove()};

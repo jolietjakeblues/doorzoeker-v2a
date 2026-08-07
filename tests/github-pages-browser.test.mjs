@@ -93,6 +93,12 @@ test("GitHub Pages export loads and remains interactive in Chromium", { timeout:
     await assert.doesNotReject(() => page.getByText("POINT(5.1267842049703 52.088895166661)").waitFor({ state: "visible" }));
     await assert.doesNotReject(() => page.getByText("Utrecht B 358 (UT)").waitFor({ state: "visible" }));
     await page.getByRole("button", { name: "Details sluiten" }).click();
+    const sharedDetailUrl = new URL(page.url());
+    sharedDetailUrl.search = "?q=36046&rm=38342";
+    await page.goto(sharedDetailUrl.href, { waitUntil: "networkidle" });
+    await assert.doesNotReject(() => page.getByRole("button", { name: "Details sluiten" }).waitFor({ state: "visible" }));
+    await assert.doesNotReject(() => page.getByText("POINT(5.1267842049703 52.088895166661)").waitFor({ state: "visible" }));
+    await page.getByRole("button", { name: "Details sluiten" }).click();
     await page.locator("#q").fill("lijstgevel");
     await page.getByRole("button", { name: "Doorzoek RCE", exact: true }).click();
     await assert.doesNotReject(() => page.locator("article").getByText("Pand met 17e eeuwse lijstgevel.", { exact: true }).waitFor({ state: "visible" }));
