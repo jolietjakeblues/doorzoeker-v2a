@@ -5,16 +5,20 @@ import {
   buildRceDiscoveryQueries,
   buildRceFacetsQuery,
   buildRceNumberQuery,
+  buildGezichtQuery,
   buildRceParcelQuery,
   buildRceParcelsQuery,
+  buildWerelderfgoedQuery,
   mergeDiscoveryMatches,
   parseArcheologischTerreinResults,
   parseComplexResults,
   parseDiscoveryBranchResults,
   parseFacetResults,
+  parseGezichtResults,
   parseParcelResults,
   parseRceMonuments,
   parseSparqlResults,
+  parseWerelderfgoedResults,
   type ArcheologischTerrein,
   type RceMonument,
 } from "../rce.ts";
@@ -89,13 +93,28 @@ async function searchByNumber(monumentNumber: string, signal?: AbortSignal): Pro
   return enrichMonuments(monuments, signal);
 }
 
+// Werelderfgoed en Gezicht zijn andere CHO-types dan Rijksmonument (geen
+// adres, geen functie, geen complex-/archeologie-enrichment), en met
+// respectievelijk 18 en 472 instanties nooit meer dan een handvol treffers
+// per zoekterm. Die worden alleen op de eerste pagina meegenomen, vóór de
+// Rijksmonument-discoveryresultaten, zodat "laad meer" op latere pagina's
+// ze niet opnieuw ophaalt of dupliceert.
 async function searchByText(term: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
-  const branchResults = await Promise.all(
-    buildRceDiscoveryQueries(term).map(({ bron, query }) => fetchSparql(query, signal).then((document) => parseDiscoveryBranchResults(document, bron, term))),
-  );
+  const [branchResults, werelderfgoed, gezichten] = await Promise.all([
+    Promise.all(
+      buildRceDiscoveryQueries(term).map(({ bron, query }) => fetchSparql(query, signal).then((document) => parseDiscoveryBranchResults(document, bron, term))),
+    ),
+    page === 1
+      ? fetchSparql(buildWerelderfgoedQuery(term), signal).then(parseWerelderfgoedResults)
+      : Promise.resolve<RceMonument[]>([]),
+    page === 1
+      ? fetchSparql(buildGezichtQuery(term), signal).then(parseGezichtResults)
+      : Promise.resolve<RceMonument[]>([]),
+  ]);
+  const extras = [...werelderfgoed, ...gezichten];
   const start = Math.max(0, page - 1) * 25;
   const discovery = mergeDiscoveryMatches(branchResults).slice(start, start + 25);
-  if (!discovery.length) return [];
+  if (!discovery.length) return extras;
   const numbers = discovery.map((match) => match.monumentNumber);
   const [detailsDocument, parcelsDocument, facetsDocument] = await Promise.all([
     fetchSparql(buildRceDetailsQuery(numbers), signal),
@@ -111,7 +130,7 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1): Promi
     const parcels = parseParcelResults({ results: { bindings: parcelBindings.filter((binding) => binding.rmnr?.value === monument.monumentNumber) } });
     return [{ ...monument, ...facets.get(monument.monumentNumber), ...match, parcels }];
   });
-  return enrichMonuments(monuments, signal);
+  return [...extras, ...(await enrichMonuments(monuments, signal))];
 }
 
 export async function searchRceMonuments(query: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {

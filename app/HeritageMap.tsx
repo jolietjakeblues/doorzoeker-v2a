@@ -5,7 +5,14 @@ import type * as Leaflet from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { clusterMapPoints } from "@/lib/map-clustering";
 
-type MapItem = { id: string; title: string; address: string; place: string; type: "Gebouwd" | "Archeologisch"; lat: number; lng: number };
+type MapItem = { id: string; title: string; address: string; place: string; type: "Gebouwd" | "Archeologisch" | "Werelderfgoed" | "Gezicht"; lat: number; lng: number };
+
+function markerColor(type: MapItem["type"]) {
+  if (type === "Archeologisch") return "#ffb612";
+  if (type === "Werelderfgoed") return "#01689b";
+  if (type === "Gezicht") return "#176b3a";
+  return "#154273";
+}
 
 function tooltip(titleText: string, detail: string) {
   const content = document.createElement("div");
@@ -42,7 +49,7 @@ export function HeritageMap({ items, onSelect }: { items: MapItem[]; onSelect: (
         for (const cluster of clusterMapPoints(projected, 48)) {
           if (cluster.items.length === 1) {
             const item = cluster.items[0];
-            const marker = L.circleMarker([item.lat, item.lng], { radius: 9, color: "#fff", weight: 3, fillColor: item.type === "Archeologisch" ? "#ffb612" : "#154273", fillOpacity: 1 }).addTo(markerLayer);
+            const marker = L.circleMarker([item.lat, item.lng], { radius: 9, color: "#fff", weight: 3, fillColor: markerColor(item.type), fillOpacity: 1 }).addTo(markerLayer);
             marker.bindTooltip(tooltip(item.title, [item.address, item.place].filter(Boolean).join(", ")));
             marker.on("click", () => onSelect(item));
             continue;
