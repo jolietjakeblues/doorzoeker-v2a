@@ -211,6 +211,13 @@ test("looks up Werelderfgoed across both the instanties-rce and werelderfgoed_hv
   assert.match(query, /SUBSTR\(STR\(\?wktValue\), 1, 3000\)/);
 });
 
+test("drops the naam-FILTER in the Werelderfgoed query when browsing without a term", () => {
+  // Browsen (alle 18 tonen) is geen tekstzoekopdracht: zonder term moet de
+  // FILTER helemaal wegvallen in plaats van op een lege string te matchen.
+  const query = buildWerelderfgoedQuery("");
+  assert.doesNotMatch(query, /FILTER/);
+});
+
 test("escapes the search term in the Werelderfgoed query", () => {
   const query = buildWerelderfgoedQuery('Schokland" . ?s ?p ?o #');
   assert.match(query, /schokland\\" \. \?s \?p \?o #/);
@@ -250,6 +257,14 @@ test("looks up Gezicht across both graphs, filtered to the rijksbeschermd status
   assert.match(query, /GRAPH <https:\/\/linkeddata\.cultureelerfgoed\.nl\/graph\/gezicht_hvdl>/);
   assert.match(query, /ceo:wordtGetoondOp/);
   assert.match(query, /orvelte/);
+});
+
+test("drops the naam-FILTER in the Gezicht query when browsing without a term", () => {
+  const query = buildGezichtQuery("");
+  assert.doesNotMatch(query, /FILTER/);
+  // De heeftGezichtsstatus-restrictie moet blijven staan: browsen betekent
+  // alle 472 rijksbeschermde gezichten, niet alle 482 (incl. ingetrokken).
+  assert.match(query, /ceo:heeftGezichtsstatus/);
 });
 
 test("escapes the search term in the Gezicht query", () => {

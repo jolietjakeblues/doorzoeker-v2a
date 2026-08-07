@@ -168,6 +168,7 @@ h2 { font-size: 24px; }
 
 /* Kaart */
 .leaflet-map { height: 590px; width: 100%; border: 1px solid var(--line); background: var(--panel); }
+.leaflet-map.compact { height: 220px; margin-bottom: 8px; }
 .leaflet-container { font-family: var(--font); font-size: 14px; }
 .leaflet-control-attribution { font-size: 11px; }
 .leaflet-tooltip { padding: 8px 10px; line-height: 1.4; border-radius: 0; font-family: var(--font); }

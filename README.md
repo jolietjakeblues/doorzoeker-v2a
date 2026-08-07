@@ -1,6 +1,6 @@
 # Doorzoeker V2
 
-Doorzoeker V2 wordt een moderne zoek- en ontdekapplicatie voor cultureel
+Doorzoeker V2 is een moderne zoek- en ontdekapplicatie voor cultureel
 erfgoed. De applicatie combineert de RCE Linked Data-voorziening met het
 Termennetwerk en kan RCE-MCP inzetten voor semantische en AI-ondersteunde
 functies.
@@ -32,18 +32,26 @@ De kern bestaat uit:
 - **RCE-MCP:** queryontwikkeling, semantische uitleg en optionele
   AI-functionaliteit. MCP is niet de enige runtime-datalaag van de webapp.
 
-## Eerste verticale slice
+## Huidige functionaliteit
 
-De eerste werkende doorsnede richt zich op rijksmonumenten:
+De applicatie doorzoekt live RCE Linked Data en toont, naast rijksmonumenten,
+ook Werelderfgoed en rijksbeschermde stads- en dorpsgezichten:
 
-1. zoeken op naam, adres, plaats en rijksmonumentnummer;
-2. filteren op locatie, juridische status, monumentaard en oorspronkelijke
-   functie;
-3. resultaten tonen als lijst en op een kaart;
+1. zoeken op naam, adres, plaats, rijksmonumentnummer of woorden uit de
+   formele omschrijving;
+2. filteren op monumentaard, provincie, gemeente/woonplaats, oorspronkelijke
+   functie en matchbron;
+3. resultaten tonen als lijst en op een kaart (met clustering);
 4. een detailpagina met kerngegevens, beschrijving, functie, status, locatie,
-   geometrie en bron-URI;
-5. zoektoestand vastleggen in een deelbare URL;
-6. termen gebruiken voor suggesties en gecontroleerde zoekverfijning.
+   geometrie, kadastrale percelen en bron-URI's (Monumentenregister/UNESCO/
+   Archis én RCE Linked Data);
+5. verrijking met archeologische terreingegevens (Archis-monumentnummer,
+   waardering) en complexverbanden (hoofdobject/onderdeel);
+6. zoektoestand vastleggen in een deelbare URL;
+7. termen gebruiken voor suggesties en gecontroleerde zoekverfijning.
+
+Nog niet gebouwd: paginering boven de eerste 25 resultaten, en ruimtelijke
+"ligt in"-relaties tussen monumenten en gezichten/werelderfgoed.
 
 De functionele afbakening en acceptatiecriteria staan in
 [`docs/vertical-slices/001-rijksmonumenten.md`](docs/vertical-slices/001-rijksmonumenten.md).
@@ -54,14 +62,18 @@ Architectuurbesluiten worden als ADR's vastgelegd:
 
 - [ADR-0001: schone herbouw](docs/adr/0001-schone-herbouw.md)
 - [ADR-0002: hybride gegevensarchitectuur](docs/adr/0002-hybride-gegevensarchitectuur.md)
+  (zie de "Implementatiestatus" daarin voor de huidige stand).
 
-Een technologiestack wordt gekozen nadat een kleine technische spike de
-RCE-query's, resultaatvormen, prestaties en kaartdata heeft gevalideerd.
+De technische spike is afgerond: de applicatie draait op vinext (Next.js App
+Router-compatibele Vite-runtime) en Cloudflare Workers, met live RCE SPARQL-
+en REST-aanroepen achter een eigen `/api/rce/search`-contract.
 
 ## Repositorystructuur
 
 ```text
 app/                   Applicatieroutes en componenten
+lib/                   Querybouw, parsing en de serveradapter naar RCE
+worker/                Cloudflare Worker-entrypoint
 public/                Publiek geserveerde afbeeldingen en iconen
 tests/                 Geautomatiseerde tests
 docs/
@@ -73,7 +85,8 @@ docs/
 
 ## Status
 
-Initiatiefase. De scope en architectuur worden momenteel vastgesteld.
+Live en in actief gebruik. Zie "Huidige functionaliteit" hierboven voor wat
+werkt en wat nog ontbreekt.
 
 ## Cloudflare Workers
 

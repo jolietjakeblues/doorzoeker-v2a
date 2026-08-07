@@ -1,10 +1,20 @@
 # Verticale slice 001: Rijksmonumenten zoeken en bekijken
 
+## Status
+
+Geïmplementeerd en live, met een grotere scope dan hieronder oorspronkelijk
+gepland: naast Rijksmonumenten (gebouwd/archeologisch) zijn ook Werelderfgoed
+en rijksbeschermde Gezichten doorzoekbaar en toonbaar geworden, plus
+archeologische terrein- en complexverrijking. Dit document is bijgewerkt om
+dat te weerspiegelen; de oorspronkelijke "niet in scope"-uitsluiting van
+werelderfgoed/gezichten is vervallen.
+
 ## Doel
 
-Een gebruiker kan een rijksmonument vinden, de zoekresultaten verfijnen, de
-locatie op een kaart zien en een betrouwbare detailpagina openen. Deze slice
-valideert de volledige keten van browser tot RCE Linked Data.
+Een gebruiker kan een rijksmonument, werelderfgoed of rijksbeschermd gezicht
+vinden, de zoekresultaten verfijnen, de locatie op een kaart zien en een
+betrouwbare detailpagina openen. Deze slice valideert de volledige keten van
+browser tot RCE Linked Data.
 
 ## Primaire gebruikerstaak
 
@@ -19,15 +29,25 @@ valideert de volledige keten van browser tot RCE Linked Data.
 - vrije invoer voor naam, volledig adres, straat, woonplaats, postcode en
   rijksmonumentnummer;
 - herkenning van een exact rijksmonumentnummer;
-- paginering;
+- browsen van de volledige collectie Werelderfgoed of Gezichten, los van een
+  zoekterm (beide zijn klein genoeg om in hun geheel te tonen);
+- paginering (nog niet opgehoogd boven de eerste 25 resultaten per
+  tekstzoekopdracht);
 - duidelijke lege, laad- en fouttoestanden.
 
 ### Filters
 
-- provincie en gemeente;
-- juridische status;
-- monumentaard: gebouwd of archeologisch;
-- oorspronkelijke functie.
+- soort object: Rijksmonument, Werelderfgoed of Gezicht (dit zijn
+  verschillende soorten cultuurhistorisch object, geen monumentaard-varianten
+  — Werelderfgoed en Gezicht zijn gebieden waar de RCE verantwoordelijk voor
+  is en die rijksmonumenten kunnen bevatten, maar zijn zelf geen aangewezen
+  rijksmonument);
+- monumentaard: gebouwd of archeologisch (alleen van toepassing binnen
+  Rijksmonument);
+- provincie en gemeente/woonplaats (provincie versmalt eerst de
+  gemeentelijst);
+- oorspronkelijke functie;
+- matchbron (via welk gegevensveld een tekstzoekopdracht raak was).
 
 Alleen filters die betrouwbaar uit de huidige gegevens kunnen worden afgeleid,
 worden getoond.
@@ -35,21 +55,28 @@ worden getoond.
 ### Resultaten
 
 - lijst met naam of functionele titel, adres, plaats, rijksmonumentnummer,
-  monumentaard en oorspronkelijke functie;
-- kaart met geclusterde markers;
+  soort object, monumentaard en oorspronkelijke functie;
+- kaart met geclusterde markers, met een eigen kleur per soort object;
 - wisselen tussen lijst en kaart zonder verlies van zoektoestand;
 - een stabiele link naar ieder resultaat.
 
 ### Detail
 
 - naam of titel;
-- volledig adres en plaats;
-- rijksmonumentnummer en cultuurhistorisch objectnummer;
-- juridische status en monumentaard;
+- volledig adres en plaats (indien van toepassing — Werelderfgoed en
+  Gezichten hebben geen adres);
+- rijksmonument-, werelderfgoed- of gezichtsnummer en cultuurhistorisch
+  objectnummer;
+- juridische status (per soort object: Rijksmonument, Werelderfgoed of
+  rijksbeschermd stads-/dorpsgezicht) en monumentaard;
 - oorspronkelijke en eventuele huidige functie;
 - omschrijving;
-- geometrie of kaartpositie;
-- canonieke URI en zichtbare bronvermelding RCE.
+- compacte kaartweergave van de locatie, met de ruwe WKT-geometrie
+  uitklapbaar beschikbaar voor wie de brondata wil verifiëren;
+- kadastrale percelen, archeologische terreingegevens (Archis-monumentnummer,
+  waardering) en complexverband (hoofdobject/onderdeel), waar van toepassing;
+- canonieke URI en zichtbare bronvermelding: Monumentenregister, UNESCO
+  Werelderfgoedlijst of Archis-archief, plus altijd de RCE Linked Data-link.
 
 ### Termen
 
@@ -70,8 +97,10 @@ vanuit de URL.
 - een vrije natuurlijke-taalassistent;
 - bewerken van RCE-data;
 - federatief zoeken in alle externe erfgoedcollecties;
-- werelderfgoed, beschermde gezichten, bibliotheek en beeldbank als zelfstandige
-  resultaatcollecties;
+- bibliotheek en beeldbank als zelfstandige resultaatcollecties;
+- ruimtelijke "ligt in"-relaties tussen een monument en het Gezicht of
+  Werelderfgoed waarbinnen het ligt (vereist lokale point-in-polygon-berekening
+  in plaats van GeoSPARQL, dat op deze SPARQL-service structureel timeout);
 - een algemene SPARQL-editor voor eindgebruikers.
 
 ## Applicatiecontracten
