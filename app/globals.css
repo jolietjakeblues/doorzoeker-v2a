@@ -1,28 +1,32 @@
 @import "tailwindcss";
 
 /*
-  RCE Web Stijlgids (docs/reference/rce-brand/RCE Stijlgids Web.pdf):
-  - kleurenschema: Rijksoverheid donkergeel #ffb612, ondersteund door
-    rijksoverheidblauw en grijs;
-  - webfont RO Sans (Arial-fallback), standaard zwarte tekst, 18px/29.25px;
-  - geen afwijkende tekstkleuren of uppercase op inhoudelijke tekst;
-  - beeldmerk gecentreerd op een blauw lintje, met een gele balk van 75px
-    eronder.
+  RCE-huisstijl, gekalibreerd op zowel de officiële stijlgids
+  (docs/reference/rce-brand/RCE Stijlgids Web.pdf) als de live kleuren van
+  cultureelerfgoed.nl zelf (het lintje uit de PDF bestaat daar niet meer;
+  de kop is wit met het logo, met een gele balk van ~96px eronder):
+  - kop: wit, logo op wit, gele balk (#ffb612) eronder en in de footer;
+  - knoppen/kaarten: rijksoverheidblauw #154273, hover #01689b;
+  - gewone links: #007bc7 (exacte linkkleur op cultureelerfgoed.nl);
+  - webfont RijksSans (Arial-fallback), standaard zwarte tekst;
+  - geen afwijkende tekstkleuren of uppercase op inhoudelijke tekst.
   Dit bestand is de enige bron voor de opmaak van Doorzoeker.
 */
 
 :root {
   --rce-blue: #154273;
+  --rce-blue-hover: #01689b;
+  --rce-link: #007bc7;
   --rce-yellow: #ffb612;
   --ink: #000;
   --muted: #595959;
   --paper: #fff;
-  --panel: #f3f3f3;
-  --panel-line: #d9d9d9;
+  --panel: #f1f5f9;
+  --panel-line: #dde3e8;
   --line: #d5d5d5;
   --success: #176b3a;
   --error: #b3261e;
-  --font: "RO Sans", Arial, Helvetica, sans-serif;
+  --font: "RijksSans", Calibri, Verdana, Arial, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -32,19 +36,20 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font);
-  font-size: 18px;
-  line-height: 29.25px;
+  font-size: 16px;
+  line-height: 1.6;
 }
 
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 h1, h2, h3 { font-family: var(--font); font-weight: 700; margin: 0; }
+a { color: var(--rce-link); }
 
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 
-/* Kop: blauw lintje met beeldmerk, gele balk met merknaam en sprokkelpad */
-.govbar { height: 112px; display: flex; align-items: flex-start; justify-content: center; background: var(--rce-blue); }
-.govbar > img { display: block; width: 507px; height: 75px; margin-top: 18px; object-fit: contain; object-position: center top; filter: brightness(0) invert(1); }
+/* Kop: logo op wit, gele balk eronder (cultureelerfgoed.nl heeft geen blauw lintje meer) */
+.govbar { height: 96px; display: flex; align-items: center; justify-content: center; background: #fff; border-bottom: 1px solid var(--panel-line); }
+.govbar > img { display: block; width: 420px; height: 60px; object-fit: contain; object-position: center; }
 
 header {
   height: 75px;
@@ -80,11 +85,11 @@ header p a { margin-left: 15px; color: var(--rce-blue); font-weight: 700; text-d
 .hero form > span { font-size: 26px; color: var(--rce-blue); }
 .hero input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; font-size: 17px; font-family: var(--font); }
 .hero form button { height: 48px; padding: 0 26px; border: 0; background: var(--rce-blue); color: #fff; font-weight: 700; font-size: 15px; }
-.hero form button:hover { background: #01689b; }
+.hero form button:hover { background: var(--rce-blue-hover); }
 .hero form .clear { padding: 0 8px; background: transparent; color: #7b8580; font-size: 22px; }
 .term-suggestions { position: absolute; z-index: 1000; inset: calc(100% + 4px) 0 auto; margin: 0; padding: 5px; list-style: none; border: 1px solid #9c9c9c; background: #fff; box-shadow: 0 12px 30px #0003; text-align: left; }
-.term-suggestions button { display: flex; width: 100%; justify-content: space-between; gap: 20px; padding: 11px 14px; border: 0; background: #fff; color: var(--rce-blue); text-align: left; font-weight: 700; }
-.term-suggestions button:hover, .term-suggestions button:focus { background: #e5f1f9; }
+.term-suggestions button { display: flex; width: 100%; justify-content: space-between; gap: 20px; padding: 11px 14px; border: 0; background: #fff; color: var(--rce-link); text-align: left; font-weight: 700; }
+.term-suggestions button:hover, .term-suggestions button:focus { background: var(--panel); }
 .term-suggestions small { color: var(--muted); font-weight: 400; }
 
 .hero nav { margin-top: 16px; color: var(--muted); font-size: 14px; }
@@ -166,7 +171,7 @@ h2 { font-size: 24px; }
 .leaflet-tooltip { padding: 8px 10px; line-height: 1.4; border-radius: 0; font-family: var(--font); }
 .heritage-cluster-wrapper { border: 0 !important; background: transparent !important; }
 .heritage-cluster { display: grid; width: 46px; height: 46px; place-items: center; border: 4px solid #fff; border-radius: 50%; background: var(--rce-blue); color: #fff; box-shadow: 0 3px 12px #0005; font-weight: 700; cursor: pointer; }
-.heritage-cluster:hover { background: #01689b; transform: scale(1.06); }
+.heritage-cluster:hover { background: var(--rce-blue-hover); transform: scale(1.06); }
 
 /* Detailpaneel */
 .backdrop { position: fixed; inset: 0; z-index: 20; display: flex; justify-content: flex-end; background: #0b19147a; }
@@ -182,14 +187,14 @@ h2 { font-size: 24px; }
 .detail-copy dl div { display: grid; grid-template-columns: 1fr 1.25fr; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .detail-copy dt { color: var(--muted); }
 .detail-copy dd { margin: 0; font-weight: 700; }
-.detail-copy > a { display: flex; justify-content: space-between; padding: 14px 16px; background: var(--rce-blue); color: #fff; text-decoration: none; font-size: 15px; font-weight: 700; }
-.detail-copy > a:hover { background: #01689b; }
+.detail-links { display: grid; gap: 8px; }
+.detail-links > a { display: flex; justify-content: space-between; padding: 14px 16px; background: var(--rce-blue); color: #fff; text-decoration: none; font-size: 15px; font-weight: 700; }
+.detail-links > a:hover { background: var(--rce-blue-hover); }
 .detail-copy blockquote { margin: 18px 0 0; padding-left: 12px; border-left: 2px solid var(--rce-yellow); color: var(--muted); font-size: 13px; }
 
 @media (max-width: 800px) {
-  body { font-size: 16px; line-height: 1.6; }
-  .govbar { height: 92px; }
-  .govbar > img { width: 338px; height: 50px; margin-top: 14px; }
+  .govbar { height: 76px; }
+  .govbar > img { width: 280px; height: 44px; }
   header { height: 64px; }
   header p { display: none; }
   .hero { padding-top: 32px; }
