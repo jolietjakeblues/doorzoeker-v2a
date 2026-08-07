@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildArcheologischTerreinQuery, buildComplexenQuery, buildComplexQuery, buildGezichtQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseArcheologischTerreinResults, parseComplexenResults, parseComplexResults, parseDiscoveryBranchResults, parseGezichtResults, parseParcelResults, parseRceMonuments, parseSparqlResults, parseWerelderfgoedResults, parseWktGeometry, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
+import { buildArcheologischTerreinQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGezichtQuery, buildGroenaanlegQuery, buildImageQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseArcheologischTerreinResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseDiscoveryBranchResults, parseGezichtResults, parseGroenaanlegResults, parseImageResults, parseParcelResults, parseRceMonuments, parseSparqlResults, parseWerelderfgoedResults, parseWktGeometry, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -412,4 +412,72 @@ test("falls back to a generic omschrijving when a Complex has no formele omschri
   const document = { results: { bindings: [{ complex: { value: "c:1" }, choi: { value: "1" }, complexnummer: { value: "1" }, aantalLeden: { value: "1" } }] } };
   const [complex] = parseComplexenResults(document);
   assert.equal(complex.description, "Complex van 1 rijksmonument.");
+});
+
+test("looks up a representative beeldbank-foto by rijksmonumentnummer", () => {
+  // De afbeelding zelf draagt het rijksmonumentnummer - geen CHO-URI-omweg
+  // nodig zoals bij archeologische terreinen/complexen.
+  const query = buildImageQuery(["36046", "45708"]);
+  assert.match(query, /\?image ceo:rijksmonumentnummer \?rmnr/);
+  assert.match(query, /foaf:depiction \?depictionValue/);
+  assert.match(query, /dc:rights \?rightsValue/);
+  assert.match(query, /edm:isShownAt \?shownAtValue/);
+  assert.match(query, /"36046" "45708"/);
+});
+
+test("parses image results, skipping monuments without a usable depiction URL", () => {
+  const document = { results: { bindings: [
+    { rmnr: { value: "36046" }, depiction: { value: "https://images.memorix.nl/rce/thumb/640x480/abc.jpg" }, title: { value: "Voorgevel" }, rights: { value: "https://creativecommons.org/licenses/by/4.0/" }, shownAt: { value: "https://beeldbank.cultureelerfgoed.nl/x" } },
+    { rmnr: { value: "45708" } },
+  ] } };
+  const byNumber = parseImageResults(document);
+  assert.deepEqual(byNumber.get("36046"), { url: "https://images.memorix.nl/rce/thumb/640x480/abc.jpg", title: "Voorgevel", license: "https://creativecommons.org/licenses/by/4.0/", sourceUrl: "https://beeldbank.cultureelerfgoed.nl/x" });
+  assert.equal(byNumber.has("45708"), false);
+});
+
+test("looks up groenaanleg-classificatie by the monument's own CHO subject URI", () => {
+  const query = buildGroenaanlegQuery(["https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/rijksmonument/65314"]);
+  assert.match(query, /ceo:heeftTypeAanleg\/skos:prefLabel/);
+  assert.match(query, /ceo:heeftCategorieGroenaanleg\/skos:prefLabel/);
+  assert.match(query, /<https:\/\/linkeddata\.cultureelerfgoed\.nl\/cho-kennis\/id\/rijksmonument\/65314>/);
+});
+
+test("parses groenaanleg results, skipping monuments with neither type nor categorie", () => {
+  const document = { results: { bindings: [
+    { rm: { value: "rm:1" }, type: { value: "formele tuin" }, categorie: { value: "aanleg" } },
+    { rm: { value: "rm:2" } },
+  ] } };
+  const byMonument = parseGroenaanlegResults(document);
+  assert.deepEqual(byMonument.get("rm:1"), { typeAanleg: "formele tuin", categorie: "aanleg" });
+  assert.equal(byMonument.has("rm:2"), false);
+});
+
+test("looks up complex members by the complex's own CHO subject URI", () => {
+  const query = buildComplexMembersQuery("https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/complex/64690");
+  assert.match(query, /<https:\/\/linkeddata\.cultureelerfgoed\.nl\/cho-kennis\/id\/complex\/64690> ceo:heeftRijksmonument \?rm/);
+  assert.match(query, /ceo:heeftHoofdobject \?hoofdobjectValue/);
+});
+
+test("parses complex members and marks the hoofdobject", () => {
+  // Geverifieerd tegen "Bio Herstellingsoord" (complex/64690, complexnummer
+  // 532181): 7 leden, elk met eigen naam en geometrie.
+  const document = { results: { bindings: [
+    { rm: { value: "rm:71090" }, rmnr: { value: "532188" }, naam: { value: "Mytylschool" }, hoofdobject: { value: "rm:71096" } },
+    { rm: { value: "rm:71096" }, rmnr: { value: "532182" }, naam: { value: "Hoofdgebouw" }, hoofdobject: { value: "rm:71096" } },
+  ] } };
+  const members = parseComplexMembersResults(document);
+  assert.deepEqual(members, [
+    { choUri: "rm:71090", monumentNumber: "532188", name: "Mytylschool", isHoofdobject: false },
+    { choUri: "rm:71096", monumentNumber: "532182", name: "Hoofdgebouw", isHoofdobject: true },
+  ]);
+});
+
+test("falls back to functie or a generic label when a complex member has no naam", () => {
+  const document = { results: { bindings: [
+    { rm: { value: "rm:1" }, rmnr: { value: "532183" }, functie: { value: "Ketelhuis" } },
+    { rm: { value: "rm:2" }, rmnr: { value: "532184" } },
+  ] } };
+  const members = parseComplexMembersResults(document);
+  assert.equal(members[0].name, "Ketelhuis");
+  assert.equal(members[1].name, "Rijksmonument 532184");
 });

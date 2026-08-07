@@ -49,11 +49,15 @@ als metingen aantonen dat relevantie, facetten of responstijden dat vereisen.
 
 ## Implementatiestatus
 
-Sinds 2026-08-07 gebruikt de webclient uitsluitend het taakgerichte contract
-`GET /api/rce/search`. Queryopbouw, RCE REST- en SPARQL-aanroepen en mapping
-draaien in de serveradapter. De route valideert invoer, begrenst verzoeken per
-client, hanteert een harde upstream-timeout, gebruikt de Cloudflare-cache en
-publiceert timinginformatie voor observability.
+Sinds 2026-08-07 gebruikt de webclient uitsluitend eigen taakgerichte
+contracten: `GET /api/rce/search` voor zoeken/browsen, en
+`GET /api/rce/complex-members` voor de (pas op aanvraag geladen) ledenlijst
+van een Complex. Queryopbouw, RCE REST- en SPARQL-aanroepen en mapping draaien
+in de serveradapter. Beide routes valideren invoer (de complex-route staat
+uitsluitend een complex-URI toe die aan een vast patroon voldoet, om
+SPARQL-injectie in de geïnterpoleerde `<...>`-node uit te sluiten), begrenzen
+verzoeken per client, hanteren een harde upstream-timeout, gebruiken de
+Cloudflare-cache en publiceren timinginformatie voor observability.
 
 De serverroute vereist de Vinext Cloudflare Worker-runtime. De statische
 GitHub Pages-export is om die reden verwijderd; de applicatie draait

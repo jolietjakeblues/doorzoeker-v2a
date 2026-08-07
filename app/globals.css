@@ -138,7 +138,10 @@ h2 { font-size: 24px; }
 .cards { display: grid; gap: 12px; }
 .cards article { position: relative; min-height: 160px; display: grid; grid-template-columns: 140px 1fr 54px; background: #fff; border: 1px solid var(--line); }
 .cards article:hover { border-color: var(--rce-blue); }
-.tile { display: grid; place-content: center; gap: 5px; text-align: center; color: #fff; background: var(--rce-blue); }
+.tile { display: grid; place-content: center; gap: 5px; text-align: center; color: #fff; background: var(--rce-blue); position: relative; }
+.tile.has-image { background-size: cover; background-position: center; }
+.tile-badge { position: absolute; top: 8px; left: 8px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; font-weight: 700; color: #fff; background: #000000a3; }
+.tile-badge.large { width: 44px; height: 44px; font-size: 20px; top: 14px; left: 14px; }
 .tile.sand { background: #9d6937; }
 .tile.world { background: var(--rce-blue-hover); }
 .tile.green { background: var(--success); }
@@ -191,7 +194,8 @@ h2 { font-size: 24px; }
 .backdrop { position: fixed; inset: 0; z-index: 20; display: flex; justify-content: flex-end; background: #0b19147a; }
 .detail { width: min(520px, 100%); height: 100%; overflow-y: auto; background: #fff; box-shadow: -20px 0 50px #0003; }
 .x { position: absolute; right: 20px; top: 17px; z-index: 2; width: 38px; height: 38px; border: 1px solid #ffffff88; border-radius: 50%; background: #0003; color: #fff; font-size: 22px; }
-.detail-head { height: 170px; display: grid; place-content: center; text-align: center; color: #fff; background: var(--rce-blue); }
+.detail-head { height: 170px; display: grid; place-content: center; text-align: center; color: #fff; background: var(--rce-blue); position: relative; }
+.detail-head.has-image { background-size: cover; background-position: center; }
 .detail-head.sand { background: #9d6937; }
 .detail-head.world { background: var(--rce-blue-hover); }
 .detail-head.green { background: var(--success); }
@@ -208,6 +212,8 @@ h2 { font-size: 24px; }
 .detail-links > a { display: flex; justify-content: space-between; padding: 14px 16px; background: var(--rce-blue); color: #fff; text-decoration: none; font-size: 15px; font-weight: 700; }
 .detail-links > a:hover { background: var(--rce-blue-hover); }
 .detail-copy blockquote { margin: 18px 0 0; padding-left: 12px; border-left: 2px solid var(--rce-yellow); color: var(--muted); font-size: 13px; }
+.detail-image-credit { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+.detail-image-credit a { color: var(--rce-link); }
 
 @media (max-width: 800px) {
   .govbar { height: 76px; }

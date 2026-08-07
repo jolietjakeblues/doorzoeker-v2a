@@ -1,7 +1,10 @@
 import {
   buildArcheologischTerreinQuery,
   buildComplexenQuery,
+  buildComplexMembersQuery,
   buildComplexQuery,
+  buildGroenaanlegQuery,
+  buildImageQuery,
   buildRceDetailsQuery,
   buildRceDiscoveryQueries,
   buildRceFacetsQuery,
@@ -13,15 +16,19 @@ import {
   mergeDiscoveryMatches,
   parseArcheologischTerreinResults,
   parseComplexenResults,
+  parseComplexMembersResults,
   parseComplexResults,
   parseDiscoveryBranchResults,
   parseFacetResults,
   parseGezichtResults,
+  parseGroenaanlegResults,
+  parseImageResults,
   parseParcelResults,
   parseRceMonuments,
   parseSparqlResults,
   parseWerelderfgoedResults,
   type ArcheologischTerrein,
+  type ComplexMember,
   type RceMonument,
 } from "../rce.ts";
 
@@ -58,29 +65,52 @@ async function fetchSparql(query: string, signal?: AbortSignal) {
   }
 }
 
-// Two independent enrichment lookups keyed by the monument's own CHO subject
-// URI, run in parallel: archaeological terrain data (only for monuments with
-// an archaeological monumentaard) and complex membership (any monument can
-// be part of a complex, so this always runs). Neither is a parallel search -
-// both just attach extra facts to Rijksmonument records already found.
+// Four independent enrichment lookups keyed by the monument's own CHO subject
+// URI (or, for images, its rijksmonumentnummer - that's the join key the
+// beeldbank graph itself uses), run in parallel: archaeological terrain data
+// (only for monuments with an archaeological monumentaard), complex
+// membership, a representative photo, and historic garden/landscape
+// classification (only relevant for the small groenaanleg subset, but cheap
+// enough to just ask for all of them). Neither is a parallel search - all
+// four just attach extra facts to Rijksmonument records already found.
 async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): Promise<RceMonument[]> {
   const choUris = monuments.map((monument) => monument.sourceUrl).filter(Boolean);
   if (!choUris.length) return monuments;
   const archaeological = monuments.filter((monument) => monument.monumentNature?.toLocaleLowerCase("nl").includes("archeolog") && monument.sourceUrl);
+  const monumentNumbers = monuments.map((monument) => monument.monumentNumber).filter(Boolean);
 
-  const [terreinenByMonument, complexesByMonument] = await Promise.all([
+  const [terreinenByMonument, complexesByMonument, imagesByNumber, groenaanlegByMonument] = await Promise.all([
     archaeological.length
       ? fetchSparql(buildArcheologischTerreinQuery(archaeological.map((monument) => monument.sourceUrl)), signal).then(parseArcheologischTerreinResults)
       : Promise.resolve(new Map<string, ArcheologischTerrein[]>()),
     fetchSparql(buildComplexQuery(choUris), signal).then(parseComplexResults),
+    monumentNumbers.length
+      ? fetchSparql(buildImageQuery(monumentNumbers), signal).then(parseImageResults)
+      : Promise.resolve(new Map<string, RceMonument["image"]>()),
+    fetchSparql(buildGroenaanlegQuery(choUris), signal).then(parseGroenaanlegResults),
   ]);
 
   return monuments.map((monument) => {
     const archaeologicalSites = terreinenByMonument.get(monument.sourceUrl);
     const complexes = complexesByMonument.get(monument.sourceUrl);
-    if (!archaeologicalSites && !complexes) return monument;
-    return { ...monument, ...(archaeologicalSites ? { archaeologicalSites } : {}), ...(complexes ? { complexes } : {}) };
+    const image = imagesByNumber.get(monument.monumentNumber);
+    const groenaanleg = groenaanlegByMonument.get(monument.sourceUrl);
+    if (!archaeologicalSites && !complexes && !image && !groenaanleg) return monument;
+    return {
+      ...monument,
+      ...(archaeologicalSites ? { archaeologicalSites } : {}),
+      ...(complexes ? { complexes } : {}),
+      ...(image ? { image } : {}),
+      ...(groenaanleg ? { groenaanleg } : {}),
+    };
   });
+}
+
+// Complexleden zijn bewust geen onderdeel van de gewone zoekresultaten (dat
+// zou de resultatenlijst overspoelen) - dit wordt lazy opgehaald zodra een
+// gebruiker een complex daadwerkelijk opent.
+export async function fetchComplexMembers(complexUri: string, signal?: AbortSignal): Promise<ComplexMember[]> {
+  return fetchSparql(buildComplexMembersQuery(complexUri), signal).then(parseComplexMembersResults);
 }
 
 async function searchByNumber(monumentNumber: string, signal?: AbortSignal): Promise<RceMonument[]> {

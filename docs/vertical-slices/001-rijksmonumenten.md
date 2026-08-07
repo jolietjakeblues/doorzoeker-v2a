@@ -3,10 +3,12 @@
 ## Status
 
 Geïmplementeerd en live, met een grotere scope dan hieronder oorspronkelijk
-gepland: naast Rijksmonumenten (gebouwd/archeologisch) zijn ook Werelderfgoed
-en rijksbeschermde Gezichten doorzoekbaar en toonbaar geworden, plus
-archeologische terrein- en complexverrijking. Dit document is bijgewerkt om
-dat te weerspiegelen; de oorspronkelijke "niet in scope"-uitsluiting van
+gepland: naast Rijksmonumenten (gebouwd/archeologisch) zijn ook Werelderfgoed,
+rijksbeschermde Gezichten en Complexen (van gebouwde rijksmonumenten)
+doorzoekbaar en toonbaar geworden, plus archeologische terreinverrijking, een
+doorklikbare complex-ledenlijst, een foto uit de RCE beeldbank en historische
+tuin-/parkaanleg (groenaanleg) op de detailpagina. Dit document is bijgewerkt
+om dat te weerspiegelen; de oorspronkelijke "niet in scope"-uitsluiting van
 werelderfgoed/gezichten is vervallen.
 
 ## Doel
@@ -29,19 +31,21 @@ browser tot RCE Linked Data.
 - vrije invoer voor naam, volledig adres, straat, woonplaats, postcode en
   rijksmonumentnummer;
 - herkenning van een exact rijksmonumentnummer;
-- browsen van de volledige collectie Werelderfgoed of Gezichten, los van een
-  zoekterm (beide zijn klein genoeg om in hun geheel te tonen);
+- browsen van de volledige collectie Werelderfgoed, Gezichten of Complexen,
+  los van een zoekterm (alle drie zijn klein genoeg om in hun geheel te
+  tonen);
 - paginering (nog niet opgehoogd boven de eerste 25 resultaten per
   tekstzoekopdracht);
 - duidelijke lege, laad- en fouttoestanden.
 
 ### Filters
 
-- soort object: Rijksmonument, Werelderfgoed of Gezicht (dit zijn
+- soort object: Rijksmonument, Werelderfgoed, Gezicht of Complex (dit zijn
   verschillende soorten cultuurhistorisch object, geen monumentaard-varianten
   — Werelderfgoed en Gezicht zijn gebieden waar de RCE verantwoordelijk voor
   is en die rijksmonumenten kunnen bevatten, maar zijn zelf geen aangewezen
-  rijksmonument);
+  rijksmonument; een Complex is een samenstel van meerdere rijksmonumenten,
+  zelf ook geen aparte rijksmonumentstatus);
 - monumentaard: gebouwd of archeologisch (alleen van toepassing binnen
   Rijksmonument);
 - provincie en gemeente/woonplaats (provincie versmalt eerst de
@@ -74,7 +78,10 @@ worden getoond.
 - compacte kaartweergave van de locatie, met de ruwe WKT-geometrie
   uitklapbaar beschikbaar voor wie de brondata wil verifiëren;
 - kadastrale percelen, archeologische terreingegevens (Archis-monumentnummer,
-  waardering) en complexverband (hoofdobject/onderdeel), waar van toepassing;
+  waardering) en complexverband (hoofdobject/onderdeel, met een doorklikbare
+  lijst van de overige complexleden), waar van toepassing;
+- een foto uit de RCE beeldbank met licentie- en bronvermelding, en
+  historische tuin-/parkaanleg (groenaanleg), waar beschikbaar;
 - canonieke URI en zichtbare bronvermelding: Monumentenregister, UNESCO
   Werelderfgoedlijst of Archis-archief, plus altijd de RCE Linked Data-link.
 

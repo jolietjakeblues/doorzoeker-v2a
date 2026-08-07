@@ -35,18 +35,23 @@ De kern bestaat uit:
 ## Huidige functionaliteit
 
 De applicatie doorzoekt live RCE Linked Data en toont, naast rijksmonumenten,
-ook Werelderfgoed en rijksbeschermde stads- en dorpsgezichten:
+ook Werelderfgoed, rijksbeschermde stads- en dorpsgezichten en Complexen (van
+gebouwde rijksmonumenten):
 
 1. zoeken op naam, adres, plaats, rijksmonumentnummer of woorden uit de
    formele omschrijving;
 2. filteren op monumentaard, provincie, gemeente/woonplaats, oorspronkelijke
    functie en matchbron;
-3. resultaten tonen als lijst en op een kaart (met clustering);
+3. resultaten tonen als lijst en op een kaart (met clustering; Werelderfgoed,
+   Gezichten en archeologische terreinen als echte polygoon/multipolygoon,
+   niet platgeslagen tot een punt);
 4. een detailpagina met kerngegevens, beschrijving, functie, status, locatie,
    geometrie, kadastrale percelen en bron-URI's (Monumentenregister/UNESCO/
    Archis én RCE Linked Data);
 5. verrijking met archeologische terreingegevens (Archis-monumentnummer,
-   waardering) en complexverbanden (hoofdobject/onderdeel);
+   waardering), complexverbanden (hoofdobject/onderdeel, met doorklikbare
+   ledenlijst per complex), een foto uit de RCE beeldbank (met licentie- en
+   bronvermelding) en historische tuin-/parkaanleg (groenaanleg);
 6. zoektoestand vastleggen in een deelbare URL;
 7. termen gebruiken voor suggesties en gecontroleerde zoekverfijning.
 

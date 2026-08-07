@@ -3,6 +3,8 @@ const RM_TYPE = `${CEO}Rijksmonument`;
 const INSTANCES_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce";
 const WERELDERFGOED_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/werelderfgoed_hvdl";
 const GEZICHT_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/gezicht_hvdl";
+const IMAGE_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/image-1";
+const GROENAANLEG_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/groenaanleg";
 const RIJKSMONUMENT_STATUS = "https://data.cultureelerfgoed.nl/term/id/rn/2/b2d9a59a-fe1e-4552-9a05-3c2acddff864";
 const GEZICHT_STATUS = "https://data.cultureelerfgoed.nl/term/id/rn/2/fd968529-bf70-4afa-8564-7c6c2fcfcc54";
 
@@ -68,7 +70,12 @@ export type RceMonument = {
   complexes?: ComplexMembership[];
   officialUrl?: string;
   complexMemberCount?: number;
+  image?: MonumentImage;
+  groenaanleg?: Groenaanleg;
 };
+
+export type MonumentImage = { url: string; title?: string; license?: string; sourceUrl?: string };
+export type Groenaanleg = { typeAanleg?: string; categorie?: string };
 
 export type RceParcel = {
   municipality: string;
@@ -499,6 +506,131 @@ export function parseComplexResults(document: unknown): Map<string, ComplexMembe
     byMonument.set(monumentUri, [...(byMonument.get(monumentUri) ?? []), membership]);
   }
   return byMonument;
+}
+
+// Beeldbank-afbeeldingen staan in een eigen graph, gekoppeld via het
+// rijksmonumentnummer dat rechtstreeks op de afbeelding zelf staat (geen CHO-
+// URI-omweg nodig). Een monument kan meerdere foto's hebben (gemiddeld ~6);
+// voor één representatieve foto per resultaat is SAMPLE() voldoende, net als
+// elders in dit bestand bij meerdere kandidaten.
+export function buildImageQuery(monumentNumbers: string[]) {
+  const values = monumentNumbers.map((number) => `"${escapeSparqlString(number)}"`).join(" ");
+  return `PREFIX ceo: <${CEO}>
+PREFIX dc: <http://purl.org/dc/elements/1.1/>
+PREFIX edm: <http://www.europeana.eu/schemas/edm/>
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+SELECT ?rmnr
+  (SAMPLE(STR(?depictionValue)) AS ?depiction)
+  (SAMPLE(STR(?titleValue)) AS ?title)
+  (SAMPLE(STR(?rightsValue)) AS ?rights)
+  (SAMPLE(STR(?shownAtValue)) AS ?shownAt)
+WHERE {
+  GRAPH <${IMAGE_GRAPH}> {
+    VALUES ?rmnr { ${values} }
+    ?image ceo:rijksmonumentnummer ?rmnr .
+    OPTIONAL { ?image foaf:depiction ?depictionValue . }
+    OPTIONAL { ?image dc:title ?titleValue . }
+    OPTIONAL { ?image dc:rights ?rightsValue . }
+    OPTIONAL { ?image edm:isShownAt ?shownAtValue . }
+  }
+}
+GROUP BY ?rmnr`;
+}
+
+export function parseImageResults(document: unknown): Map<string, MonumentImage> {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  const byMonumentNumber = new Map<string, MonumentImage>();
+  if (!Array.isArray(bindings)) return byMonumentNumber;
+  for (const binding of bindings) {
+    const monumentNumber = binding.rmnr?.value;
+    const url = binding.depiction?.value;
+    if (!monumentNumber || !url) continue;
+    byMonumentNumber.set(monumentNumber, {
+      url,
+      title: binding.title?.value,
+      license: binding.rights?.value,
+      sourceUrl: binding.shownAt?.value,
+    });
+  }
+  return byMonumentNumber;
+}
+
+// Groenaanleg (historische tuinen en parken) is een eigen graph bovenop
+// gewone Rijksmonument-records - dezelfde CHO-URI, extra eigenschappen. Geen
+// aparte geometrie tonen (heeftAanlegGeometrie) in deze eerste stap, alleen
+// de classificatie als tekstuele verrijking.
+export function buildGroenaanlegQuery(choUris: string[]) {
+  const values = choUris.map((uri) => `<${uri}>`).join(" ");
+  return `PREFIX ceo: <${CEO}>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT ?rm
+  (SAMPLE(STR(?typeLabel)) AS ?type)
+  (SAMPLE(STR(?categorieLabel)) AS ?categorie)
+WHERE {
+  GRAPH <${GROENAANLEG_GRAPH}> {
+    VALUES ?rm { ${values} }
+    OPTIONAL { ?rm ceo:heeftTypeAanleg/skos:prefLabel ?typeLabel . }
+    OPTIONAL { ?rm ceo:heeftCategorieGroenaanleg/skos:prefLabel ?categorieLabel . }
+  }
+}
+GROUP BY ?rm`;
+}
+
+export function parseGroenaanlegResults(document: unknown): Map<string, Groenaanleg> {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  const byMonument = new Map<string, Groenaanleg>();
+  if (!Array.isArray(bindings)) return byMonument;
+  for (const binding of bindings) {
+    const monumentUri = binding.rm?.value;
+    const typeAanleg = binding.type?.value;
+    const categorie = binding.categorie?.value;
+    if (!monumentUri || (!typeAanleg && !categorie)) continue;
+    byMonument.set(monumentUri, { typeAanleg, categorie });
+  }
+  return byMonument;
+}
+
+// De leden van een complex zijn bewust NIET onderdeel van de gewone
+// zoekresultaten (dat zou de resultatenlijst overspoelen) - dit wordt pas
+// opgehaald zodra een gebruiker een complex daadwerkelijk opent.
+export function buildComplexMembersQuery(complexUri: string) {
+  return `PREFIX ceo: <${CEO}>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT ?rm ?rmnr
+  (SAMPLE(STR(?naamValue)) AS ?naam)
+  (SAMPLE(STR(?functieValue)) AS ?functie)
+  (SAMPLE(?hoofdobjectValue) AS ?hoofdobject)
+WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    <${complexUri}> ceo:heeftRijksmonument ?rm .
+    OPTIONAL { <${complexUri}> ceo:heeftHoofdobject ?hoofdobjectValue . }
+    ?rm ceo:rijksmonumentnummer ?rmnr .
+    OPTIONAL { ?rm ceo:heeftNaam/ceo:naam ?naamValue . }
+    OPTIONAL {
+      ?rm ceo:heeftOorspronkelijkeFunctie ?functieNode .
+      ?functieNode ceo:formeelStandpunt true ; ceo:heeftFunctieNaam/skos:prefLabel ?functieValue .
+    }
+  }
+}
+GROUP BY ?rm ?rmnr`;
+}
+
+export type ComplexMember = { choUri: string; monumentNumber: string; name: string; isHoofdobject: boolean };
+
+export function parseComplexMembersResults(document: unknown): ComplexMember[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.flatMap((binding) => {
+    const choUri = binding.rm?.value;
+    const monumentNumber = binding.rmnr?.value;
+    if (!choUri || !monumentNumber) return [];
+    return [{
+      choUri,
+      monumentNumber,
+      name: binding.naam?.value || binding.functie?.value || `Rijksmonument ${monumentNumber}`,
+      isHoofdobject: binding.hoofdobject?.value === choUri,
+    }];
+  });
 }
 
 // Werelderfgoed staat als CultuurhistorischObject in instanties-rce (naam,
