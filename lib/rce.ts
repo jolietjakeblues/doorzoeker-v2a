@@ -146,22 +146,72 @@ export function mergeDiscoveryMatches(resultsPerSource: DiscoveryMatch[][]): Dis
   );
 }
 
-function parseCoordinatePairs(text: string): Array<[number, number]> {
+// Een lng/lat-paar per punt, in WKT-volgorde (lng eerst).
+export type WktRing = Array<[number, number]>;
+export type WktGeometry =
+  | { kind: "point"; lat: number; lng: number }
+  | { kind: "polygon"; rings: WktRing[] }
+  | { kind: "multipolygon"; polygons: WktRing[][] };
+
+function parseCoordinatePairs(text: string): WktRing {
   return [...text.matchAll(/(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/g)].map(([, lng, lat]) => [Number(lng), Number(lat)]);
 }
 
-function boundingBoxFootprint(ring: Array<[number, number]>): number {
+// Splitst "(a),(b),(c)" op de komma's die BUITEN alle haakjes staan, zodat
+// komma's binnen een ring (tussen coördinatenparen) niet worden aangezien
+// voor scheidingen tussen ringen of polygonen.
+function splitTopLevel(text: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === "(") depth++;
+    else if (text[i] === ")") depth--;
+    else if (text[i] === "," && depth === 0) {
+      parts.push(text.slice(start, i));
+      start = i + 1;
+    }
+  }
+  parts.push(text.slice(start));
+  return parts.map((part) => part.trim());
+}
+
+function stripOuterParens(text: string): string {
+  const trimmed = text.trim();
+  return trimmed.startsWith("(") && trimmed.endsWith(")") ? trimmed.slice(1, -1) : trimmed;
+}
+
+function parsePolygonRings(text: string): WktRing[] {
+  return splitTopLevel(text).map((ring) => parseCoordinatePairs(stripOuterParens(ring)));
+}
+
+function parseMultiPolygonPolygons(text: string): WktRing[][] {
+  return splitTopLevel(text).map((polygon) => parsePolygonRings(stripOuterParens(polygon)));
+}
+
+// RCE geeft geometrie als Point, Polygon of MultiPolygon WKT, bv.
+// "Point (lng lat)" of "Polygon ((lng lat, lng lat, ...))" - met een spatie
+// voor de haakjes. Dit behoudt de volledige ringstructuur (inclusief gaten
+// en losse deelpolygonen), zodat de kaart de echte vorm kan tekenen in
+// plaats van hem plat te slaan tot één punt.
+export function parseWktGeometry(wkt: string): WktGeometry | undefined {
+  const trimmed = wkt.trim();
+  const point = /^POINT\s*\(\s*(-?[\d.]+)\s+(-?[\d.]+)\s*\)/i.exec(trimmed);
+  if (point) return { kind: "point", lng: Number(point[1]), lat: Number(point[2]) };
+  const multiPolygon = /^MULTIPOLYGON\s*\(([\s\S]*)\)$/i.exec(trimmed);
+  if (multiPolygon) return { kind: "multipolygon", polygons: parseMultiPolygonPolygons(multiPolygon[1]) };
+  const polygon = /^POLYGON\s*\(([\s\S]*)\)$/i.exec(trimmed);
+  if (polygon) return { kind: "polygon", rings: parsePolygonRings(polygon[1]) };
+  return undefined;
+}
+
+function boundingBoxFootprint(ring: WktRing): number {
   const lngs = ring.map(([lng]) => lng);
   const lats = ring.map(([, lat]) => lat);
   return (Math.max(...lngs) - Math.min(...lngs)) * (Math.max(...lats) - Math.min(...lats));
 }
 
-// RCE geeft geometrie als Point, Polygon of MultiPolygon WKT, bv.
-// "Point (lng lat)" of "Polygon ((lng lat, lng lat, ...))" - met een spatie
-// voor de haakjes. Archeologische terreinen zijn vrijwel altijd een
-// (Multi)Polygon; die kregen zonder deze fallback nooit een kaartmarker, ook
-// al had RCE de geometrie gewoon geleverd.
-//
+// Voor bv. sorteren of een kaartmarker als de vorm zelf niet getekend wordt.
 // Een (multi)polygon kan uit meerdere, los van elkaar liggende ringen
 // bestaan - bijvoorbeeld de Waddenzee, die uit eilanden en wadplaten over
 // honderden kilometers kust bestaat. Het gemiddelde nemen van ALLE
@@ -172,16 +222,11 @@ function boundingBoxFootprint(ring: Array<[number, number]>): number {
 // Voor een gewone enkelvoudige polygon (het overgrote deel van de gevallen)
 // is er maar één ring en verandert dit niets aan het resultaat.
 function wktToLatLng(wkt: string): { lat: number; lng: number } | undefined {
-  const point = /POINT\s*\(\s*([\d.-]+)\s+([\d.-]+)\s*\)/i.exec(wkt);
-  if (point) return { lng: Number(point[1]), lat: Number(point[2]) };
+  const geometry = parseWktGeometry(wkt);
+  if (!geometry) return undefined;
+  if (geometry.kind === "point") return { lat: geometry.lat, lng: geometry.lng };
 
-  // \(([\d.\s,-]+)\) matcht alleen haakjes-inhoud die uit louter cijfers,
-  // punten, komma's, spaties en minnen bestaat - dat isoleert automatisch de
-  // binnenste (dus per-ring) coördinatenlijst, ongeacht de nestingsdiepte
-  // van Polygon versus MultiPolygon.
-  const rings = [...wkt.matchAll(/\(([\d.\s,-]+)\)/g)]
-    .map((match) => parseCoordinatePairs(match[1]))
-    .filter((ring) => ring.length > 0);
+  const rings = (geometry.kind === "polygon" ? geometry.rings : geometry.polygons.flat()).filter((ring) => ring.length > 0);
   if (!rings.length) return undefined;
 
   const largestRing = rings.reduce((largest, ring) => (boundingBoxFootprint(ring) > boundingBoxFootprint(largest) ? ring : largest));

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildArcheologischTerreinQuery, buildComplexQuery, buildGezichtQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseArcheologischTerreinResults, parseComplexResults, parseDiscoveryBranchResults, parseGezichtResults, parseParcelResults, parseRceMonuments, parseSparqlResults, parseWerelderfgoedResults, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
+import { buildArcheologischTerreinQuery, buildComplexQuery, buildGezichtQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseArcheologischTerreinResults, parseComplexResults, parseDiscoveryBranchResults, parseGezichtResults, parseParcelResults, parseRceMonuments, parseSparqlResults, parseWerelderfgoedResults, parseWktGeometry, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -80,6 +80,40 @@ test("picks the ring with the largest bounding box instead of blending disjoint 
   const [monument] = parseSparqlResults(document);
   assert.equal(monument.lng, 6.0);
   assert.equal(monument.lat, 53.1);
+});
+
+test("parses a Point into structured geometry", () => {
+  assert.deepEqual(parseWktGeometry("Point (5.1267842049703 52.088895166661)"), { kind: "point", lng: 5.1267842049703, lat: 52.088895166661 });
+});
+
+test("parses a Polygon into its exterior ring", () => {
+  const geometry = parseWktGeometry("Polygon ((5.0 52.0, 5.0 52.2, 5.2 52.2, 5.2 52.0))");
+  assert.deepEqual(geometry, { kind: "polygon", rings: [[[5.0, 52.0], [5.0, 52.2], [5.2, 52.2], [5.2, 52.0]]] });
+});
+
+test("parses a Polygon with a hole into two separate rings", () => {
+  // Zonder deze scheiding zou de kaart het gat opvullen in plaats van
+  // uitsparen - de tweede ring hoort bij dezelfde polygon, niet bij een
+  // los deelgebied.
+  const geometry = parseWktGeometry("Polygon ((0 0, 0 10, 10 10, 10 0), (2 2, 2 4, 4 4, 4 2))");
+  assert.equal(geometry.kind, "polygon");
+  assert.equal(geometry.rings.length, 2);
+  assert.deepEqual(geometry.rings[0], [[0, 0], [0, 10], [10, 10], [10, 0]]);
+  assert.deepEqual(geometry.rings[1], [[2, 2], [2, 4], [4, 4], [4, 2]]);
+});
+
+test("parses a MultiPolygon into separate polygons, each with their own rings", () => {
+  const wkt = "MultiPolygon (((5.0 53.0, 5.0 53.2, 7.0 53.2, 7.0 53.0)), ((50.0 10.0, 50.0 10.01, 50.01 10.01, 50.01 10.0)))";
+  const geometry = parseWktGeometry(wkt);
+  assert.equal(geometry.kind, "multipolygon");
+  assert.equal(geometry.polygons.length, 2);
+  assert.deepEqual(geometry.polygons[0], [[[5.0, 53.0], [5.0, 53.2], [7.0, 53.2], [7.0, 53.0]]]);
+  assert.deepEqual(geometry.polygons[1], [[[50.0, 10.0], [50.0, 10.01], [50.01, 10.01], [50.01, 10.0]]]);
+});
+
+test("returns undefined for unrecognized WKT", () => {
+  assert.equal(parseWktGeometry("LineString (0 0, 1 1)"), undefined);
+  assert.equal(parseWktGeometry(""), undefined);
 });
 
 test("leaves lat/lng undefined when there is no geometry at all", () => {

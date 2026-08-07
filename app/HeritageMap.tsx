@@ -4,12 +4,13 @@ import { useEffect, useRef } from "react";
 import type * as Leaflet from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { clusterMapPoints } from "@/lib/map-clustering";
+import { parseWktGeometry } from "@/lib/rce";
 
 type MapItem = {
   id: string; title: string; address: string; place: string;
   objectType: "Rijksmonument" | "Werelderfgoed" | "Gezicht";
   monumentAard?: "Gebouwd" | "Archeologisch";
-  lat: number; lng: number;
+  lat: number; lng: number; wkt?: string;
 };
 
 function markerColor(item: Pick<MapItem, "objectType" | "monumentAard">) {
@@ -17,6 +18,16 @@ function markerColor(item: Pick<MapItem, "objectType" | "monumentAard">) {
   if (item.objectType === "Gezicht") return "#176b3a";
   if (item.monumentAard === "Archeologisch") return "#ffb612";
   return "#154273";
+}
+
+// Werelderfgoed, Gezicht en archeologische terreinen zijn een gebied, geen
+// punt: gebruikers weten vaak al ongeveer waar zoiets ligt (de Waddenzee,
+// de Hollandse Waterlinies) maar willen de daadwerkelijke omvang en grens
+// zien. Een stip zou dat net weglaten. Gewoon gebouwde rijksmonumenten
+// blijven een marker - die zijn punt-achtig genoeg dat een stip niets
+// verliest, en met honderden tegelijk op de kaart blijft clusteren nodig.
+function isAreaType(item: Pick<MapItem, "objectType" | "monumentAard">) {
+  return item.objectType !== "Rijksmonument" || item.monumentAard === "Archeologisch";
 }
 
 function tooltip(titleText: string, detail: string) {
@@ -43,12 +54,33 @@ export function HeritageMap({ items, onSelect, compact }: { items: MapItem[]; on
       const leafletMap = L.map(element.current, { zoomControl: !compact, scrollWheelZoom: !compact }).setView([52.09, 5.08], 11);
       map = leafletMap;
       L.tileLayer("https://service.pdok.nl/kadaster/brt-achtergrondkaart/wmts/v2_0?service=WMTS&request=GetTile&version=1.0.0&layer=grijs&style=default&tilematrixset=EPSG:3857&format=image/png&tilematrix={z}&tilerow={y}&tilecol={x}", { maxZoom: 19, attribution: 'Kaart: <a href="https://www.pdok.nl/">PDOK</a> · BRT Kadaster' }).addTo(leafletMap);
+      const shapeLayer = L.layerGroup().addTo(leafletMap);
       const markerLayer = L.layerGroup().addTo(leafletMap);
-      const bounds = items.map((item) => L.latLng(item.lat, item.lng));
+
+      // Vorm-items (Werelderfgoed, Gezicht, archeologisch) worden één keer als
+      // echte polygon getekend - Leaflet herprojecteert die zelf bij
+      // pan/zoom. Alleen de resterende punt-items gaan door de handmatige
+      // clustering hieronder, die wél per zoomniveau opnieuw moet.
+      const pointItems: MapItem[] = [];
+      let shapeBounds: Leaflet.LatLngBounds | undefined;
+      for (const item of items) {
+        const geometry = isAreaType(item) && item.wkt ? parseWktGeometry(item.wkt) : undefined;
+        if (!geometry || geometry.kind === "point") {
+          pointItems.push(item);
+          continue;
+        }
+        const polygons = geometry.kind === "polygon" ? [geometry.rings] : geometry.polygons;
+        const latLngs = polygons.map((rings) => rings.map((ring) => ring.map(([lng, lat]): [number, number] => [lat, lng])));
+        const color = markerColor(item);
+        const polygon = L.polygon(latLngs, { color, weight: 2, fillColor: color, fillOpacity: 0.3 }).addTo(shapeLayer);
+        polygon.bindTooltip(tooltip(item.title, [item.address, item.place].filter(Boolean).join(", ")));
+        polygon.on("click", () => onSelect(item));
+        shapeBounds = shapeBounds ? shapeBounds.extend(polygon.getBounds()) : polygon.getBounds();
+      }
 
       const renderMarkers = () => {
         markerLayer.clearLayers();
-        const projected = items.map((item) => {
+        const projected = pointItems.map((item) => {
           const point = leafletMap.project(L.latLng(item.lat, item.lng), leafletMap.getZoom());
           return { item, x: point.x, y: point.y };
         });
@@ -81,7 +113,9 @@ export function HeritageMap({ items, onSelect, compact }: { items: MapItem[]; on
         }
       };
 
-      if (bounds.length) leafletMap.fitBounds(L.latLngBounds(bounds), { padding: [45, 45], maxZoom: 14 });
+      const pointBounds = pointItems.length ? L.latLngBounds(pointItems.map((item) => L.latLng(item.lat, item.lng))) : undefined;
+      const combinedBounds = shapeBounds && pointBounds ? shapeBounds.extend(pointBounds) : shapeBounds ?? pointBounds;
+      if (combinedBounds?.isValid()) leafletMap.fitBounds(combinedBounds, { padding: [45, 45], maxZoom: 14 });
       renderMarkers();
       leafletMap.on("zoomend", renderMarkers);
     });
