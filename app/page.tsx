@@ -90,6 +90,8 @@ export default function Home() {
     event.preventDefault();
     const term = query.trim();
     setActive(term); setSelected(null); setView("list");
+    setType("Alle");
+    setMunicipality("Alle");
     setFunctionFilter("Alle");
     setMatchSourceFilter("Alle");
     if (!term) { setRemoteResults(null); setRemoteState("idle"); return; }

@@ -99,6 +99,11 @@ test("GitHub Pages export loads and remains interactive in Chromium", { timeout:
     await page.getByRole("combobox", { name: "Filter op matchbron" }).selectOption("formele omschrijving");
     await page.getByRole("combobox", { name: "Filter op functie" }).selectOption("Woonhuis(K)");
     await assert.doesNotReject(() => page.getByText(/1 resultaat/).waitFor({ state: "visible" }));
+    await page.getByText("Archeologisch", { exact: true }).first().click();
+    await page.locator("#q").fill("36046");
+    await page.getByRole("button", { name: "Zoeken", exact: true }).click();
+    assert.equal(await page.getByText("Alle monumentaarden").locator("..").locator("input").evaluate((input) => input.checked), true);
+    await assert.doesNotReject(() => page.locator("article").getByText("Woonhuis(K)", { exact: true }).first().waitFor({ state: "visible" }));
 
     assert.deepEqual(runtimeErrors, [], runtimeErrors.join("\n"));
   } finally {
