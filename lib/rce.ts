@@ -1,7 +1,10 @@
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const RM_TYPE = `${CEO}Rijksmonument`;
 const INSTANCES_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce";
+const WERELDERFGOED_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/werelderfgoed_hvdl";
+const GEZICHT_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/gezicht_hvdl";
 const RIJKSMONUMENT_STATUS = "https://data.cultureelerfgoed.nl/term/id/rn/2/b2d9a59a-fe1e-4552-9a05-3c2acddff864";
+const GEZICHT_STATUS = "https://data.cultureelerfgoed.nl/term/id/rn/2/fd968529-bf70-4afa-8564-7c6c2fcfcc54";
 
 export const RCE_SEMANTICS = Object.freeze({
   instancesGraph: INSTANCES_GRAPH,
@@ -23,7 +26,7 @@ export const PROVINCE_NAMES: Record<string, string> = {
   NH: "Noord-Holland",
   OV: "Overijssel",
   UT: "Utrecht",
-  ZE: "Zeeland",
+  ZL: "Zeeland",
   ZH: "Zuid-Holland",
 };
 
@@ -63,6 +66,7 @@ export type RceMonument = {
   matchScore?: number;
   archaeologicalSites?: ArcheologischTerrein[];
   complexes?: ComplexMembership[];
+  officialUrl?: string;
 };
 
 export type RceParcel = {
@@ -142,15 +146,30 @@ export function mergeDiscoveryMatches(resultsPerSource: DiscoveryMatch[][]): Dis
   );
 }
 
+// RCE geeft geometrie als Point, Polygon of MultiPolygon WKT, bv.
+// "Point (lng lat)" of "Polygon ((lng lat, lng lat, ...))" - met een spatie
+// voor de haakjes. Archeologische terreinen zijn vrijwel altijd een
+// (Multi)Polygon; die kregen zonder deze fallback nooit een kaartmarker,
+// ook al had RCE de geometrie gewoon geleverd. Voor een marker is geen
+// exacte centroid nodig: het gemiddelde van alle coördinaatparen in de
+// (multi)polygon geeft een punt middenin de vorm, precies genoeg om op de
+// kaart te tonen.
+function wktToLatLng(wkt: string): { lat: number; lng: number } | undefined {
+  const point = /POINT\s*\(\s*([\d.-]+)\s+([\d.-]+)\s*\)/i.exec(wkt);
+  if (point) return { lng: Number(point[1]), lat: Number(point[2]) };
+  const pairs = [...wkt.matchAll(/(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/g)];
+  if (!pairs.length) return undefined;
+  const lng = pairs.reduce((sum, [, lngValue]) => sum + Number(lngValue), 0) / pairs.length;
+  const lat = pairs.reduce((sum, [, , latValue]) => sum + Number(latValue), 0) / pairs.length;
+  return { lat, lng };
+}
+
 export function parseSparqlResults(document: unknown): RceMonument[] {
   const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
   if (!Array.isArray(bindings)) return [];
   return bindings.map((binding) => {
     const wkt = binding.wkt?.value ?? "";
-    // RCE returns WKT as "Point (lng lat)" - lowercase, with a space before
-    // the parenthesis. A stricter regex silently dropped lat/lng for every
-    // result, emptying the map without ever failing a request.
-    const point = /POINT\s*\(\s*([\d.-]+)\s+([\d.-]+)\s*\)/i.exec(wkt);
+    const coordinates = wktToLatLng(wkt);
     return {
       choNumber: binding.choi?.value ?? "",
       monumentNumber: binding.rmnr?.value ?? "",
@@ -175,8 +194,8 @@ export function parseSparqlResults(document: unknown): RceMonument[] {
       place: binding.woonplaats?.value || binding.gemeente?.value,
       municipality: binding.gemeente?.value,
       provinceCode: binding.provinciecode?.value,
-      lng: point ? Number(point[1]) : undefined,
-      lat: point ? Number(point[2]) : undefined,
+      lng: coordinates?.lng,
+      lat: coordinates?.lat,
       wkt: wkt || undefined,
     };
   });
@@ -399,6 +418,132 @@ export function parseComplexResults(document: unknown): Map<string, ComplexMembe
     byMonument.set(monumentUri, [...(byMonument.get(monumentUri) ?? []), membership]);
   }
   return byMonument;
+}
+
+// Werelderfgoed staat als CultuurhistorischObject in instanties-rce (naam,
+// registratiedatum, geometrie) en - met dezelfde subject-URI - aanvullend in
+// de aparte graph werelderfgoed_hvdl (type, jaar van inschrijving, UNESCO-
+// link). Met maar 18 instanties totaal is een enkele gefilterde query hier
+// snel genoeg; de per-branch opsplitsing die voor Rijksmonumenten nodig is
+// (58M triples) is voor dit kleine type overbodig.
+//
+// Sommige Werelderfgoed-polygonen (bv. de Hollandse Waterlinies) zijn
+// megabytes aan WKT groot. Voor een kaartmarker is geen volledige geometrie
+// nodig, dus SUBSTR() beperkt wat de SPARQL-service teruggeeft tot een
+// voorvoegsel met ruim voldoende coördinatenparen voor een representatief
+// punt via wktToLatLng().
+export function buildWerelderfgoedQuery(term: string) {
+  const needle = escapeSparqlString(term.toLocaleLowerCase("nl"));
+  return `PREFIX ceo: <${CEO}>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+SELECT ?cho ?choi ?wenr
+  (SAMPLE(STR(?naamValue)) AS ?naam)
+  (SAMPLE(STR(?typeValue)) AS ?type)
+  (SAMPLE(STR(?registratiedatumValue)) AS ?registratiedatum)
+  (SAMPLE(STR(?jaarValue)) AS ?jaar)
+  (SAMPLE(STR(?urlValue)) AS ?url)
+  (SAMPLE(SUBSTR(STR(?wktValue), 1, 3000)) AS ?wkt)
+WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?cho a ceo:Werelderfgoed ; ceo:cultuurhistorischObjectnummer ?choi ; ceo:werelderfgoednummer ?wenr .
+    OPTIONAL { ?cho ceo:heeftNaam/ceo:naam ?naamValue . }
+    OPTIONAL { ?cho ceo:registratiedatum ?registratiedatumValue . }
+    OPTIONAL { ?cho ceo:heeftGeometrie/geo:asWKT ?wktValue . }
+  }
+  GRAPH <${WERELDERFGOED_GRAPH}> {
+    OPTIONAL { ?cho ceo:heeftWerelderfgoedType/skos:prefLabel ?typeValue . }
+    OPTIONAL { ?cho ceo:jaarVanInschrijving ?jaarValue . }
+    OPTIONAL { ?cho ceo:wordtGetoondOp ?urlValue . }
+  }
+  FILTER(CONTAINS(LCASE(STR(?naamValue)), "${needle}") || CONTAINS(LCASE(STR(?typeValue)), "${needle}"))
+}
+GROUP BY ?cho ?choi ?wenr`;
+}
+
+export function parseWerelderfgoedResults(document: unknown): RceMonument[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.map((binding) => {
+    const wkt = binding.wkt?.value ?? "";
+    const coordinates = wktToLatLng(wkt);
+    const typeLabel = binding.type?.value;
+    const jaar = binding.jaar?.value;
+    return {
+      choNumber: binding.choi?.value ?? "",
+      monumentNumber: binding.wenr?.value ?? "",
+      registrationDate: binding.registratiedatum?.value ?? "",
+      street: "",
+      houseNumber: "",
+      postalCode: "",
+      sourceUrl: binding.cho?.value ?? "",
+      name: binding.naam?.value,
+      monumentNature: "werelderfgoed",
+      description: [
+        typeLabel ? typeLabel.charAt(0).toLocaleUpperCase("nl") + typeLabel.slice(1) : undefined,
+        jaar ? `Op de Werelderfgoedlijst sinds ${jaar}.` : undefined,
+      ].filter(Boolean).join(". "),
+      officialUrl: binding.url?.value,
+      lng: coordinates?.lng,
+      lat: coordinates?.lat,
+      wkt: wkt || undefined,
+    };
+  });
+}
+
+// Zelfde tweegraphs-patroon als Werelderfgoed: naam/geometrie in
+// instanties-rce, de Archis-link in gezicht_hvdl. Van de 482 Gezicht-
+// instanties zijn er 472 daadwerkelijk "rijksbeschermd" (de rest is
+// ingetrokken of nog in procedure); alleen die worden getoond, net zoals
+// Rijksmonument-queries filteren op de actieve juridische status.
+export function buildGezichtQuery(term: string) {
+  const needle = escapeSparqlString(term.toLocaleLowerCase("nl"));
+  return `PREFIX ceo: <${CEO}>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+SELECT ?cho ?choi ?gnr
+  (SAMPLE(STR(?naamValue)) AS ?naam)
+  (SAMPLE(STR(?registratiedatumValue)) AS ?registratiedatum)
+  (SAMPLE(STR(?urlValue)) AS ?url)
+  (SAMPLE(SUBSTR(STR(?wktValue), 1, 3000)) AS ?wkt)
+WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?cho a ceo:Gezicht ; ceo:cultuurhistorischObjectnummer ?choi ; ceo:gezichtsnummer ?gnr ;
+         ceo:heeftGezichtsstatus <${GEZICHT_STATUS}> .
+    OPTIONAL { ?cho ceo:heeftNaam/ceo:naam ?naamValue . }
+    OPTIONAL { ?cho ceo:registratiedatum ?registratiedatumValue . }
+    OPTIONAL { ?cho ceo:heeftGeometrie/geo:asWKT ?wktValue . }
+  }
+  GRAPH <${GEZICHT_GRAPH}> {
+    OPTIONAL { ?cho ceo:wordtGetoondOp ?urlValue . }
+  }
+  FILTER(CONTAINS(LCASE(STR(?naamValue)), "${needle}"))
+}
+GROUP BY ?cho ?choi ?gnr`;
+}
+
+export function parseGezichtResults(document: unknown): RceMonument[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.map((binding) => {
+    const wkt = binding.wkt?.value ?? "";
+    const coordinates = wktToLatLng(wkt);
+    return {
+      choNumber: binding.choi?.value ?? "",
+      monumentNumber: binding.gnr?.value ?? "",
+      registrationDate: binding.registratiedatum?.value ?? "",
+      street: "",
+      houseNumber: "",
+      postalCode: "",
+      sourceUrl: binding.cho?.value ?? "",
+      name: binding.naam?.value,
+      monumentNature: "gezicht",
+      description: "Rijksbeschermd stads- of dorpsgezicht.",
+      officialUrl: binding.url?.value,
+      lng: coordinates?.lng,
+      lat: coordinates?.lat,
+      wkt: wkt || undefined,
+    };
+  });
 }
 
 function values(node: JsonLdNode | undefined, property: string): JsonLdValue[] {

@@ -140,6 +140,8 @@ h2 { font-size: 24px; }
 .cards article:hover { border-color: var(--rce-blue); }
 .tile { display: grid; place-content: center; gap: 5px; text-align: center; color: #fff; background: var(--rce-blue); }
 .tile.sand { background: #9d6937; }
+.tile.world { background: var(--rce-blue-hover); }
+.tile.green { background: var(--success); }
 .tile > b { font-size: 36px; font-weight: 700; }
 .tile small { font-size: 11px; }
 .copy { padding: 20px 24px; }
@@ -179,6 +181,8 @@ h2 { font-size: 24px; }
 .x { position: absolute; right: 20px; top: 17px; z-index: 2; width: 38px; height: 38px; border: 1px solid #ffffff88; border-radius: 50%; background: #0003; color: #fff; font-size: 22px; }
 .detail-head { height: 170px; display: grid; place-content: center; text-align: center; color: #fff; background: var(--rce-blue); }
 .detail-head.sand { background: #9d6937; }
+.detail-head.world { background: var(--rce-blue-hover); }
+.detail-head.green { background: var(--success); }
 .detail-head b { font-size: 56px; font-weight: 700; }
 .detail-head small { font-size: 13px; }
 .detail-copy { padding: 34px 40px 55px; }

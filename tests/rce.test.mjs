@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildArcheologischTerreinQuery, buildComplexQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, mergeDiscoveryMatches, parseArcheologischTerreinResults, parseComplexResults, parseDiscoveryBranchResults, parseParcelResults, parseRceMonuments, parseSparqlResults, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
+import { buildArcheologischTerreinQuery, buildComplexQuery, buildGezichtQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseArcheologischTerreinResults, parseComplexResults, parseDiscoveryBranchResults, parseGezichtResults, parseParcelResults, parseRceMonuments, parseSparqlResults, parseWerelderfgoedResults, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -40,8 +40,38 @@ test("prefers the BAG woonplaats over the BRK gemeente when both are present", (
 test("maps a BRK provinciecode to its full province name", () => {
   assert.equal(provinceName("OV"), "Overijssel");
   assert.equal(provinceName("ZH"), "Zuid-Holland");
+  // RCE gebruikt "ZL" voor Zeeland, niet de vaker gebruikte ISO-code "ZE" -
+  // live geverifieerd via de BRK-provinciecode-waarden in de dataset zelf.
+  assert.equal(provinceName("ZL"), "Zeeland");
   assert.equal(provinceName(undefined), undefined);
   assert.equal(provinceName("XX"), "XX");
+});
+
+test("derives a marker position from a Polygon by averaging its vertices", () => {
+  // Archeologische terreinen zijn vrijwel altijd een (Multi)Polygon, geen
+  // Point. Zonder deze fallback kregen ze nooit lat/lng, ook al leverde RCE
+  // wel degelijk geometrie - de kaart bleef stil leeg zonder foutmelding.
+  const wkt = "Polygon ((5.0 52.0, 5.0 52.2, 5.2 52.2, 5.2 52.0))";
+  const document = { results: { bindings: [{ rmnr: { value: "1" }, wkt: { value: wkt } }] } };
+  const [monument] = parseSparqlResults(document);
+  assert.equal(monument.lng, 5.1);
+  assert.equal(monument.lat, 52.1);
+});
+
+test("derives a marker position from a MultiPolygon by averaging all its vertices", () => {
+  const wkt = "MultiPolygon (((5.0 52.0, 5.0 52.2, 5.2 52.2, 5.2 52.0)), ((6.0 53.0, 6.0 53.2, 6.2 53.2, 6.2 53.0)))";
+  const document = { results: { bindings: [{ rmnr: { value: "1" }, wkt: { value: wkt } }] } };
+  const [monument] = parseSparqlResults(document);
+  assert.ok(monument.lat !== undefined && monument.lng !== undefined);
+  assert.equal(monument.lng, (5.0 + 5.0 + 5.2 + 5.2 + 6.0 + 6.0 + 6.2 + 6.2) / 8);
+  assert.equal(monument.lat, (52.0 + 52.2 + 52.2 + 52.0 + 53.0 + 53.2 + 53.2 + 53.0) / 8);
+});
+
+test("leaves lat/lng undefined when there is no geometry at all", () => {
+  const document = { results: { bindings: [{ rmnr: { value: "1" } }] } };
+  const [monument] = parseSparqlResults(document);
+  assert.equal(monument.lat, undefined);
+  assert.equal(monument.lng, undefined);
 });
 
 test("queries and parses BRK parcels separately", () => {
@@ -163,4 +193,87 @@ test("marks a monument as hoofdobject only when it equals the complex's own heef
   const byMonument = parseComplexResults(document);
   assert.deepEqual(byMonument.get("rm:onderdeel"), [{ complexnummer: "531014", complexnaam: "Rijnoord", role: "onderdeel" }]);
   assert.deepEqual(byMonument.get("rm:hoofdobject"), [{ complexnummer: "531014", complexnaam: "Rijnoord", role: "hoofdobject" }]);
+});
+
+test("looks up Werelderfgoed across both the instanties-rce and werelderfgoed_hvdl graphs", () => {
+  // Werelderfgoed staat met dezelfde subject-URI in twee graphs: naam en
+  // geometrie in instanties-rce, type/jaar/UNESCO-link in werelderfgoed_hvdl.
+  const query = buildWerelderfgoedQuery("Schokland");
+  assert.match(query, /a ceo:Werelderfgoed/);
+  assert.match(query, new RegExp(`GRAPH <${RCE_SEMANTICS.instancesGraph}>`));
+  assert.match(query, /GRAPH <https:\/\/linkeddata\.cultureelerfgoed\.nl\/graph\/werelderfgoed_hvdl>/);
+  assert.match(query, /ceo:heeftWerelderfgoedType\/skos:prefLabel/);
+  assert.match(query, /ceo:jaarVanInschrijving/);
+  assert.match(query, /ceo:wordtGetoondOp/);
+  assert.match(query, /schokland/);
+  // Sommige Werelderfgoed-polygonen zijn megabytes groot; voor een
+  // kaartmarker volstaat een voorvoegsel van de WKT.
+  assert.match(query, /SUBSTR\(STR\(\?wktValue\), 1, 3000\)/);
+});
+
+test("escapes the search term in the Werelderfgoed query", () => {
+  const query = buildWerelderfgoedQuery('Schokland" . ?s ?p ?o #');
+  assert.match(query, /schokland\\" \. \?s \?p \?o #/);
+});
+
+test("parses Werelderfgoed results into RceMonument-shaped records", () => {
+  const document = { results: { bindings: [{
+    cho: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/werelderfgoed/10134679" },
+    choi: { value: "10134679" },
+    wenr: { value: "739" },
+    naam: { value: "Schokland" },
+    type: { value: "archeologie" },
+    registratiedatum: { value: "1995-12-31" },
+    jaar: { value: "1995" },
+    url: { value: "https://whc.unesco.org/en/list/739" },
+    wkt: { value: "Point (5.75 52.65)" },
+  }] } };
+  const [werelderfgoed] = parseWerelderfgoedResults(document);
+  assert.equal(werelderfgoed.choNumber, "10134679");
+  assert.equal(werelderfgoed.monumentNumber, "739");
+  assert.equal(werelderfgoed.name, "Schokland");
+  assert.equal(werelderfgoed.monumentNature, "werelderfgoed");
+  assert.equal(werelderfgoed.description, "Archeologie. Op de Werelderfgoedlijst sinds 1995.");
+  assert.equal(werelderfgoed.officialUrl, "https://whc.unesco.org/en/list/739");
+  assert.equal(werelderfgoed.lat, 52.65);
+  assert.equal(werelderfgoed.lng, 5.75);
+});
+
+test("looks up Gezicht across both graphs, filtered to the rijksbeschermd status", () => {
+  // Van de 482 Gezicht-instanties zijn er maar 472 daadwerkelijk
+  // rijksbeschermd; de rest is ingetrokken of nog in procedure en hoort
+  // niet in de zoekresultaten, net zoals introkken Rijksmonumenten.
+  const query = buildGezichtQuery("Orvelte");
+  assert.match(query, /a ceo:Gezicht/);
+  assert.match(query, /ceo:heeftGezichtsstatus <https:\/\/data\.cultureelerfgoed\.nl\/term\/id\/rn\/2\/fd968529-bf70-4afa-8564-7c6c2fcfcc54>/);
+  assert.match(query, new RegExp(`GRAPH <${RCE_SEMANTICS.instancesGraph}>`));
+  assert.match(query, /GRAPH <https:\/\/linkeddata\.cultureelerfgoed\.nl\/graph\/gezicht_hvdl>/);
+  assert.match(query, /ceo:wordtGetoondOp/);
+  assert.match(query, /orvelte/);
+});
+
+test("escapes the search term in the Gezicht query", () => {
+  const query = buildGezichtQuery('Orvelte" . ?s ?p ?o #');
+  assert.match(query, /orvelte\\" \. \?s \?p \?o #/);
+});
+
+test("parses Gezicht results into RceMonument-shaped records", () => {
+  const document = { results: { bindings: [{
+    cho: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/gezicht/10134178" },
+    choi: { value: "10134178" },
+    gnr: { value: "1325" },
+    naam: { value: "Orvelte" },
+    registratiedatum: { value: "1967-08-07" },
+    url: { value: "https://archisarchief.cultureelerfgoed.nl/Beschermde_Gezichten/BG1325" },
+    wkt: { value: "Point (6.65 52.85)" },
+  }] } };
+  const [gezicht] = parseGezichtResults(document);
+  assert.equal(gezicht.choNumber, "10134178");
+  assert.equal(gezicht.monumentNumber, "1325");
+  assert.equal(gezicht.name, "Orvelte");
+  assert.equal(gezicht.monumentNature, "gezicht");
+  assert.equal(gezicht.description, "Rijksbeschermd stads- of dorpsgezicht.");
+  assert.equal(gezicht.officialUrl, "https://archisarchief.cultureelerfgoed.nl/Beschermde_Gezichten/BG1325");
+  assert.equal(gezicht.lat, 52.85);
+  assert.equal(gezicht.lng, 6.65);
 });

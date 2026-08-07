@@ -9,7 +9,7 @@ import { fetchTermSuggestions, type TermSuggestion } from "@/lib/terms-client";
 type Item = {
   id: string; objectNumber: string; title: string; kind: string; address: string;
   postalCode: string; place: string; municipality: string; province: string;
-  type: "Gebouwd" | "Archeologisch"; period: string; description: string;
+  type: "Gebouwd" | "Archeologisch" | "Werelderfgoed" | "Gezicht"; period: string; description: string;
   lat: number; lng: number;
   monumentNumber?: string; registrationDate?: string; official?: boolean; sourceUrl?: string; linkedDataUrl?: string; wkt?: string;
   matchSource?: string; matchedText?: string; matchScore?: number; legalStatus?: string;
@@ -20,11 +20,18 @@ type Item = {
 };
 
 const EMPTY_ITEMS: Item[] = [];
-const EMPTY_URL_STATE = { query: "", type: "Alle", municipality: "Alle", functionFilter: "Alle", matchSourceFilter: "Alle", view: "list" as const, selectedId: "" };
+const EMPTY_URL_STATE = { query: "", type: "Alle", province: "Alle", municipality: "Alle", functionFilter: "Alle", matchSourceFilter: "Alle", view: "list" as const, selectedId: "" };
 const MONUMENT_REGISTER_BASE_URL = "https://monumentenregister.cultureelerfgoed.nl/monumenten/";
 
 function displayFunctionName(value: string) {
   return value.replace(/\s*\([^()]*\)\s*$/, "").trim();
+}
+
+function typeBadge(type: Item["type"]) {
+  if (type === "Archeologisch") return { letter: "A", modifier: "sand" };
+  if (type === "Werelderfgoed") return { letter: "W", modifier: "world" };
+  if (type === "Gezicht") return { letter: "G", modifier: "green" };
+  return { letter: "M", modifier: "" };
 }
 
 function toItem(record: RceMonument): Item {
@@ -33,6 +40,14 @@ function toItem(record: RceMonument): Item {
   const matchedText = record.matchSource === "oorspronkelijke functie" && record.matchedText
     ? displayFunctionName(record.matchedText)
     : record.matchedText;
+  const isWerelderfgoed = record.monumentNature === "werelderfgoed";
+  const isGezicht = record.monumentNature === "gezicht";
+  const hasOwnOfficialUrl = isWerelderfgoed || isGezicht;
+  const type: Item["type"] = isWerelderfgoed
+    ? "Werelderfgoed"
+    : isGezicht
+      ? "Gezicht"
+      : record.monumentNature?.toLocaleLowerCase("nl").includes("archeologisch") ? "Archeologisch" : "Gebouwd";
   return {
     id: record.choNumber, monumentNumber: record.monumentNumber, objectNumber: record.choNumber,
     title: record.name || functionName || `Rijksmonument ${record.monumentNumber}`,
@@ -40,10 +55,12 @@ function toItem(record: RceMonument): Item {
     address: record.fullAddress || [record.street, record.houseNumber].filter(Boolean).join(" ") || "Adres niet opgenomen",
     postalCode: record.postalCode, place: record.place ?? "",
     municipality: record.municipality ?? record.place ?? "", province: provinceName(record.provinceCode) ?? "",
-    type: record.monumentNature?.toLocaleLowerCase("nl").includes("archeologisch") ? "Archeologisch" : "Gebouwd",
+    type,
     period: record.matchSource ? `Gevonden via ${record.matchSource}${matchedText ? `: ${matchedText.slice(0, 72)}${matchedText.length > 72 ? "…" : ""}` : ""}` : record.registrationDate ? `Ingeschreven ${record.registrationDate}` : "Datering niet opgenomen",
     description: record.description || "Actueel record uit de Linked Data Voorziening van de Rijksdienst voor het Cultureel Erfgoed.",
-    registrationDate: record.registrationDate, official: true, sourceUrl: record.monumentNumber ? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(record.monumentNumber)}` : record.sourceUrl, linkedDataUrl: record.sourceUrl, wkt: record.wkt,
+    registrationDate: record.registrationDate, official: true,
+    sourceUrl: hasOwnOfficialUrl ? (record.officialUrl ?? record.sourceUrl) : record.monumentNumber ? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(record.monumentNumber)}` : record.sourceUrl,
+    linkedDataUrl: record.sourceUrl, wkt: record.wkt,
     parcels: record.parcels, archaeologicalSites: record.archaeologicalSites, complexes: record.complexes, matchSource: record.matchSource, matchedText, matchScore: record.matchScore,
     legalStatus: record.legalStatus, originalFunctionNames,
     currentFunctionNames: record.currentFunctionNames, typeNames: record.typeNames,
@@ -55,10 +72,12 @@ function readUrlState() {
   if (typeof window === "undefined") return EMPTY_URL_STATE;
   const params = new URLSearchParams(window.location.search);
   const type = params.get("type");
+  const province = params.get("provincie");
   const municipality = params.get("gemeente");
   return {
     query: params.get("q") ?? "",
-    type: type === "Gebouwd" || type === "Archeologisch" ? type : "Alle",
+    type: type === "Gebouwd" || type === "Archeologisch" || type === "Werelderfgoed" || type === "Gezicht" ? type : "Alle",
+    province: province || "Alle",
     municipality: municipality || "Alle",
     functionFilter: params.get("functie") ?? "Alle",
     matchSourceFilter: params.get("bron") ?? "Alle",
@@ -71,6 +90,7 @@ export default function Home() {
   const [query, setQuery] = useState(EMPTY_URL_STATE.query);
   const [active, setActive] = useState(EMPTY_URL_STATE.query);
   const [type, setType] = useState(EMPTY_URL_STATE.type);
+  const [province, setProvince] = useState(EMPTY_URL_STATE.province);
   const [municipality, setMunicipality] = useState(EMPTY_URL_STATE.municipality);
   const [functionFilter, setFunctionFilter] = useState(EMPTY_URL_STATE.functionFilter);
   const [matchSourceFilter, setMatchSourceFilter] = useState(EMPTY_URL_STATE.matchSourceFilter);
@@ -94,25 +114,30 @@ export default function Home() {
     const params = new URLSearchParams();
     if (active) params.set("q", active);
     if (type !== "Alle") params.set("type", type);
+    if (province !== "Alle") params.set("provincie", province);
     if (municipality !== "Alle") params.set("gemeente", municipality);
     if (functionFilter !== "Alle") params.set("functie", functionFilter);
     if (matchSourceFilter !== "Alle") params.set("bron", matchSourceFilter);
     if (view === "map") params.set("view", "map");
     if (selected) params.set("rm", selected.id);
     window.history.replaceState({}, "", params.size ? `?${params}` : window.location.pathname);
-  }, [active, functionFilter, matchSourceFilter, municipality, selected, type, view]);
+  }, [active, functionFilter, matchSourceFilter, municipality, province, selected, type, view]);
 
   const choose = useCallback((item: Item) => setSelected(item), []);
   const baseResults = remoteResults ?? EMPTY_ITEMS;
   const functions = useMemo(() => [...new Set(baseResults.flatMap((item) => [...(item.originalFunctionNames ?? []), ...(item.currentFunctionNames ?? []), item.kind]).filter((kind) => kind !== "Functie niet opgenomen"))].sort((a, b) => a.localeCompare(b, "nl")), [baseResults]);
-  const municipalities = useMemo(() => [...new Set(baseResults.map((item) => item.municipality).filter(Boolean))].sort((a, b) => a.localeCompare(b, "nl")), [baseResults]);
+  const provinces = useMemo(() => [...new Set(baseResults.map((item) => item.province).filter(Boolean))].sort((a, b) => a.localeCompare(b, "nl")), [baseResults]);
+  // Gemeenten worden beperkt tot de gekozen provincie, zodat kiezen van een
+  // provincie de lijst eerst versmalt in plaats van los ernaast te staan.
+  const municipalities = useMemo(() => [...new Set(baseResults.filter((item) => province === "Alle" || item.province === province).map((item) => item.municipality).filter(Boolean))].sort((a, b) => a.localeCompare(b, "nl")), [baseResults, province]);
   const matchSources = useMemo(() => [...new Set(baseResults.map((item) => item.matchSource).filter((source): source is string => Boolean(source)))], [baseResults]);
   const results = useMemo(() => baseResults.filter((item) =>
     (functionFilter === "Alle" || [item.kind, ...(item.originalFunctionNames ?? []), ...(item.currentFunctionNames ?? [])].includes(functionFilter)) &&
     (type === "Alle" || item.type === type) &&
+    (province === "Alle" || item.province === province) &&
     (municipality === "Alle" || item.municipality === municipality) &&
     (matchSourceFilter === "Alle" || item.matchSource === matchSourceFilter)
-  ), [baseResults, functionFilter, matchSourceFilter, municipality, type]);
+  ), [baseResults, functionFilter, matchSourceFilter, municipality, province, type]);
 
   async function executeSearch(term: string) {
     searchController.current?.abort();
@@ -122,6 +147,7 @@ export default function Home() {
     setQuery(term);
     setActive(term); setSelected(null); setView("list");
     setType("Alle");
+    setProvince("Alle");
     setMunicipality("Alle");
     setFunctionFilter("Alle");
     setMatchSourceFilter("Alle");
@@ -182,6 +208,7 @@ export default function Home() {
       pendingSelectedId.current = initial.selectedId;
       if (initial.query) void executeSearch(initial.query);
       setType(initial.type);
+      setProvince(initial.province);
       setMunicipality(initial.municipality);
       setFunctionFilter(initial.functionFilter);
       setMatchSourceFilter(initial.matchSourceFilter);
@@ -207,7 +234,7 @@ export default function Home() {
     };
   }, [active, query]);
   function reset() {
-    setQuery(""); setActive(""); setType("Alle"); setMunicipality("Alle"); setFunctionFilter("Alle"); setMatchSourceFilter("Alle"); setSelected(null); setRemoteResults(null); setRemoteState("idle"); setResultPage(1); setHasMore(false);
+    setQuery(""); setActive(""); setType("Alle"); setProvince("Alle"); setMunicipality("Alle"); setFunctionFilter("Alle"); setMatchSourceFilter("Alle"); setSelected(null); setRemoteResults(null); setRemoteState("idle"); setResultPage(1); setHasMore(false);
   }
 
   return <main>
@@ -229,8 +256,9 @@ export default function Home() {
     <section className={`work ${!active ? "start" : ""}`}>
       <aside className={filters ? "show" : ""} aria-label="Zoekfilters">
         <div className="aside-title"><div><small>VERFIJN</small><h2>Filters</h2></div><button type="button" onClick={() => setFilters(false)} aria-label="Filters sluiten">×</button></div>
-        <fieldset><legend>Monumentaard</legend>{["Alle", "Gebouwd", "Archeologisch"].map((option) => <label key={option}><input type="radio" name="type" checked={type === option} onChange={() => setType(option)} /><span>{option === "Alle" ? "Alle monumentaarden" : option}</span><em>{option === "Alle" ? baseResults.length : baseResults.filter((item) => item.type === option).length}</em></label>)}</fieldset>
-        <fieldset><legend>Gemeente / woonplaats</legend><label className="select-label"><span className="sr">Filter op gemeente of woonplaats</span><select aria-label="Filter op gemeente of woonplaats" value={municipality} onChange={(event) => setMunicipality(event.target.value)}><option value="Alle">Alle plaatsen ({baseResults.length})</option>{municipalities.map((option) => <option key={option} value={option}>{option} ({baseResults.filter((item) => item.municipality === option).length})</option>)}</select></label></fieldset>
+        <fieldset><legend>Monumentaard</legend>{["Alle", "Gebouwd", "Archeologisch", "Werelderfgoed", "Gezicht"].map((option) => <label key={option}><input type="radio" name="type" checked={type === option} onChange={() => setType(option)} /><span>{option === "Alle" ? "Alle monumentaarden" : option}</span><em>{option === "Alle" ? baseResults.length : baseResults.filter((item) => item.type === option).length}</em></label>)}</fieldset>
+        <fieldset><legend>Provincie</legend><label className="select-label"><span className="sr">Filter op provincie</span><select aria-label="Filter op provincie" value={province} onChange={(event) => { setProvince(event.target.value); setMunicipality("Alle"); }}><option value="Alle">Alle provincies ({baseResults.length})</option>{provinces.map((option) => <option key={option} value={option}>{option} ({baseResults.filter((item) => item.province === option).length})</option>)}</select></label></fieldset>
+        <fieldset><legend>Gemeente / woonplaats</legend><label className="select-label"><span className="sr">Filter op gemeente of woonplaats</span><select aria-label="Filter op gemeente of woonplaats" value={municipality} onChange={(event) => setMunicipality(event.target.value)}><option value="Alle">Alle plaatsen ({baseResults.filter((item) => province === "Alle" || item.province === province).length})</option>{municipalities.map((option) => <option key={option} value={option}>{option} ({baseResults.filter((item) => item.municipality === option && (province === "Alle" || item.province === province)).length})</option>)}</select></label></fieldset>
         <fieldset><legend>Functie</legend><label className="select-label"><span className="sr">Filter op functie</span><select aria-label="Filter op functie" value={functionFilter} onChange={(event) => setFunctionFilter(event.target.value)}><option value="Alle">Alle functies ({baseResults.length})</option>{functions.map((option) => <option key={option} value={option}>{option} ({baseResults.filter((item) => [item.kind, ...(item.originalFunctionNames ?? []), ...(item.currentFunctionNames ?? [])].includes(option)).length})</option>)}</select></label></fieldset>
         {matchSources.length > 0 && <fieldset><legend>Gevonden via</legend><label className="select-label"><span className="sr">Filter op matchbron</span><select aria-label="Filter op matchbron" value={matchSourceFilter} onChange={(event) => setMatchSourceFilter(event.target.value)}><option value="Alle">Alle matchbronnen</option>{matchSources.map((option) => <option key={option} value={option}>{option} ({baseResults.filter((item) => item.matchSource === option).length})</option>)}</select></label></fieldset>}
         <fieldset><legend>Juridische status</legend><label><input type="checkbox" checked readOnly /><span>Rijksmonument</span><em>{baseResults.filter((item) => !item.official || item.legalStatus === "rijksmonument").length}</em></label></fieldset>
@@ -238,10 +266,10 @@ export default function Home() {
       </aside>
       <div className="results">
         <div className="toolbar"><div><small>RIJKSMONUMENTEN</small><h2 aria-live="polite">{results.length} {results.length === 1 ? "resultaat" : "resultaten"}{active ? ` voor “${active}”` : ""}</h2></div><div><button className="mobile-filter" type="button" onClick={() => setFilters(true)}>☰ Filters</button><span className="switch" aria-label="Weergave"><button type="button" className={view === "list" ? "on" : ""} onClick={() => setView("list")} aria-label="Lijstweergave" aria-pressed={view === "list"}>☷</button><button type="button" className={view === "map" ? "on" : ""} onClick={() => setView("map")} aria-label="Kaartweergave" aria-pressed={view === "map"}>⌖</button></span></div></div>
-        {remoteState === "idle" ? <div className="start-panel"><small>ZO WERKT HET</small><h2>Van zoekwoord naar officiële registratie</h2><p>Doorzoek de actuele CHO-dataset van de Rijksdienst voor het Cultureel Erfgoed. Doorzoeker toont niet alleen wat gevonden is, maar ook via welk formeel gegevensveld.</p><div><article><b>01</b><h3>Zoek breed</h3><p>Gebruik een nummer, plaats, functie, monumentaard of omschrijving.</p></article><article><b>02</b><h3>Zie waarom</h3><p>Elk resultaat vermeldt de matchbron en de geregistreerde waarde.</p></article><article><b>03</b><h3>Controleer de bron</h3><p>Bekijk functie, adres, geometrie, percelen en de canonieke RCE-link.</p></article></div></div> : remoteState === "loading" ? <div className="empty"><b>…</b><h3>RCE Linked Data doorzoeken</h3><p>Een ogenblik; de officiële bron wordt geraadpleegd.</p></div> : results.length === 0 ? <div className="empty"><b>0</b><h3>Geen monumenten gevonden</h3><p>Probeer een plaats, postcode, formele functie, monumentaard of monumentnummer.</p><button type="button" onClick={reset}>Nieuwe zoekopdracht</button></div> : view === "list" ? <div className="cards">{results.map((item) => <article key={item.id}><div className={item.type === "Archeologisch" ? "tile sand" : "tile"}><b>{item.type === "Archeologisch" ? "A" : "M"}</b><small>RCE register</small></div><div className="copy"><small>{item.kind}<code>RM {item.monumentNumber ?? item.id}</code></small><h3>{item.title}</h3><p className="address">● {item.address}{item.postalCode || item.place ? `, ${item.postalCode} ${item.place}` : ""}</p><p>{item.description}</p><span>{item.type}</span><span>{item.period}</span></div><button className="open" type="button" onClick={() => setSelected(item)} aria-label={`Details van ${item.title}`}>→</button></article>)}</div> : <HeritageMap items={results.filter((item) => item.lat && item.lng)} onSelect={(mapItem) => { const item = results.find((candidate) => candidate.id === mapItem.id); if (item) choose(item); }} />}
+        {remoteState === "idle" ? <div className="start-panel"><small>ZO WERKT HET</small><h2>Van zoekwoord naar officiële registratie</h2><p>Doorzoek de actuele CHO-dataset van de Rijksdienst voor het Cultureel Erfgoed. Doorzoeker toont niet alleen wat gevonden is, maar ook via welk formeel gegevensveld.</p><div><article><b>01</b><h3>Zoek breed</h3><p>Gebruik een nummer, plaats, functie, monumentaard of omschrijving.</p></article><article><b>02</b><h3>Zie waarom</h3><p>Elk resultaat vermeldt de matchbron en de geregistreerde waarde.</p></article><article><b>03</b><h3>Controleer de bron</h3><p>Bekijk functie, adres, geometrie, percelen en de canonieke RCE-link.</p></article></div></div> : remoteState === "loading" ? <div className="empty"><b>…</b><h3>RCE Linked Data doorzoeken</h3><p>Een ogenblik; de officiële bron wordt geraadpleegd.</p></div> : results.length === 0 ? <div className="empty"><b>0</b><h3>Geen monumenten gevonden</h3><p>Probeer een plaats, postcode, formele functie, monumentaard of monumentnummer.</p><button type="button" onClick={reset}>Nieuwe zoekopdracht</button></div> : view === "list" ? <div className="cards">{results.map((item) => { const badge = typeBadge(item.type); return <article key={item.id}><div className={`tile ${badge.modifier}`.trim()}><b>{badge.letter}</b><small>RCE register</small></div><div className="copy"><small>{item.kind}<code>RM {item.monumentNumber ?? item.id}</code></small><h3>{item.title}</h3><p className="address">● {item.address}{item.postalCode || item.place ? `, ${item.postalCode} ${item.place}` : ""}</p><p>{item.description}</p><span>{item.type}</span><span>{item.period}</span></div><button className="open" type="button" onClick={() => setSelected(item)} aria-label={`Details van ${item.title}`}>→</button></article>; })}</div> : <HeritageMap items={results.filter((item) => item.lat && item.lng)} onSelect={(mapItem) => { const item = results.find((candidate) => candidate.id === mapItem.id); if (item) choose(item); }} />}
         {hasMore && remoteState === "success" && view === "list" && <div className="more-results"><button type="button" onClick={() => void loadMore()} disabled={loadingMore}>{loadingMore ? "Meer RCE-resultaten laden…" : "Laad 25 volgende resultaten"}</button><small>{baseResults.length} unieke monumenten geladen</small></div>}
       </div>
     </section>
-    {selected && <div className="backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><aside className="detail" role="dialog" aria-modal="true" aria-labelledby="detail-title"><button className="x" type="button" onClick={() => setSelected(null)} aria-label="Details sluiten">×</button><div className={selected.type === "Archeologisch" ? "detail-head sand" : "detail-head"}><b>{selected.type === "Archeologisch" ? "A" : "M"}</b><small>{selected.official ? "RCE Linked Data" : `${selected.type} erfgoed`}</small></div><div className="detail-copy"><small>RIJKSMONUMENT {selected.monumentNumber ?? selected.id}</small><h2 id="detail-title">{selected.title}</h2><p>{selected.address}<br />{selected.postalCode} {selected.place}{selected.province ? `, ${selected.province}` : ""}</p><hr /><p>{selected.description}</p><dl><div><dt>Status</dt><dd>Rijksmonument</dd></div><div><dt>CHO-nummer</dt><dd>{selected.objectNumber}</dd></div><div><dt>Functie</dt><dd>{selected.kind}</dd></div><div><dt>Registratie / datering</dt><dd>{selected.registrationDate ?? selected.period}</dd></div>{selected.wkt && <div><dt>Geometrie (WGS84)</dt><dd><code>{selected.wkt}</code></dd></div>}{selected.parcels?.length ? <div><dt>Kadastrale percelen</dt><dd>{selected.parcels.map((parcel) => <span key={`${parcel.municipalityCode}-${parcel.section}-${parcel.parcelNumber}`}>{parcel.municipality} {parcel.section} {parcel.parcelNumber}{parcel.provinceCode ? ` (${parcel.provinceCode})` : ""}</span>)}</dd></div> : null}{selected.archaeologicalSites?.length ? <div><dt>Archeologisch terrein</dt><dd>{selected.archaeologicalSites.map((site, index) => <span key={site.archisMonumentnummer ?? index}>{site.archisMonumentnummer ? `Archis-monumentnummer ${site.archisMonumentnummer}` : "Archis-monumentnummer onbekend"}{site.waardering ? ` — ${site.waardering}` : ""}</span>)}</dd></div> : null}{selected.complexes?.length ? <div><dt>Onderdeel van complex</dt><dd>{selected.complexes.map((complex, index) => <span key={complex.complexnummer ?? index}>{complex.complexnaam || (complex.complexnummer ? `Complex ${complex.complexnummer}` : "Complex")}{complex.complexnummer && complex.complexnaam ? ` (${complex.complexnummer})` : ""}{complex.role === "hoofdobject" ? " — hoofdobject" : ""}</span>)}</dd></div> : null}<div><dt>Bron</dt><dd>{selected.official ? "RCE Linked Data" : "Voorbeelddata"}</dd></div></dl><div className="detail-links"><a href={selected.sourceUrl ?? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(selected.monumentNumber ?? selected.id)}`} target="_blank" rel="noreferrer">Bekijk in het Monumentenregister <b>→</b></a>{selected.linkedDataUrl && <a href={selected.linkedDataUrl} target="_blank" rel="noreferrer">Bekijk in de RCE Linked Data <b>→</b></a>}</div><blockquote>{selected.official ? "Actueel record uit de officiële Linked Data Voorziening van de RCE." : "Voorbeeldrecord; nog niet alle zoekvelden zijn live gekoppeld."}</blockquote></div></aside></div>}
+    {selected && <div className="backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><aside className="detail" role="dialog" aria-modal="true" aria-labelledby="detail-title"><button className="x" type="button" onClick={() => setSelected(null)} aria-label="Details sluiten">×</button><div className={`detail-head ${typeBadge(selected.type).modifier}`.trim()}><b>{typeBadge(selected.type).letter}</b><small>{selected.official ? "RCE Linked Data" : `${selected.type} erfgoed`}</small></div><div className="detail-copy"><small>{selected.type === "Werelderfgoed" ? "WERELDERFGOED" : selected.type === "Gezicht" ? "GEZICHT" : "RIJKSMONUMENT"} {selected.monumentNumber ?? selected.id}</small><h2 id="detail-title">{selected.title}</h2><p>{selected.address}<br />{selected.postalCode} {selected.place}{selected.province ? `, ${selected.province}` : ""}</p><hr /><p>{selected.description}</p><dl><div><dt>Status</dt><dd>{selected.type === "Werelderfgoed" ? "Werelderfgoed" : selected.type === "Gezicht" ? "Rijksbeschermd stads- of dorpsgezicht" : "Rijksmonument"}</dd></div><div><dt>CHO-nummer</dt><dd>{selected.objectNumber}</dd></div><div><dt>Functie</dt><dd>{selected.kind}</dd></div><div><dt>Registratie / datering</dt><dd>{selected.registrationDate ?? selected.period}</dd></div>{selected.wkt && <div><dt>Geometrie (WGS84)</dt><dd><code>{selected.wkt}</code></dd></div>}{selected.parcels?.length ? <div><dt>Kadastrale percelen</dt><dd>{selected.parcels.map((parcel) => <span key={`${parcel.municipalityCode}-${parcel.section}-${parcel.parcelNumber}`}>{parcel.municipality} {parcel.section} {parcel.parcelNumber}{parcel.provinceCode ? ` (${parcel.provinceCode})` : ""}</span>)}</dd></div> : null}{selected.archaeologicalSites?.length ? <div><dt>Archeologisch terrein</dt><dd>{selected.archaeologicalSites.map((site, index) => <span key={site.archisMonumentnummer ?? index}>{site.archisMonumentnummer ? `Archis-monumentnummer ${site.archisMonumentnummer}` : "Archis-monumentnummer onbekend"}{site.waardering ? ` — ${site.waardering}` : ""}</span>)}</dd></div> : null}{selected.complexes?.length ? <div><dt>Onderdeel van complex</dt><dd>{selected.complexes.map((complex, index) => <span key={complex.complexnummer ?? index}>{complex.complexnaam || (complex.complexnummer ? `Complex ${complex.complexnummer}` : "Complex")}{complex.complexnummer && complex.complexnaam ? ` (${complex.complexnummer})` : ""}{complex.role === "hoofdobject" ? " — hoofdobject" : ""}</span>)}</dd></div> : null}<div><dt>Bron</dt><dd>{selected.official ? "RCE Linked Data" : "Voorbeelddata"}</dd></div></dl><div className="detail-links"><a href={selected.sourceUrl ?? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(selected.monumentNumber ?? selected.id)}`} target="_blank" rel="noreferrer">{selected.type === "Werelderfgoed" ? "Bekijk op de UNESCO Werelderfgoedlijst" : selected.type === "Gezicht" ? "Bekijk in het Archis-archief" : "Bekijk in het Monumentenregister"} <b>→</b></a>{selected.linkedDataUrl && <a href={selected.linkedDataUrl} target="_blank" rel="noreferrer">Bekijk in de RCE Linked Data <b>→</b></a>}</div><blockquote>{selected.official ? "Actueel record uit de officiële Linked Data Voorziening van de RCE." : "Voorbeeldrecord; nog niet alle zoekvelden zijn live gekoppeld."}</blockquote></div></aside></div>}
   </main>;
 }
