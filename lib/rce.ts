@@ -122,7 +122,10 @@ export function parseSparqlResults(document: unknown): RceMonument[] {
   if (!Array.isArray(bindings)) return [];
   return bindings.map((binding) => {
     const wkt = binding.wkt?.value ?? "";
-    const point = /POINT\(\s*([\d.-]+)\s+([\d.-]+)\s*\)/i.exec(wkt);
+    // RCE returns WKT as "Point (lng lat)" - lowercase, with a space before
+    // the parenthesis. A stricter regex silently dropped lat/lng for every
+    // result, emptying the map without ever failing a request.
+    const point = /POINT\s*\(\s*([\d.-]+)\s+([\d.-]+)\s*\)/i.exec(wkt);
     return {
       choNumber: binding.choi?.value ?? "",
       monumentNumber: binding.rmnr?.value ?? "",
