@@ -88,10 +88,11 @@ test("GitHub Pages export loads and remains interactive in Chromium", { timeout:
     await assert.doesNotReject(() => page.getByText("Van zoekwoord naar officiële registratie", { exact: true }).waitFor({ state: "visible" }));
 
     await page.getByRole("button", { name: "36046", exact: true }).click();
-    await assert.doesNotReject(() => page.locator("article").getByText("Woonhuis(K)", { exact: true }).first().waitFor({ state: "visible" }));
+    await assert.doesNotReject(() => page.locator("article").getByText("Woonhuis", { exact: true }).first().waitFor({ state: "visible" }));
     await assert.doesNotReject(() => page.getByText(/1 resultaat/).waitFor({ state: "visible" }));
     await assert.doesNotReject(() => page.getByText("Resultaten rechtstreeks uit de actuele RCE Linked Data").waitFor({ state: "visible" }));
-    await page.getByRole("button", { name: "Details van Woonhuis(K)" }).click();
+    await page.getByRole("button", { name: "Details van Woonhuis" }).click();
+    assert.equal(await page.getByRole("link", { name: /Bekijk in het Monumentenregister/ }).getAttribute("href"), "https://monumentenregister.cultureelerfgoed.nl/monumenten/36046");
     await assert.doesNotReject(() => page.getByText("POINT(5.1267842049703 52.088895166661)").waitFor({ state: "visible" }));
     await assert.doesNotReject(() => page.getByText("Utrecht B 358 (UT)").waitFor({ state: "visible" }));
     await page.getByRole("button", { name: "Details sluiten" }).click();
@@ -106,13 +107,13 @@ test("GitHub Pages export loads and remains interactive in Chromium", { timeout:
     await assert.doesNotReject(() => page.locator("article").getByText("Pand met 17e eeuwse lijstgevel.", { exact: true }).waitFor({ state: "visible" }));
     await assert.doesNotReject(() => page.getByText(/Gevonden via formele omschrijving: Pand met 17e eeuwse lijstgevel/).waitFor({ state: "visible" }));
     await page.getByRole("combobox", { name: "Filter op matchbron" }).selectOption("formele omschrijving");
-    await page.getByRole("combobox", { name: "Filter op functie" }).selectOption("Woonhuis(K)");
+    await page.getByRole("combobox", { name: "Filter op functie" }).selectOption("Woonhuis");
     await assert.doesNotReject(() => page.getByText(/1 resultaat/).waitFor({ state: "visible" }));
     await page.getByText("Archeologisch", { exact: true }).first().click();
     await page.locator("#q").fill("36046");
     await page.getByRole("button", { name: "Doorzoek RCE", exact: true }).click();
     assert.equal(await page.getByText("Alle monumentaarden").locator("..").locator("input").evaluate((input) => input.checked), true);
-    await assert.doesNotReject(() => page.locator("article").getByText("Woonhuis(K)", { exact: true }).first().waitFor({ state: "visible" }));
+    await assert.doesNotReject(() => page.locator("article").getByText("Woonhuis", { exact: true }).first().waitFor({ state: "visible" }));
 
     assert.deepEqual(runtimeErrors, [], runtimeErrors.join("\n"));
   } finally {
