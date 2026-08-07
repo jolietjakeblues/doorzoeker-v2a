@@ -10,6 +10,27 @@ export const RCE_SEMANTICS = Object.freeze({
   ranking: ["oorspronkelijke functie", "huidige functie", "type", "monumentaard", "formele omschrijving", "woonplaats"],
 });
 
+// BRK provinciecode -> volledige naam. CBS-provinciecodes, niet als SKOS-concept
+// in de dataset aanwezig, dus hier vast opgeslagen in plaats van opgezocht.
+export const PROVINCE_NAMES: Record<string, string> = {
+  DR: "Drenthe",
+  FL: "Flevoland",
+  FR: "Friesland",
+  GE: "Gelderland",
+  GR: "Groningen",
+  LI: "Limburg",
+  NB: "Noord-Brabant",
+  NH: "Noord-Holland",
+  OV: "Overijssel",
+  UT: "Utrecht",
+  ZE: "Zeeland",
+  ZH: "Zuid-Holland",
+};
+
+export function provinceName(code?: string): string | undefined {
+  return code ? PROVINCE_NAMES[code] ?? code : undefined;
+}
+
 type JsonLdValue = { "@id"?: string; "@value"?: string };
 type JsonLdNode = Record<string, unknown> & { "@id": string; "@type"?: string[] };
 
@@ -31,6 +52,8 @@ export type RceMonument = {
   monumentNature?: string;
   fullAddress?: string;
   place?: string;
+  municipality?: string;
+  provinceCode?: string;
   lat?: number;
   lng?: number;
   wkt?: string;
@@ -39,6 +62,7 @@ export type RceMonument = {
   matchedText?: string;
   matchScore?: number;
   archaeologicalSites?: ArcheologischTerrein[];
+  complexes?: ComplexMembership[];
 };
 
 export type RceParcel = {
@@ -144,7 +168,13 @@ export function parseSparqlResults(document: unknown): RceMonument[] {
       description: binding.omschrijving?.value,
       monumentNature: binding.monumentaard?.value,
       fullAddress: binding.volledigAdres?.value,
-      place: binding.woonplaats?.value,
+      // Archeologische terreinen hebben doorgaans geen BAG-relatie (geen
+      // adres), maar wel een BRK-relatie (kadastraal perceel) met een
+      // gemeentenaam. Val daarop terug zodat deze records ook een plaats
+      // tonen in plaats van "Adres niet opgenomen" zonder locatie.
+      place: binding.woonplaats?.value || binding.gemeente?.value,
+      municipality: binding.gemeente?.value,
+      provinceCode: binding.provinciecode?.value,
       lng: point ? Number(point[1]) : undefined,
       lat: point ? Number(point[2]) : undefined,
       wkt: wkt || undefined,
@@ -177,6 +207,8 @@ SELECT ?cho ?choi ?rmnr
   (SAMPLE(STR(?adresValue)) AS ?volledigAdres)
   (SAMPLE(STR(?postcodeValue)) AS ?postcode)
   (SAMPLE(STR(?woonplaatsValue)) AS ?woonplaats)
+  (SAMPLE(STR(?gemeenteValue)) AS ?gemeente)
+  (SAMPLE(STR(?provinciecodeValue)) AS ?provinciecode)
   (SAMPLE(STR(?wktValue)) AS ?wkt)
   (SAMPLE(STR(?inschrijvingValue)) AS ?inschrijving)
 WHERE {
@@ -200,6 +232,11 @@ WHERE {
     OPTIONAL { ?bag ceo:volledigAdres ?adresValue . }
     OPTIONAL { ?bag ceo:postcode ?postcodeValue . }
     OPTIONAL { ?bag ceo:woonplaatsnaam ?woonplaatsValue . }
+  }
+  OPTIONAL {
+    ?cho ceo:heeftBasisregistratieRelatie/ceo:heeftBRKRelatie ?brk .
+    OPTIONAL { ?brk ceo:gemeentenaam ?gemeenteValue . }
+    OPTIONAL { ?brk ceo:provinciecode ?provinciecodeValue . }
   }
   OPTIONAL { ?cho ceo:heeftGeometrie/geo:asWKT ?wktValue . }
   OPTIONAL { ?cho ceo:datumInschrijvingInMonumentenregister ?inschrijvingValue . }
@@ -316,6 +353,50 @@ export function parseArcheologischTerreinResults(document: unknown): Map<string,
     if (!monumentUri) continue;
     const terrein: ArcheologischTerrein = { archisMonumentnummer: binding.archisNummer?.value, waardering: binding.waarderingLabel?.value };
     byMonument.set(monumentUri, [...(byMonument.get(monumentUri) ?? []), terrein]);
+  }
+  return byMonument;
+}
+
+// A Complex (gebouwd erfgoed, not to be confused with ArcheologischComplex)
+// has no geometry of its own and is not independently searchable - it groups
+// Rijksmonument records that each have their own geometry. Every complex has
+// exactly one hoofdobject (confirmed: 0 of 2,834 complexes have more than
+// one), so a monument's role is "hoofdobject" when it equals the complex's
+// own heeftHoofdobject value, and "onderdeel" otherwise.
+export function buildComplexQuery(choUris: string[]) {
+  const values = choUris.map((uri) => `<${uri}>`).join(" ");
+  return `PREFIX ceo: <${CEO}>
+SELECT ?rm ?complex
+  (SAMPLE(STR(?complexnummer)) AS ?complexnummerValue)
+  (SAMPLE(STR(?complexnaamValue)) AS ?complexnaam)
+  (SAMPLE(?hoofdobject) AS ?hoofdobjectValue)
+WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    VALUES ?rm { ${values} }
+    ?complex a ceo:Complex ; ceo:heeftRijksmonument ?rm .
+    OPTIONAL { ?complex ceo:complexnummer ?complexnummer . }
+    OPTIONAL { ?complex ceo:heeftNaam/ceo:naam ?complexnaamValue . }
+    OPTIONAL { ?complex ceo:heeftHoofdobject ?hoofdobject . }
+  }
+}
+GROUP BY ?rm ?complex`;
+}
+
+export type ComplexMembership = { complexnummer?: string; complexnaam?: string; role: "hoofdobject" | "onderdeel" };
+
+export function parseComplexResults(document: unknown): Map<string, ComplexMembership[]> {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  const byMonument = new Map<string, ComplexMembership[]>();
+  if (!Array.isArray(bindings)) return byMonument;
+  for (const binding of bindings) {
+    const monumentUri = binding.rm?.value;
+    if (!monumentUri) continue;
+    const membership: ComplexMembership = {
+      complexnummer: binding.complexnummerValue?.value,
+      complexnaam: binding.complexnaam?.value,
+      role: binding.hoofdobjectValue?.value === monumentUri ? "hoofdobject" : "onderdeel",
+    };
+    byMonument.set(monumentUri, [...(byMonument.get(monumentUri) ?? []), membership]);
   }
   return byMonument;
 }

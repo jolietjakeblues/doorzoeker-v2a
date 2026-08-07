@@ -1,5 +1,6 @@
 import {
   buildArcheologischTerreinQuery,
+  buildComplexQuery,
   buildRceDetailsQuery,
   buildRceDiscoveryQueries,
   buildRceFacetsQuery,
@@ -8,11 +9,13 @@ import {
   buildRceParcelsQuery,
   mergeDiscoveryMatches,
   parseArcheologischTerreinResults,
+  parseComplexResults,
   parseDiscoveryBranchResults,
   parseFacetResults,
   parseParcelResults,
   parseRceMonuments,
   parseSparqlResults,
+  type ArcheologischTerrein,
   type RceMonument,
 } from "../rce.ts";
 
@@ -49,20 +52,28 @@ async function fetchSparql(query: string, signal?: AbortSignal) {
   }
 }
 
-// An "archeologisch" Rijksmonument is, in practice, almost always also its
-// own ArcheologischTerrein record (see buildArcheologischTerreinQuery). This
-// enriches such monuments with the terrain's Archis-monumentnummer and
-// waardering instead of running a parallel archaeology search.
-async function enrichWithArcheologischeTerreinen(monuments: RceMonument[], signal?: AbortSignal): Promise<RceMonument[]> {
+// Two independent enrichment lookups keyed by the monument's own CHO subject
+// URI, run in parallel: archaeological terrain data (only for monuments with
+// an archaeological monumentaard) and complex membership (any monument can
+// be part of a complex, so this always runs). Neither is a parallel search -
+// both just attach extra facts to Rijksmonument records already found.
+async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): Promise<RceMonument[]> {
+  const choUris = monuments.map((monument) => monument.sourceUrl).filter(Boolean);
+  if (!choUris.length) return monuments;
   const archaeological = monuments.filter((monument) => monument.monumentNature?.toLocaleLowerCase("nl").includes("archeolog") && monument.sourceUrl);
-  if (!archaeological.length) return monuments;
-  const terreinenByMonument = parseArcheologischTerreinResults(
-    await fetchSparql(buildArcheologischTerreinQuery(archaeological.map((monument) => monument.sourceUrl)), signal),
-  );
-  if (!terreinenByMonument.size) return monuments;
+
+  const [terreinenByMonument, complexesByMonument] = await Promise.all([
+    archaeological.length
+      ? fetchSparql(buildArcheologischTerreinQuery(archaeological.map((monument) => monument.sourceUrl)), signal).then(parseArcheologischTerreinResults)
+      : Promise.resolve(new Map<string, ArcheologischTerrein[]>()),
+    fetchSparql(buildComplexQuery(choUris), signal).then(parseComplexResults),
+  ]);
+
   return monuments.map((monument) => {
     const archaeologicalSites = terreinenByMonument.get(monument.sourceUrl);
-    return archaeologicalSites ? { ...monument, archaeologicalSites } : monument;
+    const complexes = complexesByMonument.get(monument.sourceUrl);
+    if (!archaeologicalSites && !complexes) return monument;
+    return { ...monument, ...(archaeologicalSites ? { archaeologicalSites } : {}), ...(complexes ? { complexes } : {}) };
   });
 }
 
@@ -75,7 +86,7 @@ async function searchByNumber(monumentNumber: string, signal?: AbortSignal): Pro
   const parcels = parseParcelResults(parcelsDocument);
   const facets = parseFacetResults(facetsDocument);
   const monuments = parseSparqlResults(monumentsDocument).map((monument) => ({ ...monument, ...facets.get(monument.monumentNumber), parcels }));
-  return enrichWithArcheologischeTerreinen(monuments, signal);
+  return enrichMonuments(monuments, signal);
 }
 
 async function searchByText(term: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
@@ -100,7 +111,7 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1): Promi
     const parcels = parseParcelResults({ results: { bindings: parcelBindings.filter((binding) => binding.rmnr?.value === monument.monumentNumber) } });
     return [{ ...monument, ...facets.get(monument.monumentNumber), ...match, parcels }];
   });
-  return enrichWithArcheologischeTerreinen(monuments, signal);
+  return enrichMonuments(monuments, signal);
 }
 
 export async function searchRceMonuments(query: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {

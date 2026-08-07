@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HeritageMap } from "./HeritageMap";
 import { searchRceMonuments } from "@/lib/rce-client";
-import type { RceMonument } from "@/lib/rce";
+import { provinceName, type RceMonument } from "@/lib/rce";
 import { fetchTermSuggestions, type TermSuggestion } from "@/lib/terms-client";
 
 type Item = {
@@ -16,6 +16,7 @@ type Item = {
   originalFunctionNames?: string[]; currentFunctionNames?: string[]; typeNames?: string[];
   parcels?: Array<{ municipality: string; municipalityCode: string; section: string; parcelNumber: string; provinceCode: string }>;
   archaeologicalSites?: Array<{ archisMonumentnummer?: string; waardering?: string }>;
+  complexes?: Array<{ complexnummer?: string; complexnaam?: string; role: "hoofdobject" | "onderdeel" }>;
 };
 
 const EMPTY_ITEMS: Item[] = [];
@@ -26,7 +27,7 @@ function displayFunctionName(value: string) {
   return value.replace(/\s*\([^()]*\)\s*$/, "").trim();
 }
 
-function toItem(record: RceMonument, term: string): Item {
+function toItem(record: RceMonument): Item {
   const functionName = record.functionName ? displayFunctionName(record.functionName) : "";
   const originalFunctionNames = record.originalFunctionNames?.map(displayFunctionName).filter(Boolean);
   const matchedText = record.matchSource === "oorspronkelijke functie" && record.matchedText
@@ -37,13 +38,13 @@ function toItem(record: RceMonument, term: string): Item {
     title: record.name || functionName || `Rijksmonument ${record.monumentNumber}`,
     kind: functionName || "Functie niet opgenomen",
     address: record.fullAddress || [record.street, record.houseNumber].filter(Boolean).join(" ") || "Adres niet opgenomen",
-    postalCode: record.postalCode, place: record.place || (/^\d/.test(term) ? "" : term),
-    municipality: record.place || (/^\d/.test(term) ? "" : term), province: "",
+    postalCode: record.postalCode, place: record.place ?? "",
+    municipality: record.municipality ?? record.place ?? "", province: provinceName(record.provinceCode) ?? "",
     type: record.monumentNature?.toLocaleLowerCase("nl").includes("archeologisch") ? "Archeologisch" : "Gebouwd",
     period: record.matchSource ? `Gevonden via ${record.matchSource}${matchedText ? `: ${matchedText.slice(0, 72)}${matchedText.length > 72 ? "…" : ""}` : ""}` : record.registrationDate ? `Ingeschreven ${record.registrationDate}` : "Datering niet opgenomen",
     description: record.description || "Actueel record uit de Linked Data Voorziening van de Rijksdienst voor het Cultureel Erfgoed.",
     registrationDate: record.registrationDate, official: true, sourceUrl: record.monumentNumber ? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(record.monumentNumber)}` : record.sourceUrl, linkedDataUrl: record.sourceUrl, wkt: record.wkt,
-    parcels: record.parcels, archaeologicalSites: record.archaeologicalSites, matchSource: record.matchSource, matchedText, matchScore: record.matchScore,
+    parcels: record.parcels, archaeologicalSites: record.archaeologicalSites, complexes: record.complexes, matchSource: record.matchSource, matchedText, matchScore: record.matchScore,
     legalStatus: record.legalStatus, originalFunctionNames,
     currentFunctionNames: record.currentFunctionNames, typeNames: record.typeNames,
     lat: record.lat ?? 0, lng: record.lng ?? 0,
@@ -131,7 +132,7 @@ export default function Home() {
     try {
       const records = await searchRceMonuments(term, controller.signal);
       if (sequence !== searchSequence.current) return;
-      const items = records.map((record) => toItem(record, term));
+      const items = records.map((record) => toItem(record));
       setRemoteResults(items);
       if (pendingSelectedId.current) {
         setSelected(items.find((item) => item.id === pendingSelectedId.current || item.monumentNumber === pendingSelectedId.current) ?? null);
@@ -156,7 +157,7 @@ export default function Home() {
     setLoadingMore(true);
     try {
       const records = await searchRceMonuments(active, undefined, nextPage);
-      const additions = records.map((record) => toItem(record, active));
+      const additions = records.map((record) => toItem(record));
       setRemoteResults((current) => {
         const merged = new Map((current ?? []).map((item) => [item.monumentNumber ?? item.id, item]));
         for (const item of additions) merged.set(item.monumentNumber ?? item.id, item);
@@ -241,6 +242,6 @@ export default function Home() {
         {hasMore && remoteState === "success" && view === "list" && <div className="more-results"><button type="button" onClick={() => void loadMore()} disabled={loadingMore}>{loadingMore ? "Meer RCE-resultaten laden…" : "Laad 25 volgende resultaten"}</button><small>{baseResults.length} unieke monumenten geladen</small></div>}
       </div>
     </section>
-    {selected && <div className="backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><aside className="detail" role="dialog" aria-modal="true" aria-labelledby="detail-title"><button className="x" type="button" onClick={() => setSelected(null)} aria-label="Details sluiten">×</button><div className={selected.type === "Archeologisch" ? "detail-head sand" : "detail-head"}><b>{selected.type === "Archeologisch" ? "A" : "M"}</b><small>{selected.official ? "RCE Linked Data" : `${selected.type} erfgoed`}</small></div><div className="detail-copy"><small>RIJKSMONUMENT {selected.monumentNumber ?? selected.id}</small><h2 id="detail-title">{selected.title}</h2><p>{selected.address}<br />{selected.postalCode} {selected.place}{selected.province ? `, ${selected.province}` : ""}</p><hr /><p>{selected.description}</p><dl><div><dt>Status</dt><dd>Rijksmonument</dd></div><div><dt>CHO-nummer</dt><dd>{selected.objectNumber}</dd></div><div><dt>Functie</dt><dd>{selected.kind}</dd></div><div><dt>Registratie / datering</dt><dd>{selected.registrationDate ?? selected.period}</dd></div>{selected.wkt && <div><dt>Geometrie (WGS84)</dt><dd><code>{selected.wkt}</code></dd></div>}{selected.parcels?.length ? <div><dt>Kadastrale percelen</dt><dd>{selected.parcels.map((parcel) => <span key={`${parcel.municipalityCode}-${parcel.section}-${parcel.parcelNumber}`}>{parcel.municipality} {parcel.section} {parcel.parcelNumber}{parcel.provinceCode ? ` (${parcel.provinceCode})` : ""}</span>)}</dd></div> : null}{selected.archaeologicalSites?.length ? <div><dt>Archeologisch terrein</dt><dd>{selected.archaeologicalSites.map((site, index) => <span key={site.archisMonumentnummer ?? index}>{site.archisMonumentnummer ? `Archis-monumentnummer ${site.archisMonumentnummer}` : "Archis-monumentnummer onbekend"}{site.waardering ? ` — ${site.waardering}` : ""}</span>)}</dd></div> : null}<div><dt>Bron</dt><dd>{selected.official ? "RCE Linked Data" : "Voorbeelddata"}</dd></div></dl><div className="detail-links"><a href={selected.sourceUrl ?? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(selected.monumentNumber ?? selected.id)}`} target="_blank" rel="noreferrer">Bekijk in het Monumentenregister <b>→</b></a>{selected.linkedDataUrl && <a href={selected.linkedDataUrl} target="_blank" rel="noreferrer">Bekijk in de RCE Linked Data <b>→</b></a>}</div><blockquote>{selected.official ? "Actueel record uit de officiële Linked Data Voorziening van de RCE." : "Voorbeeldrecord; nog niet alle zoekvelden zijn live gekoppeld."}</blockquote></div></aside></div>}
+    {selected && <div className="backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><aside className="detail" role="dialog" aria-modal="true" aria-labelledby="detail-title"><button className="x" type="button" onClick={() => setSelected(null)} aria-label="Details sluiten">×</button><div className={selected.type === "Archeologisch" ? "detail-head sand" : "detail-head"}><b>{selected.type === "Archeologisch" ? "A" : "M"}</b><small>{selected.official ? "RCE Linked Data" : `${selected.type} erfgoed`}</small></div><div className="detail-copy"><small>RIJKSMONUMENT {selected.monumentNumber ?? selected.id}</small><h2 id="detail-title">{selected.title}</h2><p>{selected.address}<br />{selected.postalCode} {selected.place}{selected.province ? `, ${selected.province}` : ""}</p><hr /><p>{selected.description}</p><dl><div><dt>Status</dt><dd>Rijksmonument</dd></div><div><dt>CHO-nummer</dt><dd>{selected.objectNumber}</dd></div><div><dt>Functie</dt><dd>{selected.kind}</dd></div><div><dt>Registratie / datering</dt><dd>{selected.registrationDate ?? selected.period}</dd></div>{selected.wkt && <div><dt>Geometrie (WGS84)</dt><dd><code>{selected.wkt}</code></dd></div>}{selected.parcels?.length ? <div><dt>Kadastrale percelen</dt><dd>{selected.parcels.map((parcel) => <span key={`${parcel.municipalityCode}-${parcel.section}-${parcel.parcelNumber}`}>{parcel.municipality} {parcel.section} {parcel.parcelNumber}{parcel.provinceCode ? ` (${parcel.provinceCode})` : ""}</span>)}</dd></div> : null}{selected.archaeologicalSites?.length ? <div><dt>Archeologisch terrein</dt><dd>{selected.archaeologicalSites.map((site, index) => <span key={site.archisMonumentnummer ?? index}>{site.archisMonumentnummer ? `Archis-monumentnummer ${site.archisMonumentnummer}` : "Archis-monumentnummer onbekend"}{site.waardering ? ` — ${site.waardering}` : ""}</span>)}</dd></div> : null}{selected.complexes?.length ? <div><dt>Onderdeel van complex</dt><dd>{selected.complexes.map((complex, index) => <span key={complex.complexnummer ?? index}>{complex.complexnaam || (complex.complexnummer ? `Complex ${complex.complexnummer}` : "Complex")}{complex.complexnummer && complex.complexnaam ? ` (${complex.complexnummer})` : ""}{complex.role === "hoofdobject" ? " — hoofdobject" : ""}</span>)}</dd></div> : null}<div><dt>Bron</dt><dd>{selected.official ? "RCE Linked Data" : "Voorbeelddata"}</dd></div></dl><div className="detail-links"><a href={selected.sourceUrl ?? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(selected.monumentNumber ?? selected.id)}`} target="_blank" rel="noreferrer">Bekijk in het Monumentenregister <b>→</b></a>{selected.linkedDataUrl && <a href={selected.linkedDataUrl} target="_blank" rel="noreferrer">Bekijk in de RCE Linked Data <b>→</b></a>}</div><blockquote>{selected.official ? "Actueel record uit de officiële Linked Data Voorziening van de RCE." : "Voorbeeldrecord; nog niet alle zoekvelden zijn live gekoppeld."}</blockquote></div></aside></div>}
   </main>;
 }

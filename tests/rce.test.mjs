@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildArcheologischTerreinQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, mergeDiscoveryMatches, parseArcheologischTerreinResults, parseDiscoveryBranchResults, parseParcelResults, parseRceMonuments, parseSparqlResults, RCE_SEMANTICS } from "../lib/rce.ts";
+import { buildArcheologischTerreinQuery, buildComplexQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, mergeDiscoveryMatches, parseArcheologischTerreinResults, parseComplexResults, parseDiscoveryBranchResults, parseParcelResults, parseRceMonuments, parseSparqlResults, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -18,7 +18,30 @@ test("parses rich SPARQL results", () => {
   // the parenthesis. A stricter regex silently dropped lat/lng for every
   // result, which emptied the map without ever failing a request.
   const document = { results: { bindings: [{ cho: { value: "rm:38342" }, choi: { value: "38342" }, rmnr: { value: "36046" }, functie: { value: "Woonhuis(K)" }, omschrijving: { value: "Pand met 17e eeuwse lijstgevel." }, monumentaard: { value: "onroerend gebouwd" }, volledigAdres: { value: "Brigittenstraat 18" }, postcode: { value: "3512KM" }, woonplaats: { value: "Utrecht" }, wkt: { value: "Point (5.1267842049703 52.088895166661)" }, inschrijving: { value: "1967-06-20" } }] } };
-  assert.deepEqual(parseSparqlResults(document), [{ choNumber: "38342", monumentNumber: "36046", registrationDate: "1967-06-20", street: "", houseNumber: "", postalCode: "3512KM", sourceUrl: "rm:38342", name: undefined, functionName: "Woonhuis(K)", originalFunctionNames: [], currentFunctionNames: [], typeNames: [], legalStatus: "rijksmonument", description: "Pand met 17e eeuwse lijstgevel.", monumentNature: "onroerend gebouwd", fullAddress: "Brigittenstraat 18", place: "Utrecht", lng: 5.1267842049703, lat: 52.088895166661, wkt: "Point (5.1267842049703 52.088895166661)" }]);
+  assert.deepEqual(parseSparqlResults(document), [{ choNumber: "38342", monumentNumber: "36046", registrationDate: "1967-06-20", street: "", houseNumber: "", postalCode: "3512KM", sourceUrl: "rm:38342", name: undefined, functionName: "Woonhuis(K)", originalFunctionNames: [], currentFunctionNames: [], typeNames: [], legalStatus: "rijksmonument", description: "Pand met 17e eeuwse lijstgevel.", monumentNature: "onroerend gebouwd", fullAddress: "Brigittenstraat 18", place: "Utrecht", municipality: undefined, provinceCode: undefined, lng: 5.1267842049703, lat: 52.088895166661, wkt: "Point (5.1267842049703 52.088895166661)" }]);
+});
+
+test("falls back to the BRK gemeente when there is no BAG woonplaats", () => {
+  // Archeologische terreinen hebben doorgaans geen BAG-relatie (geen adres),
+  // maar wel een BRK-relatie (kadastraal perceel) met een gemeentenaam.
+  const document = { results: { bindings: [{ cho: { value: "rm:1" }, choi: { value: "1" }, rmnr: { value: "45439" }, monumentaard: { value: "archeologisch" }, gemeente: { value: "Ambt-Hardenberg" }, provinciecode: { value: "OV" } }] } };
+  const [monument] = parseSparqlResults(document);
+  assert.equal(monument.place, "Ambt-Hardenberg");
+  assert.equal(monument.municipality, "Ambt-Hardenberg");
+  assert.equal(monument.provinceCode, "OV");
+});
+
+test("prefers the BAG woonplaats over the BRK gemeente when both are present", () => {
+  const document = { results: { bindings: [{ cho: { value: "rm:1" }, choi: { value: "1" }, rmnr: { value: "36046" }, woonplaats: { value: "Utrecht" }, gemeente: { value: "Utrecht" } }] } };
+  const [monument] = parseSparqlResults(document);
+  assert.equal(monument.place, "Utrecht");
+});
+
+test("maps a BRK provinciecode to its full province name", () => {
+  assert.equal(provinceName("OV"), "Overijssel");
+  assert.equal(provinceName("ZH"), "Zuid-Holland");
+  assert.equal(provinceName(undefined), undefined);
+  assert.equal(provinceName("XX"), "XX");
 });
 
 test("queries and parses BRK parcels separately", () => {
@@ -42,6 +65,11 @@ test("only queries formally established descriptions", () => {
   assert.match(query, /ceo:heeftOmschrijving \?omschrijvingNode/);
   assert.match(query, /ceo:omschrijving \?omschrijvingValue/);
   assert.match(query, /ceo:formeelStandpunt true/);
+  // Gemeente via BRK is een fallback-plaatsaanduiding voor records zonder
+  // BAG-relatie (bv. archeologische terreinen).
+  assert.match(query, /ceo:heeftBRKRelatie \?brk/);
+  assert.match(query, /ceo:gemeentenaam \?gemeenteValue/);
+  assert.match(query, /ceo:provinciecode \?provinciecodeValue/);
 });
 
 test("queries formal original and current functions as separate facets", () => {
@@ -117,4 +145,22 @@ test("groups multiple archaeological terreinen under the same monument", () => {
     { archisMonumentnummer: "1037", waardering: "zeer hoge archeologische waarde beschermd" },
   ]);
   assert.equal(byMonument.get("rm:2").length, 1);
+});
+
+test("looks up complex membership by the monument's own CHO subject URI", () => {
+  const query = buildComplexQuery(["https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/rijksmonument/65311"]);
+  assert.match(query, /ceo:heeftRijksmonument \?rm/);
+  assert.match(query, /ceo:complexnummer/);
+  assert.match(query, /ceo:heeftHoofdobject/);
+  assert.match(query, /<https:\/\/linkeddata\.cultureelerfgoed\.nl\/cho-kennis\/id\/rijksmonument\/65311>/);
+});
+
+test("marks a monument as hoofdobject only when it equals the complex's own heeftHoofdobject value", () => {
+  const document = { results: { bindings: [
+    { rm: { value: "rm:onderdeel" }, complex: { value: "complex:1" }, complexnummerValue: { value: "531014" }, complexnaam: { value: "Rijnoord" }, hoofdobjectValue: { value: "rm:hoofdobject" } },
+    { rm: { value: "rm:hoofdobject" }, complex: { value: "complex:1" }, complexnummerValue: { value: "531014" }, complexnaam: { value: "Rijnoord" }, hoofdobjectValue: { value: "rm:hoofdobject" } },
+  ] } };
+  const byMonument = parseComplexResults(document);
+  assert.deepEqual(byMonument.get("rm:onderdeel"), [{ complexnummer: "531014", complexnaam: "Rijnoord", role: "onderdeel" }]);
+  assert.deepEqual(byMonument.get("rm:hoofdobject"), [{ complexnummer: "531014", complexnaam: "Rijnoord", role: "hoofdobject" }]);
 });
