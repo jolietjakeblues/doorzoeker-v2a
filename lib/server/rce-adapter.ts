@@ -1,11 +1,12 @@
 import {
   buildRceDetailsQuery,
-  buildRceDiscoveryQuery,
+  buildRceDiscoveryQueries,
   buildRceFacetsQuery,
   buildRceNumberQuery,
   buildRceParcelQuery,
   buildRceParcelsQuery,
-  parseDiscoveryResults,
+  mergeDiscoveryMatches,
+  parseDiscoveryBranchResults,
   parseFacetResults,
   parseParcelResults,
   parseRceMonuments,
@@ -24,13 +25,26 @@ function requestSignal(signal?: AbortSignal) {
   return signal ? AbortSignal.any([signal, timeout]) : timeout;
 }
 
-async function fetchSparql(query: string, signal?: AbortSignal) {
+async function fetchSparqlOnce(query: string, signal?: AbortSignal) {
   const response = await fetch(`${SPARQL_ENDPOINT}?query=${encodeURIComponent(query)}`, {
     headers: { Accept: "application/sparql-results+json" },
     signal: requestSignal(signal),
   });
-  if (!response.ok) throw new Error(`RCE SPARQL-service antwoordde met ${response.status}`);
+  if (!response.ok) throw new Error(`RCE SPARQL-service antwoordde met ${response.status}`, { cause: response.status });
   return response.json();
+}
+
+// Fanning discovery searches out into six parallel branch queries means six
+// chances for a transient 5xx from RCE instead of one. Retry those once
+// before giving up; a genuine client-side query error (4xx) is not retried.
+async function fetchSparql(query: string, signal?: AbortSignal) {
+  try {
+    return await fetchSparqlOnce(query, signal);
+  } catch (error) {
+    const status = error instanceof Error ? error.cause : undefined;
+    if (typeof status !== "number" || status < 500) throw error;
+    return fetchSparqlOnce(query, signal);
+  }
 }
 
 async function searchByNumber(monumentNumber: string, signal?: AbortSignal): Promise<RceMonument[]> {
@@ -45,7 +59,11 @@ async function searchByNumber(monumentNumber: string, signal?: AbortSignal): Pro
 }
 
 async function searchByText(term: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
-  const discovery = parseDiscoveryResults(await fetchSparql(buildRceDiscoveryQuery(term, page), signal)).slice(0, 25);
+  const branchResults = await Promise.all(
+    buildRceDiscoveryQueries(term).map(({ bron, query }) => fetchSparql(query, signal).then((document) => parseDiscoveryBranchResults(document, bron, term))),
+  );
+  const start = Math.max(0, page - 1) * 25;
+  const discovery = mergeDiscoveryMatches(branchResults).slice(start, start + 25);
   if (!discovery.length) return [];
   const numbers = discovery.map((match) => match.monumentNumber);
   const [detailsDocument, parcelsDocument, facetsDocument] = await Promise.all([

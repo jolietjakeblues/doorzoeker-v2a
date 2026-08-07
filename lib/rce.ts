@@ -50,73 +50,71 @@ export type RceParcel = {
 
 type SparqlBinding = Record<string, { value?: string }>;
 
-type DiscoveryMatch = { monumentNumber: string; matchSource: string; matchedText: string; matchScore: number };
+export type DiscoveryMatch = { monumentNumber: string; matchSource: string; matchedText: string; matchScore: number };
 
 function escapeSparqlString(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/[\r\n]+/g, " ");
 }
 
-export function parseDiscoveryResults(document: unknown): DiscoveryMatch[] {
-  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
-  if (!Array.isArray(bindings)) return [];
-  const priority: Record<string, number> = { "oorspronkelijke functie": 1, "huidige functie": 2, type: 3, monumentaard: 4, "formele omschrijving": 5, woonplaats: 6 };
-  const matches = new Map<string, DiscoveryMatch>();
-  for (const binding of bindings) {
-    const monumentNumber = binding.rmnr?.value ?? "";
-    const candidate = { monumentNumber, matchSource: binding.bron?.value ?? "", matchedText: binding.match?.value ?? "", matchScore: Number(binding.score?.value ?? 999) };
-    const current = matches.get(monumentNumber);
-    const candidatePriority = priority[candidate.matchSource] ?? 99;
-    const currentPriority = current ? priority[current.matchSource] ?? 99 : 999;
-    if (monumentNumber && (!current || candidate.matchScore < current.matchScore || (candidate.matchScore === current.matchScore && candidatePriority < currentPriority))) matches.set(monumentNumber, candidate);
-  }
-  return [...matches.values()];
-}
+// Each discovery source runs as its own SPARQL query. A single query that UNIONs
+// all six sources together (with a shared FILTER/ORDER BY) makes Virtuoso build
+// and sort one enormous intermediate result across a 58M-triple graph, which
+// reliably times out. Per-source queries are simple, fast (each source alone
+// resolves in well under a second), and let us do the scoring/merge/pagination
+// in JS instead of relying on the query planner to do it efficiently.
+const DISCOVERY_SOURCES: { bron: string; rang: number; pattern: string }[] = [
+  { bron: "oorspronkelijke functie", rang: 1, pattern: "?cho ceo:heeftOorspronkelijkeFunctie ?functieNode .\n    ?functieNode ceo:formeelStandpunt true ; ceo:heeftFunctieNaam/skos:prefLabel ?match ." },
+  { bron: "huidige functie", rang: 2, pattern: "?cho ceo:heeftHuidigeFunctie ?functieNode .\n    ?functieNode ceo:formeelStandpunt true ; ceo:heeftFunctieNaam/skos:prefLabel ?match ." },
+  { bron: "type", rang: 3, pattern: "?cho ceo:heeftType/ceo:heeftTypeNaam/skos:prefLabel ?match ." },
+  { bron: "monumentaard", rang: 4, pattern: "?cho ceo:heeftMonumentAard/skos:prefLabel ?match ." },
+  { bron: "formele omschrijving", rang: 5, pattern: "?cho ceo:heeftOmschrijving ?omschrijvingNode .\n    ?omschrijvingNode ceo:omschrijving ?match ; ceo:formeelStandpunt true ." },
+  { bron: "woonplaats", rang: 6, pattern: "?cho ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?match ." },
+];
 
-export function buildRceDiscoveryQuery(term: string, page = 1) {
+export function buildRceDiscoveryQueries(term: string): { bron: string; query: string }[] {
   const needle = escapeSparqlString(term.trim());
-  const offset = Math.max(0, page - 1) * 25;
-  return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
+  return DISCOVERY_SOURCES.map(({ bron, pattern }) => ({
+    bron,
+    query: `PREFIX ceo: <${CEO}>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-SELECT DISTINCT ?rmnr ?match ?bron ?score WHERE {
+SELECT DISTINCT ?rmnr ?match WHERE {
  GRAPH <${INSTANCES_GRAPH}> {
   ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ;
        ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> .
-  {
-    ?cho ceo:heeftOorspronkelijkeFunctie ?functieNode .
-    ?functieNode ceo:formeelStandpunt true ; ceo:heeftFunctieNaam/skos:prefLabel ?match .
-    BIND("oorspronkelijke functie" AS ?bron)
-    BIND(1 AS ?rang)
-  } UNION {
-    ?cho ceo:heeftHuidigeFunctie ?functieNode .
-    ?functieNode ceo:formeelStandpunt true ; ceo:heeftFunctieNaam/skos:prefLabel ?match .
-    BIND("huidige functie" AS ?bron)
-    BIND(2 AS ?rang)
-  } UNION {
-    ?cho ceo:heeftType/ceo:heeftTypeNaam/skos:prefLabel ?match .
-    BIND("type" AS ?bron)
-    BIND(3 AS ?rang)
-  } UNION {
-    ?cho ceo:heeftMonumentAard/skos:prefLabel ?match .
-    BIND("monumentaard" AS ?bron)
-    BIND(4 AS ?rang)
-  } UNION {
-    ?cho ceo:heeftOmschrijving ?omschrijvingNode .
-    ?omschrijvingNode ceo:omschrijving ?match ; ceo:formeelStandpunt true .
-    BIND("formele omschrijving" AS ?bron)
-    BIND(5 AS ?rang)
-  } UNION {
-    ?cho ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?match .
-    BIND("woonplaats" AS ?bron)
-    BIND(6 AS ?rang)
-  }
+  ${pattern}
   FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))
-  BIND(IF(LCASE(STR(?match)) = LCASE("${needle}"), 0, IF(STRSTARTS(LCASE(STR(?match)), LCASE("${needle}")), 1, 2)) AS ?matchtype)
-  BIND((?rang * 10) + ?matchtype AS ?score)
  }
 }
-ORDER BY ?score LCASE(STR(?match)) ?rmnr
-LIMIT 100
-OFFSET ${offset}`;
+LIMIT 100`,
+  }));
+}
+
+export function parseDiscoveryBranchResults(document: unknown, bron: string, term: string): DiscoveryMatch[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  const rang = DISCOVERY_SOURCES.find((source) => source.bron === bron)?.rang ?? 99;
+  const needle = term.trim().toLocaleLowerCase("nl");
+  return bindings.flatMap((binding) => {
+    const monumentNumber = binding.rmnr?.value ?? "";
+    const matchedText = binding.match?.value ?? "";
+    if (!monumentNumber) return [];
+    const lowerMatch = matchedText.toLocaleLowerCase("nl");
+    const matchtype = lowerMatch === needle ? 0 : lowerMatch.startsWith(needle) ? 1 : 2;
+    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: rang * 10 + matchtype }];
+  });
+}
+
+export function mergeDiscoveryMatches(resultsPerSource: DiscoveryMatch[][]): DiscoveryMatch[] {
+  const matches = new Map<string, DiscoveryMatch>();
+  for (const candidates of resultsPerSource) {
+    for (const candidate of candidates) {
+      const current = matches.get(candidate.monumentNumber);
+      if (!current || candidate.matchScore < current.matchScore) matches.set(candidate.monumentNumber, candidate);
+    }
+  }
+  return [...matches.values()].sort((a, b) =>
+    a.matchScore - b.matchScore || a.matchedText.localeCompare(b.matchedText, "nl") || a.monumentNumber.localeCompare(b.monumentNumber),
+  );
 }
 
 export function parseSparqlResults(document: unknown): RceMonument[] {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildRceDiscoveryQuery, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, parseDiscoveryResults, parseParcelResults, parseRceMonuments, parseSparqlResults, RCE_SEMANTICS } from "../lib/rce.ts";
+import { buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, mergeDiscoveryMatches, parseDiscoveryBranchResults, parseParcelResults, parseRceMonuments, parseSparqlResults, RCE_SEMANTICS } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -49,44 +49,47 @@ test("queries formal original and current functions as separate facets", () => {
   assert.match(query, /ceo:heeftType\/ceo:heeftTypeNaam\/skos:prefLabel/);
 });
 
-test("discovers functions, types and only formal descriptions", () => {
-  const query = buildRceDiscoveryQuery('woonhuis "K"');
-  assert.match(query, /ceo:heeftOorspronkelijkeFunctie/);
-  assert.match(query, /graph\/instanties-rce/);
-  assert.match(query, /ceo:heeftJuridischeStatus/);
-  assert.match(query, /ceo:heeftOorspronkelijkeFunctie \?functieNode/);
-  assert.match(query, /\?functieNode ceo:formeelStandpunt true/);
-  assert.match(query, /ceo:heeftHuidigeFunctie/);
-  assert.match(query, /ceo:heeftType/);
-  assert.match(query, /ceo:heeftMonumentAard/);
-  assert.match(query, /ORDER BY \?score/);
-  assert.match(query, /ceo:formeelStandpunt true/);
-  assert.match(query, /woonhuis \\"K\\"/);
+test("discovers functions, types and descriptions as separate fast queries per source", () => {
+  const queries = buildRceDiscoveryQueries('woonhuis "K"');
+  assert.deepEqual(queries.map((q) => q.bron), ["oorspronkelijke functie", "huidige functie", "type", "monumentaard", "formele omschrijving", "woonplaats"]);
+  for (const { query } of queries) {
+    assert.match(query, /graph\/instanties-rce/);
+    assert.match(query, /ceo:heeftJuridischeStatus/);
+    assert.match(query, /woonhuis \\"K\\"/);
+    // Each source is its own query: no UNION, no ORDER BY, no cross-source
+    // scoring in SPARQL. That's what keeps every one of them fast on a
+    // 58M-triple graph instead of timing out like the combined query did.
+    assert.doesNotMatch(query, /UNION/);
+    assert.doesNotMatch(query, /ORDER BY/);
+  }
+  const oorspronkelijkeFunctie = queries.find((q) => q.bron === "oorspronkelijke functie").query;
+  assert.match(oorspronkelijkeFunctie, /ceo:heeftOorspronkelijkeFunctie \?functieNode/);
+  assert.match(oorspronkelijkeFunctie, /\?functieNode ceo:formeelStandpunt true/);
+  const omschrijving = queries.find((q) => q.bron === "formele omschrijving").query;
+  assert.match(omschrijving, /ceo:formeelStandpunt true/);
 });
 
-test("paginates semantic discovery without changing its ranking", () => {
-  const first = buildRceDiscoveryQuery("woonhuis", 1);
-  const second = buildRceDiscoveryQuery("woonhuis", 2);
-  assert.match(first, /LIMIT 100/);
-  assert.match(second, /LIMIT 100/);
-  assert.match(first, /OFFSET 0/);
-  assert.match(second, /OFFSET 25/);
-  assert.match(second, /ORDER BY \?score/);
+test("merges discovery branches, dedupes by best score, and sorts for page-style slicing", () => {
+  const branchA = [{ monumentNumber: "1", matchSource: "type", matchedText: "Woonhuis", matchScore: 30 }];
+  const branchB = [
+    { monumentNumber: "2", matchSource: "oorspronkelijke functie", matchedText: "Woonhuis", matchScore: 10 },
+    { monumentNumber: "1", matchSource: "monumentaard", matchedText: "Woonhuis", matchScore: 40 },
+  ];
+  const merged = mergeDiscoveryMatches([branchA, branchB]);
+  assert.deepEqual(merged.map((m) => m.monumentNumber), ["2", "1"]);
+  assert.equal(merged[1].matchScore, 30, "keeps the better (lower) score when a monument appears in multiple branches");
 });
 
 test("deduplicates matches and prefers a function over a description", () => {
-  const document = { results: { bindings: [
-    { rmnr: { value: "36046" }, match: { value: "Pand met lijstgevel" }, bron: { value: "formele omschrijving" } },
-    { rmnr: { value: "36046" }, match: { value: "Woonhuis(K)" }, bron: { value: "oorspronkelijke functie" } },
-  ] } };
-  assert.deepEqual(parseDiscoveryResults(document), [{ monumentNumber: "36046", matchSource: "oorspronkelijke functie", matchedText: "Woonhuis(K)", matchScore: 999 }]);
+  const omschrijvingMatches = parseDiscoveryBranchResults({ results: { bindings: [{ rmnr: { value: "36046" }, match: { value: "Pand met lijstgevel" } }] } }, "formele omschrijving", "lijstgevel");
+  const functieMatches = parseDiscoveryBranchResults({ results: { bindings: [{ rmnr: { value: "36046" }, match: { value: "Woonhuis(K)" } }] } }, "oorspronkelijke functie", "woonhuis(k)");
+  assert.deepEqual(mergeDiscoveryMatches([omschrijvingMatches, functieMatches]), [{ monumentNumber: "36046", matchSource: "oorspronkelijke functie", matchedText: "Woonhuis(K)", matchScore: 10 }]);
 });
 
 test("prefers the lowest semantic match score regardless of binding order", () => {
-  const document = { results: { bindings: [
-    { rmnr: { value: "1" }, match: { value: "Een woonhuis in context" }, bron: { value: "formele omschrijving" }, score: { value: "52" } },
-    { rmnr: { value: "1" }, match: { value: "Woonhuis" }, bron: { value: "oorspronkelijke functie" }, score: { value: "10" } },
-  ] } };
-  assert.equal(parseDiscoveryResults(document)[0].matchScore, 10);
-  assert.equal(parseDiscoveryResults(document)[0].matchSource, "oorspronkelijke functie");
+  const omschrijvingMatches = parseDiscoveryBranchResults({ results: { bindings: [{ rmnr: { value: "1" }, match: { value: "Een woonhuis in context" } }] } }, "formele omschrijving", "woonhuis");
+  const functieMatches = parseDiscoveryBranchResults({ results: { bindings: [{ rmnr: { value: "1" }, match: { value: "Woonhuis" } }] } }, "oorspronkelijke functie", "woonhuis");
+  const merged = mergeDiscoveryMatches([omschrijvingMatches, functieMatches]);
+  assert.equal(merged[0].matchScore, 10);
+  assert.equal(merged[0].matchSource, "oorspronkelijke functie");
 });
