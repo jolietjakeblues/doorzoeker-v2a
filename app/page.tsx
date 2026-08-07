@@ -107,7 +107,7 @@ export default function Home() {
     try {
       const records = await searchRceMonuments(term);
       setRemoteResults(records.map((record) => toItem(record, term)));
-      setHasMore(records.length === 25 && !/^\d{4,6}$/.test(term));
+      setHasMore(false);
       setRemoteState("success");
     } catch {
       setRemoteResults([]);
@@ -117,6 +117,11 @@ export default function Home() {
   async function loadMore() {
     if (!active || loadingMore) return;
     const nextPage = resultPage + 1;
+    const lastResult = remoteResults?.at(-1);
+    if (!lastResult?.monumentNumber || !lastResult.matchedText || lastResult.matchScore === undefined) {
+      setHasMore(false);
+      return;
+    }
     setLoadingMore(true);
     try {
       const records = await searchRceMonuments(active, undefined, nextPage);

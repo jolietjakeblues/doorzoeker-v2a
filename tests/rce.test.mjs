@@ -61,8 +61,10 @@ test("discovers functions, types and only formal descriptions", () => {
 test("paginates semantic discovery without changing its ranking", () => {
   const first = buildRceDiscoveryQuery("woonhuis", 1);
   const second = buildRceDiscoveryQuery("woonhuis", 2);
+  assert.match(first, /LIMIT 100/);
+  assert.match(second, /LIMIT 100/);
   assert.match(first, /OFFSET 0/);
-  assert.match(second, /OFFSET 100/);
+  assert.match(second, /OFFSET 25/);
   assert.match(second, /ORDER BY \?score/);
 });
 

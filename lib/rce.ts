@@ -76,7 +76,7 @@ export function parseDiscoveryResults(document: unknown): DiscoveryMatch[] {
 
 export function buildRceDiscoveryQuery(term: string, page = 1) {
   const needle = escapeSparqlString(term.trim());
-  const offset = Math.max(0, page - 1) * 100;
+  const offset = Math.max(0, page - 1) * 25;
   return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 SELECT DISTINCT ?rmnr ?match ?bron ?score WHERE {
