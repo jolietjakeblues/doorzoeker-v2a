@@ -13,6 +13,7 @@ function clientId(request: Request) {
 }
 
 function consumeRateLimit(id: string, now = Date.now()) {
+  if (requests.size > 5_000) requests.clear();
   const current = requests.get(id);
   if (!current || current.resetAt <= now) {
     requests.set(id, { count: 1, resetAt: now + RATE_WINDOW_MS });
@@ -24,9 +25,11 @@ function consumeRateLimit(id: string, now = Date.now()) {
 }
 
 function cacheStore(): Cache | undefined {
-  return typeof caches !== "undefined" && "default" in caches
-    ? (caches as CacheStorage & { default: Cache }).default
-    : undefined;
+  try {
+    return typeof caches !== "undefined" && "default" in caches ? (caches as CacheStorage & { default: Cache }).default : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 async function readCache(key: Request) {
@@ -47,28 +50,29 @@ async function writeCache(key: Request, response: Response) {
 
 export async function GET(request: Request) {
   const startedAt = Date.now();
-  const url = new URL(request.url);
-  const query = (url.searchParams.get("q") ?? "").trim();
-  const page = Number(url.searchParams.get("page") ?? "1");
-  if (!query || query.length > 120 || !Number.isInteger(page) || page < 1 || page > 20) {
-    return Response.json({ error: "Ongeldige zoekopdracht." }, { status: 400 });
-  }
-  if (!consumeRateLimit(clientId(request))) {
-    return Response.json({ error: "Te veel zoekopdrachten. Probeer het over een minuut opnieuw." }, { status: 429, headers: { "Retry-After": "60" } });
-  }
-
-  const cacheKey = new Request(`${url.origin}/api/rce/search?q=${encodeURIComponent(query.toLocaleLowerCase("nl"))}&page=${page}`);
-  const memoryCached = responseCache.get(cacheKey.url);
-  if (memoryCached && memoryCached.expiresAt > Date.now()) {
-    return new Response(memoryCached.body, {
-      headers: { "Content-Type": "application/json", "Cache-Control": `public, max-age=60, s-maxage=${CACHE_SECONDS}`, "X-Doorzoeker-Cache": "HIT" },
-    });
-  }
-  if (memoryCached) responseCache.delete(cacheKey.url);
-  const cached = await readCache(cacheKey);
-  if (cached) return cached;
 
   try {
+    const url = new URL(request.url);
+    const query = (url.searchParams.get("q") ?? "").trim();
+    const page = Number(url.searchParams.get("page") ?? "1");
+    if (!query || query.length > 120 || !Number.isInteger(page) || page < 1 || page > 20) {
+      return Response.json({ error: "Ongeldige zoekopdracht." }, { status: 400 });
+    }
+    if (!consumeRateLimit(clientId(request))) {
+      return Response.json({ error: "Te veel zoekopdrachten. Probeer het over een minuut opnieuw." }, { status: 429, headers: { "Retry-After": "60" } });
+    }
+
+    const cacheKey = new Request(`${url.origin}/api/rce/search?q=${encodeURIComponent(query.toLocaleLowerCase("nl"))}&page=${page}`);
+    const memoryCached = responseCache.get(cacheKey.url);
+    if (memoryCached && memoryCached.expiresAt > Date.now()) {
+      return new Response(memoryCached.body, {
+        headers: { "Content-Type": "application/json", "Cache-Control": `public, max-age=60, s-maxage=${CACHE_SECONDS}`, "X-Doorzoeker-Cache": "HIT" },
+      });
+    }
+    if (memoryCached) responseCache.delete(cacheKey.url);
+    const cached = await readCache(cacheKey);
+    if (cached) return cached;
+
     const results = await searchRceMonuments(query, request.signal, page);
     const body = JSON.stringify({ results });
     const response = new Response(body, {
