@@ -1,6 +1,6 @@
 # ADR-0002: Hybride gegevensarchitectuur met verwisselbare adapters
 
-- Status: voorgesteld
+- Status: geaccepteerd
 - Datum: 2026-08-06
 
 ## Context
@@ -47,3 +47,14 @@ als metingen aantonen dat relevantie, facetten of responstijden dat vereisen.
 - Er is extra backendcode nodig voor mapping, caching en foutafhandeling.
 - De noodzaak van een zoekindex blijft een meetbare, uitgestelde beslissing.
 
+## Implementatiestatus
+
+Sinds 2026-08-07 gebruikt de webclient uitsluitend het taakgerichte contract
+`GET /api/rce/search`. Queryopbouw, RCE REST- en SPARQL-aanroepen en mapping
+draaien in de serveradapter. De route valideert invoer, begrenst verzoeken per
+client, hanteert een harde upstream-timeout, gebruikt de Cloudflare-cache en
+publiceert timinginformatie voor observability.
+
+De serverroute vereist de Vinext Cloudflare Worker-runtime. De statische
+GitHub Pages-publicatie kan daarom alleen als overgangsfrontend blijven bestaan
+wanneer zij naar dezelfde gedeployde applicatie-API wordt geconfigureerd.

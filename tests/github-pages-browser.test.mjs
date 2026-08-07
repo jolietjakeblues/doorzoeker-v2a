@@ -18,6 +18,7 @@ const rceSparqlFixture = { results: { bindings: [{ cho: { value: "rm:38342" }, c
 const rceDiscoveryFixture = { results: { bindings: [{ rmnr: { value: "36046" }, match: { value: "Pand met 17e eeuwse lijstgevel." }, bron: { value: "formele omschrijving" }, score: { value: "51" } }] } };
 const rceFacetsFixture = { results: { bindings: [{ rmnr: { value: "36046" }, oorspronkelijkeFuncties: { value: "Woonhuis(K)" }, huidigeFuncties: { value: "Woning" }, typen: { value: "Woonhuis" } }] } };
 const rceParcelFixture = { results: { bindings: [{ gemeente: { value: "Utrecht" }, gemeentecode: { value: "996" }, sectie: { value: "B" }, perceel: { value: "358" }, provinciecode: { value: "UT" } }] } };
+const rceApiFixture = { results: [{ choNumber: "38342", monumentNumber: "36046", registrationDate: "1967-06-20", street: "", houseNumber: "", postalCode: "3512KM", sourceUrl: "rm:38342", functionName: "Woonhuis(K)", originalFunctionNames: ["Woonhuis(K)"], currentFunctionNames: ["Woning"], typeNames: ["Woonhuis"], legalStatus: "rijksmonument", description: "Pand met 17e eeuwse lijstgevel.", monumentNature: "onroerend gebouwd", fullAddress: "Brigittenstraat 18", place: "Utrecht", lng: 5.1267842049703, lat: 52.088895166661, wkt: "POINT(5.1267842049703 52.088895166661)", matchSource: "formele omschrijving", matchedText: "Pand met 17e eeuwse lijstgevel.", matchScore: 51, parcels: [{ municipality: "Utrecht", municipalityCode: "996", section: "B", parcelNumber: "358", provinceCode: "UT" }] }] };
 const contentTypes = {
   ".css": "text/css; charset=utf-8",
   ".gif": "image/gif",
@@ -65,6 +66,7 @@ test("GitHub Pages export loads and remains interactive in Chromium", { timeout:
 
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
+  await page.route("**/api/rce/search?**", (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify(rceApiFixture) }));
   await page.route("https://api.linkeddata.cultureelerfgoed.nl/**", (route) => {
     const requestUrl = decodeURIComponent(route.request().url());
     const isSparql = requestUrl.includes("/sparql");

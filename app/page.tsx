@@ -2,7 +2,8 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HeritageMap } from "./HeritageMap";
-import { searchRceMonuments, type RceMonument } from "@/lib/rce";
+import { searchRceMonuments } from "@/lib/rce-client";
+import type { RceMonument } from "@/lib/rce";
 
 type Item = {
   id: string; objectNumber: string; title: string; kind: string; address: string;

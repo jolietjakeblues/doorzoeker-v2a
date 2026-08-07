@@ -20,13 +20,17 @@ test("GitHub Pages export is complete and base-path safe", async () => {
 
   const files = await collectTextFiles(outputDirectory);
   assert.ok(files.length > 0, "expected exported text assets");
+  let exportedSource = "";
 
   for (const file of files) {
     const contents = await readFile(file, "utf8");
+    exportedSource += contents;
     const withoutExpectedPrefix = contents
       .replaceAll("/doorzoeker_v2/_next/", "")
       .replaceAll("doorzoeker_v2/_next/", "");
     assert.ok(!withoutExpectedPrefix.includes("/_next/"), `${path.relative(outputDirectory, file)} contains a root-relative framework path`);
     assert.ok(!/["']_next\//.test(contents), `${path.relative(outputDirectory, file)} contains a relative framework path`);
   }
+  assert.ok(!exportedSource.includes("api.linkeddata.cultureelerfgoed.nl"), "browser bundle must not contact RCE endpoints directly");
+  assert.ok(!exportedSource.includes("datasets/rce/cho/sparql"), "browser bundle must not contain a SPARQL endpoint");
 });
