@@ -64,24 +64,25 @@ RCE-query's, resultaatvormen, prestaties en kaartdata heeft gevalideerd.
 app/                   Applicatieroutes en componenten
 public/                Publiek geserveerde afbeeldingen en iconen
 tests/                 Geautomatiseerde tests
-scripts/               Build- en exportscripts
 docs/
   adr/                 Architectuurbesluiten
   reference/           Ontwerp- en huisstijlbronnen
   vertical-slices/     End-to-end productdoorsneden
-.github/workflows/     CI en GitHub Pages-publicatie
+.github/workflows/     CI en Cloudflare Workers-publicatie
 ```
 
 ## Status
 
 Initiatiefase. De scope en architectuur worden momenteel vastgesteld.
 
-## GitHub Pages
+## Cloudflare Workers
 
-Een push naar `main` bouwt en publiceert de statische startpagina via GitHub
-Actions. Kies eenmalig in de repository-instellingen bij **Pages** voor
-**GitHub Actions** als bron. De lokale export kan worden gecontroleerd met:
+Een push naar `main` bouwt en deployt de applicatie automatisch naar
+Cloudflare Workers via GitHub Actions
+([`.github/workflows/deploy-workers.yml`](.github/workflows/deploy-workers.yml)).
+Dit vereist de repository-secrets `CLOUDFLARE_API_TOKEN` en
+`CLOUDFLARE_ACCOUNT_ID`. Handmatig bouwen en deployen kan met:
 
 ```sh
-npm run pages:build
+npm run deploy
 ```

@@ -27,9 +27,3 @@ jobs:
         run: npm run lint
       - name: Build and test
         run: npm test
-      - name: Verify GitHub Pages export
-        run: npm run pages:build && npm run test:pages
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
-      - name: Browser smoke test
-        run: npm run test:browser

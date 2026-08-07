@@ -8,12 +8,9 @@
     "scripts": {
         "dev": "vinext dev",
         "build": "vinext build",
-        "pages:build": "vinext build && node scripts/build-github-pages.mjs",
         "start": "vinext start",
         "deploy": "vinext build && wrangler deploy --config dist/server/wrangler.json",
         "test": "npm run build && node --test tests/rendered-html.test.mjs tests/rce.test.mjs tests/rce-api.test.mjs tests/map-clustering.test.mjs tests/terms-api.test.mjs",
-        "test:browser": "node --test tests/github-pages-browser.test.mjs",
-        "test:pages": "node --test tests/github-pages-export.test.mjs",
         "typecheck": "tsc --noEmit --incremental false",
         "lint": "eslint . --ignore-pattern dist --ignore-pattern .next"
     },
@@ -39,7 +36,6 @@
         "eslint-plugin-react": "7.37.5",
         "eslint-plugin-react-hooks": "7.1.1",
         "globals": "16.4.0",
-        "playwright": "^1.62.1",
         "react-server-dom-webpack": "^19.2.8",
         "tailwindcss": "4.2.1",
         "typescript": "5.9.3",
