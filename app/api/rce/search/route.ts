@@ -28,6 +28,22 @@ function cacheStore(): Cache | undefined {
     : undefined;
 }
 
+async function readCache(key: Request) {
+  try {
+    return await cacheStore()?.match(key);
+  } catch {
+    return undefined;
+  }
+}
+
+async function writeCache(key: Request, response: Response) {
+  try {
+    await cacheStore()?.put(key, response);
+  } catch {
+    // Cache availability must never block live RCE searches.
+  }
+}
+
 export async function GET(request: Request) {
   const startedAt = Date.now();
   const url = new URL(request.url);
@@ -40,10 +56,13 @@ export async function GET(request: Request) {
     return Response.json({ error: "Te veel zoekopdrachten. Probeer het over een minuut opnieuw." }, { status: 429, headers: { "Retry-After": "60" } });
   }
 
-  const cache = cacheStore();
   const cacheKey = new Request(`${url.origin}/api/rce/search?q=${encodeURIComponent(query.toLocaleLowerCase("nl"))}&page=${page}`);
-  const cached = await cache?.match(cacheKey);
-  if (cached) return new Response(cached.body, cached);
+  const cached = await readCache(cacheKey);
+  if (cached) {
+    const response = new Response(cached.body, cached);
+    response.headers.set("X-Doorzoeker-Cache", "HIT");
+    return response;
+  }
 
   try {
     const results = await searchRceMonuments(query, request.signal, page);
@@ -54,7 +73,7 @@ export async function GET(request: Request) {
         "X-Doorzoeker-Cache": "MISS",
       },
     });
-    await cache?.put(cacheKey, response.clone());
+    await writeCache(cacheKey, response.clone());
     console.info(JSON.stringify({ event: "rce.search", durationMs: Date.now() - startedAt, queryLength: query.length, resultCount: results.length }));
     return response;
   } catch (error) {

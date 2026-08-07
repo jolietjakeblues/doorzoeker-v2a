@@ -11,7 +11,13 @@ test("rejects invalid application API input before contacting RCE", async () => 
 
 test("returns a stable application API contract for a monument number", async (context) => {
   const originalFetch = globalThis.fetch;
-  context.after(() => { globalThis.fetch = originalFetch; });
+  const originalCaches = globalThis.caches;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalCaches === undefined) delete globalThis.caches;
+    else globalThis.caches = originalCaches;
+  });
+  globalThis.caches = { default: { match() { throw new Error("cache unavailable"); }, put() { throw new Error("cache unavailable"); } } };
   globalThis.fetch = async (input) => {
     const url = decodeURIComponent(String(input));
     assert.match(url, new RegExp(`^${SPARQL.replaceAll(".", "\\.")}`));
