@@ -19,6 +19,11 @@ const rceDiscoveryFixture = { results: { bindings: [{ rmnr: { value: "36046" }, 
 const rceFacetsFixture = { results: { bindings: [{ rmnr: { value: "36046" }, oorspronkelijkeFuncties: { value: "Woonhuis(K)" }, huidigeFuncties: { value: "Woning" }, typen: { value: "Woonhuis" } }] } };
 const rceParcelFixture = { results: { bindings: [{ gemeente: { value: "Utrecht" }, gemeentecode: { value: "996" }, sectie: { value: "B" }, perceel: { value: "358" }, provinciecode: { value: "UT" } }] } };
 const rceApiFixture = { results: [{ choNumber: "38342", monumentNumber: "36046", registrationDate: "1967-06-20", street: "", houseNumber: "", postalCode: "3512KM", sourceUrl: "rm:38342", functionName: "Woonhuis(K)", originalFunctionNames: ["Woonhuis(K)"], currentFunctionNames: ["Woning"], typeNames: ["Woonhuis"], legalStatus: "rijksmonument", description: "Pand met 17e eeuwse lijstgevel.", monumentNature: "onroerend gebouwd", fullAddress: "Brigittenstraat 18", place: "Utrecht", lng: 5.1267842049703, lat: 52.088895166661, wkt: "POINT(5.1267842049703 52.088895166661)", matchSource: "formele omschrijving", matchedText: "Pand met 17e eeuwse lijstgevel.", matchScore: 51, parcels: [{ municipality: "Utrecht", municipalityCode: "996", section: "B", parcelNumber: "358", provinceCode: "UT" }] }] };
+const clusterApiFixture = { results: [
+  rceApiFixture.results[0],
+  { ...rceApiFixture.results[0], choNumber: "38343", monumentNumber: "36047", lng: 5.1269, lat: 52.0890 },
+  { ...rceApiFixture.results[0], choNumber: "38344", monumentNumber: "36048", lng: 5.1270, lat: 52.0891 },
+] };
 const contentTypes = {
   ".css": "text/css; charset=utf-8",
   ".gif": "image/gif",
@@ -66,7 +71,10 @@ test("GitHub Pages export loads and remains interactive in Chromium", { timeout:
 
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
-  await page.route("**/api/rce/search?**", (route) => route.fulfill({ contentType: "application/json", body: JSON.stringify(rceApiFixture) }));
+  await page.route("**/api/rce/search?**", (route) => {
+    const fixture = new URL(route.request().url()).searchParams.get("q") === "cluster" ? clusterApiFixture : rceApiFixture;
+    return route.fulfill({ contentType: "application/json", body: JSON.stringify(fixture) });
+  });
   await page.route("https://api.linkeddata.cultureelerfgoed.nl/**", (route) => {
     const requestUrl = decodeURIComponent(route.request().url());
     const isSparql = requestUrl.includes("/sparql");
@@ -114,6 +122,12 @@ test("GitHub Pages export loads and remains interactive in Chromium", { timeout:
     await page.getByRole("button", { name: "Doorzoek RCE", exact: true }).click();
     assert.equal(await page.getByText("Alle monumentaarden").locator("..").locator("input").evaluate((input) => input.checked), true);
     await assert.doesNotReject(() => page.locator("article").getByText("Woonhuis", { exact: true }).first().waitFor({ state: "visible" }));
+
+    await page.locator("#q").fill("cluster");
+    await page.getByRole("button", { name: "Doorzoek RCE", exact: true }).click();
+    await page.getByRole("button", { name: "Kaartweergave" }).click();
+    await assert.doesNotReject(() => page.locator(".heritage-cluster").waitFor({ state: "visible" }));
+    assert.equal(await page.locator(".heritage-cluster").innerText(), "3");
 
     assert.deepEqual(runtimeErrors, [], runtimeErrors.join("\n"));
   } finally {

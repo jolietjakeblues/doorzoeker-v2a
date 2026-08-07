@@ -40,6 +40,9 @@ h2,.copy h3,.empty h3,.detail-copy h2{font-family:Arial,sans-serif}
 .leaflet-container{font-family:Arial,sans-serif;font-size:14px}
 .leaflet-control-attribution{font-size:11px}
 .leaflet-tooltip{padding:8px 10px;line-height:1.4;border-radius:0}
+.heritage-cluster-wrapper{border:0!important;background:transparent!important}
+.heritage-cluster{display:grid;width:46px;height:46px;place-items:center;border:4px solid #fff;border-radius:50%;background:#154273;color:#fff;box-shadow:0 3px 12px #0005;font-weight:700;cursor:pointer}
+.heritage-cluster:hover{background:#01689b;transform:scale(1.06)}
 .detail-head{background:#154273}
 .detail-copy blockquote{border-color:#ffb612}
 @media(max-width:800px){body{font-size:16px}.govbar{height:92px}.govbar>div{padding-top:12px}header{height:64px}.hero{padding-top:36px}.leaflet-map{height:520px}}
