@@ -133,6 +133,14 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1): Promi
   return [...extras, ...(await enrichMonuments(monuments, signal))];
 }
 
+// Browsen (alle Werelderfgoed of alle Gezichten tonen) is geen tekstzoekopdracht:
+// het slaat de Rijksmonument-discovery en de naam-FILTER helemaal over en geeft
+// gewoon de volledige, kleine collectie terug (18 respectievelijk 472 items).
+export async function browseRceObjects(kind: "werelderfgoed" | "gezicht", signal?: AbortSignal): Promise<RceMonument[]> {
+  if (kind === "werelderfgoed") return fetchSparql(buildWerelderfgoedQuery(""), signal).then(parseWerelderfgoedResults);
+  return fetchSparql(buildGezichtQuery(""), signal).then(parseGezichtResults);
+}
+
 export async function searchRceMonuments(query: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
   const trimmed = query.trim();
   if (/^\d{4,6}$/.test(trimmed)) return searchByNumber(trimmed, signal);

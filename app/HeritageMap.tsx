@@ -5,12 +5,17 @@ import type * as Leaflet from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { clusterMapPoints } from "@/lib/map-clustering";
 
-type MapItem = { id: string; title: string; address: string; place: string; type: "Gebouwd" | "Archeologisch" | "Werelderfgoed" | "Gezicht"; lat: number; lng: number };
+type MapItem = {
+  id: string; title: string; address: string; place: string;
+  objectType: "Rijksmonument" | "Werelderfgoed" | "Gezicht";
+  monumentAard?: "Gebouwd" | "Archeologisch";
+  lat: number; lng: number;
+};
 
-function markerColor(type: MapItem["type"]) {
-  if (type === "Archeologisch") return "#ffb612";
-  if (type === "Werelderfgoed") return "#01689b";
-  if (type === "Gezicht") return "#176b3a";
+function markerColor(item: Pick<MapItem, "objectType" | "monumentAard">) {
+  if (item.objectType === "Werelderfgoed") return "#01689b";
+  if (item.objectType === "Gezicht") return "#176b3a";
+  if (item.monumentAard === "Archeologisch") return "#ffb612";
   return "#154273";
 }
 
@@ -24,7 +29,7 @@ function tooltip(titleText: string, detail: string) {
   return content;
 }
 
-export function HeritageMap({ items, onSelect }: { items: MapItem[]; onSelect: (item: MapItem) => void }) {
+export function HeritageMap({ items, onSelect, compact }: { items: MapItem[]; onSelect: (item: MapItem) => void; compact?: boolean }) {
   const element = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,7 +38,9 @@ export function HeritageMap({ items, onSelect }: { items: MapItem[]; onSelect: (
 
     import("leaflet").then((L) => {
       if (cancelled || !element.current) return;
-      const leafletMap = L.map(element.current, { zoomControl: true, scrollWheelZoom: true }).setView([52.09, 5.08], 11);
+      // Compact maps zitten ingebed in een scrollbaar detailpaneel; scrollwheel-zoom
+      // zou daar de paneelscroll kapen zodra de muis over de kaart komt.
+      const leafletMap = L.map(element.current, { zoomControl: !compact, scrollWheelZoom: !compact }).setView([52.09, 5.08], 11);
       map = leafletMap;
       L.tileLayer("https://service.pdok.nl/kadaster/brt-achtergrondkaart/wmts/v2_0?service=WMTS&request=GetTile&version=1.0.0&layer=grijs&style=default&tilematrixset=EPSG:3857&format=image/png&tilematrix={z}&tilerow={y}&tilecol={x}", { maxZoom: 19, attribution: 'Kaart: <a href="https://www.pdok.nl/">PDOK</a> · BRT Kadaster' }).addTo(leafletMap);
       const markerLayer = L.layerGroup().addTo(leafletMap);
@@ -49,7 +56,7 @@ export function HeritageMap({ items, onSelect }: { items: MapItem[]; onSelect: (
         for (const cluster of clusterMapPoints(projected, 48)) {
           if (cluster.items.length === 1) {
             const item = cluster.items[0];
-            const marker = L.circleMarker([item.lat, item.lng], { radius: 9, color: "#fff", weight: 3, fillColor: markerColor(item.type), fillOpacity: 1 }).addTo(markerLayer);
+            const marker = L.circleMarker([item.lat, item.lng], { radius: 9, color: "#fff", weight: 3, fillColor: markerColor(item), fillOpacity: 1 }).addTo(markerLayer);
             marker.bindTooltip(tooltip(item.title, [item.address, item.place].filter(Boolean).join(", ")));
             marker.on("click", () => onSelect(item));
             continue;
@@ -63,9 +70,9 @@ export function HeritageMap({ items, onSelect }: { items: MapItem[]; onSelect: (
           badge.className = "heritage-cluster";
           badge.textContent = String(cluster.items.length);
           badge.setAttribute("role", "button");
-          badge.setAttribute("aria-label", `${cluster.items.length} rijksmonumenten; klik om in te zoomen`);
+          badge.setAttribute("aria-label", `${cluster.items.length} erfgoedobjecten; klik om in te zoomen`);
           const marker = L.marker(center, { icon: L.divIcon({ html: badge, className: "heritage-cluster-wrapper", iconSize: [46, 46], iconAnchor: [23, 23] }) }).addTo(markerLayer);
-          marker.bindTooltip(tooltip(`${cluster.items.length} rijksmonumenten`, "Klik om de groep te bekijken"));
+          marker.bindTooltip(tooltip(`${cluster.items.length} erfgoedobjecten`, "Klik om de groep te bekijken"));
           marker.on("click", () => {
             const clusterBounds = L.latLngBounds(cluster.items.map((item) => L.latLng(item.lat, item.lng)));
             if (clusterBounds.getNorthEast().equals(clusterBounds.getSouthWest())) leafletMap.setZoomAround(center, Math.min(leafletMap.getZoom() + 2, 19));
@@ -83,7 +90,7 @@ export function HeritageMap({ items, onSelect }: { items: MapItem[]; onSelect: (
       cancelled = true;
       map?.remove();
     };
-  }, [items, onSelect]);
+  }, [compact, items, onSelect]);
 
-  return <div className="leaflet-map" ref={element} aria-label="Kaart met gevonden rijksmonumenten" />;
+  return <div className={`leaflet-map${compact ? " compact" : ""}`} ref={element} aria-label="Kaart met gevonden erfgoedobjecten" />;
 }

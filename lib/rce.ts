@@ -432,8 +432,13 @@ export function parseComplexResults(document: unknown): Map<string, ComplexMembe
 // nodig, dus SUBSTR() beperkt wat de SPARQL-service teruggeeft tot een
 // voorvoegsel met ruim voldoende coördinatenparen voor een representatief
 // punt via wktToLatLng().
+// Zonder term (browse-modus: alle 18 tonen) wordt de FILTER weggelaten in
+// plaats van een altijd-waar CONTAINS("") te forceren - dat scheelt niets aan
+// resultaat maar maakt de intentie ("alles tonen" versus "op naam zoeken")
+// expliciet leesbaar in de query zelf.
 export function buildWerelderfgoedQuery(term: string) {
   const needle = escapeSparqlString(term.toLocaleLowerCase("nl"));
+  const filter = term ? `FILTER(CONTAINS(LCASE(STR(?naamValue)), "${needle}") || CONTAINS(LCASE(STR(?typeValue)), "${needle}"))` : "";
   return `PREFIX ceo: <${CEO}>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX geo: <http://www.opengis.net/ont/geosparql#>
@@ -456,7 +461,7 @@ WHERE {
     OPTIONAL { ?cho ceo:jaarVanInschrijving ?jaarValue . }
     OPTIONAL { ?cho ceo:wordtGetoondOp ?urlValue . }
   }
-  FILTER(CONTAINS(LCASE(STR(?naamValue)), "${needle}") || CONTAINS(LCASE(STR(?typeValue)), "${needle}"))
+  ${filter}
 }
 GROUP BY ?cho ?choi ?wenr`;
 }
@@ -498,6 +503,7 @@ export function parseWerelderfgoedResults(document: unknown): RceMonument[] {
 // Rijksmonument-queries filteren op de actieve juridische status.
 export function buildGezichtQuery(term: string) {
   const needle = escapeSparqlString(term.toLocaleLowerCase("nl"));
+  const filter = term ? `FILTER(CONTAINS(LCASE(STR(?naamValue)), "${needle}"))` : "";
   return `PREFIX ceo: <${CEO}>
 PREFIX geo: <http://www.opengis.net/ont/geosparql#>
 SELECT ?cho ?choi ?gnr
@@ -516,7 +522,7 @@ WHERE {
   GRAPH <${GEZICHT_GRAPH}> {
     OPTIONAL { ?cho ceo:wordtGetoondOp ?urlValue . }
   }
-  FILTER(CONTAINS(LCASE(STR(?naamValue)), "${needle}"))
+  ${filter}
 }
 GROUP BY ?cho ?choi ?gnr`;
 }

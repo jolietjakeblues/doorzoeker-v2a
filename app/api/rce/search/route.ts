@@ -1,4 +1,4 @@
-import { searchRceMonuments } from "../../../../lib/server/rce-adapter.ts";
+import { browseRceObjects, searchRceMonuments } from "../../../../lib/server/rce-adapter.ts";
 
 export const runtime = "edge";
 
@@ -54,15 +54,21 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const query = (url.searchParams.get("q") ?? "").trim();
+    const browseParam = url.searchParams.get("browse");
+    // "Browsen" (alle Werelderfgoed of alle Gezichten tonen) is geen
+    // tekstzoekopdracht: q mag hier leeg zijn.
+    const browse = browseParam === "werelderfgoed" || browseParam === "gezicht" ? browseParam : undefined;
     const page = Number(url.searchParams.get("page") ?? "1");
-    if (!query || query.length > 120 || !Number.isInteger(page) || page < 1 || page > 20) {
+    if (!browse && (!query || query.length > 120 || !Number.isInteger(page) || page < 1 || page > 20)) {
       return Response.json({ error: "Ongeldige zoekopdracht." }, { status: 400 });
     }
     if (!consumeRateLimit(clientId(request))) {
       return Response.json({ error: "Te veel zoekopdrachten. Probeer het over een minuut opnieuw." }, { status: 429, headers: { "Retry-After": "60" } });
     }
 
-    const cacheKey = new Request(`${url.origin}/api/rce/search?q=${encodeURIComponent(query.toLocaleLowerCase("nl"))}&page=${page}`);
+    const cacheKey = new Request(browse
+      ? `${url.origin}/api/rce/search?browse=${browse}`
+      : `${url.origin}/api/rce/search?q=${encodeURIComponent(query.toLocaleLowerCase("nl"))}&page=${page}`);
     const memoryCached = responseCache.get(cacheKey.url);
     if (memoryCached && memoryCached.expiresAt > Date.now()) {
       return new Response(memoryCached.body, {
@@ -73,7 +79,7 @@ export async function GET(request: Request) {
     const cached = await readCache(cacheKey);
     if (cached) return cached;
 
-    const results = await searchRceMonuments(query, request.signal, page);
+    const results = browse ? await browseRceObjects(browse, request.signal) : await searchRceMonuments(query, request.signal, page);
     const body = JSON.stringify({ results });
     const response = new Response(body, {
       headers: {
@@ -88,7 +94,7 @@ export async function GET(request: Request) {
     const cachedResponse = response.clone();
     cachedResponse.headers.set("X-Doorzoeker-Cache", "HIT");
     await writeCache(cacheKey, cachedResponse);
-    console.info(JSON.stringify({ event: "rce.search", durationMs: Date.now() - startedAt, queryLength: query.length, resultCount: results.length }));
+    console.info(JSON.stringify({ event: "rce.search", durationMs: Date.now() - startedAt, queryLength: query.length, browse, resultCount: results.length }));
     return response;
   } catch (error) {
     console.error(JSON.stringify({ event: "rce.search.error", durationMs: Date.now() - startedAt, message: error instanceof Error ? error.message : "unknown" }));

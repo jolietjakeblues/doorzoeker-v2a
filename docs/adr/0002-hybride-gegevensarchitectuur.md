@@ -56,5 +56,6 @@ client, hanteert een harde upstream-timeout, gebruikt de Cloudflare-cache en
 publiceert timinginformatie voor observability.
 
 De serverroute vereist de Vinext Cloudflare Worker-runtime. De statische
-GitHub Pages-publicatie kan daarom alleen als overgangsfrontend blijven bestaan
-wanneer zij naar dezelfde gedeployde applicatie-API wordt geconfigureerd.
+GitHub Pages-export is om die reden verwijderd; de applicatie draait
+sindsdien uitsluitend op Cloudflare Workers, gebouwd en gedeployed via
+GitHub Actions (`.github/workflows/deploy-workers.yml`).
