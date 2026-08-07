@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildArcheologischTerreinQuery, buildComplexQuery, buildGezichtQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseArcheologischTerreinResults, parseComplexResults, parseDiscoveryBranchResults, parseGezichtResults, parseParcelResults, parseRceMonuments, parseSparqlResults, parseWerelderfgoedResults, parseWktGeometry, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
+import { buildArcheologischTerreinQuery, buildComplexenQuery, buildComplexQuery, buildGezichtQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseArcheologischTerreinResults, parseComplexenResults, parseComplexResults, parseDiscoveryBranchResults, parseGezichtResults, parseParcelResults, parseRceMonuments, parseSparqlResults, parseWerelderfgoedResults, parseWktGeometry, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -363,4 +363,53 @@ test("parses Gezicht results into RceMonument-shaped records", () => {
   assert.equal(gezicht.officialUrl, "https://archisarchief.cultureelerfgoed.nl/Beschermde_Gezichten/BG1325");
   assert.equal(gezicht.lat, 52.85);
   assert.equal(gezicht.lng, 6.65);
+});
+
+test("looks up Complexen by naam and derives a kaartpositie from the hoofdobject's geometrie", () => {
+  // Een Complex heeft geen eigen geometrie - het is een samenhang tussen
+  // rijksmonumenten, geen ruimtelijk object zelf. Het hoofdobject (het
+  // bepalende monument van het complex) levert de kaartpositie.
+  const query = buildComplexenQuery("Rijnoord");
+  assert.match(query, /a ceo:Complex/);
+  assert.match(query, /ceo:heeftRijksmonument \?lidValue/);
+  assert.match(query, /ceo:heeftHoofdobject \?hoofdobjectValue/);
+  assert.match(query, /\?hoofdobjectValue ceo:heeftGeometrie\/geo:asWKT \?wktValue/);
+  assert.match(query, /rijnoord/);
+});
+
+test("drops the naam-FILTER in the Complexen query when browsing without a term", () => {
+  const query = buildComplexenQuery("");
+  assert.doesNotMatch(query, /FILTER/);
+});
+
+test("escapes the search term in the Complexen query", () => {
+  const query = buildComplexenQuery('Rijnoord" . ?s ?p ?o #');
+  assert.match(query, /rijnoord\\" \. \?s \?p \?o #/);
+});
+
+test("parses Complexen results into RceMonument-shaped records", () => {
+  const document = { results: { bindings: [{
+    complex: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/complex/531014" },
+    choi: { value: "531014" },
+    complexnummer: { value: "531014" },
+    naam: { value: "Rijnoord" },
+    registratiedatum: { value: "1998-06-15" },
+    wkt: { value: "Point (5.9 51.95)" },
+    aantalLeden: { value: "3" },
+  }] } };
+  const [complex] = parseComplexenResults(document);
+  assert.equal(complex.choNumber, "531014");
+  assert.equal(complex.monumentNumber, "531014");
+  assert.equal(complex.name, "Rijnoord");
+  assert.equal(complex.monumentNature, "complex");
+  assert.equal(complex.complexMemberCount, 3);
+  assert.equal(complex.description, "Complex van 3 rijksmonumenten.");
+  assert.equal(complex.lat, 51.95);
+  assert.equal(complex.lng, 5.9);
+});
+
+test("falls back to a generic omschrijving when a Complex has no formele omschrijving", () => {
+  const document = { results: { bindings: [{ complex: { value: "c:1" }, choi: { value: "1" }, complexnummer: { value: "1" }, aantalLeden: { value: "1" } }] } };
+  const [complex] = parseComplexenResults(document);
+  assert.equal(complex.description, "Complex van 1 rijksmonument.");
 });

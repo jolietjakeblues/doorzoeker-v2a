@@ -13,10 +13,10 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
   return document.results;
 }
 
-// Bekijk de volledige collectie Werelderfgoed of Gezichten, los van een
-// zoekterm - anders zijn deze twee typen alleen vindbaar als hun naam
+// Bekijk de volledige collectie Werelderfgoed, Gezichten of Complexen, los
+// van een zoekterm - anders zijn deze typen alleen vindbaar als hun naam
 // toevallig met de ingetypte tekst matcht.
-export async function browseRceObjects(kind: "werelderfgoed" | "gezicht", signal?: AbortSignal) {
+export async function browseRceObjects(kind: "werelderfgoed" | "gezicht" | "complex", signal?: AbortSignal) {
   const response = await fetch(`/api/rce/search?browse=${kind}`, {
     headers: { Accept: "application/json" },
     signal,

@@ -64,9 +64,9 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const query = (url.searchParams.get("q") ?? "").trim();
     const browseParam = url.searchParams.get("browse");
-    // "Browsen" (alle Werelderfgoed of alle Gezichten tonen) is geen
+    // "Browsen" (alle Werelderfgoed, Gezichten of Complexen tonen) is geen
     // tekstzoekopdracht: q mag hier leeg zijn.
-    const browse = browseParam === "werelderfgoed" || browseParam === "gezicht" ? browseParam : undefined;
+    const browse = browseParam === "werelderfgoed" || browseParam === "gezicht" || browseParam === "complex" ? browseParam : undefined;
     const page = Number(url.searchParams.get("page") ?? "1");
     if (!browse && (!query || query.length > 120 || !Number.isInteger(page) || page < 1 || page > 20)) {
       return Response.json({ error: "Ongeldige zoekopdracht." }, { status: 400 });

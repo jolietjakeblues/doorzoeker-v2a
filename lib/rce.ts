@@ -67,6 +67,7 @@ export type RceMonument = {
   archaeologicalSites?: ArcheologischTerrein[];
   complexes?: ComplexMembership[];
   officialUrl?: string;
+  complexMemberCount?: number;
 };
 
 export type RceParcel = {
@@ -625,6 +626,67 @@ export function parseGezichtResults(document: unknown): RceMonument[] {
       monumentNature: "gezicht",
       description: "Rijksbeschermd stads- of dorpsgezicht.",
       officialUrl: binding.url?.value,
+      lng: coordinates?.lng,
+      lat: coordinates?.lat,
+      wkt: wkt || undefined,
+    };
+  });
+}
+
+// Een Complex is zelf geen monument en heeft geen eigen geometrie - het is
+// een samenhang tussen rijksmonumenten die als één geheel zijn aangewezen
+// (bv. een buitenplaats met hoofdhuis, koetshuis en tuinaanleg). Voor een
+// kaartpositie wordt daarom de geometrie van het hoofdobject gebruikt: dat
+// is het monument dat het complex inhoudelijk bepaalt, in plaats van een
+// gemiddelde over alle leden die een groot landgoed kunstmatig "midden op
+// het erf" zou kunnen laten landen.
+export function buildComplexenQuery(term: string) {
+  const needle = escapeSparqlString(term.toLocaleLowerCase("nl"));
+  const filter = term ? `FILTER(CONTAINS(LCASE(STR(?naamValue)), "${needle}"))` : "";
+  return `PREFIX ceo: <${CEO}>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+SELECT ?complex ?choi ?complexnummer
+  (SAMPLE(STR(?naamValue)) AS ?naam)
+  (SAMPLE(STR(?omschrijvingValue)) AS ?omschrijving)
+  (SAMPLE(STR(?registratiedatumValue)) AS ?registratiedatum)
+  (SAMPLE(STR(?wktValue)) AS ?wkt)
+  (COUNT(DISTINCT ?lidValue) AS ?aantalLeden)
+WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?complex a ceo:Complex ; ceo:complexnummer ?complexnummer ; ceo:cultuurhistorischObjectnummer ?choi .
+    ?complex ceo:heeftRijksmonument ?lidValue .
+    OPTIONAL { ?complex ceo:heeftNaam/ceo:naam ?naamValue . }
+    OPTIONAL { ?complex ceo:heeftOmschrijving/ceo:omschrijving ?omschrijvingValue . }
+    OPTIONAL { ?complex ceo:registratiedatum ?registratiedatumValue . }
+    OPTIONAL {
+      ?complex ceo:heeftHoofdobject ?hoofdobjectValue .
+      OPTIONAL { ?hoofdobjectValue ceo:heeftGeometrie/geo:asWKT ?wktValue . }
+    }
+  }
+  ${filter}
+}
+GROUP BY ?complex ?choi ?complexnummer`;
+}
+
+export function parseComplexenResults(document: unknown): RceMonument[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.map((binding) => {
+    const wkt = binding.wkt?.value ?? "";
+    const coordinates = wktToLatLng(wkt);
+    const memberCount = Number(binding.aantalLeden?.value ?? "0");
+    return {
+      choNumber: binding.choi?.value ?? "",
+      monumentNumber: binding.complexnummer?.value ?? "",
+      registrationDate: binding.registratiedatum?.value ?? "",
+      street: "",
+      houseNumber: "",
+      postalCode: "",
+      sourceUrl: binding.complex?.value ?? "",
+      name: binding.naam?.value,
+      monumentNature: "complex",
+      description: binding.omschrijving?.value || `Complex van ${memberCount} rijksmonument${memberCount === 1 ? "" : "en"}.`,
+      complexMemberCount: memberCount || undefined,
       lng: coordinates?.lng,
       lat: coordinates?.lat,
       wkt: wkt || undefined,

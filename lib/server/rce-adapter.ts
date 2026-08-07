@@ -1,5 +1,6 @@
 import {
   buildArcheologischTerreinQuery,
+  buildComplexenQuery,
   buildComplexQuery,
   buildRceDetailsQuery,
   buildRceDiscoveryQueries,
@@ -11,6 +12,7 @@ import {
   buildWerelderfgoedQuery,
   mergeDiscoveryMatches,
   parseArcheologischTerreinResults,
+  parseComplexenResults,
   parseComplexResults,
   parseDiscoveryBranchResults,
   parseFacetResults,
@@ -93,14 +95,15 @@ async function searchByNumber(monumentNumber: string, signal?: AbortSignal): Pro
   return enrichMonuments(monuments, signal);
 }
 
-// Werelderfgoed en Gezicht zijn andere CHO-types dan Rijksmonument (geen
-// adres, geen functie, geen complex-/archeologie-enrichment), en met
-// respectievelijk 18 en 472 instanties nooit meer dan een handvol treffers
-// per zoekterm. Die worden alleen op de eerste pagina meegenomen, vóór de
-// Rijksmonument-discoveryresultaten, zodat "laad meer" op latere pagina's
-// ze niet opnieuw ophaalt of dupliceert.
+// Werelderfgoed, Gezicht en Complex zijn andere CHO-types dan Rijksmonument
+// (geen adres, geen functie, geen archeologie-enrichment - Complex krijgt wel
+// zijn eigen complex-enrichment via enrichMonuments, gewoon zoals elk ander
+// monument), en met resp. 18, 472 en ~4.200 instanties nooit meer dan een
+// handvol treffers per zoekterm. Die worden alleen op de eerste pagina
+// meegenomen, vóór de Rijksmonument-discoveryresultaten, zodat "laad meer"
+// op latere pagina's ze niet opnieuw ophaalt of dupliceert.
 async function searchByText(term: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
-  const [branchResults, werelderfgoed, gezichten] = await Promise.all([
+  const [branchResults, werelderfgoed, gezichten, complexen] = await Promise.all([
     Promise.all(
       buildRceDiscoveryQueries(term).map(({ bron, query }) => fetchSparql(query, signal).then((document) => parseDiscoveryBranchResults(document, bron, term))),
     ),
@@ -110,8 +113,11 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1): Promi
     page === 1
       ? fetchSparql(buildGezichtQuery(term), signal).then(parseGezichtResults)
       : Promise.resolve<RceMonument[]>([]),
+    page === 1
+      ? fetchSparql(buildComplexenQuery(term), signal).then(parseComplexenResults)
+      : Promise.resolve<RceMonument[]>([]),
   ]);
-  const extras = [...werelderfgoed, ...gezichten];
+  const extras = [...werelderfgoed, ...gezichten, ...complexen];
   const start = Math.max(0, page - 1) * 25;
   const discovery = mergeDiscoveryMatches(branchResults).slice(start, start + 25);
   if (!discovery.length) return extras;
@@ -133,12 +139,14 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1): Promi
   return [...extras, ...(await enrichMonuments(monuments, signal))];
 }
 
-// Browsen (alle Werelderfgoed of alle Gezichten tonen) is geen tekstzoekopdracht:
-// het slaat de Rijksmonument-discovery en de naam-FILTER helemaal over en geeft
-// gewoon de volledige, kleine collectie terug (18 respectievelijk 472 items).
-export async function browseRceObjects(kind: "werelderfgoed" | "gezicht", signal?: AbortSignal): Promise<RceMonument[]> {
+// Browsen (alle Werelderfgoed, Gezichten of Complexen tonen) is geen
+// tekstzoekopdracht: het slaat de Rijksmonument-discovery en de naam-FILTER
+// helemaal over en geeft gewoon de volledige collectie terug (18, 472
+// respectievelijk ~4.200 items).
+export async function browseRceObjects(kind: "werelderfgoed" | "gezicht" | "complex", signal?: AbortSignal): Promise<RceMonument[]> {
   if (kind === "werelderfgoed") return fetchSparql(buildWerelderfgoedQuery(""), signal).then(parseWerelderfgoedResults);
-  return fetchSparql(buildGezichtQuery(""), signal).then(parseGezichtResults);
+  if (kind === "gezicht") return fetchSparql(buildGezichtQuery(""), signal).then(parseGezichtResults);
+  return fetchSparql(buildComplexenQuery(""), signal).then(parseComplexenResults);
 }
 
 export async function searchRceMonuments(query: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
