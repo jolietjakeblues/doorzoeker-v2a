@@ -74,8 +74,9 @@ export function parseDiscoveryResults(document: unknown): DiscoveryMatch[] {
   return [...matches.values()];
 }
 
-export function buildRceDiscoveryQuery(term: string) {
+export function buildRceDiscoveryQuery(term: string, page = 1) {
   const needle = escapeSparqlString(term.trim());
+  const offset = Math.max(0, page - 1) * 100;
   return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 SELECT DISTINCT ?rmnr ?match ?bron ?score WHERE {
@@ -116,7 +117,8 @@ SELECT DISTINCT ?rmnr ?match ?bron ?score WHERE {
  }
 }
 ORDER BY ?score LCASE(STR(?match)) ?rmnr
-LIMIT 100`;
+LIMIT 100
+OFFSET ${offset}`;
 }
 
 export function parseSparqlResults(document: unknown): RceMonument[] {
@@ -302,8 +304,8 @@ async function searchRceByNumber(monumentNumber: string, signal?: AbortSignal) {
   return parseSparqlResults(monumentsDocument).map((monument) => ({ ...monument, ...facets.get(monument.monumentNumber), parcels }));
 }
 
-async function searchRceByText(term: string, signal?: AbortSignal) {
-  const discovery = parseDiscoveryResults(await fetchSparql(buildRceDiscoveryQuery(term), signal)).slice(0, 25);
+async function searchRceByText(term: string, signal?: AbortSignal, page = 1) {
+  const discovery = parseDiscoveryResults(await fetchSparql(buildRceDiscoveryQuery(term, page), signal)).slice(0, 25);
   if (!discovery.length) return [];
   const numbers = discovery.map((match) => match.monumentNumber);
   const [detailsDocument, parcelsDocument, facetsDocument] = await Promise.all([
@@ -357,10 +359,10 @@ export function parseRceMonuments(document: unknown): RceMonument[] {
   });
 }
 
-export async function searchRceMonuments(query: string, signal?: AbortSignal) {
+export async function searchRceMonuments(query: string, signal?: AbortSignal, page = 1) {
   const trimmed = query.trim();
   if (/^\d{4,6}$/.test(trimmed)) return searchRceByNumber(trimmed, signal);
-  if (!/^\d{4}\s?[A-Za-z]{2}$/.test(trimmed)) return searchRceByText(trimmed, signal);
+  if (!/^\d{4}\s?[A-Za-z]{2}$/.test(trimmed)) return searchRceByText(trimmed, signal, page);
   const params = new URLSearchParams({ page: "1", pageSize: "100", postcode: trimmed.replace(/\s/g, "").toUpperCase() });
 
   const response = await fetch(`${ENDPOINT}?${params}`, {

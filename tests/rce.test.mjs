@@ -58,6 +58,14 @@ test("discovers functions, types and only formal descriptions", () => {
   assert.match(query, /woonhuis \\"K\\"/);
 });
 
+test("paginates semantic discovery without changing its ranking", () => {
+  const first = buildRceDiscoveryQuery("woonhuis", 1);
+  const second = buildRceDiscoveryQuery("woonhuis", 2);
+  assert.match(first, /OFFSET 0/);
+  assert.match(second, /OFFSET 100/);
+  assert.match(second, /ORDER BY \?score/);
+});
+
 test("deduplicates matches and prefers a function over a description", () => {
   const document = { results: { bindings: [
     { rmnr: { value: "36046" }, match: { value: "Pand met lijstgevel" }, bron: { value: "formele omschrijving" } },
