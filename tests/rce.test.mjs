@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, mergeDiscoveryMatches, parseDiscoveryBranchResults, parseParcelResults, parseRceMonuments, parseSparqlResults, RCE_SEMANTICS } from "../lib/rce.ts";
+import { buildArcheologischTerreinQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, mergeDiscoveryMatches, parseArcheologischTerreinResults, parseDiscoveryBranchResults, parseParcelResults, parseRceMonuments, parseSparqlResults, RCE_SEMANTICS } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -95,4 +95,26 @@ test("prefers the lowest semantic match score regardless of binding order", () =
   const merged = mergeDiscoveryMatches([omschrijvingMatches, functieMatches]);
   assert.equal(merged[0].matchScore, 10);
   assert.equal(merged[0].matchSource, "oorspronkelijke functie");
+});
+
+test("looks up archaeological terreinen by the monument's own CHO subject URI", () => {
+  const query = buildArcheologischTerreinQuery(["https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/rijksmonument/45708"]);
+  assert.match(query, /ceo:ligtInObject/);
+  assert.match(query, /ceo:archis2Monumentnummer/);
+  assert.match(query, /ceo:heeftArcheologischeWaardering\/skos:prefLabel/);
+  assert.match(query, /<https:\/\/linkeddata\.cultureelerfgoed\.nl\/cho-kennis\/id\/rijksmonument\/45708>/);
+});
+
+test("groups multiple archaeological terreinen under the same monument", () => {
+  const document = { results: { bindings: [
+    { rm: { value: "rm:1" }, terrein: { value: "terrein:a" }, archisNummer: { value: "2284" }, waarderingLabel: { value: "zeer hoge archeologische waarde beschermd" } },
+    { rm: { value: "rm:1" }, terrein: { value: "terrein:b" }, archisNummer: { value: "1037" }, waarderingLabel: { value: "zeer hoge archeologische waarde beschermd" } },
+    { rm: { value: "rm:2" }, terrein: { value: "terrein:c" }, archisNummer: { value: "525" }, waarderingLabel: { value: "zeer hoge archeologische waarde beschermd" } },
+  ] } };
+  const byMonument = parseArcheologischTerreinResults(document);
+  assert.deepEqual(byMonument.get("rm:1"), [
+    { archisMonumentnummer: "2284", waardering: "zeer hoge archeologische waarde beschermd" },
+    { archisMonumentnummer: "1037", waardering: "zeer hoge archeologische waarde beschermd" },
+  ]);
+  assert.equal(byMonument.get("rm:2").length, 1);
 });

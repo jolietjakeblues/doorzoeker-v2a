@@ -1,4 +1,5 @@
 import {
+  buildArcheologischTerreinQuery,
   buildRceDetailsQuery,
   buildRceDiscoveryQueries,
   buildRceFacetsQuery,
@@ -6,6 +7,7 @@ import {
   buildRceParcelQuery,
   buildRceParcelsQuery,
   mergeDiscoveryMatches,
+  parseArcheologischTerreinResults,
   parseDiscoveryBranchResults,
   parseFacetResults,
   parseParcelResults,
@@ -47,6 +49,23 @@ async function fetchSparql(query: string, signal?: AbortSignal) {
   }
 }
 
+// An "archeologisch" Rijksmonument is, in practice, almost always also its
+// own ArcheologischTerrein record (see buildArcheologischTerreinQuery). This
+// enriches such monuments with the terrain's Archis-monumentnummer and
+// waardering instead of running a parallel archaeology search.
+async function enrichWithArcheologischeTerreinen(monuments: RceMonument[], signal?: AbortSignal): Promise<RceMonument[]> {
+  const archaeological = monuments.filter((monument) => monument.monumentNature?.toLocaleLowerCase("nl").includes("archeolog") && monument.sourceUrl);
+  if (!archaeological.length) return monuments;
+  const terreinenByMonument = parseArcheologischTerreinResults(
+    await fetchSparql(buildArcheologischTerreinQuery(archaeological.map((monument) => monument.sourceUrl)), signal),
+  );
+  if (!terreinenByMonument.size) return monuments;
+  return monuments.map((monument) => {
+    const archaeologicalSites = terreinenByMonument.get(monument.sourceUrl);
+    return archaeologicalSites ? { ...monument, archaeologicalSites } : monument;
+  });
+}
+
 async function searchByNumber(monumentNumber: string, signal?: AbortSignal): Promise<RceMonument[]> {
   const [monumentsDocument, parcelsDocument, facetsDocument] = await Promise.all([
     fetchSparql(buildRceNumberQuery(monumentNumber), signal),
@@ -55,7 +74,8 @@ async function searchByNumber(monumentNumber: string, signal?: AbortSignal): Pro
   ]);
   const parcels = parseParcelResults(parcelsDocument);
   const facets = parseFacetResults(facetsDocument);
-  return parseSparqlResults(monumentsDocument).map((monument) => ({ ...monument, ...facets.get(monument.monumentNumber), parcels }));
+  const monuments = parseSparqlResults(monumentsDocument).map((monument) => ({ ...monument, ...facets.get(monument.monumentNumber), parcels }));
+  return enrichWithArcheologischeTerreinen(monuments, signal);
 }
 
 async function searchByText(term: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
@@ -74,12 +94,13 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1): Promi
   const facets = parseFacetResults(facetsDocument);
   const parcelBindings = (parcelsDocument as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings ?? [];
   const detailsByNumber = new Map(parseSparqlResults(detailsDocument).map((monument) => [monument.monumentNumber, monument]));
-  return discovery.flatMap((match) => {
+  const monuments = discovery.flatMap((match) => {
     const monument = detailsByNumber.get(match.monumentNumber);
     if (!monument) return [];
     const parcels = parseParcelResults({ results: { bindings: parcelBindings.filter((binding) => binding.rmnr?.value === monument.monumentNumber) } });
     return [{ ...monument, ...facets.get(monument.monumentNumber), ...match, parcels }];
   });
+  return enrichWithArcheologischeTerreinen(monuments, signal);
 }
 
 export async function searchRceMonuments(query: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
