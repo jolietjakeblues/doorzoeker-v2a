@@ -146,21 +146,47 @@ export function mergeDiscoveryMatches(resultsPerSource: DiscoveryMatch[][]): Dis
   );
 }
 
+function parseCoordinatePairs(text: string): Array<[number, number]> {
+  return [...text.matchAll(/(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/g)].map(([, lng, lat]) => [Number(lng), Number(lat)]);
+}
+
+function boundingBoxFootprint(ring: Array<[number, number]>): number {
+  const lngs = ring.map(([lng]) => lng);
+  const lats = ring.map(([, lat]) => lat);
+  return (Math.max(...lngs) - Math.min(...lngs)) * (Math.max(...lats) - Math.min(...lats));
+}
+
 // RCE geeft geometrie als Point, Polygon of MultiPolygon WKT, bv.
 // "Point (lng lat)" of "Polygon ((lng lat, lng lat, ...))" - met een spatie
 // voor de haakjes. Archeologische terreinen zijn vrijwel altijd een
-// (Multi)Polygon; die kregen zonder deze fallback nooit een kaartmarker,
-// ook al had RCE de geometrie gewoon geleverd. Voor een marker is geen
-// exacte centroid nodig: het gemiddelde van alle coördinaatparen in de
-// (multi)polygon geeft een punt middenin de vorm, precies genoeg om op de
-// kaart te tonen.
+// (Multi)Polygon; die kregen zonder deze fallback nooit een kaartmarker, ook
+// al had RCE de geometrie gewoon geleverd.
+//
+// Een (multi)polygon kan uit meerdere, los van elkaar liggende ringen
+// bestaan - bijvoorbeeld de Waddenzee, die uit eilanden en wadplaten over
+// honderden kilometers kust bestaat. Het gemiddelde nemen van ALLE
+// coördinaten door elkaar (over alle ringen heen) geeft dan een punt ergens
+// in de lege ruimte tussen die delen, in het ergste geval midden op het
+// vasteland. Kies daarom de ring met de grootste bounding box - de
+// dominante, zichtbaar bepalende hoofdvorm - en middel alleen daarbinnen.
+// Voor een gewone enkelvoudige polygon (het overgrote deel van de gevallen)
+// is er maar één ring en verandert dit niets aan het resultaat.
 function wktToLatLng(wkt: string): { lat: number; lng: number } | undefined {
   const point = /POINT\s*\(\s*([\d.-]+)\s+([\d.-]+)\s*\)/i.exec(wkt);
   if (point) return { lng: Number(point[1]), lat: Number(point[2]) };
-  const pairs = [...wkt.matchAll(/(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/g)];
-  if (!pairs.length) return undefined;
-  const lng = pairs.reduce((sum, [, lngValue]) => sum + Number(lngValue), 0) / pairs.length;
-  const lat = pairs.reduce((sum, [, , latValue]) => sum + Number(latValue), 0) / pairs.length;
+
+  // \(([\d.\s,-]+)\) matcht alleen haakjes-inhoud die uit louter cijfers,
+  // punten, komma's, spaties en minnen bestaat - dat isoleert automatisch de
+  // binnenste (dus per-ring) coördinatenlijst, ongeacht de nestingsdiepte
+  // van Polygon versus MultiPolygon.
+  const rings = [...wkt.matchAll(/\(([\d.\s,-]+)\)/g)]
+    .map((match) => parseCoordinatePairs(match[1]))
+    .filter((ring) => ring.length > 0);
+  if (!rings.length) return undefined;
+
+  const largestRing = rings.reduce((largest, ring) => (boundingBoxFootprint(ring) > boundingBoxFootprint(largest) ? ring : largest));
+  const lng = largestRing.reduce((sum, [lngValue]) => sum + lngValue, 0) / largestRing.length;
+  const lat = largestRing.reduce((sum, [, latValue]) => sum + latValue, 0) / largestRing.length;
   return { lat, lng };
 }
 
@@ -428,10 +454,10 @@ export function parseComplexResults(document: unknown): Map<string, ComplexMembe
 // (58M triples) is voor dit kleine type overbodig.
 //
 // Sommige Werelderfgoed-polygonen (bv. de Hollandse Waterlinies) zijn
-// megabytes aan WKT groot. Voor een kaartmarker is geen volledige geometrie
-// nodig, dus SUBSTR() beperkt wat de SPARQL-service teruggeeft tot een
-// voorvoegsel met ruim voldoende coördinatenparen voor een representatief
-// punt via wktToLatLng().
+// megabytes aan WKT groot. Die wordt hier toch volledig opgehaald - een
+// voorvoegsel afknippen (zoals eerder met SUBSTR) laat wktToLatLng() maar
+// één willekeurig deel van een meerdelige vorm zien, wat bij de Waddenzee
+// een kaartmarker middenin de Achterhoek opleverde in plaats van in zee.
 // Zonder term (browse-modus: alle 18 tonen) wordt de FILTER weggelaten in
 // plaats van een altijd-waar CONTAINS("") te forceren - dat scheelt niets aan
 // resultaat maar maakt de intentie ("alles tonen" versus "op naam zoeken")
@@ -448,7 +474,7 @@ SELECT ?cho ?choi ?wenr
   (SAMPLE(STR(?registratiedatumValue)) AS ?registratiedatum)
   (SAMPLE(STR(?jaarValue)) AS ?jaar)
   (SAMPLE(STR(?urlValue)) AS ?url)
-  (SAMPLE(SUBSTR(STR(?wktValue), 1, 3000)) AS ?wkt)
+  (SAMPLE(STR(?wktValue)) AS ?wkt)
 WHERE {
   GRAPH <${INSTANCES_GRAPH}> {
     ?cho a ceo:Werelderfgoed ; ceo:cultuurhistorischObjectnummer ?choi ; ceo:werelderfgoednummer ?wenr .
@@ -510,7 +536,7 @@ SELECT ?cho ?choi ?gnr
   (SAMPLE(STR(?naamValue)) AS ?naam)
   (SAMPLE(STR(?registratiedatumValue)) AS ?registratiedatum)
   (SAMPLE(STR(?urlValue)) AS ?url)
-  (SAMPLE(SUBSTR(STR(?wktValue), 1, 3000)) AS ?wkt)
+  (SAMPLE(STR(?wktValue)) AS ?wkt)
 WHERE {
   GRAPH <${INSTANCES_GRAPH}> {
     ?cho a ceo:Gezicht ; ceo:cultuurhistorischObjectnummer ?choi ; ceo:gezichtsnummer ?gnr ;

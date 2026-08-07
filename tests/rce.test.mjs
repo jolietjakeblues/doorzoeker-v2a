@@ -58,13 +58,28 @@ test("derives a marker position from a Polygon by averaging its vertices", () =>
   assert.equal(monument.lat, 52.1);
 });
 
-test("derives a marker position from a MultiPolygon by averaging all its vertices", () => {
+test("derives a marker position from a MultiPolygon with equally-sized rings by averaging the first one", () => {
   const wkt = "MultiPolygon (((5.0 52.0, 5.0 52.2, 5.2 52.2, 5.2 52.0)), ((6.0 53.0, 6.0 53.2, 6.2 53.2, 6.2 53.0)))";
   const document = { results: { bindings: [{ rmnr: { value: "1" }, wkt: { value: wkt } }] } };
   const [monument] = parseSparqlResults(document);
-  assert.ok(monument.lat !== undefined && monument.lng !== undefined);
-  assert.equal(monument.lng, (5.0 + 5.0 + 5.2 + 5.2 + 6.0 + 6.0 + 6.2 + 6.2) / 8);
-  assert.equal(monument.lat, (52.0 + 52.2 + 52.2 + 52.0 + 53.0 + 53.2 + 53.2 + 53.0) / 8);
+  assert.equal(monument.lng, 5.1);
+  assert.equal(monument.lat, 52.1);
+});
+
+test("picks the ring with the largest bounding box instead of blending disjoint parts (the Waddenzee bug)", () => {
+  // Een MultiPolygon met los van elkaar liggende delen - bv. de Waddenzee,
+  // eilanden en wadplaten over honderden kilometers kust - gaf met een platte
+  // gemiddelde over alle coördinaten een punt ergens in de lege ruimte
+  // tussen die delen: een kaartmarker die middenin de Achterhoek belandde in
+  // plaats van in zee. Een klein, ver weg gelegen "eiland" (deze tweede ring)
+  // mag het resultaat dus niet naar zich toe trekken.
+  const dominant = "5.0 53.0, 5.0 53.2, 7.0 53.2, 7.0 53.0";
+  const distantSliver = "50.0 10.0, 50.0 10.01, 50.01 10.01, 50.01 10.0";
+  const wkt = `MultiPolygon (((${dominant})), ((${distantSliver})))`;
+  const document = { results: { bindings: [{ rmnr: { value: "1" }, wkt: { value: wkt } }] } };
+  const [monument] = parseSparqlResults(document);
+  assert.equal(monument.lng, 6.0);
+  assert.equal(monument.lat, 53.1);
 });
 
 test("leaves lat/lng undefined when there is no geometry at all", () => {
@@ -206,9 +221,11 @@ test("looks up Werelderfgoed across both the instanties-rce and werelderfgoed_hv
   assert.match(query, /ceo:jaarVanInschrijving/);
   assert.match(query, /ceo:wordtGetoondOp/);
   assert.match(query, /schokland/);
-  // Sommige Werelderfgoed-polygonen zijn megabytes groot; voor een
-  // kaartmarker volstaat een voorvoegsel van de WKT.
-  assert.match(query, /SUBSTR\(STR\(\?wktValue\), 1, 3000\)/);
+  // Geen SUBSTR-afkapping meer: een voorvoegsel van een meerdelige polygon
+  // (zoals de Waddenzee) mist willekeurig welke delen wktToLatLng() nodig
+  // heeft om de dominante ring te kiezen.
+  assert.match(query, /\(SAMPLE\(STR\(\?wktValue\)\) AS \?wkt\)/);
+  assert.doesNotMatch(query, /SUBSTR/);
 });
 
 test("drops the naam-FILTER in the Werelderfgoed query when browsing without a term", () => {
