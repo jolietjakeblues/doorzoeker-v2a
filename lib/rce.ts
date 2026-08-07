@@ -38,6 +38,7 @@ export type RceMonument = {
   matchSource?: string;
   matchedText?: string;
   matchScore?: number;
+  archaeologicalSites?: ArcheologischTerrein[];
 };
 
 export type RceParcel = {
@@ -281,6 +282,42 @@ SELECT DISTINCT ?rmnr ?gemeente ?gemeentecode ?sectie ?perceel ?provinciecode WH
   OPTIONAL { ?brk ceo:provinciecode ?provinciecode . }
  }
 }`;
+}
+
+// A Rijksmonument with an archaeological monumentaard is, in practice, almost
+// always also registered as its own ArcheologischTerrein: of the 1,812
+// terreinen with the "beschermd" waardering, all 1,812 link back to a
+// Rijksmonument via ceo:ligtInObject, and 1,457 of the 1,499 archaeological
+// Rijksmonument records link back to at least one such terrein. So this is
+// not a parallel search feature - it is an enrichment lookup keyed by the
+// Rijksmonument's own CHO subject URI (RceMonument.sourceUrl).
+export function buildArcheologischTerreinQuery(choUris: string[]) {
+  const values = choUris.map((uri) => `<${uri}>`).join(" ");
+  return `PREFIX ceo: <${CEO}>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT DISTINCT ?rm ?terrein ?archisNummer ?waarderingLabel WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    VALUES ?rm { ${values} }
+    ?terrein a ceo:ArcheologischTerrein ; ceo:ligtInObject ?rm .
+    OPTIONAL { ?terrein ceo:archis2Monumentnummer ?archisNummer . }
+    OPTIONAL { ?terrein ceo:heeftArcheologischeWaardering/skos:prefLabel ?waarderingLabel . }
+  }
+}`;
+}
+
+export type ArcheologischTerrein = { archisMonumentnummer?: string; waardering?: string };
+
+export function parseArcheologischTerreinResults(document: unknown): Map<string, ArcheologischTerrein[]> {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  const byMonument = new Map<string, ArcheologischTerrein[]>();
+  if (!Array.isArray(bindings)) return byMonument;
+  for (const binding of bindings) {
+    const monumentUri = binding.rm?.value;
+    if (!monumentUri) continue;
+    const terrein: ArcheologischTerrein = { archisMonumentnummer: binding.archisNummer?.value, waardering: binding.waarderingLabel?.value };
+    byMonument.set(monumentUri, [...(byMonument.get(monumentUri) ?? []), terrein]);
+  }
+  return byMonument;
 }
 
 function values(node: JsonLdNode | undefined, property: string): JsonLdValue[] {
