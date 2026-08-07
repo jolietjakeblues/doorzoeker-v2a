@@ -15,6 +15,8 @@ const rceFixture = [
   { "@id": "rm:38342", "@type": [`${CEO}Rijksmonument`], [`${CEO}rijksmonumentnummer`]: [{ "@value": "https://monumentenregister.cultureelerfgoed.nl/monumenten/36046" }], [`${CEO}cultuurhistorischObjectnummer`]: [{ "@value": "38342" }], [`${CEO}datumInschrijvingInMonumentenregister`]: [{ "@value": "1967-06-20" }], [`${CEO}heeftBasisregistratieRelatie`]: [{ "@id": "basis:1" }] },
 ];
 const rceSparqlFixture = { results: { bindings: [{ cho: { value: "rm:38342" }, choi: { value: "38342" }, rmnr: { value: "36046" }, functie: { value: "Woonhuis(K)" }, omschrijving: { value: "Pand met 17e eeuwse lijstgevel." }, monumentaard: { value: "onroerend gebouwd" }, volledigAdres: { value: "Brigittenstraat 18" }, postcode: { value: "3512KM" }, woonplaats: { value: "Utrecht" }, wkt: { value: "POINT(5.1267842049703 52.088895166661)" }, inschrijving: { value: "1967-06-20" } }] } };
+const rceDiscoveryFixture = { results: { bindings: [{ rmnr: { value: "36046" }, match: { value: "Pand met 17e eeuwse lijstgevel." }, bron: { value: "formele omschrijving" }, score: { value: "51" } }] } };
+const rceFacetsFixture = { results: { bindings: [{ rmnr: { value: "36046" }, oorspronkelijkeFuncties: { value: "Woonhuis(K)" }, huidigeFuncties: { value: "Woning" }, typen: { value: "Woonhuis" } }] } };
 const rceParcelFixture = { results: { bindings: [{ gemeente: { value: "Utrecht" }, gemeentecode: { value: "996" }, sectie: { value: "B" }, perceel: { value: "358" }, provinciecode: { value: "UT" } }] } };
 const contentTypes = {
   ".css": "text/css; charset=utf-8",
@@ -66,7 +68,7 @@ test("GitHub Pages export loads and remains interactive in Chromium", { timeout:
   await page.route("https://api.linkeddata.cultureelerfgoed.nl/**", (route) => {
     const requestUrl = decodeURIComponent(route.request().url());
     const isSparql = requestUrl.includes("/sparql");
-    const body = isSparql ? (requestUrl.includes("heeftBRKRelatie") ? rceParcelFixture : rceSparqlFixture) : rceFixture;
+    const body = isSparql ? (requestUrl.includes("heeftBRKRelatie") ? rceParcelFixture : requestUrl.includes("GROUP_CONCAT") ? rceFacetsFixture : requestUrl.includes("?bron ?score") ? rceDiscoveryFixture : rceSparqlFixture) : rceFixture;
     return route.fulfill({ contentType: isSparql ? "application/sparql-results+json" : "application/ld+json", body: JSON.stringify(body) });
   });
   const runtimeErrors = [];
@@ -93,6 +95,8 @@ test("GitHub Pages export loads and remains interactive in Chromium", { timeout:
     await page.locator("#q").fill("lijstgevel");
     await page.getByRole("button", { name: "Zoeken", exact: true }).click();
     await assert.doesNotReject(() => page.locator("article").getByText("Pand met 17e eeuwse lijstgevel.", { exact: true }).waitFor({ state: "visible" }));
+    await assert.doesNotReject(() => page.getByText(/Gevonden via formele omschrijving: Pand met 17e eeuwse lijstgevel/).waitFor({ state: "visible" }));
+    await page.getByRole("combobox", { name: "Filter op matchbron" }).selectOption("formele omschrijving");
     await page.getByRole("combobox", { name: "Filter op functie" }).selectOption("Woonhuis(K)");
     await assert.doesNotReject(() => page.getByText(/1 resultaat/).waitFor({ state: "visible" }));
 

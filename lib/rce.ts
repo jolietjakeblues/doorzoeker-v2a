@@ -5,6 +5,13 @@ const RM_TYPE = `${CEO}Rijksmonument`;
 const INSTANCES_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce";
 const RIJKSMONUMENT_STATUS = "https://data.cultureelerfgoed.nl/term/id/rn/2/b2d9a59a-fe1e-4552-9a05-3c2acddff864";
 
+export const RCE_SEMANTICS = Object.freeze({
+  instancesGraph: INSTANCES_GRAPH,
+  activeLegalStatus: RIJKSMONUMENT_STATUS,
+  formalStatementRequiredFor: ["oorspronkelijke functie", "huidige functie", "formele omschrijving"],
+  ranking: ["oorspronkelijke functie", "huidige functie", "type", "monumentaard", "formele omschrijving", "woonplaats"],
+});
+
 type JsonLdValue = { "@id"?: string; "@value"?: string };
 type JsonLdNode = Record<string, unknown> & { "@id": string; "@type"?: string[] };
 
@@ -18,6 +25,10 @@ export type RceMonument = {
   sourceUrl: string;
   name?: string;
   functionName?: string;
+  originalFunctionNames?: string[];
+  currentFunctionNames?: string[];
+  typeNames?: string[];
+  legalStatus?: string;
   description?: string;
   monumentNature?: string;
   fullAddress?: string;
@@ -28,6 +39,7 @@ export type RceMonument = {
   parcels?: RceParcel[];
   matchSource?: string;
   matchedText?: string;
+  matchScore?: number;
 };
 
 export type RceParcel = {
@@ -40,7 +52,7 @@ export type RceParcel = {
 
 type SparqlBinding = Record<string, { value?: string }>;
 
-type DiscoveryMatch = { monumentNumber: string; matchSource: string; matchedText: string };
+type DiscoveryMatch = { monumentNumber: string; matchSource: string; matchedText: string; matchScore: number };
 
 function escapeSparqlString(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/[\r\n]+/g, " ");
@@ -53,9 +65,11 @@ export function parseDiscoveryResults(document: unknown): DiscoveryMatch[] {
   const matches = new Map<string, DiscoveryMatch>();
   for (const binding of bindings) {
     const monumentNumber = binding.rmnr?.value ?? "";
-    const candidate = { monumentNumber, matchSource: binding.bron?.value ?? "", matchedText: binding.match?.value ?? "" };
+    const candidate = { monumentNumber, matchSource: binding.bron?.value ?? "", matchedText: binding.match?.value ?? "", matchScore: Number(binding.score?.value ?? 999) };
     const current = matches.get(monumentNumber);
-    if (monumentNumber && (!current || (priority[candidate.matchSource] ?? 99) < (priority[current.matchSource] ?? 99))) matches.set(monumentNumber, candidate);
+    const candidatePriority = priority[candidate.matchSource] ?? 99;
+    const currentPriority = current ? priority[current.matchSource] ?? 99 : 999;
+    if (monumentNumber && (!current || candidate.matchScore < current.matchScore || (candidate.matchScore === current.matchScore && candidatePriority < currentPriority))) matches.set(monumentNumber, candidate);
   }
   return [...matches.values()];
 }
@@ -64,7 +78,7 @@ export function buildRceDiscoveryQuery(term: string) {
   const needle = escapeSparqlString(term.trim());
   return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-SELECT DISTINCT ?rmnr ?match ?bron ?rang WHERE {
+SELECT DISTINCT ?rmnr ?match ?bron ?score WHERE {
  GRAPH <${INSTANCES_GRAPH}> {
   ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ;
        ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> .
@@ -97,9 +111,11 @@ SELECT DISTINCT ?rmnr ?match ?bron ?rang WHERE {
     BIND(6 AS ?rang)
   }
   FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))
+  BIND(IF(LCASE(STR(?match)) = LCASE("${needle}"), 0, IF(STRSTARTS(LCASE(STR(?match)), LCASE("${needle}")), 1, 2)) AS ?matchtype)
+  BIND((?rang * 10) + ?matchtype AS ?score)
  }
 }
-ORDER BY ?rang
+ORDER BY ?score LCASE(STR(?match)) ?rmnr
 LIMIT 100`;
 }
 
@@ -119,6 +135,10 @@ export function parseSparqlResults(document: unknown): RceMonument[] {
       sourceUrl: binding.cho?.value ?? "",
       name: binding.naam?.value,
       functionName: binding.functie?.value,
+      originalFunctionNames: binding.oorspronkelijkeFuncties?.value?.split("||").filter(Boolean) ?? [],
+      currentFunctionNames: binding.huidigeFuncties?.value?.split("||").filter(Boolean) ?? [],
+      typeNames: binding.typen?.value?.split("||").filter(Boolean) ?? [],
+      legalStatus: binding.juridischeStatus?.value ?? "rijksmonument",
       description: binding.omschrijving?.value,
       monumentNature: binding.monumentaard?.value,
       fullAddress: binding.volledigAdres?.value,
@@ -191,6 +211,43 @@ export function buildRceNumberQuery(monumentNumber: string) {
   return buildRceDetailsQuery([monumentNumber]);
 }
 
+export function buildRceFacetsQuery(monumentNumbers: string[]) {
+  const values = monumentNumbers.map((number) => `"${escapeSparqlString(number)}"`).join(" ");
+  return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT ?rmnr
+  (GROUP_CONCAT(DISTINCT STR(?oorspronkelijkeFunctie); separator="||") AS ?oorspronkelijkeFuncties)
+  (GROUP_CONCAT(DISTINCT STR(?huidigeFunctie); separator="||") AS ?huidigeFuncties)
+  (GROUP_CONCAT(DISTINCT STR(?typeNaam); separator="||") AS ?typen)
+WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    VALUES ?rmnr { ${values} }
+    ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ;
+         ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> .
+    OPTIONAL {
+      ?cho ceo:heeftOorspronkelijkeFunctie ?oorspronkelijkeNode .
+      ?oorspronkelijkeNode ceo:formeelStandpunt true ; ceo:heeftFunctieNaam/skos:prefLabel ?oorspronkelijkeFunctie .
+    }
+    OPTIONAL {
+      ?cho ceo:heeftHuidigeFunctie ?huidigeNode .
+      ?huidigeNode ceo:formeelStandpunt true ; ceo:heeftFunctieNaam/skos:prefLabel ?huidigeFunctie .
+    }
+    OPTIONAL { ?cho ceo:heeftType/ceo:heeftTypeNaam/skos:prefLabel ?typeNaam . }
+  }
+}
+GROUP BY ?rmnr`;
+}
+
+function parseFacetResults(document: unknown) {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings ?? [];
+  return new Map(bindings.map((binding) => [binding.rmnr?.value ?? "", {
+    originalFunctionNames: binding.oorspronkelijkeFuncties?.value?.split("||").filter(Boolean) ?? [],
+    currentFunctionNames: binding.huidigeFuncties?.value?.split("||").filter(Boolean) ?? [],
+    typeNames: binding.typen?.value?.split("||").filter(Boolean) ?? [],
+    legalStatus: "rijksmonument",
+  }]));
+}
+
 export function buildRceParcelQuery(monumentNumber: string) {
   return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
 SELECT DISTINCT ?gemeente ?gemeentecode ?sectie ?perceel ?provinciecode
@@ -235,28 +292,33 @@ async function fetchSparql(query: string, signal?: AbortSignal) {
 }
 
 async function searchRceByNumber(monumentNumber: string, signal?: AbortSignal) {
-  const [monumentsDocument, parcelsDocument] = await Promise.all([
+  const [monumentsDocument, parcelsDocument, facetsDocument] = await Promise.all([
     fetchSparql(buildRceNumberQuery(monumentNumber), signal),
     fetchSparql(buildRceParcelQuery(monumentNumber), signal),
+    fetchSparql(buildRceFacetsQuery([monumentNumber]), signal),
   ]);
   const parcels = parseParcelResults(parcelsDocument);
-  return parseSparqlResults(monumentsDocument).map((monument) => ({ ...monument, parcels }));
+  const facets = parseFacetResults(facetsDocument);
+  return parseSparqlResults(monumentsDocument).map((monument) => ({ ...monument, ...facets.get(monument.monumentNumber), parcels }));
 }
 
 async function searchRceByText(term: string, signal?: AbortSignal) {
   const discovery = parseDiscoveryResults(await fetchSparql(buildRceDiscoveryQuery(term), signal)).slice(0, 25);
   if (!discovery.length) return [];
   const numbers = discovery.map((match) => match.monumentNumber);
-  const [detailsDocument, parcelsDocument] = await Promise.all([
+  const [detailsDocument, parcelsDocument, facetsDocument] = await Promise.all([
     fetchSparql(buildRceDetailsQuery(numbers), signal),
     fetchSparql(buildRceParcelsQuery(numbers), signal),
+    fetchSparql(buildRceFacetsQuery(numbers), signal),
   ]);
-  const matchByNumber = new Map(discovery.map((match) => [match.monumentNumber, match]));
+  const facets = parseFacetResults(facetsDocument);
   const parcelBindings = (parcelsDocument as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings ?? [];
-  return parseSparqlResults(detailsDocument).map((monument) => {
-    const match = matchByNumber.get(monument.monumentNumber);
+  const detailsByNumber = new Map(parseSparqlResults(detailsDocument).map((monument) => [monument.monumentNumber, monument]));
+  return discovery.flatMap((match) => {
+    const monument = detailsByNumber.get(match.monumentNumber);
+    if (!monument) return [];
     const parcels = parseParcelResults({ results: { bindings: parcelBindings.filter((binding) => binding.rmnr?.value === monument.monumentNumber) } });
-    return { ...monument, ...match, parcels };
+    return [{ ...monument, ...facets.get(monument.monumentNumber), ...match, parcels }];
   });
 }
 

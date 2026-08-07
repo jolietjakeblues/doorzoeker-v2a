@@ -48,3 +48,4 @@ h2,.copy h3,.empty h3,.detail-copy h2{font-family:Arial,sans-serif}
 .govbar>div{display:none}
 @media(max-width:600px){.govbar{height:92px;justify-content:center}.govbar>img{width:338px;height:50px}}
 .brand-button{padding:0;border:0;background:transparent;text-align:left}
+.work .select-label{display:block}.work select{width:100%;padding:10px;border:1px solid var(--line);border-radius:3px;background:#fff;color:var(--ink)}

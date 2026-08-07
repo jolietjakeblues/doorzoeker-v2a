@@ -10,7 +10,8 @@ type Item = {
   type: "Gebouwd" | "Archeologisch"; period: string; description: string;
   lat: number; lng: number;
   monumentNumber?: string; registrationDate?: string; official?: boolean; sourceUrl?: string; wkt?: string;
-  matchSource?: string; matchedText?: string;
+  matchSource?: string; matchedText?: string; matchScore?: number; legalStatus?: string;
+  originalFunctionNames?: string[]; currentFunctionNames?: string[]; typeNames?: string[];
   parcels?: Array<{ municipality: string; municipalityCode: string; section: string; parcelNumber: string; provinceCode: string }>;
 };
 
@@ -23,14 +24,16 @@ const ITEMS: Item[] = [
 ];
 
 function readUrlState() {
-  if (typeof window === "undefined") return { query: "", type: "Alle", municipality: "Alle", view: "list" as const, selectedId: "" };
+  if (typeof window === "undefined") return { query: "", type: "Alle", municipality: "Alle", functionFilter: "Alle", matchSourceFilter: "Alle", view: "list" as const, selectedId: "" };
   const params = new URLSearchParams(window.location.search);
   const type = params.get("type");
   const municipality = params.get("gemeente");
   return {
     query: params.get("q") ?? "",
     type: type === "Gebouwd" || type === "Archeologisch" ? type : "Alle",
-    municipality: municipality === "Utrecht" || municipality === "Bunnik" ? municipality : "Alle",
+    municipality: municipality || "Alle",
+    functionFilter: params.get("functie") ?? "Alle",
+    matchSourceFilter: params.get("bron") ?? "Alle",
     view: params.get("view") === "map" ? "map" as const : "list" as const,
     selectedId: params.get("rm") ?? "",
   };
@@ -42,7 +45,8 @@ export default function Home() {
   const [active, setActive] = useState(initial.query);
   const [type, setType] = useState(initial.type);
   const [municipality, setMunicipality] = useState(initial.municipality);
-  const [functionFilter, setFunctionFilter] = useState("Alle");
+  const [functionFilter, setFunctionFilter] = useState(initial.functionFilter);
+  const [matchSourceFilter, setMatchSourceFilter] = useState(initial.matchSourceFilter);
   const [view, setView] = useState<"list" | "map">(initial.view);
   const [selected, setSelected] = useState<Item | null>(() => ITEMS.find((item) => item.id === initial.selectedId) ?? null);
   const [filters, setFilters] = useState(false);
@@ -54,10 +58,12 @@ export default function Home() {
     if (active) params.set("q", active);
     if (type !== "Alle") params.set("type", type);
     if (municipality !== "Alle") params.set("gemeente", municipality);
+    if (functionFilter !== "Alle") params.set("functie", functionFilter);
+    if (matchSourceFilter !== "Alle") params.set("bron", matchSourceFilter);
     if (view === "map") params.set("view", "map");
     if (selected) params.set("rm", selected.id);
     window.history.replaceState({}, "", params.size ? `?${params}` : window.location.pathname);
-  }, [active, municipality, selected, type, view]);
+  }, [active, functionFilter, matchSourceFilter, municipality, selected, type, view]);
 
   const choose = useCallback((item: Item) => setSelected(item), []);
   const localResults = useMemo(() => {
@@ -70,18 +76,22 @@ export default function Home() {
     });
   }, [active, municipality, type]);
   const baseResults = remoteResults ?? localResults;
-  const functions = useMemo(() => [...new Set(baseResults.map((item) => item.kind).filter((kind) => kind !== "Functie niet opgenomen"))].sort((a, b) => a.localeCompare(b, "nl")), [baseResults]);
+  const functions = useMemo(() => [...new Set(baseResults.flatMap((item) => [...(item.originalFunctionNames ?? []), ...(item.currentFunctionNames ?? []), item.kind]).filter((kind) => kind !== "Functie niet opgenomen"))].sort((a, b) => a.localeCompare(b, "nl")), [baseResults]);
+  const municipalities = useMemo(() => [...new Set(baseResults.map((item) => item.municipality).filter(Boolean))].sort((a, b) => a.localeCompare(b, "nl")), [baseResults]);
+  const matchSources = useMemo(() => [...new Set(baseResults.map((item) => item.matchSource).filter((source): source is string => Boolean(source)))], [baseResults]);
   const results = useMemo(() => baseResults.filter((item) =>
-    (functionFilter === "Alle" || item.kind === functionFilter) &&
+    (functionFilter === "Alle" || [item.kind, ...(item.originalFunctionNames ?? []), ...(item.currentFunctionNames ?? [])].includes(functionFilter)) &&
     (type === "Alle" || item.type === type) &&
-    (municipality === "Alle" || item.municipality === municipality)
-  ), [baseResults, functionFilter, municipality, type]);
+    (municipality === "Alle" || item.municipality === municipality) &&
+    (matchSourceFilter === "Alle" || item.matchSource === matchSourceFilter)
+  ), [baseResults, functionFilter, matchSourceFilter, municipality, type]);
 
   async function submitSearch(event: FormEvent) {
     event.preventDefault();
     const term = query.trim();
     setActive(term); setSelected(null); setView("list");
     setFunctionFilter("Alle");
+    setMatchSourceFilter("Alle");
     if (!term) { setRemoteResults(null); setRemoteState("idle"); return; }
     setRemoteState("loading");
     try {
@@ -98,7 +108,7 @@ export default function Home() {
         municipality: record.place || (/^\d/.test(term) ? "" : term),
         province: "",
         type: record.monumentNature?.toLocaleLowerCase("nl").includes("archeologisch") ? "Archeologisch" : "Gebouwd",
-        period: record.registrationDate ? `Ingeschreven ${record.registrationDate}` : "Datering niet opgenomen",
+        period: record.matchSource ? `Gevonden via ${record.matchSource}${record.matchedText ? `: ${record.matchedText.slice(0, 72)}${record.matchedText.length > 72 ? "…" : ""}` : ""}` : record.registrationDate ? `Ingeschreven ${record.registrationDate}` : "Datering niet opgenomen",
         description: record.description || "Actueel record uit de Linked Data Voorziening van de Rijksdienst voor het Cultureel Erfgoed.",
         registrationDate: record.registrationDate,
         official: true,
@@ -107,6 +117,11 @@ export default function Home() {
         parcels: record.parcels,
         matchSource: record.matchSource,
         matchedText: record.matchedText,
+        matchScore: record.matchScore,
+        legalStatus: record.legalStatus,
+        originalFunctionNames: record.originalFunctionNames,
+        currentFunctionNames: record.currentFunctionNames,
+        typeNames: record.typeNames,
         lat: record.lat ?? 0,
         lng: record.lng ?? 0,
       })));
@@ -117,7 +132,7 @@ export default function Home() {
     }
   }
   function reset() {
-    setQuery(""); setActive(""); setType("Alle"); setMunicipality("Alle"); setFunctionFilter("Alle"); setSelected(null); setRemoteResults(null); setRemoteState("idle");
+    setQuery(""); setActive(""); setType("Alle"); setMunicipality("Alle"); setFunctionFilter("Alle"); setMatchSourceFilter("Alle"); setSelected(null); setRemoteResults(null); setRemoteState("idle");
   }
 
   return <main>
@@ -138,11 +153,11 @@ export default function Home() {
     <section className="work">
       <aside className={filters ? "show" : ""} aria-label="Zoekfilters">
         <div className="aside-title"><div><small>VERFIJN</small><h2>Filters</h2></div><button type="button" onClick={() => setFilters(false)} aria-label="Filters sluiten">×</button></div>
-        <fieldset><legend>Soort monument</legend>{["Alle", "Gebouwd", "Archeologisch"].map((option) => <label key={option}><input type="radio" name="type" checked={type === option} onChange={() => setType(option)} /><span>{option === "Alle" ? "Alle monumenten" : option}</span><em>{option === "Alle" ? ITEMS.length : ITEMS.filter((item) => item.type === option).length}</em></label>)}</fieldset>
-        <fieldset><legend>Gemeente</legend>{["Alle", "Utrecht", "Bunnik"].map((option) => <label key={option}><input type="radio" name="municipality" checked={municipality === option} onChange={() => setMunicipality(option)} /><span>{option === "Alle" ? "Alle gemeenten" : option}</span><em>{option === "Alle" ? ITEMS.length : ITEMS.filter((item) => item.municipality === option).length}</em></label>)}</fieldset>
-        <fieldset><legend>Functie</legend><label className="select-label"><span className="sr">Filter op functie</span><select aria-label="Filter op functie" value={functionFilter} onChange={(event) => setFunctionFilter(event.target.value)}><option value="Alle">Alle functies</option>{functions.map((option) => <option key={option} value={option}>{option}</option>)}</select></label></fieldset>
-        <fieldset><legend>Provincie</legend><label><input type="checkbox" checked readOnly /><span>Utrecht</span><em>{ITEMS.length}</em></label></fieldset>
-        <fieldset><legend>Status</legend><label><input type="checkbox" checked readOnly /><span>Rijksmonument</span><em>{ITEMS.length}</em></label></fieldset>
+        <fieldset><legend>Monumentaard</legend>{["Alle", "Gebouwd", "Archeologisch"].map((option) => <label key={option}><input type="radio" name="type" checked={type === option} onChange={() => setType(option)} /><span>{option === "Alle" ? "Alle monumentaarden" : option}</span><em>{option === "Alle" ? baseResults.length : baseResults.filter((item) => item.type === option).length}</em></label>)}</fieldset>
+        <fieldset><legend>Gemeente / woonplaats</legend><label className="select-label"><span className="sr">Filter op gemeente of woonplaats</span><select aria-label="Filter op gemeente of woonplaats" value={municipality} onChange={(event) => setMunicipality(event.target.value)}><option value="Alle">Alle plaatsen ({baseResults.length})</option>{municipalities.map((option) => <option key={option} value={option}>{option} ({baseResults.filter((item) => item.municipality === option).length})</option>)}</select></label></fieldset>
+        <fieldset><legend>Functie</legend><label className="select-label"><span className="sr">Filter op functie</span><select aria-label="Filter op functie" value={functionFilter} onChange={(event) => setFunctionFilter(event.target.value)}><option value="Alle">Alle functies ({baseResults.length})</option>{functions.map((option) => <option key={option} value={option}>{option} ({baseResults.filter((item) => [item.kind, ...(item.originalFunctionNames ?? []), ...(item.currentFunctionNames ?? [])].includes(option)).length})</option>)}</select></label></fieldset>
+        {matchSources.length > 0 && <fieldset><legend>Gevonden via</legend><label className="select-label"><span className="sr">Filter op matchbron</span><select aria-label="Filter op matchbron" value={matchSourceFilter} onChange={(event) => setMatchSourceFilter(event.target.value)}><option value="Alle">Alle matchbronnen</option>{matchSources.map((option) => <option key={option} value={option}>{option} ({baseResults.filter((item) => item.matchSource === option).length})</option>)}</select></label></fieldset>}
+        <fieldset><legend>Juridische status</legend><label><input type="checkbox" checked readOnly /><span>Rijksmonument</span><em>{baseResults.filter((item) => !item.official || item.legalStatus === "rijksmonument").length}</em></label></fieldset>
         <button className="reset" type="button" onClick={reset}>Wis alle filters</button>
       </aside>
       <div className="results">

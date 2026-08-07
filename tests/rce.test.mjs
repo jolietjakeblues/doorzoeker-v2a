@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildRceDiscoveryQuery, buildRceNumberQuery, buildRceParcelQuery, parseDiscoveryResults, parseParcelResults, parseRceMonuments, parseSparqlResults } from "../lib/rce.ts";
+import { buildRceDiscoveryQuery, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, parseDiscoveryResults, parseParcelResults, parseRceMonuments, parseSparqlResults, RCE_SEMANTICS } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -15,7 +15,7 @@ test("parses an official RCE JSON-LD graph", () => {
 
 test("parses rich SPARQL results", () => {
   const document = { results: { bindings: [{ cho: { value: "rm:38342" }, choi: { value: "38342" }, rmnr: { value: "36046" }, functie: { value: "Woonhuis(K)" }, omschrijving: { value: "Pand met 17e eeuwse lijstgevel." }, monumentaard: { value: "onroerend gebouwd" }, volledigAdres: { value: "Brigittenstraat 18" }, postcode: { value: "3512KM" }, woonplaats: { value: "Utrecht" }, wkt: { value: "POINT(5.1267842049703 52.088895166661)" }, inschrijving: { value: "1967-06-20" } }] } };
-  assert.deepEqual(parseSparqlResults(document), [{ choNumber: "38342", monumentNumber: "36046", registrationDate: "1967-06-20", street: "", houseNumber: "", postalCode: "3512KM", sourceUrl: "rm:38342", name: undefined, functionName: "Woonhuis(K)", description: "Pand met 17e eeuwse lijstgevel.", monumentNature: "onroerend gebouwd", fullAddress: "Brigittenstraat 18", place: "Utrecht", lng: 5.1267842049703, lat: 52.088895166661, wkt: "POINT(5.1267842049703 52.088895166661)" }]);
+  assert.deepEqual(parseSparqlResults(document), [{ choNumber: "38342", monumentNumber: "36046", registrationDate: "1967-06-20", street: "", houseNumber: "", postalCode: "3512KM", sourceUrl: "rm:38342", name: undefined, functionName: "Woonhuis(K)", originalFunctionNames: [], currentFunctionNames: [], typeNames: [], legalStatus: "rijksmonument", description: "Pand met 17e eeuwse lijstgevel.", monumentNature: "onroerend gebouwd", fullAddress: "Brigittenstraat 18", place: "Utrecht", lng: 5.1267842049703, lat: 52.088895166661, wkt: "POINT(5.1267842049703 52.088895166661)" }]);
 });
 
 test("queries and parses BRK parcels separately", () => {
@@ -28,9 +28,19 @@ test("queries and parses BRK parcels separately", () => {
 
 test("only queries formally established descriptions", () => {
   const query = buildRceNumberQuery("36046");
+  assert.match(query, new RegExp(`GRAPH <${RCE_SEMANTICS.instancesGraph}>`));
+  assert.match(query, new RegExp(`ceo:heeftJuridischeStatus <${RCE_SEMANTICS.activeLegalStatus}>`));
   assert.match(query, /ceo:heeftOmschrijving \?omschrijvingNode/);
   assert.match(query, /ceo:omschrijving \?omschrijvingValue/);
   assert.match(query, /ceo:formeelStandpunt true/);
+});
+
+test("queries formal original and current functions as separate facets", () => {
+  const query = buildRceFacetsQuery(["36046", "1"]);
+  assert.match(query, /ceo:heeftOorspronkelijkeFunctie \?oorspronkelijkeNode/);
+  assert.match(query, /ceo:heeftHuidigeFunctie \?huidigeNode/);
+  assert.equal((query.match(/ceo:formeelStandpunt true/g) ?? []).length, 2);
+  assert.match(query, /ceo:heeftType\/ceo:heeftTypeNaam\/skos:prefLabel/);
 });
 
 test("discovers functions, types and only formal descriptions", () => {
@@ -43,6 +53,7 @@ test("discovers functions, types and only formal descriptions", () => {
   assert.match(query, /ceo:heeftHuidigeFunctie/);
   assert.match(query, /ceo:heeftType/);
   assert.match(query, /ceo:heeftMonumentAard/);
+  assert.match(query, /ORDER BY \?score/);
   assert.match(query, /ceo:formeelStandpunt true/);
   assert.match(query, /woonhuis \\"K\\"/);
 });
@@ -52,5 +63,14 @@ test("deduplicates matches and prefers a function over a description", () => {
     { rmnr: { value: "36046" }, match: { value: "Pand met lijstgevel" }, bron: { value: "formele omschrijving" } },
     { rmnr: { value: "36046" }, match: { value: "Woonhuis(K)" }, bron: { value: "oorspronkelijke functie" } },
   ] } };
-  assert.deepEqual(parseDiscoveryResults(document), [{ monumentNumber: "36046", matchSource: "oorspronkelijke functie", matchedText: "Woonhuis(K)" }]);
+  assert.deepEqual(parseDiscoveryResults(document), [{ monumentNumber: "36046", matchSource: "oorspronkelijke functie", matchedText: "Woonhuis(K)", matchScore: 999 }]);
+});
+
+test("prefers the lowest semantic match score regardless of binding order", () => {
+  const document = { results: { bindings: [
+    { rmnr: { value: "1" }, match: { value: "Een woonhuis in context" }, bron: { value: "formele omschrijving" }, score: { value: "52" } },
+    { rmnr: { value: "1" }, match: { value: "Woonhuis" }, bron: { value: "oorspronkelijke functie" }, score: { value: "10" } },
+  ] } };
+  assert.equal(parseDiscoveryResults(document)[0].matchScore, 10);
+  assert.equal(parseDiscoveryResults(document)[0].matchSource, "oorspronkelijke functie");
 });
