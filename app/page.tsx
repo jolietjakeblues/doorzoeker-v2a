@@ -333,6 +333,16 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, []);
   useEffect(() => () => searchController.current?.abort(), []);
+  // Het detailpaneel is rechts uitgelijnd en scrollt zelf (overflow-y: auto),
+  // exact op de plek waar de scrollbar van de pagina erachter ook zit. Zonder
+  // de paginascroll te blokkeren vallen die twee scrollbars letterlijk over
+  // elkaar heen - onduidelijk welke van de twee je aan het bedienen bent.
+  useEffect(() => {
+    if (!selected) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [selected]);
   useEffect(() => {
     const term = query.trim();
     if (term.length < 2 || term === active) return;
