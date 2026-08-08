@@ -42,12 +42,35 @@ op de detailpagina. Gebouwd als verrijking op de bestaande Rijksmonument-
 detailweergave (`buildGroenaanlegQuery`/`parseGroenaanlegResults` in
 `lib/rce.ts`), niet als apart "soort object".
 
-## `graph/msp_indicatie` — betekenis onbekend
+## `graph/msp_indicatie` — betekenis uitgezocht (2026-08-08)
 
 Eén boolean `ceo:msp_indicatie` op 13.988 Rijksmonumenten (gekoppeld via
-`rijksmonumentnummer`). Niet gedocumenteerd in de CEO-ontologie; elke
-steekproefwaarde was `true` (geen `false` gezien). **Eerst uitzoeken wat MSP
-betekent voordat hier iets mee gebouwd wordt** — niet gokken.
+`rijksmonumentnummer`), niet gedocumenteerd in de CEO-ontologie zelf; elke
+steekproefwaarde was `true` (geen `false` gezien).
+
+**MSP = Monumenten Selectie Project.** Een RCE-programma (samenwerking
+Rijk/provincies/gemeenten) dat tussen ±1997 en 2002 een selectie maakte uit
+de MIP-inventarisatie (Monumenten Inventarisatie Project, gebouwd erfgoed
+1850-1940) om aan de rijksmonumentenlijst toe te voegen - ongeveer 9% van de
+MIP-inventarisatie is destijds daadwerkelijk aangewezen. Bron: RCE-
+catalogusbeschrijvingen bij het bijbehorende beeld- en werkarchief
+([Beeldmateriaal MSP](https://catalogus.cultureelerfgoed.nl/Details/archive/110000101),
+[Werkarchief MSP/MIP](https://catalogus.cultureelerfgoed.nl/Details/archive/110000240)).
+
+Empirisch getoetst tegen de data ter bevestiging (niet alleen op de bronnen
+vertrouwd): van de 13.988 gevlagde monumenten is 83% ingeschreven in het
+Monumentenregister in exact 1997-2002 (3.289 in 2001, 3.174 in 2002, 1.583 in
+2000, 1.575 in 1999, 1.020 in 1998, 951 in 1997), met een duidelijke piek en
+uitloop naar 1994-1995 en 2003-2004 - consistent met een aanwijzingsproject
+dat over enkele jaren wordt afgehandeld. `msp_indicatie` betekent dus:
+*dit rijksmonument is via het Monumenten Selectie Project aangewezen*, en is
+een "alleen-aanwezig-als-waar"-boolean (typisch RDF-modelleerpatroon:
+afwezigheid van de triple ≠ expliciet `false`).
+
+**Nog niet gebouwd, wel nu bruikbaar als toekomstige verrijking**: een
+"Aangewezen via het Monumenten Selectie Project (1997-2002)"-vermelding op
+de detailpagina van een Rijksmonument, analoog aan de bestaande
+groenaanleg-verrijking. Niet urgent, geen openstaande vraag meer.
 
 ## `rce/bibliotheek` — apart SPARQL-dataset
 

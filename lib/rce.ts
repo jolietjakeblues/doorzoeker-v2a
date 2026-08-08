@@ -592,14 +592,20 @@ export function parseGroenaanlegResults(document: unknown): Map<string, Groenaan
 
 // De leden van een complex zijn bewust NIET onderdeel van de gewone
 // zoekresultaten (dat zou de resultatenlijst overspoelen) - dit wordt pas
-// opgehaald zodra een gebruiker een complex daadwerkelijk opent.
+// opgehaald zodra een gebruiker een complex daadwerkelijk opent. Elk lid
+// krijgt zijn eigen geometrie mee: een complex is een samenraapsel van
+// meerdere zelfstandige monumenten, niet één gebouw, dus "de vorm van het
+// complex" is het samenspel van al die eigen polygonen op de kaart - niet
+// de losse footprint van alleen het hoofdobject.
 export function buildComplexMembersQuery(complexUri: string) {
   return `PREFIX ceo: <${CEO}>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
 SELECT ?rm ?rmnr
   (SAMPLE(STR(?naamValue)) AS ?naam)
   (SAMPLE(STR(?functieValue)) AS ?functie)
   (SAMPLE(?hoofdobjectValue) AS ?hoofdobject)
+  (SAMPLE(STR(?wktValue)) AS ?wkt)
 WHERE {
   GRAPH <${INSTANCES_GRAPH}> {
     <${complexUri}> ceo:heeftRijksmonument ?rm .
@@ -610,12 +616,13 @@ WHERE {
       ?rm ceo:heeftOorspronkelijkeFunctie ?functieNode .
       ?functieNode ceo:formeelStandpunt true ; ceo:heeftFunctieNaam/skos:prefLabel ?functieValue .
     }
+    OPTIONAL { ?rm ceo:heeftGeometrie/geo:asWKT ?wktValue . }
   }
 }
 GROUP BY ?rm ?rmnr`;
 }
 
-export type ComplexMember = { choUri: string; monumentNumber: string; name: string; isHoofdobject: boolean };
+export type ComplexMember = { choUri: string; monumentNumber: string; name: string; isHoofdobject: boolean; wkt?: string; lat?: number; lng?: number };
 
 export function parseComplexMembersResults(document: unknown): ComplexMember[] {
   const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
@@ -624,11 +631,16 @@ export function parseComplexMembersResults(document: unknown): ComplexMember[] {
     const choUri = binding.rm?.value;
     const monumentNumber = binding.rmnr?.value;
     if (!choUri || !monumentNumber) return [];
+    const wkt = binding.wkt?.value ?? "";
+    const coordinates = wktToLatLng(wkt);
     return [{
       choUri,
       monumentNumber,
       name: binding.naam?.value || binding.functie?.value || `Rijksmonument ${monumentNumber}`,
       isHoofdobject: binding.hoofdobject?.value === choUri,
+      wkt: wkt || undefined,
+      lat: coordinates?.lat,
+      lng: coordinates?.lng,
     }];
   });
 }

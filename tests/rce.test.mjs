@@ -456,6 +456,7 @@ test("looks up complex members by the complex's own CHO subject URI", () => {
   const query = buildComplexMembersQuery("https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/complex/64690");
   assert.match(query, /<https:\/\/linkeddata\.cultureelerfgoed\.nl\/cho-kennis\/id\/complex\/64690> ceo:heeftRijksmonument \?rm/);
   assert.match(query, /ceo:heeftHoofdobject \?hoofdobjectValue/);
+  assert.match(query, /\?rm ceo:heeftGeometrie\/geo:asWKT \?wktValue/);
 });
 
 test("parses complex members and marks the hoofdobject", () => {
@@ -467,9 +468,23 @@ test("parses complex members and marks the hoofdobject", () => {
   ] } };
   const members = parseComplexMembersResults(document);
   assert.deepEqual(members, [
-    { choUri: "rm:71090", monumentNumber: "532188", name: "Mytylschool", isHoofdobject: false },
-    { choUri: "rm:71096", monumentNumber: "532182", name: "Hoofdgebouw", isHoofdobject: true },
+    { choUri: "rm:71090", monumentNumber: "532188", name: "Mytylschool", isHoofdobject: false, wkt: undefined, lat: undefined, lng: undefined },
+    { choUri: "rm:71096", monumentNumber: "532182", name: "Hoofdgebouw", isHoofdobject: true, wkt: undefined, lat: undefined, lng: undefined },
   ]);
+});
+
+test("parses each complex member's own geometrie, so a complex can be drawn as the union of its members' polygonen", () => {
+  // Dit is de kern van taak #7: een complex is een samenraapsel van
+  // zelfstandige monumenten, dus "de vorm van het complex" moet uit de
+  // eigen geometrie van elk lid komen, niet uit één gemiddelde of alleen
+  // die van het hoofdobject.
+  const document = { results: { bindings: [
+    { rm: { value: "rm:71090" }, rmnr: { value: "532188" }, naam: { value: "Mytylschool" }, wkt: { value: "Point (5.9 51.95)" } },
+  ] } };
+  const [member] = parseComplexMembersResults(document);
+  assert.equal(member.wkt, "Point (5.9 51.95)");
+  assert.equal(member.lat, 51.95);
+  assert.equal(member.lng, 5.9);
 });
 
 test("falls back to functie or a generic label when a complex member has no naam", () => {

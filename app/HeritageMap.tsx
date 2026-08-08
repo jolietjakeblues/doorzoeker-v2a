@@ -11,6 +11,10 @@ type MapItem = {
   objectType: "Rijksmonument" | "Werelderfgoed" | "Gezicht" | "Complex" | "Onderzoeksgebied";
   monumentAard?: "Gebouwd" | "Archeologisch";
   lat: number; lng: number; wkt?: string;
+  // Voor complexleden op de detailkaart van hun eigen complex (zie isAreaType
+  // hieronder): elk lid is op zichzelf een gewoon Rijksmonument, dat zonder
+  // deze vlag als punt zou renderen.
+  forceArea?: boolean;
 };
 
 function markerColor(item: Pick<MapItem, "objectType" | "monumentAard">) {
@@ -29,16 +33,16 @@ function markerColor(item: Pick<MapItem, "objectType" | "monumentAard">) {
 // weglaten. Gewoon gebouwde rijksmonumenten blijven een marker - die zijn
 // punt-achtig genoeg dat een stip niets verliest, en met honderden tegelijk
 // op de kaart blijft clusteren nodig.
-// Een Complex is bewust géén gebiedstype: we hebben alleen de geometrie van
-// het hoofdobject (één gebouw), niet van het complex als geheel (dat kan een
-// heel landgoed met meerdere panden beslaan). Die ene bouwvoetprint als "de
-// vorm van het complex" tonen zou net zo misleidend zijn als het probleem
-// dat deze aanpak elders juist oplost - dus blijft een Complex een punt op
-// de locatie van het hoofdobject. Een Onderzoeksgebied heeft dit probleem
-// niet: het heeft, anders dan Complex, zijn eigen echte begrenzing (het is
-// zelf het onderzochte gebied, geen samenstel van andere objecten).
-function isAreaType(item: Pick<MapItem, "objectType" | "monumentAard">) {
-  return item.objectType === "Werelderfgoed" || item.objectType === "Gezicht" || item.objectType === "Onderzoeksgebied" || item.monumentAard === "Archeologisch";
+// Een Complex zélf blijft in de gewone resultatenlijst/-kaart een punt op de
+// locatie van het hoofdobject: elk complex in een lijst de geometrie van al
+// zijn leden laten ophalen zou de gewone zoekopdracht onnodig zwaar maken
+// (dezelfde reden waarom complexleden lazy blijven). Op de detailkaart van
+// een geopend complex geldt dat argument niet meer - de leden zijn dan al
+// opgehaald - en toont de app in plaats daarvan elk lid als zijn eigen
+// polygon (via `forceArea`, zie app/page.tsx), zodat je kunt zien hoe de
+// afzonderlijke gebouwen van het complex ten opzichte van elkaar liggen.
+function isAreaType(item: Pick<MapItem, "objectType" | "monumentAard" | "forceArea">) {
+  return item.forceArea || item.objectType === "Werelderfgoed" || item.objectType === "Gezicht" || item.objectType === "Onderzoeksgebied" || item.monumentAard === "Archeologisch";
 }
 
 function tooltip(titleText: string, detail: string) {
