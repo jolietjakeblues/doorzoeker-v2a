@@ -1,10 +1,15 @@
 import {
+  buildArcheologischOnderzoekDetailsQuery,
+  buildArcheologischOnderzoekDiscoveryQueries,
   buildArcheologischTerreinQuery,
   buildComplexenQuery,
   buildComplexMembersQuery,
   buildComplexQuery,
   buildGroenaanlegQuery,
   buildImageQuery,
+  buildOnderzoeksgebiedAggregatenQuery,
+  buildOnderzoeksgebiedComplexenQuery,
+  buildOnderzoeksgebiedVondstlocatiesQuery,
   buildRceDetailsQuery,
   buildRceDiscoveryQueries,
   buildRceFacetsQuery,
@@ -14,6 +19,8 @@ import {
   buildRceParcelsQuery,
   buildWerelderfgoedQuery,
   mergeDiscoveryMatches,
+  parseArcheologischOnderzoekDiscoveryResults,
+  parseArcheologischOnderzoekResults,
   parseArcheologischTerreinResults,
   parseComplexenResults,
   parseComplexMembersResults,
@@ -23,6 +30,9 @@ import {
   parseGezichtResults,
   parseGroenaanlegResults,
   parseImageResults,
+  parseOnderzoeksgebiedAggregatenResults,
+  parseOnderzoeksgebiedComplexenResults,
+  parseOnderzoeksgebiedVondstlocatiesResults,
   parseParcelResults,
   parseRceMonuments,
   parseSparqlResults,
@@ -113,6 +123,23 @@ export async function fetchComplexMembers(complexUri: string, signal?: AbortSign
   return fetchSparql(buildComplexMembersQuery(complexUri), signal).then(parseComplexMembersResults);
 }
 
+// Zelfde lazy-aanpak als complexleden, maar dan voor de archeologische
+// domeinen onder een Onderzoeksgebied (zie de toelichting bij de
+// query-builders in rce.ts voor waarom dit drie losse queries zijn in
+// plaats van één).
+export async function fetchOnderzoeksgebiedVerrijking(gebiedUri: string, signal?: AbortSignal) {
+  const [complexenDocument, vondstlocatiesDocument, aggregatenDocument] = await Promise.all([
+    fetchSparql(buildOnderzoeksgebiedComplexenQuery(gebiedUri), signal),
+    fetchSparql(buildOnderzoeksgebiedVondstlocatiesQuery(gebiedUri), signal),
+    fetchSparql(buildOnderzoeksgebiedAggregatenQuery(gebiedUri), signal),
+  ]);
+  return {
+    complexen: parseOnderzoeksgebiedComplexenResults(complexenDocument),
+    vondstlocaties: parseOnderzoeksgebiedVondstlocatiesResults(vondstlocatiesDocument),
+    ...parseOnderzoeksgebiedAggregatenResults(aggregatenDocument),
+  };
+}
+
 async function searchByNumber(monumentNumber: string, signal?: AbortSignal): Promise<RceMonument[]> {
   const [monumentsDocument, parcelsDocument, facetsDocument] = await Promise.all([
     fetchSparql(buildRceNumberQuery(monumentNumber), signal),
@@ -125,6 +152,27 @@ async function searchByNumber(monumentNumber: string, signal?: AbortSignal): Pro
   return enrichMonuments(monuments, signal);
 }
 
+// Archeologisch onderzoeksgebied is geen kleine collectie zoals Werelderfgoed/
+// Gezicht/Complex (112K instanties) en heeft geen naam-achtig veld: dit krijgt
+// daarom zijn eigen mini-discoveryronde (woonplaats + omschrijving, zie
+// ARCHEOLOGISCH_ONDERZOEK_SOURCES in rce.ts) in plaats van één CONTAINS-query
+// op de hele collectie.
+async function searchArcheologischOnderzoek(term: string, signal?: AbortSignal): Promise<RceMonument[]> {
+  const branchResults = await Promise.all(
+    buildArcheologischOnderzoekDiscoveryQueries(term).map(({ bron, query }) =>
+      fetchSparql(query, signal).then((document) => parseArcheologischOnderzoekDiscoveryResults(document, bron, term)),
+    ),
+  );
+  const discovery = mergeDiscoveryMatches(branchResults).slice(0, 25);
+  if (!discovery.length) return [];
+  const detailsDocument = await fetchSparql(buildArcheologischOnderzoekDetailsQuery(discovery.map((match) => match.monumentNumber)), signal);
+  const detailsByNumber = new Map(parseArcheologischOnderzoekResults(detailsDocument).map((item) => [item.monumentNumber, item]));
+  return discovery.flatMap((match) => {
+    const item = detailsByNumber.get(match.monumentNumber);
+    return item ? [{ ...item, ...match }] : [];
+  });
+}
+
 // Werelderfgoed, Gezicht en Complex zijn andere CHO-types dan Rijksmonument
 // (geen adres, geen functie, geen archeologie-enrichment - Complex krijgt wel
 // zijn eigen complex-enrichment via enrichMonuments, gewoon zoals elk ander
@@ -133,7 +181,7 @@ async function searchByNumber(monumentNumber: string, signal?: AbortSignal): Pro
 // meegenomen, vóór de Rijksmonument-discoveryresultaten, zodat "laad meer"
 // op latere pagina's ze niet opnieuw ophaalt of dupliceert.
 async function searchByText(term: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
-  const [branchResults, werelderfgoed, gezichten, complexen] = await Promise.all([
+  const [branchResults, werelderfgoed, gezichten, complexen, onderzoeksgebieden] = await Promise.all([
     Promise.all(
       buildRceDiscoveryQueries(term).map(({ bron, query }) => fetchSparql(query, signal).then((document) => parseDiscoveryBranchResults(document, bron, term))),
     ),
@@ -146,8 +194,11 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1): Promi
     page === 1
       ? fetchSparql(buildComplexenQuery(term), signal).then(parseComplexenResults)
       : Promise.resolve<RceMonument[]>([]),
+    page === 1
+      ? searchArcheologischOnderzoek(term, signal)
+      : Promise.resolve<RceMonument[]>([]),
   ]);
-  const extras = [...werelderfgoed, ...gezichten, ...complexen];
+  const extras = [...werelderfgoed, ...gezichten, ...complexen, ...onderzoeksgebieden];
   const start = Math.max(0, page - 1) * 25;
   const discovery = mergeDiscoveryMatches(branchResults).slice(start, start + 25);
   if (!discovery.length) return extras;

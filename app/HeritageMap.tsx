@@ -8,7 +8,7 @@ import { parseWktGeometry } from "@/lib/rce";
 
 type MapItem = {
   id: string; title: string; address: string; place: string;
-  objectType: "Rijksmonument" | "Werelderfgoed" | "Gezicht" | "Complex";
+  objectType: "Rijksmonument" | "Werelderfgoed" | "Gezicht" | "Complex" | "Onderzoeksgebied";
   monumentAard?: "Gebouwd" | "Archeologisch";
   lat: number; lng: number; wkt?: string;
 };
@@ -17,24 +17,28 @@ function markerColor(item: Pick<MapItem, "objectType" | "monumentAard">) {
   if (item.objectType === "Werelderfgoed") return "#01689b";
   if (item.objectType === "Gezicht") return "#176b3a";
   if (item.objectType === "Complex") return "#5b4b8a";
+  if (item.objectType === "Onderzoeksgebied") return "#6b4226";
   if (item.monumentAard === "Archeologisch") return "#ffb612";
   return "#154273";
 }
 
-// Werelderfgoed, Gezicht en archeologische terreinen zijn een gebied, geen
-// punt: gebruikers weten vaak al ongeveer waar zoiets ligt (de Waddenzee,
-// de Hollandse Waterlinies) maar willen de daadwerkelijke omvang en grens
-// zien. Een stip zou dat net weglaten. Gewoon gebouwde rijksmonumenten
-// blijven een marker - die zijn punt-achtig genoeg dat een stip niets
-// verliest, en met honderden tegelijk op de kaart blijft clusteren nodig.
+// Werelderfgoed, Gezicht, archeologische terreinen en archeologische
+// onderzoeksgebieden zijn een gebied, geen punt: gebruikers weten vaak al
+// ongeveer waar zoiets ligt (de Waddenzee, de Hollandse Waterlinies) maar
+// willen de daadwerkelijke omvang en grens zien. Een stip zou dat net
+// weglaten. Gewoon gebouwde rijksmonumenten blijven een marker - die zijn
+// punt-achtig genoeg dat een stip niets verliest, en met honderden tegelijk
+// op de kaart blijft clusteren nodig.
 // Een Complex is bewust géén gebiedstype: we hebben alleen de geometrie van
 // het hoofdobject (één gebouw), niet van het complex als geheel (dat kan een
 // heel landgoed met meerdere panden beslaan). Die ene bouwvoetprint als "de
 // vorm van het complex" tonen zou net zo misleidend zijn als het probleem
 // dat deze aanpak elders juist oplost - dus blijft een Complex een punt op
-// de locatie van het hoofdobject.
+// de locatie van het hoofdobject. Een Onderzoeksgebied heeft dit probleem
+// niet: het heeft, anders dan Complex, zijn eigen echte begrenzing (het is
+// zelf het onderzochte gebied, geen samenstel van andere objecten).
 function isAreaType(item: Pick<MapItem, "objectType" | "monumentAard">) {
-  return item.objectType === "Werelderfgoed" || item.objectType === "Gezicht" || item.monumentAard === "Archeologisch";
+  return item.objectType === "Werelderfgoed" || item.objectType === "Gezicht" || item.objectType === "Onderzoeksgebied" || item.monumentAard === "Archeologisch";
 }
 
 function tooltip(titleText: string, detail: string) {

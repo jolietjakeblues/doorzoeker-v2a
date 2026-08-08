@@ -2,9 +2,21 @@
 
 ## Status
 
-Plan, nog niet gebouwd. Vastgelegd na onderzoek in de CEO-ontologie naar
+In uitvoering (2026-08-08). Vastgelegd na onderzoek in de CEO-ontologie naar
 aanleiding van de vraag "hoe zit archeologie hier eigenlijk in" en de RCE-
 specificatie "Downloaden & datagebruik - Zoeken & Vinden" (Archis-portal).
+
+**Update 2026-08-08 - de voorgestelde aanpak hieronder is deels achterhaald.**
+Verder onderzoek in de live data laat zien dat `ArcheologischOnderzoeksgebied`
+wél een vrij-tekstveld heeft (`ceo:heeftOmschrijving/ceo:omschrijving`, een
+prozaomschrijving van de onderzoeksaanleiding), naast `woonplaatsnaam` via
+`ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie` (géén gemeente/
+provincie - die relatie loopt via `heeftBRKRelatie`, die dit type niet heeft).
+Een `CONTAINS`-filter op beide velden over de volle 112K-graaf is empirisch
+getest en presteert prima (geen Virtuoso-timeout, zelfs op algemene termen).
+Dat betekent dat dit gewoon als twee extra discovery-branches in de
+bestaande vrije-tekstzoekbalk kan meedraaien - zie "Herziene aanpak"
+onderaan dit document in plaats van punt 1 en 5 hieronder.
 
 ## Aanleiding
 
@@ -20,7 +32,7 @@ is:
 | Grondsporen | 91.974 | Nee (ligt in Vondstlocatie) |
 | Vondsten | 445.298 | Nee (ligt in Vondstlocatie) |
 | ArcheologischComplex | 360.330 | Soms (ligt in Vondstlocatie óf Onderzoeksgebied) |
-| ArcheologischTerrein | 13.025 | Slechts ~27% heeft een `ligtInObject → Rijksmonument` |
+| ArcheologischTerrein | 13.025 | Slechts 1.812 (13,9%) heeft een `ligtInObject → Rijksmonument`, exact geverifieerd (zie hieronder) |
 
 De bulk van het Nederlandse archeologische onderzoek (~700.000 objecten)
 staat dus volledig los van enig monument en is nu onzichtbaar in Doorzoeker.
@@ -92,3 +104,71 @@ mogelijk zonder de applicatie en de RCE-service te overbelasten.
 - Ruimtelijke "ligt in"-relaties tussen een onderzoeksgebied en een Gezicht
   of Werelderfgoed (zelfde deferral als eerder vastgesteld voor
   Rijksmonumenten).
+
+## Herziene aanpak (2026-08-08, vervangt punt 1 en 5 hierboven)
+
+Empirisch bevestigd: `ArcheologischOnderzoeksgebied` heeft een echt
+vrij-tekstveld (`omschrijving`) naast `woonplaatsnaam`, en een
+`CONTAINS`-filter op beide presteert prima over de volle 112K-graaf (geen
+timeout, ook niet op generieke termen - LIMIT 100 begrenst hoe dan ook).
+Daarom geen aparte, locatie-verplichte zoekflow: twee extra
+discovery-branches (`woonplaats`, `omschrijving`) draaien mee in de
+bestaande vrije-tekstzoekbalk, exact volgens het patroon van
+`DISCOVERY_SOURCES`/`mergeDiscoveryMatches` dat al voor Rijksmonumenten
+bestaat. Nieuw "soort object": **Onderzoeksgebied**. Punt 2, 3 en 4
+(top-level resultaat, lazy detailverrijking, polygoon op de kaart) blijven
+ongewijzigd staan.
+
+Eerste bouwstap (gebouwd 2026-08-08): zoeken, tonen als polygoon, detailpagina
+met omschrijving/woonplaats/registratiedatum. Stap 3 - de lazy
+Vondstlocatie/Grondsporen/Vondsten/ArcheologischComplex-verrijking op de
+detailpagina - eveneens gebouwd (2026-08-08), na eerst de relatiestructuur
+hieronder empirisch te hebben uitgezocht. Live geverifieerd inclusief het
+grootste geobserveerde geval (onderzoeksgebied 2015593: 2.191 vondstlocaties,
+7.750 vondsten, 3.458 complexen - antwoordt in 1,4s dankzij de
+aggregaat-in-plaats-van-lijst-aanpak) en een leeg geval (geen gekoppeld
+onderzoek). Endpoint: `/api/rce/onderzoeksgebied-verrijking?gebied=<uri>`,
+zelfde lazy-op-detailpaneel-open-patroon als de Complex-ledenlijst.
+
+### Exacte relatiestructuur tussen de klassen (2026-08-08, empirisch geverifieerd)
+
+Alle `bevatObject`/`ligtInObject`-paren tussen CHO-klassen, opgevraagd over de
+volle graaf (`ligtInObject` is de inverse van `bevatObject`, beide kanten
+komen daarom met identieke aantallen terug):
+
+| Ouder (`bevatObject`) | Kind | Aantal |
+|---|---|---|
+| Rijksmonument | ArcheologischTerrein | 1.812 |
+| ArcheologischOnderzoeksgebied | Vondstlocatie | 40.064 |
+| ArcheologischOnderzoeksgebied | ArcheologischComplex | 9.394 |
+| ArcheologischTerrein | ArcheologischComplex | 18.548 |
+| Vondstlocatie | ArcheologischComplex | 332.347 |
+| Vondstlocatie | Grondsporen | 91.978 |
+| Vondstlocatie | Vondsten | 445.300 |
+
+Twee gevolgen voor stap 3 (de lazy detailverrijking, taak #8):
+
+1. **ArcheologischComplex heeft drie mogelijke ouders**, niet één vast pad:
+   rechtstreeks onder Onderzoeksgebied (9.394), onder Terrein (18.548), of -
+   verreweg het vaakst - onder Vondstlocatie (332.347). Samen 360.289, vrijwel
+   het volledige totaal van 360.330. Een detailquery voor een geopend
+   Onderzoeksgebied moet dus alle drie de paden bevragen (rechtstreeks én via
+   elke Vondstlocatie eronder), niet alleen de directe relatie.
+2. **Gat uitgezocht en verklaard (2026-08-08):** van de 111.579
+   Vondstlocatie-instanties hebben er maar 40.064 (36%) een `ligtInObject`
+   - en die wijst *altijd* naar een ArcheologischOnderzoeksgebied (geen
+   ander doeltype ooit gezien). De overige 71.515 hebben helemaal geen
+   `ligtInObject`-triple; dit is geen verkeerd predicaat of alternatief pad,
+   empirisch uitgesloten. Wel hebben al deze 71.515 "wees"-Vondstlocaties
+   hun eigen `heeftBasisregistratieRelatie/heeftBAGRelatie/woonplaatsnaam`
+   (geverifieerd: exact 71.515 van de 71.515, dus 100%) - precies hetzelfde
+   locatiemechanisme als ArcheologischOnderzoeksgebied zelf gebruikt. Het
+   zijn dus geen kapotte of onvolledige records, ze hangen simpelweg vaak
+   niet aan een Onderzoeksgebied vast terwijl ze zelfstandig prima
+   plaatsbaar zijn. Gevolg: **niet blokkerend voor stap 3** (die begint
+   vanuit een geopend Onderzoeksgebied en toont uitsluitend wat daar
+   daadwerkelijk aan hangt - dat is een correcte, volledige weergave van
+   wat dat specifieke Onderzoeksgebied bevat). Wel relevant zodra er ooit
+   een omgekeerde ingang komt ("doorzoek Vondstlocaties direct, los van een
+   Onderzoeksgebied") - dan is woonplaats-discovery (zelfde patroon als
+   Onderzoeksgebied) het aangewezen mechanisme, niet de ligtInObject-keten.

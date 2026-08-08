@@ -35,16 +35,19 @@ De kern bestaat uit:
 ## Huidige functionaliteit
 
 De applicatie doorzoekt live RCE Linked Data en toont, naast rijksmonumenten,
-ook Werelderfgoed, rijksbeschermde stads- en dorpsgezichten en Complexen (van
-gebouwde rijksmonumenten):
+ook Werelderfgoed, rijksbeschermde stads- en dorpsgezichten, Complexen (van
+gebouwde rijksmonumenten) en archeologische Onderzoeksgebieden - dit laatste
+een geheel eigen, van het monumentenregister losstaande dataset (zie
+[`docs/vertical-slices/002-archeologisch-onderzoek.md`](docs/vertical-slices/002-archeologisch-onderzoek.md)):
 
-1. zoeken op naam, adres, plaats, rijksmonumentnummer of woorden uit de
-   formele omschrijving;
+1. zoeken op naam, adres, plaats, rijksmonumentnummer, woorden uit de
+   formele omschrijving, of - voor onderzoeksgebieden - woonplaats en de
+   vrije onderzoeksomschrijving;
 2. filteren op monumentaard, provincie, gemeente/woonplaats, oorspronkelijke
    functie en matchbron;
 3. resultaten tonen als lijst en op een kaart (met clustering; Werelderfgoed,
-   Gezichten en archeologische terreinen als echte polygoon/multipolygoon,
-   niet platgeslagen tot een punt);
+   Gezichten, archeologische terreinen en Onderzoeksgebieden als echte
+   polygoon/multipolygoon, niet platgeslagen tot een punt);
 4. een detailpagina met kerngegevens, beschrijving, functie, status, locatie,
    geometrie, kadastrale percelen en bron-URI's (Monumentenregister/UNESCO/
    Archis én RCE Linked Data);

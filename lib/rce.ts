@@ -826,6 +826,200 @@ export function parseComplexenResults(document: unknown): RceMonument[] {
   });
 }
 
+// ArcheologischOnderzoeksgebied heeft geen naam- of registernummerveld zoals
+// Rijksmonument, Werelderfgoed of Gezicht, en is met 112K instanties te groot
+// voor het "hele collectie in één CONTAINS-query"-patroon van die drie. Wel
+// heeft elk record een woonplaatsnaam (via dezelfde BAG-relatie-fallback als
+// archeologische Rijksmonumenten) en een prozaomschrijving. Dat past op het
+// bestaande DISCOVERY_SOURCES-patroon: twee losse per-veld branches, elk met
+// een eigen CONTAINS-filter, gemerged in JS - empirisch geverifieerd dat dit
+// ruim binnen de tijd blijft, ook op de volle graaf.
+const ARCHEOLOGISCH_ONDERZOEK_SOURCES: { bron: string; rang: number; pattern: string }[] = [
+  { bron: "woonplaats (onderzoeksgebied)", rang: 1, pattern: "?gebied ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?match ." },
+  { bron: "omschrijving (onderzoeksgebied)", rang: 2, pattern: "?gebied ceo:heeftOmschrijving/ceo:omschrijving ?match ." },
+];
+
+export function buildArcheologischOnderzoekDiscoveryQueries(term: string): { bron: string; query: string }[] {
+  const needle = escapeSparqlString(term.trim());
+  return ARCHEOLOGISCH_ONDERZOEK_SOURCES.map(({ bron, pattern }) => ({
+    bron,
+    query: `PREFIX ceo: <${CEO}>
+SELECT DISTINCT ?choi ?match WHERE {
+ GRAPH <${INSTANCES_GRAPH}> {
+  ?gebied a ceo:ArcheologischOnderzoeksgebied ; ceo:cultuurhistorischObjectnummer ?choi .
+  ${pattern}
+  FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))
+ }
+}
+LIMIT 100`,
+  }));
+}
+
+export function parseArcheologischOnderzoekDiscoveryResults(document: unknown, bron: string, term: string): DiscoveryMatch[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  const rang = ARCHEOLOGISCH_ONDERZOEK_SOURCES.find((source) => source.bron === bron)?.rang ?? 99;
+  const needle = term.trim().toLocaleLowerCase("nl");
+  return bindings.flatMap((binding) => {
+    const monumentNumber = binding.choi?.value ?? "";
+    const matchedText = binding.match?.value ?? "";
+    if (!monumentNumber) return [];
+    const lowerMatch = matchedText.toLocaleLowerCase("nl");
+    const matchtype = lowerMatch === needle ? 0 : lowerMatch.startsWith(needle) ? 1 : 2;
+    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: rang * 10 + matchtype }];
+  });
+}
+
+export function buildArcheologischOnderzoekDetailsQuery(choNumbers: string[]) {
+  const valuesClause = choNumbers.map((number) => `"${escapeSparqlString(number)}"`).join(" ");
+  return `PREFIX ceo: <${CEO}>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+SELECT ?gebied ?choi
+  (SAMPLE(STR(?omschrijvingValue)) AS ?omschrijving)
+  (SAMPLE(STR(?woonplaatsValue)) AS ?woonplaats)
+  (SAMPLE(STR(?registratiedatumValue)) AS ?registratiedatum)
+  (SAMPLE(STR(?wktValue)) AS ?wkt)
+WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?gebied a ceo:ArcheologischOnderzoeksgebied ; ceo:cultuurhistorischObjectnummer ?choi .
+    VALUES ?choi { ${valuesClause} }
+    OPTIONAL { ?gebied ceo:heeftOmschrijving/ceo:omschrijving ?omschrijvingValue . }
+    OPTIONAL { ?gebied ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?woonplaatsValue . }
+    OPTIONAL { ?gebied ceo:registratiedatum ?registratiedatumValue . }
+    OPTIONAL { ?gebied ceo:heeftGeometrie/geo:asWKT ?wktValue . }
+  }
+}
+GROUP BY ?gebied ?choi
+LIMIT 100`;
+}
+
+export function parseArcheologischOnderzoekResults(document: unknown): RceMonument[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.map((binding) => {
+    const wkt = binding.wkt?.value ?? "";
+    const coordinates = wktToLatLng(wkt);
+    const woonplaats = binding.woonplaats?.value;
+    return {
+      choNumber: binding.choi?.value ?? "",
+      monumentNumber: binding.choi?.value ?? "",
+      registrationDate: binding.registratiedatum?.value ?? "",
+      street: "",
+      houseNumber: "",
+      postalCode: "",
+      sourceUrl: binding.gebied?.value ?? "",
+      monumentNature: "archeologischonderzoeksgebied",
+      description: binding.omschrijving?.value || "Archeologisch onderzoeksgebied.",
+      place: woonplaats,
+      municipality: woonplaats,
+      lng: coordinates?.lng,
+      lat: coordinates?.lat,
+      wkt: wkt || undefined,
+    };
+  });
+}
+
+// Lazy detailverrijking voor een geopend Onderzoeksgebied: ArcheologischComplex,
+// Vondstlocatie, Grondsporen en Vondsten staan er los van (zie
+// docs/vertical-slices/002-archeologisch-onderzoek.md, sectie "Exacte
+// relatiestructuur"), en worden daarom nooit vooraf voor de hele zoekresultatenlijst
+// opgehaald - net als bij Complex-ledenlijst pas zodra het detailpaneel opengaat.
+//
+// Directe ArcheologischComplex-kinderen blijven klein genoeg om altijd volledig te
+// tonen (empirisch gemeten maximum: 31 per onderzoeksgebied). Vondstlocaties kunnen
+// juist sterk uitschieten (gemeten maximum: 2.191 in één onderzoeksgebied), dus die
+// krijgen een harde LIMIT met een aparte, ongelimiteerde telling. Grondsporen,
+// Vondsten en complexen-onder-een-Vondstlocatie worden nooit als lijst opgehaald -
+// alleen als aggregaattelling, want zelfs in het grootste onderzoeksgebied bleek dat
+// in de praktijk (7.750 vondsten, 3.458 complexen) geen bruikbare lijst op te leveren.
+export type OnderzoeksgebiedComplex = { complexUri: string; choNumber: string; typeLabel?: string };
+export type OnderzoeksgebiedVondstlocatie = { vlUri: string; choNumber: string; locatienaam?: string };
+export type OnderzoeksgebiedAggregaten = { vondstlocatieTotaal: number; grondsporenTotaal: number; vondstenTotaal: number; complexenViaVondstlocatieTotaal: number };
+
+export function buildOnderzoeksgebiedComplexenQuery(gebiedUri: string) {
+  return `PREFIX ceo: <${CEO}>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT ?complex ?choi
+  (SAMPLE(STR(?typeLabelValue)) AS ?typeLabel)
+WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    <${gebiedUri}> ceo:bevatObject ?complex .
+    ?complex a ceo:ArcheologischComplex ; ceo:cultuurhistorischObjectnummer ?choi .
+    OPTIONAL { ?complex ceo:heeftType/ceo:heeftTypeNaam/skos:prefLabel ?typeLabelValue . }
+  }
+}
+GROUP BY ?complex ?choi
+LIMIT 100`;
+}
+
+export function parseOnderzoeksgebiedComplexenResults(document: unknown): OnderzoeksgebiedComplex[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.map((binding) => ({
+    complexUri: binding.complex?.value ?? "",
+    choNumber: binding.choi?.value ?? "",
+    typeLabel: binding.typeLabel?.value || undefined,
+  }));
+}
+
+export function buildOnderzoeksgebiedVondstlocatiesQuery(gebiedUri: string) {
+  return `PREFIX ceo: <${CEO}>
+SELECT ?vl ?choi
+  (SAMPLE(STR(?locatienaamValue)) AS ?locatienaam)
+WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    <${gebiedUri}> ceo:bevatObject ?vl .
+    ?vl a ceo:Vondstlocatie ; ceo:cultuurhistorischObjectnummer ?choi .
+    OPTIONAL { ?vl ceo:heeftLocatieAanduiding/ceo:locatienaam ?locatienaamValue . }
+  }
+}
+GROUP BY ?vl ?choi
+LIMIT 25`;
+}
+
+export function parseOnderzoeksgebiedVondstlocatiesResults(document: unknown): OnderzoeksgebiedVondstlocatie[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.map((binding) => ({
+    vlUri: binding.vl?.value ?? "",
+    choNumber: binding.choi?.value ?? "",
+    // "-" is een veelgebruikte placeholder in plaats van een ontbrekende waarde,
+    // geen echte locatienaam - daar willen we niet mee stoere details tonen.
+    locatienaam: binding.locatienaam?.value && binding.locatienaam.value !== "-" ? binding.locatienaam.value : undefined,
+  }));
+}
+
+export function buildOnderzoeksgebiedAggregatenQuery(gebiedUri: string) {
+  return `PREFIX ceo: <${CEO}>
+SELECT
+  (COUNT(DISTINCT ?vl) AS ?vondstlocatieTotaal)
+  (COUNT(?grondspoor) AS ?grondsporenTotaal)
+  (COUNT(?vondst) AS ?vondstenTotaal)
+  (COUNT(DISTINCT ?complexViaVl) AS ?complexenViaVondstlocatieTotaal)
+WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    <${gebiedUri}> ceo:bevatObject ?vl .
+    ?vl a ceo:Vondstlocatie .
+    OPTIONAL { ?vl ceo:bevatObject ?grondspoor . ?grondspoor a ceo:Grondsporen . }
+    OPTIONAL { ?vl ceo:bevatObject ?vondst . ?vondst a ceo:Vondsten . }
+    OPTIONAL { ?vl ceo:bevatObject ?complexViaVl . ?complexViaVl a ceo:ArcheologischComplex . }
+  }
+}`;
+}
+
+export function parseOnderzoeksgebiedAggregatenResults(document: unknown): OnderzoeksgebiedAggregaten {
+  const binding = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings?.[0];
+  // Geen Vondstlocaties onder dit onderzoeksgebied betekent geen enkele binding
+  // (de query vereist ?gebied bevatObject ?vl), niet een rij met nullen.
+  if (!binding) return { vondstlocatieTotaal: 0, grondsporenTotaal: 0, vondstenTotaal: 0, complexenViaVondstlocatieTotaal: 0 };
+  return {
+    vondstlocatieTotaal: Number(binding.vondstlocatieTotaal?.value ?? "0"),
+    grondsporenTotaal: Number(binding.grondsporenTotaal?.value ?? "0"),
+    vondstenTotaal: Number(binding.vondstenTotaal?.value ?? "0"),
+    complexenViaVondstlocatieTotaal: Number(binding.complexenViaVondstlocatieTotaal?.value ?? "0"),
+  };
+}
+
 function values(node: JsonLdNode | undefined, property: string): JsonLdValue[] {
   const result = node?.[`${CEO}${property}`];
   return Array.isArray(result) ? result as JsonLdValue[] : [];

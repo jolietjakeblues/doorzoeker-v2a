@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildArcheologischTerreinQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGezichtQuery, buildGroenaanlegQuery, buildImageQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseArcheologischTerreinResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseDiscoveryBranchResults, parseGezichtResults, parseGroenaanlegResults, parseImageResults, parseParcelResults, parseRceMonuments, parseSparqlResults, parseWerelderfgoedResults, parseWktGeometry, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
+import { buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGezichtQuery, buildGroenaanlegQuery, buildImageQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseDiscoveryBranchResults, parseGezichtResults, parseGroenaanlegResults, parseImageResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseParcelResults, parseRceMonuments, parseSparqlResults, parseWerelderfgoedResults, parseWktGeometry, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -480,4 +480,132 @@ test("falls back to functie or a generic label when a complex member has no naam
   const members = parseComplexMembersResults(document);
   assert.equal(members[0].name, "Ketelhuis");
   assert.equal(members[1].name, "Rijksmonument 532184");
+});
+
+test("discovers archeologische onderzoeksgebieden via woonplaats and omschrijving as separate branches", () => {
+  // ArcheologischOnderzoeksgebied heeft geen naam/registernummer en is met
+  // 112K instanties te groot voor een enkele CONTAINS-query over de hele
+  // collectie (zoals Werelderfgoed/Gezicht/Complex dat wel kunnen) - vandaar
+  // hetzelfde per-branch-patroon als de Rijksmonument-discovery.
+  const queries = buildArcheologischOnderzoekDiscoveryQueries("Nijmegen");
+  assert.deepEqual(queries.map((q) => q.bron), ["woonplaats (onderzoeksgebied)", "omschrijving (onderzoeksgebied)"]);
+  for (const { query } of queries) {
+    assert.match(query, /a ceo:ArcheologischOnderzoeksgebied/);
+    assert.match(query, /nijmegen/i);
+    assert.doesNotMatch(query, /UNION/);
+  }
+  const woonplaats = queries.find((q) => q.bron === "woonplaats (onderzoeksgebied)").query;
+  assert.match(woonplaats, /ceo:heeftBasisregistratieRelatie\/ceo:heeftBAGRelatie\/ceo:woonplaatsnaam \?match/);
+  const omschrijving = queries.find((q) => q.bron === "omschrijving (onderzoeksgebied)").query;
+  assert.match(omschrijving, /ceo:heeftOmschrijving\/ceo:omschrijving \?match/);
+});
+
+test("parses archeologisch-onderzoek discovery matches keyed by cultuurhistorischObjectnummer", () => {
+  const document = { results: { bindings: [{ choi: { value: "10000040" }, match: { value: "Nijmegen" } }] } };
+  const matches = parseArcheologischOnderzoekDiscoveryResults(document, "woonplaats (onderzoeksgebied)", "nijmegen");
+  assert.deepEqual(matches, [{ monumentNumber: "10000040", matchSource: "woonplaats (onderzoeksgebied)", matchedText: "Nijmegen", matchScore: 10 }]);
+});
+
+test("builds a details query for archeologische onderzoeksgebieden keyed by cultuurhistorischObjectnummer", () => {
+  const query = buildArcheologischOnderzoekDetailsQuery(["10000040"]);
+  assert.match(query, /a ceo:ArcheologischOnderzoeksgebied/);
+  assert.match(query, /VALUES \?choi \{ "10000040" \}/);
+  assert.match(query, /ceo:heeftGeometrie\/geo:asWKT \?wktValue/);
+});
+
+test("parses archeologisch-onderzoek details into RceMonument-shaped records", () => {
+  // Geverifieerd tegen echte data: onderzoeksgebied 10000040 (Nijmegen).
+  const document = { results: { bindings: [{
+    gebied: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/10000040" },
+    choi: { value: "10000040" },
+    omschrijving: { value: "Proefsleuvenonderzoek voorafgaand aan nieuwbouw." },
+    woonplaats: { value: "Nijmegen" },
+    registratiedatum: { value: "2015-05-26" },
+    wkt: { value: "Polygon ((5.86 51.84, 5.87 51.84, 5.87 51.85, 5.86 51.84))" },
+  }] } };
+  const [gebied] = parseArcheologischOnderzoekResults(document);
+  assert.equal(gebied.choNumber, "10000040");
+  assert.equal(gebied.monumentNumber, "10000040");
+  assert.equal(gebied.monumentNature, "archeologischonderzoeksgebied");
+  assert.equal(gebied.description, "Proefsleuvenonderzoek voorafgaand aan nieuwbouw.");
+  assert.equal(gebied.place, "Nijmegen");
+  assert.equal(gebied.municipality, "Nijmegen");
+  assert.ok(gebied.wkt.startsWith("Polygon"));
+});
+
+test("falls back to a generic omschrijving when an onderzoeksgebied has no omschrijving", () => {
+  const document = { results: { bindings: [{ gebied: { value: "g:1" }, choi: { value: "1" } }] } };
+  const [gebied] = parseArcheologischOnderzoekResults(document);
+  assert.equal(gebied.description, "Archeologisch onderzoeksgebied.");
+});
+
+test("looks up archeologische complexen rechtstreeks onder een onderzoeksgebied", () => {
+  // ArcheologischComplex heeft geen naam/complexnummer (anders dan het
+  // gewone Complex-type) - alleen een cultuurhistorischObjectnummer en een
+  // type-classificatie, geverifieerd tegen echte data ("Terp/wierde").
+  const gebiedUri = "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/10000040";
+  const query = buildOnderzoeksgebiedComplexenQuery(gebiedUri);
+  assert.match(query, new RegExp(`<${gebiedUri}> ceo:bevatObject \\?complex`));
+  assert.match(query, /a ceo:ArcheologischComplex/);
+  assert.match(query, /ceo:heeftType\/ceo:heeftTypeNaam\/skos:prefLabel/);
+});
+
+test("parses onderzoeksgebied-complexen, falling back to a generic label without a typeLabel", () => {
+  const document = { results: { bindings: [
+    { complex: { value: "c:1" }, choi: { value: "2122057" }, typeLabel: { value: "Terp/wierde" } },
+    { complex: { value: "c:2" }, choi: { value: "2122058" } },
+  ] } };
+  const complexen = parseOnderzoeksgebiedComplexenResults(document);
+  assert.deepEqual(complexen, [
+    { complexUri: "c:1", choNumber: "2122057", typeLabel: "Terp/wierde" },
+    { complexUri: "c:2", choNumber: "2122058", typeLabel: undefined },
+  ]);
+});
+
+test("caps de vondstlocaties-lijst van een onderzoeksgebied op 25", () => {
+  // Het grootste geobserveerde onderzoeksgebied bevat 2.191 vondstlocaties -
+  // een LIMIT is dus geen theoretische voorzorg.
+  const query = buildOnderzoeksgebiedVondstlocatiesQuery("g:1");
+  assert.match(query, /LIMIT 25/);
+  assert.match(query, /a ceo:Vondstlocatie/);
+});
+
+test("parses vondstlocaties, treating a bare '-' locatienaam as missing", () => {
+  const document = { results: { bindings: [
+    { vl: { value: "vl:1" }, choi: { value: "1" }, locatienaam: { value: "Afferden" } },
+    { vl: { value: "vl:2" }, choi: { value: "2" }, locatienaam: { value: "-" } },
+  ] } };
+  const vondstlocaties = parseOnderzoeksgebiedVondstlocatiesResults(document);
+  assert.equal(vondstlocaties[0].locatienaam, "Afferden");
+  assert.equal(vondstlocaties[1].locatienaam, undefined);
+});
+
+test("builds an aggregate-only query for grondsporen/vondsten/complexen under an onderzoeksgebied", () => {
+  // Bewust geen lijst: het grootste onderzoeksgebied levert 7.750 vondsten en
+  // 3.458 complexen op via zijn vondstlocaties - een lijst zou onbruikbaar
+  // zijn, een aggregaattelling blijft altijd goedkoop.
+  const query = buildOnderzoeksgebiedAggregatenQuery("g:1");
+  assert.match(query, /COUNT\(DISTINCT \?vl\) AS \?vondstlocatieTotaal/);
+  assert.match(query, /COUNT\(\?grondspoor\) AS \?grondsporenTotaal/);
+  assert.match(query, /COUNT\(\?vondst\) AS \?vondstenTotaal/);
+  assert.match(query, /COUNT\(DISTINCT \?complexViaVl\) AS \?complexenViaVondstlocatieTotaal/);
+});
+
+test("parses onderzoeksgebied-aggregaten", () => {
+  const document = { results: { bindings: [{
+    vondstlocatieTotaal: { value: "2191" },
+    grondsporenTotaal: { value: "0" },
+    vondstenTotaal: { value: "7750" },
+    complexenViaVondstlocatieTotaal: { value: "3458" },
+  }] } };
+  assert.deepEqual(parseOnderzoeksgebiedAggregatenResults(document), {
+    vondstlocatieTotaal: 2191, grondsporenTotaal: 0, vondstenTotaal: 7750, complexenViaVondstlocatieTotaal: 3458,
+  });
+});
+
+test("treats a missing binding (geen vondstlocaties) as all-zero aggregaten, not a crash", () => {
+  const document = { results: { bindings: [] } };
+  assert.deepEqual(parseOnderzoeksgebiedAggregatenResults(document), {
+    vondstlocatieTotaal: 0, grondsporenTotaal: 0, vondstenTotaal: 0, complexenViaVondstlocatieTotaal: 0,
+  });
 });

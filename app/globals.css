@@ -146,6 +146,7 @@ h2 { font-size: 24px; }
 .tile.world { background: var(--rce-blue-hover); }
 .tile.green { background: var(--success); }
 .tile.complex { background: #5b4b8a; }
+.tile.dig { background: #6b4226; }
 .tile > b { font-size: 36px; font-weight: 700; }
 .tile small { font-size: 11px; }
 .copy { padding: 20px 24px; }
@@ -183,6 +184,9 @@ h2 { font-size: 24px; }
 .map-object-list li:not(:last-child) { border-bottom: 1px solid var(--panel-line); }
 .map-object-list button { display: block; width: 100%; padding: 10px 16px; border: 0; background: transparent; color: var(--ink); font-size: 14px; text-align: left; cursor: pointer; }
 .map-object-list button:hover, .map-object-list button:focus-visible { background: var(--panel); }
+.map-object-list li > a { display: block; padding: 10px 16px; color: var(--rce-link); font-size: 14px; text-decoration: none; }
+.map-object-list li > a:hover, .map-object-list li > a:focus-visible { background: var(--panel); text-decoration: underline; }
+.map-object-list > p { margin: 0; padding: 10px 16px; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--panel-line); }
 .leaflet-container { font-family: var(--font); font-size: 14px; }
 .leaflet-control-attribution { font-size: 11px; }
 .leaflet-tooltip { padding: 8px 10px; line-height: 1.4; border-radius: 0; font-family: var(--font); }
@@ -200,6 +204,7 @@ h2 { font-size: 24px; }
 .detail-head.world { background: var(--rce-blue-hover); }
 .detail-head.green { background: var(--success); }
 .detail-head.complex { background: #5b4b8a; }
+.detail-head.dig { background: #6b4226; }
 .detail-head b { font-size: 56px; font-weight: 700; }
 .detail-head small { font-size: 13px; }
 .detail-copy { padding: 34px 40px 55px; }

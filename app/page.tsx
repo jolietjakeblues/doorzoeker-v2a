@@ -2,8 +2,8 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HeritageMap } from "./HeritageMap";
-import { browseRceObjects, fetchComplexMembers, searchRceMonuments } from "@/lib/rce-client";
-import { provinceName, type ComplexMember, type Groenaanleg, type MonumentImage, type RceMonument } from "@/lib/rce";
+import { browseRceObjects, fetchComplexMembers, fetchOnderzoeksgebiedVerrijking, searchRceMonuments } from "@/lib/rce-client";
+import { provinceName, type ComplexMember, type Groenaanleg, type MonumentImage, type OnderzoeksgebiedAggregaten, type OnderzoeksgebiedComplex, type OnderzoeksgebiedVondstlocatie, type RceMonument } from "@/lib/rce";
 import { fetchTermSuggestions, type TermSuggestion } from "@/lib/terms-client";
 
 // Rijksmonument, Werelderfgoed, Gezicht en Complex zijn geen smaken van
@@ -16,7 +16,7 @@ import { fetchTermSuggestions, type TermSuggestion } from "@/lib/terms-client";
 type Item = {
   id: string; objectNumber: string; title: string; kind: string; address: string;
   postalCode: string; place: string; municipality: string; province: string;
-  objectType: "Rijksmonument" | "Werelderfgoed" | "Gezicht" | "Complex";
+  objectType: "Rijksmonument" | "Werelderfgoed" | "Gezicht" | "Complex" | "Onderzoeksgebied";
   monumentAard?: "Gebouwd" | "Archeologisch";
   period: string; description: string;
   lat: number; lng: number;
@@ -43,17 +43,21 @@ function typeBadge(item: { objectType: Item["objectType"]; monumentAard?: Item["
   if (item.objectType === "Werelderfgoed") return { letter: "W", modifier: "world" };
   if (item.objectType === "Gezicht") return { letter: "G", modifier: "green" };
   if (item.objectType === "Complex") return { letter: "C", modifier: "complex" };
+  if (item.objectType === "Onderzoeksgebied") return { letter: "O", modifier: "dig" };
   if (item.monumentAard === "Archeologisch") return { letter: "A", modifier: "sand" };
   return { letter: "M", modifier: "" };
 }
 
 // Niet elk resultaat is een Rijksmonument: Werelderfgoed en Gezicht hebben
-// hun eigen juridische status, en een Complex is zelf geen monument maar een
-// samenhang tussen rijksmonumenten.
+// hun eigen juridische status, een Complex is zelf geen monument maar een
+// samenhang tussen rijksmonumenten, en een Onderzoeksgebied staat volledig los
+// van het monumentenregister - het heeft geen juridische status, alleen een
+// afgebakend gebied waarin archeologisch onderzoek is uitgevoerd.
 function statusLabel(objectType: Item["objectType"]) {
   if (objectType === "Werelderfgoed") return "Werelderfgoed";
   if (objectType === "Gezicht") return "Rijksbeschermd stads- of dorpsgezicht";
   if (objectType === "Complex") return "Complex van rijksmonumenten";
+  if (objectType === "Onderzoeksgebied") return "Archeologisch onderzoeksgebied";
   return "Rijksmonument";
 }
 
@@ -66,14 +70,15 @@ function toItem(record: RceMonument): Item {
   const isWerelderfgoed = record.monumentNature === "werelderfgoed";
   const isGezicht = record.monumentNature === "gezicht";
   const isComplex = record.monumentNature === "complex";
+  const isOnderzoeksgebied = record.monumentNature === "archeologischonderzoeksgebied";
   const hasOwnOfficialUrl = isWerelderfgoed || isGezicht;
-  const objectType: Item["objectType"] = isWerelderfgoed ? "Werelderfgoed" : isGezicht ? "Gezicht" : isComplex ? "Complex" : "Rijksmonument";
+  const objectType: Item["objectType"] = isWerelderfgoed ? "Werelderfgoed" : isGezicht ? "Gezicht" : isComplex ? "Complex" : isOnderzoeksgebied ? "Onderzoeksgebied" : "Rijksmonument";
   const monumentAard: Item["monumentAard"] = objectType === "Rijksmonument"
     ? (record.monumentNature?.toLocaleLowerCase("nl").includes("archeologisch") ? "Archeologisch" : "Gebouwd")
     : undefined;
   return {
     id: record.choNumber, monumentNumber: record.monumentNumber, objectNumber: record.choNumber,
-    title: record.name || functionName || (isComplex ? `Complex ${record.monumentNumber}` : `Rijksmonument ${record.monumentNumber}`),
+    title: record.name || functionName || (isComplex ? `Complex ${record.monumentNumber}` : isOnderzoeksgebied ? `Onderzoeksgebied ${record.monumentNumber}` : `Rijksmonument ${record.monumentNumber}`),
     kind: functionName || "Functie niet opgenomen",
     address: record.fullAddress || [record.street, record.houseNumber].filter(Boolean).join(" ") || "Adres niet opgenomen",
     postalCode: record.postalCode, place: record.place ?? "",
@@ -82,7 +87,7 @@ function toItem(record: RceMonument): Item {
     period: record.matchSource ? `Gevonden via ${record.matchSource}${matchedText ? `: ${matchedText.slice(0, 72)}${matchedText.length > 72 ? "…" : ""}` : ""}` : record.registrationDate ? `Ingeschreven ${record.registrationDate}` : "Datering niet opgenomen",
     description: record.description || "Actueel record uit de Linked Data Voorziening van de Rijksdienst voor het Cultureel Erfgoed.",
     registrationDate: record.registrationDate, official: true,
-    sourceUrl: hasOwnOfficialUrl ? (record.officialUrl ?? record.sourceUrl) : isComplex ? record.sourceUrl : record.monumentNumber ? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(record.monumentNumber)}` : record.sourceUrl,
+    sourceUrl: hasOwnOfficialUrl ? (record.officialUrl ?? record.sourceUrl) : isComplex || isOnderzoeksgebied ? record.sourceUrl : record.monumentNumber ? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(record.monumentNumber)}` : record.sourceUrl,
     linkedDataUrl: record.sourceUrl, wkt: record.wkt,
     parcels: record.parcels, archaeologicalSites: record.archaeologicalSites, complexes: record.complexes, complexMemberCount: record.complexMemberCount, image: record.image, groenaanleg: record.groenaanleg, matchSource: record.matchSource, matchedText, matchScore: record.matchScore,
     legalStatus: record.legalStatus, originalFunctionNames,
@@ -100,7 +105,7 @@ function readUrlState() {
   const municipality = params.get("gemeente");
   return {
     query: params.get("q") ?? "",
-    objectType: objectType === "Rijksmonument" || objectType === "Werelderfgoed" || objectType === "Gezicht" || objectType === "Complex" ? objectType : "Alle",
+    objectType: objectType === "Rijksmonument" || objectType === "Werelderfgoed" || objectType === "Gezicht" || objectType === "Complex" || objectType === "Onderzoeksgebied" ? objectType : "Alle",
     monumentAard: monumentAard === "Gebouwd" || monumentAard === "Archeologisch" ? monumentAard : "Alle",
     province: province || "Alle",
     municipality: municipality || "Alle",
@@ -131,6 +136,7 @@ export default function Home() {
   const [suggestions, setSuggestions] = useState<TermSuggestion[]>([]);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [complexMembers, setComplexMembers] = useState<{ complexUri: string; members: ComplexMember[] } | null>(null);
+  const [onderzoeksgebiedVerrijking, setOnderzoeksgebiedVerrijking] = useState<{ gebiedUri: string; complexen: OnderzoeksgebiedComplex[]; vondstlocaties: OnderzoeksgebiedVondstlocatie[] } & OnderzoeksgebiedAggregaten | null>(null);
   const searchController = useRef<AbortController | null>(null);
   const searchSequence = useRef(0);
   const pendingSelectedId = useRef(EMPTY_URL_STATE.selectedId);
@@ -304,6 +310,19 @@ export default function Home() {
       .catch(() => { if (!controller.signal.aborted) setComplexMembers({ complexUri, members: [] }); });
     return () => controller.abort();
   }, [selected]);
+  // Zelfde lazy-aanpak: ArcheologischComplex/Vondstlocatie/Grondsporen/
+  // Vondsten onder een Onderzoeksgebied staan er los van (zie
+  // docs/vertical-slices/002-archeologisch-onderzoek.md) en worden pas
+  // opgehaald zodra een gebruiker een onderzoeksgebied daadwerkelijk opent.
+  useEffect(() => {
+    if (selected?.objectType !== "Onderzoeksgebied" || !selected.linkedDataUrl) return;
+    const gebiedUri = selected.linkedDataUrl;
+    const controller = new AbortController();
+    fetchOnderzoeksgebiedVerrijking(gebiedUri, controller.signal)
+      .then((data) => { if (!controller.signal.aborted) setOnderzoeksgebiedVerrijking({ gebiedUri, ...data }); })
+      .catch(() => { if (!controller.signal.aborted) setOnderzoeksgebiedVerrijking({ gebiedUri, complexen: [], vondstlocaties: [], vondstlocatieTotaal: 0, grondsporenTotaal: 0, vondstenTotaal: 0, complexenViaVondstlocatieTotaal: 0 }); });
+    return () => controller.abort();
+  }, [selected]);
   function reset() {
     setQuery(""); setActive(""); setObjectType("Alle"); setMonumentAard("Alle"); setProvince("Alle"); setMunicipality("Alle"); setFunctionFilter("Alle"); setMatchSourceFilter("Alle"); setSelected(null); setRemoteResults(null); setRemoteState("idle"); setResultPage(1); setHasMore(false);
   }
@@ -328,7 +347,7 @@ export default function Home() {
     <section className={`work ${!active ? "start" : ""}`}>
       <aside className={filters ? "show" : ""} aria-label="Zoekfilters">
         <div className="aside-title"><div><small>VERFIJN</small><h2>Filters</h2></div><button type="button" onClick={() => setFilters(false)} aria-label="Filters sluiten">×</button></div>
-        <fieldset><legend>Soort object</legend>{["Alle", "Rijksmonument", "Werelderfgoed", "Gezicht", "Complex"].map((option) => <label key={option}><input type="radio" name="soort" checked={objectType === option} onChange={() => setObjectType(option)} /><span>{option === "Alle" ? "Alle soorten" : option}</span><em>{option === "Alle" ? baseResults.length : baseResults.filter((item) => item.objectType === option).length}</em></label>)}</fieldset>
+        <fieldset><legend>Soort object</legend>{["Alle", "Rijksmonument", "Werelderfgoed", "Gezicht", "Complex", "Onderzoeksgebied"].map((option) => <label key={option}><input type="radio" name="soort" checked={objectType === option} onChange={() => setObjectType(option)} /><span>{option === "Alle" ? "Alle soorten" : option}</span><em>{option === "Alle" ? baseResults.length : baseResults.filter((item) => item.objectType === option).length}</em></label>)}</fieldset>
         <fieldset><legend>Monumentaard</legend>{["Alle", "Gebouwd", "Archeologisch"].map((option) => <label key={option}><input type="radio" name="aard" checked={monumentAard === option} onChange={() => setMonumentAard(option)} /><span>{option === "Alle" ? "Alle monumentaarden" : option}</span><em>{option === "Alle" ? baseResults.filter((item) => item.objectType === "Rijksmonument").length : baseResults.filter((item) => item.monumentAard === option).length}</em></label>)}</fieldset>
         {provinces.length > 0 && <fieldset><legend>Provincie</legend><label className="select-label"><span className="sr">Filter op provincie</span><select aria-label="Filter op provincie" value={province} onChange={(event) => { setProvince(event.target.value); setMunicipality("Alle"); }}><option value="Alle">Alle provincies ({baseResults.length})</option>{provinces.map((option) => <option key={option} value={option}>{option} ({baseResults.filter((item) => item.province === option).length})</option>)}</select></label></fieldset>}
         {municipalities.length > 0 && <fieldset><legend>Gemeente / woonplaats</legend><label className="select-label"><span className="sr">Filter op gemeente of woonplaats</span><select aria-label="Filter op gemeente of woonplaats" value={municipality} onChange={(event) => setMunicipality(event.target.value)}><option value="Alle">Alle plaatsen ({baseResults.filter((item) => province === "Alle" || item.province === province).length})</option>{municipalities.map((option) => <option key={option} value={option}>{option} ({baseResults.filter((item) => item.municipality === option && (province === "Alle" || item.province === province)).length})</option>)}</select></label></fieldset>}
@@ -343,6 +362,6 @@ export default function Home() {
         {hasMore && remoteState === "success" && view === "list" && <div className="more-results"><button type="button" onClick={() => void loadMore()} disabled={loadingMore}>{loadingMore ? "Meer RCE-resultaten laden…" : "Laad 25 volgende resultaten"}</button><small>{baseResults.length} unieke monumenten geladen</small></div>}
       </div>
     </section>
-    {selected && <div className="backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><aside className="detail" role="dialog" aria-modal="true" aria-labelledby="detail-title"><button className="x" type="button" onClick={() => setSelected(null)} aria-label="Details sluiten">×</button><div className={`detail-head ${typeBadge(selected).modifier}${selected.image ? " has-image" : ""}`.trim()} style={selected.image ? { backgroundImage: `linear-gradient(0deg, #00000073, #00000073), url(${selected.image.url})` } : undefined}>{selected.image ? <span className="tile-badge large">{typeBadge(selected).letter}</span> : <b>{typeBadge(selected).letter}</b>}<small>{selected.official ? "RCE Linked Data" : `${selected.objectType} erfgoed`}</small></div><div className="detail-copy"><small>{selected.objectType === "Werelderfgoed" ? "WERELDERFGOED" : selected.objectType === "Gezicht" ? "GEZICHT" : selected.objectType === "Complex" ? "COMPLEX" : "RIJKSMONUMENT"} {selected.monumentNumber ?? selected.id}</small><h2 id="detail-title">{selected.title}</h2><p>{selected.address}<br />{selected.postalCode} {selected.place}{selected.province ? `, ${selected.province}` : ""}</p><hr /><p>{selected.description}</p>{selected.lat && selected.lng ? <div className="detail-map"><HeritageMap items={[selected]} onSelect={() => {}} compact /></div> : null}<dl><div><dt>Status</dt><dd>{statusLabel(selected.objectType)}</dd></div><div><dt>CHO-nummer</dt><dd>{selected.objectNumber}</dd></div><div><dt>Functie</dt><dd>{selected.kind}</dd></div><div><dt>Registratie / datering</dt><dd>{selected.registrationDate ?? selected.period}</dd></div>{selected.wkt && <div><dt>Geometrie</dt><dd><details><summary>Toon ruwe WKT (WGS84)</summary><code>{selected.wkt}</code></details></dd></div>}{selected.parcels?.length ? <div><dt>Kadastrale percelen</dt><dd>{selected.parcels.map((parcel) => <span key={`${parcel.municipalityCode}-${parcel.section}-${parcel.parcelNumber}`}>{parcel.municipality} {parcel.section} {parcel.parcelNumber}{parcel.provinceCode ? ` (${parcel.provinceCode})` : ""}</span>)}</dd></div> : null}{selected.archaeologicalSites?.length ? <div><dt>Archeologisch terrein</dt><dd>{selected.archaeologicalSites.map((site, index) => <span key={site.archisMonumentnummer ?? index}>{site.archisMonumentnummer ? `Archis-monumentnummer ${site.archisMonumentnummer}` : "Archis-monumentnummer onbekend"}{site.waardering ? ` — ${site.waardering}` : ""}</span>)}</dd></div> : null}{selected.complexes?.length ? <div><dt>Onderdeel van complex</dt><dd>{selected.complexes.map((complex, index) => <span key={complex.complexnummer ?? index}>{complex.complexnaam || (complex.complexnummer ? `Complex ${complex.complexnummer}` : "Complex")}{complex.complexnummer && complex.complexnaam ? ` (${complex.complexnummer})` : ""}{complex.role === "hoofdobject" ? " — hoofdobject" : ""}</span>)}</dd></div> : null}{selected.objectType === "Complex" && selected.complexMemberCount ? <div><dt>Aantal onderdelen</dt><dd>{selected.complexMemberCount} rijksmonument{selected.complexMemberCount === 1 ? "" : "en"}</dd></div> : null}{selected.groenaanleg && (selected.groenaanleg.typeAanleg || selected.groenaanleg.categorie) ? <div><dt>Historische aanleg</dt><dd>{[selected.groenaanleg.typeAanleg, selected.groenaanleg.categorie].filter(Boolean).join(" — ")}</dd></div> : null}<div><dt>Bron</dt><dd>{selected.official ? "RCE Linked Data" : "Voorbeelddata"}</dd></div></dl>{selected.image ? <p className="detail-image-credit"><small>Foto{selected.image.title ? `: ${selected.image.title}` : ""} — RCE Beeldbank{selected.image.sourceUrl ? <> (<a href={selected.image.sourceUrl} target="_blank" rel="noreferrer">bron</a>)</> : ""}{selected.image.license ? <> · <a href={selected.image.license} target="_blank" rel="noreferrer">licentie</a></> : ""}</small></p> : null}{selected.objectType === "Complex" && complexMembers && complexMembers.complexUri === selected.linkedDataUrl && complexMembers.members.length ? <div className="map-object-list"><h3>Onderdelen van dit complex</h3><ul>{complexMembers.members.map((member) => <li key={member.choUri}><button type="button" onClick={() => void executeSearch(member.monumentNumber)}>{member.name}{member.isHoofdobject ? " — hoofdobject" : ""}</button></li>)}</ul></div> : null}<div className="detail-links"><a href={selected.sourceUrl ?? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(selected.monumentNumber ?? selected.id)}`} target="_blank" rel="noreferrer">{selected.objectType === "Werelderfgoed" ? "Bekijk op de UNESCO Werelderfgoedlijst" : selected.objectType === "Gezicht" ? "Bekijk in het Archis-archief" : selected.objectType === "Complex" ? "Bekijk in de RCE Linked Data" : "Bekijk in het Monumentenregister"} <b>→</b></a>{selected.linkedDataUrl && selected.linkedDataUrl !== selected.sourceUrl && <a href={selected.linkedDataUrl} target="_blank" rel="noreferrer">Bekijk in de RCE Linked Data <b>→</b></a>}</div><blockquote>{selected.official ? "Actueel record uit de officiële Linked Data Voorziening van de RCE." : "Voorbeeldrecord; nog niet alle zoekvelden zijn live gekoppeld."}</blockquote></div></aside></div>}
+    {selected && <div className="backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><aside className="detail" role="dialog" aria-modal="true" aria-labelledby="detail-title"><button className="x" type="button" onClick={() => setSelected(null)} aria-label="Details sluiten">×</button><div className={`detail-head ${typeBadge(selected).modifier}${selected.image ? " has-image" : ""}`.trim()} style={selected.image ? { backgroundImage: `linear-gradient(0deg, #00000073, #00000073), url(${selected.image.url})` } : undefined}>{selected.image ? <span className="tile-badge large">{typeBadge(selected).letter}</span> : <b>{typeBadge(selected).letter}</b>}<small>{selected.official ? "RCE Linked Data" : `${selected.objectType} erfgoed`}</small></div><div className="detail-copy"><small>{selected.objectType === "Werelderfgoed" ? "WERELDERFGOED" : selected.objectType === "Gezicht" ? "GEZICHT" : selected.objectType === "Complex" ? "COMPLEX" : selected.objectType === "Onderzoeksgebied" ? "ONDERZOEKSGEBIED" : "RIJKSMONUMENT"} {selected.monumentNumber ?? selected.id}</small><h2 id="detail-title">{selected.title}</h2><p>{selected.address}<br />{selected.postalCode} {selected.place}{selected.province ? `, ${selected.province}` : ""}</p><hr /><p>{selected.description}</p>{selected.lat && selected.lng ? <div className="detail-map"><HeritageMap items={[selected]} onSelect={() => {}} compact /></div> : null}<dl><div><dt>Status</dt><dd>{statusLabel(selected.objectType)}</dd></div><div><dt>CHO-nummer</dt><dd>{selected.objectNumber}</dd></div><div><dt>Functie</dt><dd>{selected.kind}</dd></div><div><dt>Registratie / datering</dt><dd>{selected.registrationDate ?? selected.period}</dd></div>{selected.wkt && <div><dt>Geometrie</dt><dd><details><summary>Toon ruwe WKT (WGS84)</summary><code>{selected.wkt}</code></details></dd></div>}{selected.parcels?.length ? <div><dt>Kadastrale percelen</dt><dd>{selected.parcels.map((parcel) => <span key={`${parcel.municipalityCode}-${parcel.section}-${parcel.parcelNumber}`}>{parcel.municipality} {parcel.section} {parcel.parcelNumber}{parcel.provinceCode ? ` (${parcel.provinceCode})` : ""}</span>)}</dd></div> : null}{selected.archaeologicalSites?.length ? <div><dt>Archeologisch terrein</dt><dd>{selected.archaeologicalSites.map((site, index) => <span key={site.archisMonumentnummer ?? index}>{site.archisMonumentnummer ? `Archis-monumentnummer ${site.archisMonumentnummer}` : "Archis-monumentnummer onbekend"}{site.waardering ? ` — ${site.waardering}` : ""}</span>)}</dd></div> : null}{selected.complexes?.length ? <div><dt>Onderdeel van complex</dt><dd>{selected.complexes.map((complex, index) => <span key={complex.complexnummer ?? index}>{complex.complexnaam || (complex.complexnummer ? `Complex ${complex.complexnummer}` : "Complex")}{complex.complexnummer && complex.complexnaam ? ` (${complex.complexnummer})` : ""}{complex.role === "hoofdobject" ? " — hoofdobject" : ""}</span>)}</dd></div> : null}{selected.objectType === "Complex" && selected.complexMemberCount ? <div><dt>Aantal onderdelen</dt><dd>{selected.complexMemberCount} rijksmonument{selected.complexMemberCount === 1 ? "" : "en"}</dd></div> : null}{selected.groenaanleg && (selected.groenaanleg.typeAanleg || selected.groenaanleg.categorie) ? <div><dt>Historische aanleg</dt><dd>{[selected.groenaanleg.typeAanleg, selected.groenaanleg.categorie].filter(Boolean).join(" — ")}</dd></div> : null}<div><dt>Bron</dt><dd>{selected.official ? "RCE Linked Data" : "Voorbeelddata"}</dd></div></dl>{selected.image ? <p className="detail-image-credit"><small>Foto{selected.image.title ? `: ${selected.image.title}` : ""} — RCE Beeldbank{selected.image.sourceUrl ? <> (<a href={selected.image.sourceUrl} target="_blank" rel="noreferrer">bron</a>)</> : ""}{selected.image.license ? <> · <a href={selected.image.license} target="_blank" rel="noreferrer">licentie</a></> : ""}</small></p> : null}{selected.objectType === "Complex" && complexMembers && complexMembers.complexUri === selected.linkedDataUrl && complexMembers.members.length ? <div className="map-object-list"><h3>Onderdelen van dit complex</h3><ul>{complexMembers.members.map((member) => <li key={member.choUri}><button type="button" onClick={() => void executeSearch(member.monumentNumber)}>{member.name}{member.isHoofdobject ? " — hoofdobject" : ""}</button></li>)}</ul></div> : null}{selected.objectType === "Onderzoeksgebied" && onderzoeksgebiedVerrijking && onderzoeksgebiedVerrijking.gebiedUri === selected.linkedDataUrl ? <div className="map-object-list"><h3>Archeologisch onderzoek binnen dit gebied</h3>{onderzoeksgebiedVerrijking.complexen.length ? <ul>{onderzoeksgebiedVerrijking.complexen.map((complex) => <li key={complex.complexUri}><a href={complex.complexUri} target="_blank" rel="noreferrer">{complex.typeLabel || `Archeologisch complex ${complex.choNumber}`}</a></li>)}</ul> : null}{onderzoeksgebiedVerrijking.vondstlocaties.length ? <ul>{onderzoeksgebiedVerrijking.vondstlocaties.map((vl) => <li key={vl.vlUri}><a href={vl.vlUri} target="_blank" rel="noreferrer">{vl.locatienaam || `Vondstlocatie ${vl.choNumber}`}</a></li>)}</ul> : null}<p>{onderzoeksgebiedVerrijking.vondstlocatieTotaal ? `${onderzoeksgebiedVerrijking.vondstlocatieTotaal} vondstlocatie${onderzoeksgebiedVerrijking.vondstlocatieTotaal === 1 ? "" : "s"}${onderzoeksgebiedVerrijking.vondstlocatieTotaal > onderzoeksgebiedVerrijking.vondstlocaties.length ? ` (eerste ${onderzoeksgebiedVerrijking.vondstlocaties.length} getoond)` : ""}, ${onderzoeksgebiedVerrijking.grondsporenTotaal} grondspoor/grondsporen, ${onderzoeksgebiedVerrijking.vondstenTotaal} vondst(en)${onderzoeksgebiedVerrijking.complexenViaVondstlocatieTotaal ? ` en ${onderzoeksgebiedVerrijking.complexenViaVondstlocatieTotaal} archeologisch complex(en)` : ""} binnen dit gebied.` : "Geen gekoppeld archeologisch onderzoek gevonden voor dit gebied."}</p></div> : null}<div className="detail-links"><a href={selected.sourceUrl ?? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(selected.monumentNumber ?? selected.id)}`} target="_blank" rel="noreferrer">{selected.objectType === "Werelderfgoed" ? "Bekijk op de UNESCO Werelderfgoedlijst" : selected.objectType === "Gezicht" ? "Bekijk in het Archis-archief" : selected.objectType === "Complex" || selected.objectType === "Onderzoeksgebied" ? "Bekijk in de RCE Linked Data" : "Bekijk in het Monumentenregister"} <b>→</b></a>{selected.linkedDataUrl && selected.linkedDataUrl !== selected.sourceUrl && <a href={selected.linkedDataUrl} target="_blank" rel="noreferrer">Bekijk in de RCE Linked Data <b>→</b></a>}</div><blockquote>{selected.official ? "Actueel record uit de officiële Linked Data Voorziening van de RCE." : "Voorbeeldrecord; nog niet alle zoekvelden zijn live gekoppeld."}</blockquote></div></aside></div>}
   </main>;
 }
