@@ -49,6 +49,18 @@ const REST_ENDPOINT = "https://api.linkeddata.cultureelerfgoed.nl/queries/rce/re
 
 type SparqlBinding = Record<string, { value?: string } | undefined>;
 
+// Observability-only: meet de tijd per fase van de fan-out, zodat op basis
+// van echte cijfers beslist kan worden wat gecachet, lazy gemaakt of
+// gebundeld wordt, in plaats van dat nu al te gokken. Verandert verder geen
+// gedrag - alleen een console.info per fase naast de bestaande totale
+// rce.search-log in de route.
+async function timed<T>(event: string, work: () => Promise<T>): Promise<T> {
+  const startedAt = Date.now();
+  const result = await work();
+  console.info(JSON.stringify({ event, durationMs: Date.now() - startedAt }));
+  return result;
+}
+
 // Five independent enrichment lookups keyed by the monument's own CHO subject
 // URI (or, for images/MSP, its rijksmonumentnummer - that's the join key
 // those two graphs themselves use), run in parallel: archaeological terrain
@@ -66,15 +78,15 @@ async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): 
 
   const [terreinenByMonument, complexesByMonument, imagesByNumber, groenaanlegByMonument, mspNumbers] = await Promise.all([
     archaeological.length
-      ? fetchSparql(buildArcheologischTerreinQuery(archaeological.map((monument) => monument.sourceUrl)), signal).then(parseArcheologischTerreinResults)
+      ? timed("enrich.terrein", () => fetchSparql(buildArcheologischTerreinQuery(archaeological.map((monument) => monument.sourceUrl)), signal).then(parseArcheologischTerreinResults))
       : Promise.resolve(new Map<string, ArcheologischTerrein[]>()),
-    fetchSparql(buildComplexQuery(choUris), signal).then(parseComplexResults),
+    timed("enrich.complexes", () => fetchSparql(buildComplexQuery(choUris), signal).then(parseComplexResults)),
     monumentNumbers.length
-      ? fetchSparql(buildImageQuery(monumentNumbers), signal).then(parseImageResults)
+      ? timed("enrich.images", () => fetchSparql(buildImageQuery(monumentNumbers), signal).then(parseImageResults))
       : Promise.resolve(new Map<string, RceMonument["image"]>()),
-    fetchSparql(buildGroenaanlegQuery(choUris), signal).then(parseGroenaanlegResults),
+    timed("enrich.groenaanleg", () => fetchSparql(buildGroenaanlegQuery(choUris), signal).then(parseGroenaanlegResults)),
     monumentNumbers.length
-      ? fetchSparql(buildMspIndicatieQuery(monumentNumbers), signal).then(parseMspIndicatieResults)
+      ? timed("enrich.msp", () => fetchSparql(buildMspIndicatieQuery(monumentNumbers), signal).then(parseMspIndicatieResults))
       : Promise.resolve(new Set<string>()),
   ]);
 
@@ -162,20 +174,20 @@ async function searchArcheologischOnderzoek(term: string, signal?: AbortSignal):
 // op latere pagina's ze niet opnieuw ophaalt of dupliceert.
 async function searchByText(term: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
   const [branchResults, werelderfgoed, gezichten, complexen, onderzoeksgebieden] = await Promise.all([
-    Promise.all(
+    timed("search.discovery", () => Promise.all(
       buildRceDiscoveryQueries(term).map(({ bron, query }) => fetchSparql(query, signal).then((document) => parseDiscoveryBranchResults(document, bron, term))),
-    ),
+    )),
     page === 1
-      ? fetchSparql(buildWerelderfgoedQuery(term), signal).then(parseWerelderfgoedResults)
+      ? timed("search.werelderfgoed", () => fetchSparql(buildWerelderfgoedQuery(term), signal).then(parseWerelderfgoedResults))
       : Promise.resolve<RceMonument[]>([]),
     page === 1
-      ? fetchSparql(buildGezichtQuery(term), signal).then(parseGezichtResults)
+      ? timed("search.gezichten", () => fetchSparql(buildGezichtQuery(term), signal).then(parseGezichtResults))
       : Promise.resolve<RceMonument[]>([]),
     page === 1
-      ? fetchSparql(buildComplexenQuery(term), signal).then(parseComplexenResults)
+      ? timed("search.complexen", () => fetchSparql(buildComplexenQuery(term), signal).then(parseComplexenResults))
       : Promise.resolve<RceMonument[]>([]),
     page === 1
-      ? searchArcheologischOnderzoek(term, signal)
+      ? timed("search.onderzoeksgebieden", () => searchArcheologischOnderzoek(term, signal))
       : Promise.resolve<RceMonument[]>([]),
   ]);
   const extras = [...werelderfgoed, ...gezichten, ...complexen, ...onderzoeksgebieden];

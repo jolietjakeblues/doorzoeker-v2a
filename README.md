@@ -1,9 +1,9 @@
 # Doorzoeker V2
 
 Doorzoeker V2 is een moderne zoek- en ontdekapplicatie voor cultureel
-erfgoed. De applicatie combineert de RCE Linked Data-voorziening met het
-Termennetwerk en kan RCE-MCP inzetten voor semantische en AI-ondersteunde
-functies.
+erfgoed. De applicatie combineert de RCE Linked Data-voorziening (inclusief
+het eigen Referentienetwerk voor gestandaardiseerde termen) en kan RCE-MCP
+inzetten voor semantische en AI-ondersteunde functies.
 
 Deze repository is een schone herbouw. Er wordt geen code uit de historische
 [Doorzoeker V1](https://github.com/jolietjakeblues/doorzoeker_v1) gekopieerd.

@@ -87,6 +87,7 @@ header p a { margin-left: 15px; color: var(--rce-blue); font-weight: 700; text-d
 .term-suggestions { position: absolute; z-index: 1000; inset: calc(100% + 4px) 0 auto; margin: 0; padding: 5px; list-style: none; border: 1px solid #9c9c9c; background: #fff; box-shadow: 0 12px 30px #0003; text-align: left; }
 .term-suggestions button { display: flex; width: 100%; justify-content: space-between; gap: 20px; padding: 11px 14px; border: 0; background: #fff; color: var(--rce-link); text-align: left; font-weight: 700; }
 .term-suggestions button:hover, .term-suggestions button:focus { background: var(--panel); }
+.term-suggestions li.active button { background: var(--panel); }
 .term-suggestions small { color: var(--muted); font-weight: 400; }
 
 .hero nav { margin-top: 16px; color: var(--muted); font-size: 14px; }
@@ -102,6 +103,12 @@ header p a { margin-left: 15px; color: var(--rce-blue); font-weight: 700; text-d
 h2 { font-size: 24px; }
 .work fieldset { margin: 26px 0 0; padding: 0 0 22px; border: 0; border-bottom: 1px solid var(--panel-line); }
 .work legend { margin-bottom: 12px; font-size: 15px; font-weight: 700; padding: 0; }
+.hint { margin: -6px 0 10px; }
+.hint summary { color: var(--rce-link); font-size: 13px; font-weight: 700; cursor: pointer; }
+.hint p { margin: 6px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.hint-inline { display: inline-block; }
+.hint-inline summary { display: inline; color: var(--rce-link); font-size: 12px; font-weight: 700; cursor: pointer; }
+.hint-inline p { margin: 4px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
 .work aside label { display: grid; grid-template-columns: 18px 1fr auto; gap: 9px; padding: 7px 0; color: var(--ink); font-size: 15px; }
 .work aside em { color: var(--muted); font-size: 13px; font-style: normal; }
 .work input { accent-color: var(--rce-blue); }
