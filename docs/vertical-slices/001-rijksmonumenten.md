@@ -90,7 +90,7 @@ worden getoond.
 - termsuggesties zijn gekoppeld aan een expliciet gekozen verzameling relevante
   terminologiebronnen;
 - de geselecteerde term wordt als URI vastgelegd;
-- een mislukte Termennetwerk-aanroep blokkeert een gewone tekstzoekopdracht
+- een mislukte termsuggestie-aanroep blokkeert een gewone tekstzoekopdracht
   niet.
 
 ### Deelbaarheid

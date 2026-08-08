@@ -6,8 +6,9 @@
 ## Context
 
 De RCE biedt actuele Linked Data via opgeslagen REST-query's, SPARQL en
-JSON-LD. Het Termennetwerk ontsluit gestandaardiseerde termen via GraphQL.
-RCE-MCP biedt semantische hulpmiddelen en gevalideerde toegang voor AI-clients.
+JSON-LD, inclusief het eigen Referentienetwerk (de CHT- en ABR-thesauri) als
+gestandaardiseerde termenbron. RCE-MCP biedt semantische hulpmiddelen en
+gevalideerde toegang voor AI-clients.
 
 Geen van deze voorzieningen vormt op zichzelf automatisch een complete
 publiekszoekmachine met voorspelbare vrije tekst, facetten, relevantie,
@@ -24,7 +25,8 @@ Externe voorzieningen worden achter afzonderlijke adapters geplaatst:
 - RCE REST-adapter voor bekende, vaste lookups;
 - RCE SPARQL-adapter voor relaties en vragen waarvoor geen passende vaste query
   bestaat;
-- Termennetwerk-adapter voor termen zoeken en selecteren;
+- Termen-adapter voor termen zoeken en selecteren, rechtstreeks tegen RCE's
+  eigen Referentienetwerk-thesauri (zie Implementatiestatus);
 - optionele RCE-MCP-adapter voor AI- en beheerfuncties;
 - optionele zoekindex-adapter voor snelle vrije tekst en facetten.
 
@@ -50,14 +52,32 @@ als metingen aantonen dat relevantie, facetten of responstijden dat vereisen.
 ## Implementatiestatus
 
 Sinds 2026-08-07 gebruikt de webclient uitsluitend eigen taakgerichte
-contracten: `GET /api/rce/search` voor zoeken/browsen, en
-`GET /api/rce/complex-members` voor de (pas op aanvraag geladen) ledenlijst
-van een Complex. Queryopbouw, RCE REST- en SPARQL-aanroepen en mapping draaien
-in de serveradapter. Beide routes valideren invoer (de complex-route staat
-uitsluitend een complex-URI toe die aan een vast patroon voldoet, om
-SPARQL-injectie in de geïnterpoleerde `<...>`-node uit te sluiten), begrenzen
-verzoeken per client, hanteren een harde upstream-timeout, gebruiken de
-Cloudflare-cache en publiceren timinginformatie voor observability.
+contracten: `GET /api/rce/search` voor zoeken/browsen, `GET
+/api/rce/complex-members` voor de (pas op aanvraag geladen) ledenlijst van een
+Complex, en `GET /api/rce/onderzoeksgebied-verrijking` voor de (eveneens pas
+op aanvraag geladen) archeologische verrijking van een Onderzoeksgebied.
+Queryopbouw, RCE REST- en SPARQL-aanroepen en mapping draaien in de
+serveradapter. Alle drie de routes valideren invoer (de complex- en
+onderzoeksgebied-routes staan uitsluitend een URI toe die aan een vast
+patroon voldoet, om SPARQL-injectie in de geïnterpoleerde `<...>`-node uit te
+sluiten), begrenzen verzoeken per client, hanteren een harde
+upstream-timeout, gebruiken de Cloudflare-cache en publiceren
+timinginformatie voor observability.
+
+**Termen-adapter herzien (2026-08-08).** `GET /api/terms/suggest` praatte
+aanvankelijk met het externe Termennetwerk (GraphQL,
+`termennetwerk-api.netwerkdigitaalerfgoed.nl`) - een sectorbreed
+verzamelpunt waar RCE's eigen Referentienetwerk-thesauri (CHT, ABR, ...) ook
+naartoe worden doorgezet, voor kruisbevraging tussen meerdere organisaties.
+Voor een RCE-specifieke app als Doorzoeker is die omweg naar een downstream
+kopie onnodig; erger nog, bij onderzoek bleek de GraphQL-query een
+onopgemerkte bug te bevatten (een niet-gealiast `terms`-veld dat botst tussen
+twee union-varianten), waardoor de live dienst elke aanroep met HTTP 400
+afwees en termsuggesties allang stilzwijgend leeg terugkwamen. De
+termen-adapter bevraagt sindsdien de CHT- en ABR-thesaurigraphs rechtstreeks
+via dezelfde SPARQL-dienst als de rest van de app (`buildChtTermSuggestQuery`/
+`buildAbrTermSuggestQuery` in `lib/rce.ts`) - geen externe
+netwerkafhankelijkheid meer, en de brondata in plaats van een kopie.
 
 De serverroute vereist de Vinext Cloudflare Worker-runtime. De statische
 GitHub Pages-export is om die reden verwijderd; de applicatie draait

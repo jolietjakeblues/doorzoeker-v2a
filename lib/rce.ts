@@ -5,6 +5,14 @@ const WERELDERFGOED_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/wereld
 const GEZICHT_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/gezicht_hvdl";
 const IMAGE_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/image-1";
 const GROENAANLEG_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/groenaanleg";
+const CHT_THESAURUS_GRAPH = "https://data.cultureelerfgoed.nl/term/id/cht/thesaurus";
+const ABR_THESAURUS_GRAPH = "https://data.cultureelerfgoed.nl/term/id/abr/thesaurus";
+// De twee hoofdtakken (skos:hasTopConcept) van de CHT waar Termennetwerk een
+// aparte "bron" van maakte ("materialen" en "stijlen en perioden") - empirisch
+// gevonden, niet gedocumenteerd als een aparte skos:ConceptScheme of
+// skos:Collection.
+const CHT_MATERIALEN_TOP = "https://data.cultureelerfgoed.nl/term/id/cht/aa872ce6-a74c-4f81-96ec-6ee0e717f92a";
+const CHT_STIJLEN_PERIODEN_TOP = "https://data.cultureelerfgoed.nl/term/id/cht/63cca950-f545-467a-9d70-db3a2b21bba3";
 const RIJKSMONUMENT_STATUS = "https://data.cultureelerfgoed.nl/term/id/rn/2/b2d9a59a-fe1e-4552-9a05-3c2acddff864";
 const GEZICHT_STATUS = "https://data.cultureelerfgoed.nl/term/id/rn/2/fd968529-bf70-4afa-8564-7c6c2fcfcc54";
 
@@ -1030,6 +1038,73 @@ export function parseOnderzoeksgebiedAggregatenResults(document: unknown): Onder
     vondstenTotaal: Number(binding.vondstenTotaal?.value ?? "0"),
     complexenViaVondstlocatieTotaal: Number(binding.complexenViaVondstlocatieTotaal?.value ?? "0"),
   };
+}
+
+// Termsuggesties komen rechtstreeks uit RCE's eigen Referentienetwerk (de CHT-
+// en ABR-thesauri), niet via het externe Termennetwerk van Netwerk Digitaal
+// Erfgoed. Dat laatste is slechts een doorgeefluik: dezelfde termen worden
+// vanuit het Referentienetwerk daar ook naartoe gepubliceerd voor sectorbrede
+// kruisbevraging, maar voor een RCE-specifieke app als Doorzoeker is die
+// omweg overbodig - de brondata staat al op dezelfde SPARQL-dienst die de
+// rest van de applicatie gebruikt, zonder extra netwerkafhankelijkheid.
+export type TermSuggestion = { uri: string; label: string; sourceUri: string; sourceName: string };
+
+export function buildChtTermSuggestQuery(term: string, limit: number) {
+  const needle = escapeSparqlString(term.trim().toLocaleLowerCase("nl"));
+  return `PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT ?concept ?label
+  (BOUND(?viaMaterialen) AS ?isMateriaal)
+  (BOUND(?viaStijlen) AS ?isStijlPeriode)
+WHERE {
+  GRAPH <${CHT_THESAURUS_GRAPH}> {
+    ?concept a skos:Concept ; skos:prefLabel ?label .
+    FILTER(LANG(?label) = "nl")
+    FILTER(CONTAINS(LCASE(STR(?label)), "${needle}"))
+    OPTIONAL { ?concept skos:broader* <${CHT_MATERIALEN_TOP}> . BIND(true AS ?viaMaterialen) }
+    OPTIONAL { ?concept skos:broader* <${CHT_STIJLEN_PERIODEN_TOP}> . BIND(true AS ?viaStijlen) }
+  }
+}
+LIMIT ${limit}`;
+}
+
+export function parseChtTermSuggestResults(document: unknown): TermSuggestion[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.flatMap((binding) => {
+    const uri = binding.concept?.value;
+    const label = binding.label?.value;
+    if (!uri || !label) return [];
+    const sourceName = binding.isMateriaal?.value === "true"
+      ? "Cultuurhistorische Thesaurus - Materialen"
+      : binding.isStijlPeriode?.value === "true"
+        ? "Cultuurhistorische Thesaurus - Stijlen en periodes"
+        : "Cultuurhistorische Thesaurus";
+    return [{ uri, label, sourceUri: CHT_THESAURUS_GRAPH, sourceName }];
+  });
+}
+
+export function buildAbrTermSuggestQuery(term: string, limit: number) {
+  const needle = escapeSparqlString(term.trim().toLocaleLowerCase("nl"));
+  return `PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT ?concept ?label WHERE {
+  GRAPH <${ABR_THESAURUS_GRAPH}> {
+    ?concept a skos:Concept ; skos:prefLabel ?label .
+    FILTER(LANG(?label) = "nl")
+    FILTER(CONTAINS(LCASE(STR(?label)), "${needle}"))
+  }
+}
+LIMIT ${limit}`;
+}
+
+export function parseAbrTermSuggestResults(document: unknown): TermSuggestion[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.flatMap((binding) => {
+    const uri = binding.concept?.value;
+    const label = binding.label?.value;
+    if (!uri || !label) return [];
+    return [{ uri, label, sourceUri: ABR_THESAURUS_GRAPH, sourceName: "Archeologisch Basisregister" }];
+  });
 }
 
 function values(node: JsonLdNode | undefined, property: string): JsonLdValue[] {

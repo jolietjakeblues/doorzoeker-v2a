@@ -1,4 +1,6 @@
-export type TermSuggestion = { uri: string; label: string; sourceUri: string; sourceName: string };
+import type { TermSuggestion } from "@/lib/rce";
+
+export type { TermSuggestion };
 
 export async function fetchTermSuggestions(query: string, signal?: AbortSignal) {
   const response = await fetch(`/api/terms/suggest?q=${encodeURIComponent(query)}`, { headers: { Accept: "application/json" }, signal });

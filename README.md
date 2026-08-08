@@ -26,9 +26,11 @@ De kern bestaat uit:
 ## Gegevensvoorzieningen
 
 - **RCE Linked Data:** gezaghebbende object-, register- en kennisdata via REST,
-  SPARQL en JSON-LD.
-- **Termennetwerk:** zoeken en selecteren van gestandaardiseerde termen via de
-  GraphQL API.
+  SPARQL en JSON-LD. Termsuggesties komen rechtstreeks uit RCE's eigen
+  Referentienetwerk (de CHT- en ABR-thesauri, via dezelfde SPARQL-dienst) - niet
+  via het externe Termennetwerk van Netwerk Digitaal Erfgoed, dat voor deze
+  RCE-specifieke app een overbodige én (bij onderzoek) daadwerkelijk kapotte
+  omweg bleek.
 - **RCE-MCP:** queryontwikkeling, semantische uitleg en optionele
   AI-functionaliteit. MCP is niet de enige runtime-datalaag van de webapp.
 

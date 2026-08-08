@@ -41,39 +41,11 @@ import {
   type ComplexMember,
   type RceMonument,
 } from "../rce.ts";
+import { fetchSparql, requestSignal } from "./sparql-client.ts";
 
 const REST_ENDPOINT = "https://api.linkeddata.cultureelerfgoed.nl/queries/rce/rest-api-rijksmonumenten/run";
-const SPARQL_ENDPOINT = "https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/cho/sparql";
-const REQUEST_TIMEOUT_MS = 20_000;
 
 type SparqlBinding = Record<string, { value?: string } | undefined>;
-
-function requestSignal(signal?: AbortSignal) {
-  const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
-  return signal ? AbortSignal.any([signal, timeout]) : timeout;
-}
-
-async function fetchSparqlOnce(query: string, signal?: AbortSignal) {
-  const response = await fetch(`${SPARQL_ENDPOINT}?query=${encodeURIComponent(query)}`, {
-    headers: { Accept: "application/sparql-results+json" },
-    signal: requestSignal(signal),
-  });
-  if (!response.ok) throw new Error(`RCE SPARQL-service antwoordde met ${response.status}`, { cause: response.status });
-  return response.json();
-}
-
-// Fanning discovery searches out into six parallel branch queries means six
-// chances for a transient 5xx from RCE instead of one. Retry those once
-// before giving up; a genuine client-side query error (4xx) is not retried.
-async function fetchSparql(query: string, signal?: AbortSignal) {
-  try {
-    return await fetchSparqlOnce(query, signal);
-  } catch (error) {
-    const status = error instanceof Error ? error.cause : undefined;
-    if (typeof status !== "number" || status < 500) throw error;
-    return fetchSparqlOnce(query, signal);
-  }
-}
 
 // Four independent enrichment lookups keyed by the monument's own CHO subject
 // URI (or, for images, its rijksmonumentnummer - that's the join key the
