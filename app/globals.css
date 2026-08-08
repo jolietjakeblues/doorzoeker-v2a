@@ -75,7 +75,6 @@ header p a { margin-left: 15px; color: var(--rce-blue); font-weight: 700; text-d
 .hero { padding: 40px 24px 44px; text-align: center; color: var(--ink); background: var(--panel); border-bottom: 6px solid var(--rce-yellow); }
 .hero > small { display: block; margin-bottom: 8px; color: var(--rce-blue); font-size: 13px; font-weight: 700; }
 .hero h1 { margin: 0 0 20px; font-size: clamp(28px, 4vw, 40px); font-weight: 700; }
-.hero h1 span { color: var(--rce-blue); }
 .hero-intro { max-width: 720px; margin: 0 auto 28px; color: var(--muted); font-size: 16px; line-height: 1.6; }
 
 .search-combobox { position: relative; max-width: 850px; margin: 0 auto; }

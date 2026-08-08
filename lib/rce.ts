@@ -5,6 +5,7 @@ const WERELDERFGOED_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/wereld
 const GEZICHT_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/gezicht_hvdl";
 const IMAGE_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/image-1";
 const GROENAANLEG_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/groenaanleg";
+const MSP_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/msp_indicatie";
 const CHT_THESAURUS_GRAPH = "https://data.cultureelerfgoed.nl/term/id/cht/thesaurus";
 const ABR_THESAURUS_GRAPH = "https://data.cultureelerfgoed.nl/term/id/abr/thesaurus";
 // De twee hoofdtakken (skos:hasTopConcept) van de CHT waar Termennetwerk een
@@ -80,6 +81,7 @@ export type RceMonument = {
   complexMemberCount?: number;
   image?: MonumentImage;
   groenaanleg?: Groenaanleg;
+  msp?: boolean;
 };
 
 export type MonumentImage = { url: string; title?: string; license?: string; sourceUrl?: string };
@@ -561,6 +563,32 @@ export function parseImageResults(document: unknown): Map<string, MonumentImage>
     });
   }
   return byMonumentNumber;
+}
+
+// ceo:msp_indicatie is een "alleen-aanwezig-als-waar"-boolean (afwezigheid
+// van de triple, niet een expliciete false, betekent "niet via MSP
+// aangewezen") - zie docs/reference/rce-linked-data-graphs.md voor de
+// uitgezochte betekenis (Monumenten Selectie Project, ±1997-2002).
+export function buildMspIndicatieQuery(monumentNumbers: string[]) {
+  const values = monumentNumbers.map((number) => `"${escapeSparqlString(number)}"`).join(" ");
+  return `PREFIX ceo: <${CEO}>
+SELECT DISTINCT ?rmnr WHERE {
+  GRAPH <${MSP_GRAPH}> {
+    VALUES ?rmnr { ${values} }
+    ?rm ceo:rijksmonumentnummer ?rmnr ; ceo:msp_indicatie true .
+  }
+}`;
+}
+
+export function parseMspIndicatieResults(document: unknown): Set<string> {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  const monumentNumbers = new Set<string>();
+  if (!Array.isArray(bindings)) return monumentNumbers;
+  for (const binding of bindings) {
+    const monumentNumber = binding.rmnr?.value;
+    if (monumentNumber) monumentNumbers.add(monumentNumber);
+  }
+  return monumentNumbers;
 }
 
 // Groenaanleg (historische tuinen en parken) is een eigen graph bovenop

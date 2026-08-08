@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAbrTermSuggestQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGezichtQuery, buildGroenaanlegQuery, buildImageQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseDiscoveryBranchResults, parseGezichtResults, parseGroenaanlegResults, parseImageResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseParcelResults, parseRceMonuments, parseSparqlResults, parseWerelderfgoedResults, parseWktGeometry, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
+import { buildAbrTermSuggestQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGezichtQuery, buildGroenaanlegQuery, buildImageQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseDiscoveryBranchResults, parseGezichtResults, parseGroenaanlegResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseParcelResults, parseRceMonuments, parseSparqlResults, parseWerelderfgoedResults, parseWktGeometry, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -668,4 +668,21 @@ test("parses ABR-termsuggesties met een vaste bronnaam", () => {
   assert.deepEqual(parseAbrTermSuggestResults(document), [
     { uri: "abr:1", label: "gladwandig aardewerk", sourceUri: "https://data.cultureelerfgoed.nl/term/id/abr/thesaurus", sourceName: "Archeologisch Basisregister" },
   ]);
+});
+
+test("looks up msp_indicatie by rijksmonumentnummer, alleen de expliciet ware waarde", () => {
+  // ceo:msp_indicatie is een "alleen-aanwezig-als-waar"-boolean: afwezigheid
+  // van de triple betekent "niet via MSP aangewezen", geen expliciete false.
+  const query = buildMspIndicatieQuery(["36046", "45708"]);
+  assert.match(query, /GRAPH <https:\/\/linkeddata\.cultureelerfgoed\.nl\/graph\/msp_indicatie>/);
+  assert.match(query, /ceo:msp_indicatie true/);
+  assert.match(query, /"36046" "45708"/);
+});
+
+test("parses msp_indicatie results into a set of aangewezen rijksmonumentnummers", () => {
+  const document = { results: { bindings: [{ rmnr: { value: "36046" } }, { rmnr: { value: "45708" } }] } };
+  const numbers = parseMspIndicatieResults(document);
+  assert.equal(numbers.has("36046"), true);
+  assert.equal(numbers.has("45708"), true);
+  assert.equal(numbers.has("99999"), false);
 });

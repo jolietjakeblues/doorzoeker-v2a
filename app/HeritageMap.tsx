@@ -93,8 +93,24 @@ export function HeritageMap({ items, onSelect, compact }: { items: MapItem[]; on
         shapeBounds = shapeBounds ? shapeBounds.extend(polygon.getBounds()) : polygon.getBounds();
       }
 
+      // Een compacte kaart toont altijd een klein, doelbewust samengesteld
+      // setje items (één record, of de leden van één complex) - precies
+      // bedoeld om ze afzonderlijk te vergelijken. Twee complexleden die een
+      // paar meter uit elkaar liggen (bv. twee registraties van hetzelfde
+      // schip) horen dan niet tot één clusterbadge "2" samengevoegd te
+      // worden, want dat verbergt juist het punt van deze kaart. Clusteren
+      // blijft wel nodig op de gewone resultatenkaart, die honderden punten
+      // tegelijk kan tonen.
       const renderMarkers = () => {
         markerLayer.clearLayers();
+        if (compact) {
+          for (const item of pointItems) {
+            const marker = L.circleMarker([item.lat, item.lng], { radius: 9, color: "#fff", weight: 3, fillColor: markerColor(item), fillOpacity: 1 }).addTo(markerLayer);
+            marker.bindTooltip(tooltip(item.title, [item.address, item.place].filter(Boolean).join(", ")));
+            marker.on("click", () => onSelect(item));
+          }
+          return;
+        }
         const projected = pointItems.map((item) => {
           const point = leafletMap.project(L.latLng(item.lat, item.lng), leafletMap.getZoom());
           return { item, x: point.x, y: point.y };

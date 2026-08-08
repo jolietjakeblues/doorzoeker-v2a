@@ -67,10 +67,46 @@ dat over enkele jaren wordt afgehandeld. `msp_indicatie` betekent dus:
 een "alleen-aanwezig-als-waar"-boolean (typisch RDF-modelleerpatroon:
 afwezigheid van de triple ≠ expliciet `false`).
 
-**Nog niet gebouwd, wel nu bruikbaar als toekomstige verrijking**: een
-"Aangewezen via het Monumenten Selectie Project (1997-2002)"-vermelding op
-de detailpagina van een Rijksmonument, analoog aan de bestaande
-groenaanleg-verrijking. Niet urgent, geen openstaande vraag meer.
+**Gebouwd (2026-08-08):** een filter ("Kenmerken" > "Monumenten Selectie
+Project") en een detailregel ("Aangewezen via het Monumenten Selectie
+Project (circa 1997-2002)"), analoog aan de bestaande groenaanleg-verrijking
+en het bijbehorende filter. `buildMspIndicatieQuery`/`parseMspIndicatieResults`
+in `lib/rce.ts`.
+
+## `thesauri/referentienetwerk` - apart SPARQL-dataset, gedeeltelijke ABR-spiegel
+
+`https://api.linkeddata.cultureelerfgoed.nl/datasets/thesauri/referentienetwerk/sparql`
+is, net als `rce/bibliotheek`, een volledig los dataset (niet bereikbaar via
+de `rce-cho`-MCP-tool, die alleen `rce/cho` bevraagt). Intern bij RCE ook wel
+"Referentienetwerk 2" genoemd. 404.743 triples, 22.072 `skos:Concept`-
+instanties plus een reeks specialistische subtypes onder het
+`https://data.cultureelerfgoed.nl/id/rnce#`-namespace: `AbrConcept` (8.014),
+`ArtefactAbr` (5.852), `TaxonConcept`/`PlantTaxonConcept`/`AnimalTaxonConcept`
+(biologische taxonomie voor organische vondsten), `CeramicCategoryAbr`,
+`MaterialAbr`, `PeriodAbr`, `DeventerObjectCode`/`DeventerWareCode` (het
+Deventer-systeem voor aardewerkclassificatie), en geomorfologische concepten
+(`LandvormConcept`/`ReliefConcept`, bv. "overstromingsvlakte", "Peelhorst").
+
+**Empirisch bevestigd: gedeeltelijke spiegeling van de ABR-thesaurus**, geen
+volledig aparte dataset. Concept `abr/00155b8e-07ca-4534-848b-a719e780de07`
+("gladwandig aardewerk, Tienen:bord") bestaat identiek terug onder
+`rn/2/00155b8e-...` - zelfde UUID, zelfde label, andere URI-prefix. Een CHT-
+concept (`cht/296c96ac-...`) bestaat *niet* onder `rn/2/`, dus dit is
+specifiek een ABR-spiegel, geen CHT-spiegel.
+
+**Niet toegevoegd als derde termsuggestiebron** (bewuste keuze, geen
+openstaande vraag): het grootste deel overlapt al met de reeds geïntegreerde
+ABR-thesaurus (dubbele suggesties zonder meerwaarde), en de dataset bevat
+naast echte vocabulairetermen ook actor-/collectiereferenties die geen
+zoektermen zijn (bv. "Blokdijk, M. ; Noord-Brabant", "Post Wiersema, E. ;
+Groningen II" - vermoedelijk namen van vondstmelders/onderzoekers per
+provincie). Toevoegen zou de suggestiekwaliteit verlagen, niet verhogen.
+
+**Wel potentieel bruikbaar als latere, aparte verrijking**: de niet-ABR
+specialistische subsets (taxonomie, geomorfologie, Deventer-classificatie)
+zijn nergens anders in Doorzoeker beschikbaar en zouden relevant kunnen zijn
+voor de archeologiedomeinen (Vondsten/Grondsporen/Onderzoeksgebied) - nog
+niet verder uitgezocht, geen concreet plan.
 
 ## `rce/bibliotheek` — apart SPARQL-dataset
 

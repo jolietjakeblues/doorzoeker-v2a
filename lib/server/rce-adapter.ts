@@ -7,6 +7,7 @@ import {
   buildComplexQuery,
   buildGroenaanlegQuery,
   buildImageQuery,
+  buildMspIndicatieQuery,
   buildOnderzoeksgebiedAggregatenQuery,
   buildOnderzoeksgebiedComplexenQuery,
   buildOnderzoeksgebiedVondstlocatiesQuery,
@@ -30,6 +31,7 @@ import {
   parseGezichtResults,
   parseGroenaanlegResults,
   parseImageResults,
+  parseMspIndicatieResults,
   parseOnderzoeksgebiedAggregatenResults,
   parseOnderzoeksgebiedComplexenResults,
   parseOnderzoeksgebiedVondstlocatiesResults,
@@ -47,21 +49,22 @@ const REST_ENDPOINT = "https://api.linkeddata.cultureelerfgoed.nl/queries/rce/re
 
 type SparqlBinding = Record<string, { value?: string } | undefined>;
 
-// Four independent enrichment lookups keyed by the monument's own CHO subject
-// URI (or, for images, its rijksmonumentnummer - that's the join key the
-// beeldbank graph itself uses), run in parallel: archaeological terrain data
-// (only for monuments with an archaeological monumentaard), complex
-// membership, a representative photo, and historic garden/landscape
-// classification (only relevant for the small groenaanleg subset, but cheap
-// enough to just ask for all of them). Neither is a parallel search - all
-// four just attach extra facts to Rijksmonument records already found.
+// Five independent enrichment lookups keyed by the monument's own CHO subject
+// URI (or, for images/MSP, its rijksmonumentnummer - that's the join key
+// those two graphs themselves use), run in parallel: archaeological terrain
+// data (only for monuments with an archaeological monumentaard), complex
+// membership, a representative photo, historic garden/landscape
+// classification, and MSP-aanwijzing (only relevant for their respective
+// subsets, but cheap enough to just ask for all of them). None of these is a
+// parallel search - all five just attach extra facts to Rijksmonument
+// records already found.
 async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): Promise<RceMonument[]> {
   const choUris = monuments.map((monument) => monument.sourceUrl).filter(Boolean);
   if (!choUris.length) return monuments;
   const archaeological = monuments.filter((monument) => monument.monumentNature?.toLocaleLowerCase("nl").includes("archeolog") && monument.sourceUrl);
   const monumentNumbers = monuments.map((monument) => monument.monumentNumber).filter(Boolean);
 
-  const [terreinenByMonument, complexesByMonument, imagesByNumber, groenaanlegByMonument] = await Promise.all([
+  const [terreinenByMonument, complexesByMonument, imagesByNumber, groenaanlegByMonument, mspNumbers] = await Promise.all([
     archaeological.length
       ? fetchSparql(buildArcheologischTerreinQuery(archaeological.map((monument) => monument.sourceUrl)), signal).then(parseArcheologischTerreinResults)
       : Promise.resolve(new Map<string, ArcheologischTerrein[]>()),
@@ -70,6 +73,9 @@ async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): 
       ? fetchSparql(buildImageQuery(monumentNumbers), signal).then(parseImageResults)
       : Promise.resolve(new Map<string, RceMonument["image"]>()),
     fetchSparql(buildGroenaanlegQuery(choUris), signal).then(parseGroenaanlegResults),
+    monumentNumbers.length
+      ? fetchSparql(buildMspIndicatieQuery(monumentNumbers), signal).then(parseMspIndicatieResults)
+      : Promise.resolve(new Set<string>()),
   ]);
 
   return monuments.map((monument) => {
@@ -77,13 +83,15 @@ async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): 
     const complexes = complexesByMonument.get(monument.sourceUrl);
     const image = imagesByNumber.get(monument.monumentNumber);
     const groenaanleg = groenaanlegByMonument.get(monument.sourceUrl);
-    if (!archaeologicalSites && !complexes && !image && !groenaanleg) return monument;
+    const msp = mspNumbers.has(monument.monumentNumber);
+    if (!archaeologicalSites && !complexes && !image && !groenaanleg && !msp) return monument;
     return {
       ...monument,
       ...(archaeologicalSites ? { archaeologicalSites } : {}),
       ...(complexes ? { complexes } : {}),
       ...(image ? { image } : {}),
       ...(groenaanleg ? { groenaanleg } : {}),
+      ...(msp ? { msp } : {}),
     };
   });
 }
