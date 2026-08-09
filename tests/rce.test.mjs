@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAbrTermSuggestQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGezichtQuery, buildGroenaanlegQuery, buildImageQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseDiscoveryBranchResults, parseGezichtResults, parseGroenaanlegResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseParcelResults, parseRceMonuments, parseSparqlResults, parseWerelderfgoedResults, parseWktGeometry, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
+import { buildAbrTermSuggestQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGezichtQuery, buildGroenaanlegQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseDiscoveryBranchResults, parseGezichtResults, parseGroenaanlegResults, parseImageResults, parseMonumentAardConceptMatches, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseParcelResults, parseRceMonuments, parseSparqlResults, parseWerelderfgoedResults, parseWktGeometry, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -18,7 +18,32 @@ test("parses rich SPARQL results", () => {
   // the parenthesis. A stricter regex silently dropped lat/lng for every
   // result, which emptied the map without ever failing a request.
   const document = { results: { bindings: [{ cho: { value: "rm:38342" }, choi: { value: "38342" }, rmnr: { value: "36046" }, functie: { value: "Woonhuis(K)" }, omschrijving: { value: "Pand met 17e eeuwse lijstgevel." }, monumentaard: { value: "onroerend gebouwd" }, volledigAdres: { value: "Brigittenstraat 18" }, postcode: { value: "3512KM" }, woonplaats: { value: "Utrecht" }, wkt: { value: "Point (5.1267842049703 52.088895166661)" }, inschrijving: { value: "1967-06-20" } }] } };
-  assert.deepEqual(parseSparqlResults(document), [{ choNumber: "38342", monumentNumber: "36046", registrationDate: "1967-06-20", street: "", houseNumber: "", postalCode: "3512KM", sourceUrl: "rm:38342", name: undefined, functionName: "Woonhuis(K)", originalFunctionNames: [], currentFunctionNames: [], typeNames: [], legalStatus: "rijksmonument", description: "Pand met 17e eeuwse lijstgevel.", monumentNature: "onroerend gebouwd", fullAddress: "Brigittenstraat 18", place: "Utrecht", municipality: undefined, provinceCode: undefined, lng: 5.1267842049703, lat: 52.088895166661, wkt: "Point (5.1267842049703 52.088895166661)" }]);
+  assert.deepEqual(parseSparqlResults(document), [{ choNumber: "38342", monumentNumber: "36046", registrationDate: "1967-06-20", street: "", houseNumber: "", postalCode: "3512KM", sourceUrl: "rm:38342", name: undefined, functionName: "Woonhuis(K)", originalFunctionNames: [], currentFunctionNames: [], typeNames: [], legalStatus: "rijksmonument", description: "Pand met 17e eeuwse lijstgevel.", monumentNature: "onroerend gebouwd", monumentAardConceptUri: undefined, fullAddress: "Brigittenstraat 18", place: "Utrecht", municipality: undefined, provinceCode: undefined, lng: 5.1267842049703, lat: 52.088895166661, wkt: "Point (5.1267842049703 52.088895166661)" }]);
+});
+
+test("captures the monumentaard concept-URI alongside its label", () => {
+  // Referentienetwerk-integratie (taak #10, eerste schijf): naast het label
+  // ("onroerend gebouwd") moet ook de concept-URI meekomen waarmee het
+  // record zelf is geclassificeerd, zodat de UI daarop exact kan doorzoeken.
+  const document = { results: { bindings: [{ rmnr: { value: "36046" }, monumentaard: { value: "onroerend gebouwd" }, monumentaardConcept: { value: "https://data.cultureelerfgoed.nl/term/id/rn/2/fc966a68-8863-4970-a83e-110f96006c21" } }] } };
+  const [monument] = parseSparqlResults(document);
+  assert.equal(monument.monumentNature, "onroerend gebouwd");
+  assert.equal(monument.monumentAardConceptUri, "https://data.cultureelerfgoed.nl/term/id/rn/2/fc966a68-8863-4970-a83e-110f96006c21");
+});
+
+test("builds an exact-match query on a monumentaard concept-URI instead of a label", () => {
+  const uri = "https://data.cultureelerfgoed.nl/term/id/rn/2/fc966a68-8863-4970-a83e-110f96006c21";
+  const query = buildMonumentAardConceptQuery(uri);
+  assert.match(query, new RegExp(`ceo:heeftMonumentAard <${uri.replaceAll(".", "\\.")}>`));
+  assert.match(query, new RegExp(`ceo:heeftJuridischeStatus <${RCE_SEMANTICS.activeLegalStatus}>`));
+  assert.match(query, /LIMIT 100/);
+});
+
+test("parses monumentaard-concept matches into a plain list of rijksmonumentnummers", () => {
+  const document = { results: { bindings: [{ rmnr: { value: "36046" } }, { rmnr: { value: "45708" } }] } };
+  assert.deepEqual(parseMonumentAardConceptMatches(document), ["36046", "45708"]);
+  assert.deepEqual(parseMonumentAardConceptMatches({ results: { bindings: [] } }), []);
+  assert.deepEqual(parseMonumentAardConceptMatches({}), []);
 });
 
 test("falls back to the BRK gemeente when there is no BAG woonplaats", () => {

@@ -10,7 +10,7 @@
         "build": "vinext build",
         "start": "vinext start",
         "deploy": "vinext build && wrangler deploy --config dist/server/wrangler.json",
-        "test": "npm run build && node --test tests/rendered-html.test.mjs tests/rce.test.mjs tests/rce-api.test.mjs tests/map-clustering.test.mjs tests/terms-api.test.mjs",
+        "test": "npm run build && node --test tests/rendered-html.test.mjs tests/rce.test.mjs tests/rce-api.test.mjs tests/concept-api.test.mjs tests/map-clustering.test.mjs tests/terms-api.test.mjs",
         "typecheck": "tsc --noEmit --incremental false",
         "lint": "eslint . --ignore-pattern dist --ignore-pattern .next"
     },

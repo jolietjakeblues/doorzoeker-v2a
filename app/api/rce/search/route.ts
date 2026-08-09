@@ -1,4 +1,5 @@
-import { browseRceObjects, searchRceMonuments } from "../../../../lib/server/rce-adapter.ts";
+import { browseRceObjects, searchByMonumentAardConcept, searchRceMonuments } from "../../../../lib/server/rce-adapter.ts";
+import { CONCEPT_URI_PATTERN } from "../concept/route.ts";
 
 export const runtime = "edge";
 
@@ -67,8 +68,14 @@ export async function GET(request: Request) {
     // "Browsen" (alle Werelderfgoed, Gezichten of Complexen tonen) is geen
     // tekstzoekopdracht: q mag hier leeg zijn.
     const browse = browseParam === "werelderfgoed" || browseParam === "gezicht" || browseParam === "complex" ? browseParam : undefined;
+    // Conceptzoekopdracht (fase 1: monumentaard): exacte match op een
+    // concept-URI uit het Referentienetwerk in plaats van tekstzoeken.
+    const conceptParam = url.searchParams.get("concept");
+    if (conceptParam && !CONCEPT_URI_PATTERN.test(conceptParam)) {
+      return Response.json({ error: "Ongeldige concept-URI." }, { status: 400 });
+    }
     const page = Number(url.searchParams.get("page") ?? "1");
-    if (!browse && (!query || query.length > 120 || !Number.isInteger(page) || page < 1 || page > 20)) {
+    if (!browse && !conceptParam && (!query || query.length > 120 || !Number.isInteger(page) || page < 1 || page > 20)) {
       return Response.json({ error: "Ongeldige zoekopdracht." }, { status: 400 });
     }
     if (!consumeRateLimit(clientId(request))) {
@@ -77,7 +84,9 @@ export async function GET(request: Request) {
 
     const cacheKey = new Request(browse
       ? `${url.origin}/api/rce/search?browse=${browse}`
-      : `${url.origin}/api/rce/search?q=${encodeURIComponent(query.toLocaleLowerCase("nl"))}&page=${page}`);
+      : conceptParam
+        ? `${url.origin}/api/rce/search?concept=${encodeURIComponent(conceptParam)}`
+        : `${url.origin}/api/rce/search?q=${encodeURIComponent(query.toLocaleLowerCase("nl"))}&page=${page}`);
     const memoryCached = responseCache.get(cacheKey.url);
     if (memoryCached && memoryCached.expiresAt > Date.now()) {
       return new Response(memoryCached.body, {
@@ -88,7 +97,11 @@ export async function GET(request: Request) {
     const cached = await readCache(cacheKey);
     if (cached) return cached;
 
-    const results = browse ? await browseRceObjects(browse, request.signal) : await searchRceMonuments(query, request.signal, page);
+    const results = browse
+      ? await browseRceObjects(browse, request.signal)
+      : conceptParam
+        ? await searchByMonumentAardConcept(conceptParam, request.signal)
+        : await searchRceMonuments(query, request.signal, page);
     const body = JSON.stringify({ results });
     const response = new Response(body, {
       headers: {
@@ -103,7 +116,7 @@ export async function GET(request: Request) {
     const cachedResponse = response.clone();
     cachedResponse.headers.set("X-Doorzoeker-Cache", "HIT");
     await writeCache(cacheKey, cachedResponse);
-    console.info(JSON.stringify({ event: "rce.search", durationMs: Date.now() - startedAt, queryLength: query.length, browse, resultCount: results.length }));
+    console.info(JSON.stringify({ event: "rce.search", durationMs: Date.now() - startedAt, queryLength: query.length, browse, concept: Boolean(conceptParam), resultCount: results.length }));
     return response;
   } catch (error) {
     console.error(JSON.stringify({ event: "rce.search.error", durationMs: Date.now() - startedAt, message: error instanceof Error ? error.message : "unknown" }));

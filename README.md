@@ -46,7 +46,10 @@ een geheel eigen, van het monumentenregister losstaande dataset (zie
    formele omschrijving, of - voor onderzoeksgebieden - woonplaats en de
    vrije onderzoeksomschrijving;
 2. filteren op monumentaard, provincie, gemeente/woonplaats, oorspronkelijke
-   functie en matchbron;
+   functie en matchbron; het monumentaard-label is bovendien klikbaar en
+   start een exacte zoekopdracht op de onderliggende Referentienetwerk-
+   concept-URI, niet op de labeltekst (zie
+   [`docs/vertical-slices/004-referentienetwerk-concepten.md`](docs/vertical-slices/004-referentienetwerk-concepten.md));
 3. resultaten tonen als lijst en op een kaart (met clustering; Werelderfgoed,
    Gezichten, archeologische terreinen en Onderzoeksgebieden als echte
    polygoon/multipolygoon, niet platgeslagen tot een punt);
@@ -81,8 +84,9 @@ en REST-aanroepen achter een eigen `/api/rce/search`-contract.
 ## Repositorystructuur
 
 ```text
-app/                   Applicatieroutes en componenten
-lib/                   Querybouw, parsing en de serveradapter naar RCE
+app/                   Applicatieroutes en presentatiecomponenten
+hooks/                 React-hooks voor zoek-/filterstate, termsuggesties en detailverrijking
+lib/                   Querybouw, parsing, het view-model en de serveradapters naar RCE
 worker/                Cloudflare Worker-entrypoint
 public/                Publiek geserveerde afbeeldingen en iconen
 tests/                 Geautomatiseerde tests

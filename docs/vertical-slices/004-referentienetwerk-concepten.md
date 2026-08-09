@@ -1,0 +1,243 @@
+# Verticale slice 004: Concept-URI's uit het RCE Referentienetwerk
+
+## Status
+
+Gebouwd en live geverifieerd (2026-08-09). Alle 8 stappen van de
+voorgestelde eerste schijf (monumentaard) zijn geïmplementeerd:
+`RceMonument.monumentAardConceptUri`, de nieuwe
+`referentienetwerk-adapter.ts` (`resolveConcept`) op het aparte
+`thesauri/referentienetwerk`-endpoint, `GET /api/rce/concept?uri=`,
+`GET /api/rce/search?concept=` als exacte-URI-alternatief op `?q=`, en een
+klikbaar monumentaard-label in zowel de resultatenkaart als het
+detailpaneel dat `executeConceptSearch` aanroept. Live doorgeklikt tegen de
+echte RCE-data: klikken op "Gebouwd" bij rijksmonument 26722 (concept-URI
+`.../rn/2/fc966a68-...`) levert 25 uiteenlopende "onroerend
+gebouwd"-monumenten op via een exacte match, niet via labeltekst. Zie
+"Openstaande vragen" hieronder voor wat bewust nog niet is aangepakt.
+
+## Principe
+
+Het label is presentatie. De URI is identiteit.
+
+## Aanleiding
+
+Doorzoeker gebruikt thesauri (CHT, ABR) en het Referentienetwerk op dit
+moment uitsluitend voor tekstsuggesties in de zoekbalk (zie
+`docs/adr/0002-hybride-gegevensarchitectuur.md`, sectie "Termen-adapter
+herzien"). Zodra een gebruiker een suggestie kiest of een zoekterm
+intypt, verdwijnt de concept-URI uit de zoekflow: er wordt verder gezocht
+op het label (`CONTAINS(LCASE(STR(?label)), ...)`), niet op identiteit.
+
+Gevolg: concept-URI's die al in de RCE-data aanwezig zijn worden niet
+benut, classificaties worden gereduceerd tot strings, het verschil tussen
+gelijknamige concepten gaat verloren, conceptrelaties en hiërarchieën
+kunnen niet gebruikt worden, en er is geen navigatie van erfgoedobject naar
+concept naar andere erfgoedobjecten met precies dat concept.
+
+## Empirisch bevestigd (2026-08-09, vóór dit plan geschreven is)
+
+Twee live SPARQL-checks tegen echte data, niet afgeleid uit documentatie:
+
+1. **De classificatie-URI's die de live CEO-instantiedata daadwerkelijk
+   gebruikt, wijzen naar `rn/2/...` (Referentienetwerk), niet naar
+   `cht/...` of `abr/...`.** Voor rijksmonument 36046:
+   - `heeftOorspronkelijkeFunctie/heeftFunctieNaam` → "Woonhuis(K)" =
+     `https://data.cultureelerfgoed.nl/term/id/rn/2/b964b9ca-8f5a-42de-b96c-ce8320db9e95`
+   - `heeftMonumentAard` → "onroerend gebouwd" =
+     `https://data.cultureelerfgoed.nl/term/id/rn/2/fc966a68-8863-4970-a83e-110f96006c21`
+
+   Dit betekent: het Referentienetwerk is niet "ook een bron" naast CHT/ABR,
+   maar de daadwerkelijke identiteitslaag waarmee de CEO-data zelf is
+   geclassificeerd. De eerdere aanname deze sessie (CHT/ABR zijn "de"
+   thesauri, Referentienetwerk is een afgeleide spiegel) is hiermee
+   weerlegd voor in elk geval functie en monumentaard.
+
+2. **`rn/2`-concepten hebben een echt, bruikbaar `skos:inScheme` en
+   `skos:broader`.** Het monumentaard-concept "onroerend gebouwd" heeft:
+   - `skos:inScheme` → een ConceptScheme met `dct:title` "Cultuurhistorische
+     Object Informatie" en `dct:description` "Referentie netwerk voor de
+     Archis en MRS toepassingen bij de RCE";
+   - `skos:broader` → een ander `rn/2`-concept (dus een echte hiërarchie,
+     geen platte waardenlijst);
+   - dat scheme heeft zelf 18 `skos:hasTopConcept`-relaties.
+
+   Conclusie: het UI-idee "Classificatie: Romeinse tijd / Archeologisch
+   informatiesysteem / URI: …" is met de bestaande data te bouwen, geen
+   wensdenken.
+
+3. **Belangrijke architecturale consequentie**: deze `rn/2`-concepten staan
+   op een *apart* SPARQL-endpoint,
+   `https://api.linkeddata.cultureelerfgoed.nl/datasets/thesauri/referentienetwerk/sparql`,
+   niet op de `rce/cho`-dienst die de rest van Doorzoeker gebruikt. Een
+   concept-URI ophalen (label, scheme, broader/narrower) vereist dus een
+   federatieve lookup: het CHO-record komt van `rce/cho`, de
+   conceptbeschrijving komt van `thesauri/referentienetwerk`. Dit is qua
+   omvang vergelijkbaar met de nog niet gestarte `rce/bibliotheek`-adapter
+   (taak #6) - een echte nieuwe live-afhankelijkheid, geen bijstelling van
+   een bestaande query.
+
+## Doel
+
+Een geselecteerd Referentienetwerk-concept behoudt zijn URI door de
+volledige zoek-, URL-, API- en resultaatflow heen, zodat exact op
+identiteit gezocht kan worden in plaats van op toevallige labelgelijkenis.
+
+## Waarom niet meteen breed uitrollen
+
+- CHT/ABR-termsuggesties (al gebouwd) blijven bestaan voor vrije
+  tekstinvoer - dit plan vervangt dat niet, het voegt een preciezere laag
+  toe voor velden die al een concept-URI dragen.
+- Niet elk veld is al gecontroleerd op welke URI-namespace het gebruikt
+  (zie "Openstaande vragen" hieronder) - vooraf aannemen dat het
+  Referentienetwerk is, is precies de fout die dit plan wil vermijden.
+- Dit is het derde grote architectuurtraject deze periode, na de
+  Termennetwerk→Referentienetwerk-switch en naast de nog uitgestelde
+  `page.tsx`-opsplitsing. Bewust klein en geïsoleerd houden.
+
+## Voorgestelde eerste verticale schijf: monumentaard
+
+Kleinst mogelijke voetafdruk: 2-3 bekende waarden, al een bestaand
+UI-filter (de radiogroep "Monumentaard"), en het volledige pad
+(record → concept-URI → scheme → broader) is hierboven al geverifieerd te
+werken. Functie is interessanter maar heeft veel meer waarden - te riskant
+als eerste proef van een compleet nieuw stuk plumbing.
+
+Stappen:
+
+1. Pas `buildRceDetailsQuery`/`buildRceFacetsQuery` (of een gerichte
+   aparte query) aan zodat naast `?aardLabel` ook de concept-URI wordt
+   opgehaald (`?cho ceo:heeftMonumentAard ?aardConcept . ?aardConcept
+   skos:prefLabel ?aardLabel .` in plaats van het huidige
+   property-path-shortcut dat de tussenliggende URI wegmoffelt).
+2. Voeg een `ConceptRef`-vorm toe aan `RceMonument`/`Item`:
+   `monumentAardConcept?: { uri: string; label: string }`.
+3. Nieuwe, aparte adapter `lib/server/referentienetwerk-adapter.ts` die
+   tegen `thesauri/referentienetwerk/sparql` praat (eigen `fetchSparql`
+   met dezelfde retry/timeout-aanpak als `sparql-client.ts`, want dit is
+   een fysiek ander endpoint) - minimaal een `resolveConcept(uri)` die
+   `prefLabel`, `inScheme` (URI + titel) en `broader` teruggeeft. Niet
+   alle velden uit het oorspronkelijke voorstel (altLabels, narrower,
+   related) in deze eerste stap.
+4. Nieuwe route `GET /api/rce/concept?uri=<encoded-uri>`, met
+   URI-validatie vooraf (alleen bekende namespaces `term/id/rn/2/`,
+   `term/id/cht/`, `term/id/abr/`, zelfde patroon als de bestaande
+   `COMPLEX_URI_PATTERN`/`GEBIED_URI_PATTERN` - nooit ongevalideerde
+   input rechtstreeks als `<IRI>` in SPARQL).
+5. `GET /api/rce/search?concept=<encoded-uri>` als alternatief op
+   `?q=<tekst>`: exacte match op de concept-URI in plaats van
+   `CONTAINS`-tekstzoeken op het label. Retourneert zowel de URI als het
+   label per record (nooit alleen de URI tonen aan de gebruiker).
+6. UI: het monumentaard-label in de resultatenlijst en detailpagina wordt
+   klikbaar en start een exacte conceptzoekopdracht; optioneel tonen uit
+   welk scheme het concept komt (het "Classificatie: X / Y"-idee), als
+   uitbreiding van de bestaande contextuele-hulphints
+   (`docs/vertical-slices/003-contextuele-hulp.md`).
+7. Tests: bewijs dat conceptzoeken op URI werkt (twee monumenten met
+   toevallig dezelfde labeltekst maar verschillende URI's moeten
+   onderscheidbaar blijven), en dat vrije tekstzoeken ongewijzigd blijft
+   werken naast deze nieuwe modus.
+8. Pas na verificatie: hetzelfde patroon toepassen op andere
+   classificaties (functie, type, archeologische classificaties) - elk
+   pas nadat de property path voor dat specifieke veld eerst tegen de
+   live data is gecontroleerd, niet aangenomen.
+
+## Data-model
+
+```ts
+type ConceptRef = {
+  uri: string;
+  label: string;
+  schemeUri?: string;
+  schemeLabel?: string;
+};
+```
+
+`RceMonument`/`Item` krijgen `monumentAardConcept?: ConceptRef` naast het
+bestaande `monumentAard`-label (het label blijft bestaan voor de
+bestaande filter-UI; de URI komt er additioneel bij, niets wordt
+vervangen in deze eerste schijf).
+
+## API-contract
+
+- `GET /api/rce/search?concept=<encoded-uri>` - exacte conceptzoekopdracht,
+  naast het bestaande `?q=<tekst>`. `concept` is semantisch leidend; een
+  eventuele meegegeven `q` dient dan alleen als leesbaar label voor de UI
+  (bijvoorbeeld in de URL-balk), niet als extra filter.
+- `GET /api/rce/concept?uri=<encoded-uri>` - haalt label, scheme en
+  broader op voor een los concept (voor toekomstige conceptnavigatie,
+  fase 2).
+- Beide routes valideren de URI server-side tegen een vaste lijst bekende
+  namespaces vóór gebruik in SPARQL, zoals nu al gebeurt bij de
+  complex-members- en onderzoeksgebied-verrijkingsroutes.
+
+## Scope-afbakening voor deze slice
+
+- Alleen monumentaard. Geen functie, type, archeologische classificaties
+  of complextypen in deze eerste schijf - die volgen pas na aparte
+  verificatie per veld.
+- Geen bredere/nauwere/verwante conceptnavigatie in de UI (fase 2 uit het
+  oorspronkelijke voorstel). Wel de onderliggende `resolveConcept`-functie
+  alvast `broader` laten teruggeven, zodat fase 2 later niet opnieuw
+  hoeft te onderzoeken of dat beschikbaar is (het is beschikbaar, zie
+  hierboven).
+- Geen vooraf indexeren van het volledige Referentienetwerk.
+- Geen complete thesaurusviewer.
+- Geen automatische aanname dat elk label een thesaurusconcept is.
+
+## Niet in scope (nog niet besloten, apart te behandelen)
+
+- Sequencing ten opzichte van de nog uitgestelde `page.tsx`-opsplitsing en
+  taak #6 (`rce/bibliotheek`) - drie aparte architectuurtrajecten, bewust
+  niet tegelijk aangepakt.
+- Of CHT/ABR-termsuggesties op termijn ook naar concept-URI's uit het
+  Referentienetwerk zouden moeten verwijzen in plaats van los te blijven
+  bestaan naast deze nieuwe, preciezere laag.
+
+## Openstaande vragen
+
+- Welke exacte property path gebruiken `heeftType`/`heeftTypeNaam`,
+  archeologische classificaties en complextypen? Nog niet gecontroleerd -
+  niet aannemen dat het dezelfde `rn/2`-namespace is als functie/aard tot
+  dit expliciet is nagevraagd bij de data.
+- Hebben de concepten die voor deze velden gebruikt worden ook allemaal
+  een `skos:inScheme` met een leesbare titel, of is dat specifiek voor het
+  "Cultuurhistorische Object Informatie"-scheme dat monumentaard/functie
+  gebruiken?
+- Prestatie van de federatieve lookup (twee endpoints per verrijkte
+  weergave) is nog niet gemeten - relevant gezien de SPARQL-fanout-timing
+  die deze sessie al is toegevoegd (`enrich.*`/`search.*`-logs in
+  `rce-adapter.ts`); een vergelijkbare timinglog toevoegen aan de nieuwe
+  Referentienetwerk-adapter zodra die bestaat.
+- Een conceptzoekopdracht wordt bewust niet in de URL vastgelegd (geen
+  `?concept=`-parameter in de adresbalk zoals de andere filters wel
+  krijgen via `useSearchState`'s URL-sync) en ondersteunt geen "Laad 25
+  volgende resultaten" (de server-kant capt nu op 25 van de eerste 100
+  matches). Beide zijn bewuste beperkingen van deze eerste schijf, geen
+  vergeten randgevallen - op te pakken zodra fase 2 (bredere
+  conceptnavigatie) aan de orde is.
+- `GET /api/rce/concept?uri=` (stap 4) is gebouwd en getest, maar wordt in
+  deze schijf nog nergens vanuit de UI aangeroepen - dat komt pas in fase 2
+  zodra scheme/broader daadwerkelijk getoond worden.
+
+## Acceptatiecriteria
+
+1. Een geselecteerd monumentaard-concept behoudt zijn URI tot en met de
+   SPARQL-query.
+2. `/api/rce/search?concept=<uri>` levert exact de rijksmonumenten met
+   die concept-URI op, niet een labelmatch.
+3. Twee (hypothetische) concepten met hetzelfde label maar verschillende
+   URI's blijven onderscheidbaar in resultaten en tests.
+4. Onbekende of niet-toegestane URI's worden nergens ongevalideerd in
+   SPARQL geïnjecteerd.
+5. Vrije tekstzoeken (`?q=`) blijft ongewijzigd werken.
+6. Tests bewijzen dat op URI gezocht wordt, niet op het label (bijvoorbeeld
+   door twee records met identiek label maar verschillend concept te
+   mocken en te controleren dat alleen het juiste record terugkomt).
+
+## Klaar wanneer
+
+Monumentaard is klikbaar vanuit resultatenlijst en detailpagina, start een
+exacte conceptzoekopdracht via `/api/rce/search?concept=...`, de nieuwe
+Referentienetwerk-adapter en -route zijn gebouwd met dezelfde
+beveiligings- en timeout/retry-aanpak als de bestaande adapters, en
+typecheck/lint/test blijven groen.

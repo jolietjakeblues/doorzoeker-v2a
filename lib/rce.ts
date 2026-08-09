@@ -64,6 +64,7 @@ export type RceMonument = {
   legalStatus?: string;
   description?: string;
   monumentNature?: string;
+  monumentAardConceptUri?: string;
   fullAddress?: string;
   place?: string;
   municipality?: string;
@@ -284,6 +285,7 @@ export function parseSparqlResults(document: unknown): RceMonument[] {
       legalStatus: binding.juridischeStatus?.value ?? "rijksmonument",
       description: binding.omschrijving?.value,
       monumentNature: binding.monumentaard?.value,
+      monumentAardConceptUri: binding.monumentaardConcept?.value,
       fullAddress: binding.volledigAdres?.value,
       // Archeologische terreinen hebben doorgaans geen BAG-relatie (geen
       // adres), maar wel een BRK-relatie (kadastraal perceel) met een
@@ -321,6 +323,7 @@ SELECT ?cho ?choi ?rmnr
   (SAMPLE(STR(?functieValue)) AS ?functie)
   (SAMPLE(STR(?omschrijvingValue)) AS ?omschrijving)
   (SAMPLE(STR(?monumentaardValue)) AS ?monumentaard)
+  (SAMPLE(STR(?monumentaardConceptValue)) AS ?monumentaardConcept)
   (SAMPLE(STR(?adresValue)) AS ?volledigAdres)
   (SAMPLE(STR(?postcodeValue)) AS ?postcode)
   (SAMPLE(STR(?woonplaatsValue)) AS ?woonplaats)
@@ -343,7 +346,10 @@ WHERE {
     ?omschrijvingNode ceo:omschrijving ?omschrijvingValue ;
                       ceo:formeelStandpunt true .
   }
-  OPTIONAL { ?cho ceo:heeftMonumentAard/skos:prefLabel ?monumentaardValue . }
+  OPTIONAL {
+    ?cho ceo:heeftMonumentAard ?monumentaardConceptValue .
+    ?monumentaardConceptValue skos:prefLabel ?monumentaardValue .
+  }
   OPTIONAL {
     ?cho ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie ?bag .
     OPTIONAL { ?bag ceo:volledigAdres ?adresValue . }
@@ -365,6 +371,29 @@ LIMIT 100`;
 
 export function buildRceNumberQuery(monumentNumber: string) {
   return buildRceDetailsQuery([monumentNumber]);
+}
+
+// Exacte conceptzoekopdracht: in plaats van een CONTAINS-tekstmatch op een
+// label, matcht dit rechtstreeks op de concept-URI waarmee het record zelf
+// is geclassificeerd (zie docs/vertical-slices/004-referentienetwerk-concepten.md).
+// De aanroeper valideert `conceptUri` vooraf tegen een vaste lijst bekende
+// namespaces - dezelfde regel als bij elke andere <...>-interpolatie in dit
+// bestand.
+export function buildMonumentAardConceptQuery(conceptUri: string) {
+  return `PREFIX ceo: <${CEO}>
+SELECT ?rmnr WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ; ceo:heeftMonumentAard <${conceptUri}> ;
+         ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> .
+  }
+}
+LIMIT 100`;
+}
+
+export function parseMonumentAardConceptMatches(document: unknown): string[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.flatMap((binding) => binding.rmnr?.value ? [binding.rmnr.value] : []);
 }
 
 export function buildRceFacetsQuery(monumentNumbers: string[]) {

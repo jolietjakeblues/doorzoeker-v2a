@@ -1,4 +1,4 @@
-const SPARQL_ENDPOINT = "https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/cho/sparql";
+export const RCE_CHO_ENDPOINT = "https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/cho/sparql";
 const REQUEST_TIMEOUT_MS = 20_000;
 
 export function requestSignal(signal?: AbortSignal) {
@@ -6,8 +6,8 @@ export function requestSignal(signal?: AbortSignal) {
   return signal ? AbortSignal.any([signal, timeout]) : timeout;
 }
 
-async function fetchSparqlOnce(query: string, signal?: AbortSignal) {
-  const response = await fetch(`${SPARQL_ENDPOINT}?query=${encodeURIComponent(query)}`, {
+async function fetchSparqlOnce(endpoint: string, query: string, signal?: AbortSignal) {
+  const response = await fetch(`${endpoint}?query=${encodeURIComponent(query)}`, {
     headers: { Accept: "application/sparql-results+json" },
     signal: requestSignal(signal),
   });
@@ -15,15 +15,18 @@ async function fetchSparqlOnce(query: string, signal?: AbortSignal) {
   return response.json();
 }
 
-// Gedeeld door elke adapter die tegen de RCE CHO SPARQL-dienst praat (monumenten,
-// thesauri, ...): één kans op een transiente 5xx wordt één keer herkanst voordat
-// we het opgeven; een echte clientfout (4xx) wordt niet herkanst.
-export async function fetchSparql(query: string, signal?: AbortSignal) {
+// Gedeeld door elke adapter die tegen een RCE SPARQL-dienst praat (monumenten,
+// thesauri, Referentienetwerk, ...): één kans op een transiente 5xx wordt één
+// keer herkanst voordat we het opgeven; een echte clientfout (4xx) wordt niet
+// herkanst. `endpoint` is optioneel en valt terug op de hoofddienst
+// (rce/cho) - alleen de Referentienetwerk-adapter geeft een ander endpoint
+// mee, want dat is een fysiek apart SPARQL-endpoint.
+export async function fetchSparql(query: string, signal?: AbortSignal, endpoint: string = RCE_CHO_ENDPOINT) {
   try {
-    return await fetchSparqlOnce(query, signal);
+    return await fetchSparqlOnce(endpoint, query, signal);
   } catch (error) {
     const status = error instanceof Error ? error.cause : undefined;
     if (typeof status !== "number" || status < 500) throw error;
-    return fetchSparqlOnce(query, signal);
+    return fetchSparqlOnce(endpoint, query, signal);
   }
 }

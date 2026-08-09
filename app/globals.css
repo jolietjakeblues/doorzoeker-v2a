@@ -160,6 +160,8 @@ h2 { font-size: 24px; }
 .copy p { max-width: 720px; margin: 10px 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
 .copy .address { margin: 0; color: var(--ink); }
 .copy > span { display: inline-block; margin-right: 6px; padding: 4px 8px; background: var(--panel); color: var(--ink); font-size: 12px; }
+.concept-link { border: 0; padding: 0; background: none; color: var(--rce-blue); font-size: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.concept-link:hover { color: var(--rce-blue-hover); }
 .open { border: 0; border-left: 1px solid var(--line); background: #fafafa; color: var(--rce-blue); font-size: 22px; }
 .open:hover { background: var(--rce-blue); color: #fff; }
 

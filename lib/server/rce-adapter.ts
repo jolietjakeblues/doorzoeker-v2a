@@ -7,6 +7,7 @@ import {
   buildComplexQuery,
   buildGroenaanlegQuery,
   buildImageQuery,
+  buildMonumentAardConceptQuery,
   buildMspIndicatieQuery,
   buildOnderzoeksgebiedAggregatenQuery,
   buildOnderzoeksgebiedComplexenQuery,
@@ -31,6 +32,7 @@ import {
   parseGezichtResults,
   parseGroenaanlegResults,
   parseImageResults,
+  parseMonumentAardConceptMatches,
   parseMspIndicatieResults,
   parseOnderzoeksgebiedAggregatenResults,
   parseOnderzoeksgebiedComplexenResults,
@@ -141,6 +143,32 @@ async function searchByNumber(monumentNumber: string, signal?: AbortSignal): Pro
   const parcels = parseParcelResults(parcelsDocument);
   const facets = parseFacetResults(facetsDocument);
   const monuments = parseSparqlResults(monumentsDocument).map((monument) => ({ ...monument, ...facets.get(monument.monumentNumber), parcels }));
+  return enrichMonuments(monuments, signal);
+}
+
+// Exacte conceptzoekopdracht (fase 1: alleen monumentaard) - geen
+// CONTAINS-tekstmatch op een label, maar een directe match op de
+// concept-URI waarmee het record zelf is geclassificeerd. `conceptUri` is
+// door de aanroepende route al gevalideerd tegen een vaste lijst bekende
+// namespaces vóór dit aangeroepen wordt.
+export async function searchByMonumentAardConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
+  const matchDocument = await fetchSparql(buildMonumentAardConceptQuery(conceptUri), signal);
+  const numbers = parseMonumentAardConceptMatches(matchDocument).slice(0, 25);
+  if (!numbers.length) return [];
+  const [detailsDocument, parcelsDocument, facetsDocument] = await Promise.all([
+    fetchSparql(buildRceDetailsQuery(numbers), signal),
+    fetchSparql(buildRceParcelsQuery(numbers), signal),
+    fetchSparql(buildRceFacetsQuery(numbers), signal),
+  ]);
+  const facets = parseFacetResults(facetsDocument);
+  const parcelBindings = (parcelsDocument as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings ?? [];
+  const detailsByNumber = new Map(parseSparqlResults(detailsDocument).map((monument) => [monument.monumentNumber, monument]));
+  const monuments = numbers.flatMap((number) => {
+    const monument = detailsByNumber.get(number);
+    if (!monument) return [];
+    const parcels = parseParcelResults({ results: { bindings: parcelBindings.filter((binding) => binding.rmnr?.value === monument.monumentNumber) } });
+    return [{ ...monument, ...facets.get(monument.monumentNumber), parcels }];
+  });
   return enrichMonuments(monuments, signal);
 }
 

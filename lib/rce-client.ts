@@ -15,6 +15,19 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
   return document.results;
 }
 
+// Exact zoeken op een concept-URI uit het Referentienetwerk (fase 1: alleen
+// monumentaard) in plaats van een tekstzoekopdracht - zie
+// docs/vertical-slices/004-referentienetwerk-concepten.md.
+export async function searchByMonumentAardConcept(conceptUri: string, signal?: AbortSignal) {
+  const response = await fetch(`/api/rce/search?concept=${encodeURIComponent(conceptUri)}`, {
+    headers: { Accept: "application/json" },
+    signal,
+  });
+  if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
+  const document = await response.json() as SearchResponse;
+  return document.results;
+}
+
 // Bekijk de volledige collectie Werelderfgoed, Gezichten of Complexen, los
 // van een zoekterm - anders zijn deze typen alleen vindbaar als hun naam
 // toevallig met de ingetypte tekst matcht.
