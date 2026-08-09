@@ -397,7 +397,28 @@ SELECT ?rmnr WHERE {
 LIMIT 100`;
 }
 
-export function parseMonumentAardConceptMatches(document: unknown): string[] {
+// Fase 2 (2026-08-10): dezelfde exacte conceptzoekopdracht, nu voor de
+// archeologische waardering van een ArcheologischTerrein in plaats van de
+// monumentaard van het Rijksmonument zelf. Live geverifieerd dat
+// ceo:heeftArcheologischeWaardering naar dezelfde rn/2-namespace wijst als
+// heeftMonumentAard (zie 004-referentienetwerk-concepten.md,
+// "Openstaande vragen"). Het Rijksmonument wordt via ligtInObject
+// bereikt, niet rechtstreeks op het terrein zelf gezocht.
+export function buildArcheologischeWaarderingConceptQuery(conceptUri: string) {
+  return `PREFIX ceo: <${CEO}>
+SELECT ?rmnr WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?terrein a ceo:ArcheologischTerrein ; ceo:heeftArcheologischeWaardering <${conceptUri}> ; ceo:ligtInObject ?rm .
+    ?rm ceo:rijksmonumentnummer ?rmnr ; ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> .
+  }
+}
+LIMIT 100`;
+}
+
+// Gedeeld door beide conceptzoekopdrachten hierboven - beide queries leveren
+// uitsluitend een lijst ?rmnr-bindings op, ongeacht via welk veld ze zijn
+// gevonden.
+export function parseConceptSearchMatches(document: unknown): string[] {
   const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
   if (!Array.isArray(bindings)) return [];
   return bindings.flatMap((binding) => binding.rmnr?.value ? [binding.rmnr.value] : []);
@@ -485,17 +506,20 @@ export function buildArcheologischTerreinQuery(choUris: string[]) {
   const values = choUris.map((uri) => `<${uri}>`).join(" ");
   return `PREFIX ceo: <${CEO}>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-SELECT DISTINCT ?rm ?terrein ?archisNummer ?waarderingLabel WHERE {
+SELECT DISTINCT ?rm ?terrein ?archisNummer ?waarderingLabel ?waarderingConcept WHERE {
   GRAPH <${INSTANCES_GRAPH}> {
     VALUES ?rm { ${values} }
     ?terrein a ceo:ArcheologischTerrein ; ceo:ligtInObject ?rm .
     OPTIONAL { ?terrein ceo:archis2Monumentnummer ?archisNummer . }
-    OPTIONAL { ?terrein ceo:heeftArcheologischeWaardering/skos:prefLabel ?waarderingLabel . }
+    OPTIONAL {
+      ?terrein ceo:heeftArcheologischeWaardering ?waarderingConcept .
+      ?waarderingConcept skos:prefLabel ?waarderingLabel .
+    }
   }
 }`;
 }
 
-export type ArcheologischTerrein = { archisMonumentnummer?: string; waardering?: string };
+export type ArcheologischTerrein = { archisMonumentnummer?: string; waardering?: string; waarderingConceptUri?: string };
 
 export function parseArcheologischTerreinResults(document: unknown): Map<string, ArcheologischTerrein[]> {
   const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
@@ -504,7 +528,7 @@ export function parseArcheologischTerreinResults(document: unknown): Map<string,
   for (const binding of bindings) {
     const monumentUri = binding.rm?.value;
     if (!monumentUri) continue;
-    const terrein: ArcheologischTerrein = { archisMonumentnummer: binding.archisNummer?.value, waardering: binding.waarderingLabel?.value };
+    const terrein: ArcheologischTerrein = { archisMonumentnummer: binding.archisNummer?.value, waardering: binding.waarderingLabel?.value, waarderingConceptUri: binding.waarderingConcept?.value };
     byMonument.set(monumentUri, [...(byMonument.get(monumentUri) ?? []), terrein]);
   }
   return byMonument;

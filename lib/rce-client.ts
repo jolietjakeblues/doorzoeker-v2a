@@ -15,17 +15,26 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
   return document.results;
 }
 
-// Exact zoeken op een concept-URI uit het Referentienetwerk (fase 1: alleen
-// monumentaard) in plaats van een tekstzoekopdracht - zie
-// docs/vertical-slices/004-referentienetwerk-concepten.md.
-export async function searchByMonumentAardConcept(conceptUri: string, signal?: AbortSignal) {
-  const response = await fetch(`/api/rce/search?concept=${encodeURIComponent(conceptUri)}`, {
+// Exact zoeken op een concept-URI uit het Referentienetwerk in plaats van
+// een tekstzoekopdracht - zie docs/vertical-slices/004-referentienetwerk-concepten.md.
+// `veld` bepaalt via welke eigenschap gezocht wordt; de aanroeper weet dit
+// al op basis van welk label is aangeklikt.
+async function searchByConcept(conceptUri: string, veld: "monumentaard" | "waardering", signal?: AbortSignal) {
+  const response = await fetch(`/api/rce/search?concept=${encodeURIComponent(conceptUri)}&veld=${veld}`, {
     headers: { Accept: "application/json" },
     signal,
   });
   if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
   const document = await response.json() as SearchResponse;
   return document.results;
+}
+
+export async function searchByMonumentAardConcept(conceptUri: string, signal?: AbortSignal) {
+  return searchByConcept(conceptUri, "monumentaard", signal);
+}
+
+export async function searchByArcheologischeWaarderingConcept(conceptUri: string, signal?: AbortSignal) {
+  return searchByConcept(conceptUri, "waardering", signal);
 }
 
 // Bekijk de volledige collectie Werelderfgoed, Gezichten of Complexen, los

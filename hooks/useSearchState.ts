@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { browseRceObjects, searchByMonumentAardConcept, searchRceMonuments } from "@/lib/rce-client";
+import { browseRceObjects, searchByArcheologischeWaarderingConcept, searchByMonumentAardConcept, searchRceMonuments } from "@/lib/rce-client";
 import { EMPTY_ITEMS, EMPTY_URL_STATE, readUrlState, statusLabel, toItem, type Item } from "@/lib/heritage-view-model";
 
 // Alle zoek-, filter-, resultaat- en URL-state van Doorzoeker leeft in één
@@ -117,10 +117,12 @@ export function useSearchState() {
       setRemoteState("error");
     }
   }
-  // Exacte match op een concept-URI uit het Referentienetwerk (fase 1:
-  // monumentaard) in plaats van een tekstzoekopdracht - bv. een klik op een
-  // monumentaard-label in de resultatenlijst of het detailpaneel.
-  async function executeConceptSearch(concept: { uri: string; label: string }) {
+  // Exacte match op een concept-URI uit het Referentienetwerk in plaats van
+  // een tekstzoekopdracht - bv. een klik op een monumentaard- of
+  // waardering-label in de resultatenlijst of het detailpaneel. `veld`
+  // bepaalt via welke eigenschap gezocht wordt (de aanroeper weet dit al op
+  // basis van welk label is aangeklikt).
+  async function executeConceptSearch(concept: { uri: string; label: string }, veld: "monumentaard" | "waardering" = "monumentaard") {
     searchController.current?.abort();
     const controller = new AbortController();
     searchController.current = controller;
@@ -140,7 +142,9 @@ export function useSearchState() {
     setHasMore(false);
     setRemoteState("loading");
     try {
-      const records = await searchByMonumentAardConcept(concept.uri, controller.signal);
+      const records = veld === "waardering"
+        ? await searchByArcheologischeWaarderingConcept(concept.uri, controller.signal)
+        : await searchByMonumentAardConcept(concept.uri, controller.signal);
       if (sequence !== searchSequence.current) return;
       setRemoteResults(records.map((record) => toItem(record)));
       setHasMore(false);

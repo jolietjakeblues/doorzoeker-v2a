@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAbrTermSuggestQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGezichtQuery, buildGroenaanlegQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseDiscoveryBranchResults, parseGezichtResults, parseGroenaanlegResults, parseImageResults, parseMonumentAardConceptMatches, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseParcelResults, parseRceMonuments, parseSparqlResults, parseWerelderfgoedResults, parseWktGeometry, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
+import { buildAbrTermSuggestQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGezichtQuery, buildGroenaanlegQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGezichtResults, parseGroenaanlegResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseParcelResults, parseRceMonuments, parseSparqlResults, parseWerelderfgoedResults, parseWktGeometry, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -39,11 +39,24 @@ test("builds an exact-match query on a monumentaard concept-URI instead of a lab
   assert.match(query, /LIMIT 100/);
 });
 
-test("parses monumentaard-concept matches into a plain list of rijksmonumentnummers", () => {
+test("builds an exact-match query on an archeologische-waardering concept-URI, reached via het gekoppelde ArcheologischTerrein", () => {
+  // Fase 2 (2026-08-10): live geverifieerd dat heeftArcheologischeWaardering
+  // naar dezelfde rn/2-namespace wijst als heeftMonumentAard - zie
+  // docs/vertical-slices/004-referentienetwerk-concepten.md.
+  const uri = "https://data.cultureelerfgoed.nl/term/id/rn/2/31020cd0-9029-4609-bbd8-ee83f9baf3f4";
+  const query = buildArcheologischeWaarderingConceptQuery(uri);
+  assert.match(query, /a ceo:ArcheologischTerrein/);
+  assert.match(query, new RegExp(`ceo:heeftArcheologischeWaardering <${uri.replaceAll(".", "\\.")}>`));
+  assert.match(query, /ceo:ligtInObject \?rm/);
+  assert.match(query, new RegExp(`ceo:heeftJuridischeStatus <${RCE_SEMANTICS.activeLegalStatus}>`));
+  assert.match(query, /LIMIT 100/);
+});
+
+test("parses concept-search matches (monumentaard or waardering) into a plain list of rijksmonumentnummers", () => {
   const document = { results: { bindings: [{ rmnr: { value: "36046" } }, { rmnr: { value: "45708" } }] } };
-  assert.deepEqual(parseMonumentAardConceptMatches(document), ["36046", "45708"]);
-  assert.deepEqual(parseMonumentAardConceptMatches({ results: { bindings: [] } }), []);
-  assert.deepEqual(parseMonumentAardConceptMatches({}), []);
+  assert.deepEqual(parseConceptSearchMatches(document), ["36046", "45708"]);
+  assert.deepEqual(parseConceptSearchMatches({ results: { bindings: [] } }), []);
+  assert.deepEqual(parseConceptSearchMatches({}), []);
 });
 
 test("falls back to the BRK gemeente when there is no BAG woonplaats", () => {
@@ -254,8 +267,20 @@ test("looks up archaeological terreinen by the monument's own CHO subject URI", 
   const query = buildArcheologischTerreinQuery(["https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/rijksmonument/45708"]);
   assert.match(query, /ceo:ligtInObject/);
   assert.match(query, /ceo:archis2Monumentnummer/);
-  assert.match(query, /ceo:heeftArcheologischeWaardering\/skos:prefLabel/);
+  // Fase 2 (2026-08-10): de tussenliggende concept-URI wordt nu ook
+  // opgehaald (niet meer via een property-path-shortcut die de URI
+  // wegmoffelt), zelfde patroon als bij monumentaard.
+  assert.match(query, /ceo:heeftArcheologischeWaardering \?waarderingConcept/);
+  assert.match(query, /\?waarderingConcept skos:prefLabel \?waarderingLabel/);
   assert.match(query, /<https:\/\/linkeddata\.cultureelerfgoed\.nl\/cho-kennis\/id\/rijksmonument\/45708>/);
+});
+
+test("captures the archeologische-waardering concept-URI alongside its label", () => {
+  const conceptUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/31020cd0-9029-4609-bbd8-ee83f9baf3f4";
+  const document = { results: { bindings: [{ rm: { value: "rm:1" }, waarderingLabel: { value: "zeer hoge archeologische waarde beschermd" }, waarderingConcept: { value: conceptUri } }] } };
+  const [terrein] = parseArcheologischTerreinResults(document).get("rm:1");
+  assert.equal(terrein.waardering, "zeer hoge archeologische waarde beschermd");
+  assert.equal(terrein.waarderingConceptUri, conceptUri);
 });
 
 test("groups multiple archaeological terreinen under the same monument", () => {
@@ -266,8 +291,8 @@ test("groups multiple archaeological terreinen under the same monument", () => {
   ] } };
   const byMonument = parseArcheologischTerreinResults(document);
   assert.deepEqual(byMonument.get("rm:1"), [
-    { archisMonumentnummer: "2284", waardering: "zeer hoge archeologische waarde beschermd" },
-    { archisMonumentnummer: "1037", waardering: "zeer hoge archeologische waarde beschermd" },
+    { archisMonumentnummer: "2284", waardering: "zeer hoge archeologische waarde beschermd", waarderingConceptUri: undefined },
+    { archisMonumentnummer: "1037", waardering: "zeer hoge archeologische waarde beschermd", waarderingConceptUri: undefined },
   ]);
   assert.equal(byMonument.get("rm:2").length, 1);
 });

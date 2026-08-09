@@ -1,4 +1,5 @@
 import {
+  buildArcheologischeWaarderingConceptQuery,
   buildArcheologischOnderzoekDetailsQuery,
   buildArcheologischOnderzoekDiscoveryQueries,
   buildArcheologischTerreinQuery,
@@ -27,12 +28,12 @@ import {
   parseComplexenResults,
   parseComplexMembersResults,
   parseComplexResults,
+  parseConceptSearchMatches,
   parseDiscoveryBranchResults,
   parseFacetResults,
   parseGezichtResults,
   parseGroenaanlegResults,
   parseImageResults,
-  parseMonumentAardConceptMatches,
   parseMspIndicatieResults,
   parseOnderzoeksgebiedAggregatenResults,
   parseOnderzoeksgebiedComplexenResults,
@@ -141,14 +142,16 @@ async function searchByNumber(monumentNumber: string, signal?: AbortSignal): Pro
   return enrichMonuments(monuments, signal);
 }
 
-// Exacte conceptzoekopdracht (fase 1: alleen monumentaard) - geen
-// CONTAINS-tekstmatch op een label, maar een directe match op de
-// concept-URI waarmee het record zelf is geclassificeerd. `conceptUri` is
-// door de aanroepende route al gevalideerd tegen een vaste lijst bekende
-// namespaces vóór dit aangeroepen wordt.
-export async function searchByMonumentAardConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
-  const matchDocument = await fetchSparql(buildMonumentAardConceptQuery(conceptUri), signal);
-  const numbers = parseMonumentAardConceptMatches(matchDocument).slice(0, 25);
+// Exacte conceptzoekopdracht - geen CONTAINS-tekstmatch op een label, maar
+// een directe match op de concept-URI waarmee het record zelf (of, voor
+// waardering, het gekoppelde ArcheologischTerrein) is geclassificeerd.
+// Beide velden leveren dezelfde ?rmnr-vorm op (zie
+// buildMonumentAardConceptQuery/buildArcheologischeWaarderingConceptQuery),
+// dus delen ze vanaf hier dezelfde afhandeling: rijksmonumentnummers
+// opzoeken, dan de gewone detail/percelen/facetten-ophaalslag hergebruiken.
+async function searchByConceptMatchQuery(matchQuery: string, signal?: AbortSignal): Promise<RceMonument[]> {
+  const matchDocument = await fetchSparql(matchQuery, signal);
+  const numbers = parseConceptSearchMatches(matchDocument).slice(0, 25);
   if (!numbers.length) return [];
   const [detailsDocument, parcelsDocument, facetsDocument] = await Promise.all([
     fetchSparql(buildRceDetailsQuery(numbers), signal),
@@ -165,6 +168,16 @@ export async function searchByMonumentAardConcept(conceptUri: string, signal?: A
     return [{ ...monument, ...facets.get(monument.monumentNumber), parcels }];
   });
   return enrichMonuments(monuments, signal);
+}
+
+// `conceptUri` is door de aanroepende route al gevalideerd tegen een vaste
+// lijst bekende namespaces vóór dit aangeroepen wordt.
+export async function searchByMonumentAardConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
+  return searchByConceptMatchQuery(buildMonumentAardConceptQuery(conceptUri), signal);
+}
+
+export async function searchByArcheologischeWaarderingConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
+  return searchByConceptMatchQuery(buildArcheologischeWaarderingConceptQuery(conceptUri), signal);
 }
 
 // Archeologisch onderzoeksgebied is geen kleine collectie zoals Werelderfgoed/
