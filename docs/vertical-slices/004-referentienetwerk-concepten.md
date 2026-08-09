@@ -195,19 +195,33 @@ vervangen in deze eerste schijf).
 
 ## Openstaande vragen
 
-- Welke exacte property path gebruiken `heeftType`/`heeftTypeNaam`,
-  archeologische classificaties en complextypen? Nog niet gecontroleerd -
-  niet aannemen dat het dezelfde `rn/2`-namespace is als functie/aard tot
-  dit expliciet is nagevraagd bij de data.
-- Hebben de concepten die voor deze velden gebruikt worden ook allemaal
-  een `skos:inScheme` met een leesbare titel, of is dat specifiek voor het
-  "Cultuurhistorische Object Informatie"-scheme dat monumentaard/functie
-  gebruiken?
+- **Beantwoord (2026-08-10), live geverifieerd tegen `rce/cho` én de
+  Referentienetwerk-dienst**: `heeftType`/`heeftTypeNaam` en archeologische
+  classificaties gebruiken wél dezelfde `rn/2`-namespace, maar via één
+  extra indirectiestap bij `heeftType` (`?cho ceo:heeftType ?typeNode .
+  ?typeNode ceo:heeftTypeNaam ?rn2Concept .` - `?typeNode` zelf is een
+  CHO-lokale `cho-kennis/id/type/<id>`-proxy, geen thesaurusconcept; pas de
+  waarde van `heeftTypeNaam` is het echte `rn/2`-concept). Geldt voor zowel
+  Rijksmonument.heeftType, ArcheologischComplex.heeftType, als
+  ArcheologischTerrein.heeftArcheologischeWaardering (dat laatste zonder de
+  extra indirectiestap, rechtstreeks net als `heeftMonumentAard`). Elk van
+  de drie geverifieerde concepten heeft ook een leesbaar `skos:inScheme`,
+  en de schemes zijn exact de vier die de gebruiker al noemde als
+  belangrijkste: Rijksmonument-`heeftType` → "Monumenten Registratie
+  Systeem", ArcheologischComplex-`heeftType` → "Archeologisch Informatie
+  Systeem", ArcheologischTerrein-`heeftArcheologischeWaardering` →
+  "Cultuurhistorische Object Informatie" (zelfde scheme als monumentaard).
+  Conclusie: het "eerst per veld verifiëren, niet aannemen"-principe uit
+  deze slice werkt, en de aanname dat `rn/2` de universele
+  classificatie-identiteitslaag is voor CEO blijkt na vier onafhankelijke
+  velden (monumentaard, functie, type, archeologische waardering) steeds te
+  kloppen - nog geen tegenvoorbeeld gevonden.
 - Prestatie van de federatieve lookup (twee endpoints per verrijkte
-  weergave) is nog niet gemeten - relevant gezien de SPARQL-fanout-timing
-  die deze sessie al is toegevoegd (`enrich.*`/`search.*`-logs in
-  `rce-adapter.ts`); een vergelijkbare timinglog toevoegen aan de nieuwe
-  Referentienetwerk-adapter zodra die bestaat.
+  weergave) is nog niet gemeten - een timinglog (`rn.resolveConcept`) is
+  inmiddels wel toegevoegd aan `referentienetwerk-adapter.ts` (2026-08-10,
+  zelfde gedeelde `timed()`-helper als de andere adapters, nu verplaatst
+  naar `sparql-client.ts`), dus de eerstvolgende keer dat deze route
+  daadwerkelijk gebruikt wordt levert dat meteen een getal op.
 - Een conceptzoekopdracht wordt bewust niet in de URL vastgelegd (geen
   `?concept=`-parameter in de adresbalk zoals de andere filters wel
   krijgen via `useSearchState`'s URL-sync) en ondersteunt geen "Laad 25

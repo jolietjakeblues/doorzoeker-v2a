@@ -46,23 +46,11 @@ import {
   type RceMonument,
 } from "../rce.ts";
 import { fetchLiteratuur } from "./bibliotheek-adapter.ts";
-import { fetchSparql, requestSignal } from "./sparql-client.ts";
+import { fetchSparql, requestSignal, timed } from "./sparql-client.ts";
 
 const REST_ENDPOINT = "https://api.linkeddata.cultureelerfgoed.nl/queries/rce/rest-api-rijksmonumenten/run";
 
 type SparqlBinding = Record<string, { value?: string } | undefined>;
-
-// Observability-only: meet de tijd per fase van de fan-out, zodat op basis
-// van echte cijfers beslist kan worden wat gecachet, lazy gemaakt of
-// gebundeld wordt, in plaats van dat nu al te gokken. Verandert verder geen
-// gedrag - alleen een console.info per fase naast de bestaande totale
-// rce.search-log in de route.
-async function timed<T>(event: string, work: () => Promise<T>): Promise<T> {
-  const startedAt = Date.now();
-  const result = await work();
-  console.info(JSON.stringify({ event, durationMs: Date.now() - startedAt }));
-  return result;
-}
 
 // Six independent enrichment lookups keyed by the monument's own CHO subject
 // URI (or, for images/MSP/literatuur, its rijksmonumentnummer - that's the

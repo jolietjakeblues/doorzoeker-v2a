@@ -30,3 +30,15 @@ export async function fetchSparql(query: string, signal?: AbortSignal, endpoint:
     return fetchSparqlOnce(endpoint, query, signal);
   }
 }
+
+// Observability-only: meet de tijd per fase van een SPARQL-fan-out, zodat op
+// basis van echte cijfers beslist kan worden wat gecachet, lazy gemaakt of
+// gebundeld wordt, in plaats van dat te gokken. Verandert verder geen gedrag
+// - alleen een console.info per fase. Gedeeld door elke adapter (rce/cho,
+// Referentienetwerk, bibliotheek) in plaats van per adapter gedupliceerd.
+export async function timed<T>(event: string, work: () => Promise<T>): Promise<T> {
+  const startedAt = Date.now();
+  const result = await work();
+  console.info(JSON.stringify({ event, durationMs: Date.now() - startedAt }));
+  return result;
+}

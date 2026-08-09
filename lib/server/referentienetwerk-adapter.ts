@@ -1,4 +1,4 @@
-import { fetchSparql } from "./sparql-client.ts";
+import { fetchSparql, timed } from "./sparql-client.ts";
 
 // Fysiek een ander SPARQL-endpoint dan de rest van de app (rce/cho): de
 // concept-URI's die de CEO-instantiedata gebruikt voor bv. monumentaard en
@@ -53,6 +53,6 @@ function parseResolveConceptResult(uri: string, document: unknown): ResolvedConc
 }
 
 export async function resolveConcept(uri: string, signal?: AbortSignal): Promise<ResolvedConcept | undefined> {
-  const document = await fetchSparql(buildResolveConceptQuery(uri), signal, REFERENTIENETWERK_ENDPOINT);
+  const document = await timed("rn.resolveConcept", () => fetchSparql(buildResolveConceptQuery(uri), signal, REFERENTIENETWERK_ENDPOINT));
   return parseResolveConceptResult(uri, document);
 }
