@@ -1,4 +1,4 @@
-import { provinceName, type ArcheologischTerrein, type ComplexMembership, type Groenaanleg, type MonumentImage, type RceMonument, type RceParcel } from "@/lib/rce";
+import { provinceName, type ArcheologischTerrein, type ComplexMembership, type Groenaanleg, type LiteratureRef, type MonumentImage, type RceMonument, type RceParcel } from "@/lib/rce";
 
 // Rijksmonument, Werelderfgoed, Gezicht en Complex zijn geen smaken van
 // hetzelfde ding: het zijn verschillende soorten cultuurhistorisch object.
@@ -25,6 +25,7 @@ export type Item = {
   groenaanleg?: Groenaanleg;
   msp?: boolean;
   monumentAardConcept?: { uri: string; label: string };
+  literature?: LiteratureRef[];
 };
 
 export const EMPTY_ITEMS: Item[] = [];
@@ -85,7 +86,7 @@ export function toItem(record: RceMonument): Item {
     registrationDate: record.registrationDate, official: true,
     sourceUrl: hasOwnOfficialUrl ? (record.officialUrl ?? record.sourceUrl) : isComplex || isOnderzoeksgebied ? record.sourceUrl : record.monumentNumber ? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(record.monumentNumber)}` : record.sourceUrl,
     linkedDataUrl: record.sourceUrl, wkt: record.wkt,
-    parcels: record.parcels, archaeologicalSites: record.archaeologicalSites, complexes: record.complexes, complexMemberCount: record.complexMemberCount, image: record.image, groenaanleg: record.groenaanleg, msp: record.msp, matchSource: record.matchSource, matchedText, matchScore: record.matchScore,
+    parcels: record.parcels, archaeologicalSites: record.archaeologicalSites, complexes: record.complexes, complexMemberCount: record.complexMemberCount, image: record.image, groenaanleg: record.groenaanleg, msp: record.msp, literature: record.literature, matchSource: record.matchSource, matchedText, matchScore: record.matchScore,
     legalStatus: record.legalStatus, originalFunctionNames,
     currentFunctionNames: record.currentFunctionNames, typeNames: record.typeNames,
     lat: record.lat ?? 0, lng: record.lng ?? 0,

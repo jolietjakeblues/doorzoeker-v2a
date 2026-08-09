@@ -59,7 +59,10 @@ een geheel eigen, van het monumentenregister losstaande dataset (zie
 5. verrijking met archeologische terreingegevens (Archis-monumentnummer,
    waardering), complexverbanden (hoofdobject/onderdeel, met doorklikbare
    ledenlijst per complex), een foto uit de RCE beeldbank (met licentie- en
-   bronvermelding) en historische tuin-/parkaanleg (groenaanleg);
+   bronvermelding), historische tuin-/parkaanleg (groenaanleg) en gekoppelde
+   literatuur uit de RCE-bibliotheekcatalogus (titel, auteur(s), jaartal en
+   een link naar de publieke catalogus; zie
+   [`docs/vertical-slices/005-bibliotheek-literatuur.md`](docs/vertical-slices/005-bibliotheek-literatuur.md));
 6. zoektoestand vastleggen in een deelbare URL;
 7. termen gebruiken voor suggesties en gecontroleerde zoekverfijning.
 

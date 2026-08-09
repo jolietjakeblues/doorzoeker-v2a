@@ -83,10 +83,17 @@ export type RceMonument = {
   image?: MonumentImage;
   groenaanleg?: Groenaanleg;
   msp?: boolean;
+  literature?: LiteratureRef[];
 };
 
 export type MonumentImage = { url: string; title?: string; license?: string; sourceUrl?: string };
 export type Groenaanleg = { typeAanleg?: string; categorie?: string };
+// Uit de aparte rce/bibliotheek-dataset (niet rce/cho zelf) - zie
+// docs/vertical-slices/005-bibliotheek-literatuur.md. Query/parse-logica
+// leeft in lib/server/bibliotheek-adapter.ts, net als bij de
+// Referentienetwerk-concepten, omdat het een fysiek ander SPARQL-endpoint
+// is; dit type staat hier omdat het aan RceMonument hangt.
+export type LiteratureRef = { uri: string; title: string; year?: string; authors: string[]; sourceUrl?: string };
 
 export type RceParcel = {
   municipality: string;
@@ -100,7 +107,7 @@ type SparqlBinding = Record<string, { value?: string }>;
 
 export type DiscoveryMatch = { monumentNumber: string; matchSource: string; matchedText: string; matchScore: number };
 
-function escapeSparqlString(value: string) {
+export function escapeSparqlString(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/[\r\n]+/g, " ");
 }
 

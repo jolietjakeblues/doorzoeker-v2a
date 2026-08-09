@@ -108,13 +108,69 @@ zijn nergens anders in Doorzoeker beschikbaar en zouden relevant kunnen zijn
 voor de archeologiedomeinen (Vondsten/Grondsporen/Onderzoeksgebied) - nog
 niet verder uitgezocht, geen concreet plan.
 
-## `rce/bibliotheek` — apart SPARQL-dataset
+## `rce/bibliotheek` — apart SPARQL-dataset (taak #6, verkend 2026-08-09)
 
 `https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/bibliotheek/sparql`
-is geen graph binnen `rce/cho`, maar een volledig los dataset. Globale
-klassentelling: 233.835 `schema:Person`, 87.955 `schema:Organization`,
-`Source`/`SourceHolder`-klassen, ABR/artefact-classificatieconcepten. Lijkt
-een autoriteitenbestand (wie meldde een vondst, welk archief beheert
-bronmateriaal) eerder dan een publicatiebibliotheek. Vereist een eigen
-adapter volgens het patroon uit [ADR-0002](../adr/0002-hybride-gegevensarchitectuur.md)
-en verdere verkenning.
+is geen graph binnen `rce/cho`, maar een volledig los dataset (net als
+`thesauri/referentienetwerk`, niet bereikbaar via de `rce-cho`-MCP-tool).
+
+**Correctie op de eerdere aanname (2026-08-08): dit ís een
+publicatiebibliotheek, geen autoriteitenbestand.** De eerdere inschatting
+("wie meldde een vondst, welk archief beheert bronmateriaal") was gebaseerd
+op alleen de klassentelling zonder de data zelf te bekijken. Live bevestigd:
+
+- **320.652 `schema:Book`** (waarvan ook `schema:PublicationVolume`),
+  **96.681 losse `schema:PublicationVolume`**, **12.283 `schema:BookSeries`**,
+  **10.860 `schema:CreativeWork`** - dit is de RCE-bibliotheekcatalogus van
+  archeologische en monumentenzorg-literatuur ("grijze literatuur":
+  opgravingsrapporten, bureauonderzoeken, restauratieverslagen), niet een
+  lijst van personen/organisaties. **233.835 `schema:Person`** en
+  **87.955 `schema:Organization`** zijn auteurs/uitgevers van die boeken
+  (`schema:author`/`schema:publisher`), geen aparte autoriteitenlaag.
+- Elk Book heeft `schema:name` (titel), `schema:datePublished`,
+  `schema:author`/`schema:publisher` (URI naar Person/Organization),
+  `schema:spatial` (vrije plaatsnaam-labels, bv. "utrecht", "maartensdijk"),
+  `schema:keywords` (soms vrije tekst, soms een echte CHT/ABR-concept-URI -
+  dezelfde `data.cultureelerfgoed.nl/term/id/cht|abr/...`-URI's die
+  Doorzoeker al gebruikt voor termsuggesties), `schema:sameAs` (link naar de
+  publiek doorbladerbare `catalogus.cultureelerfgoed.nl/Details/fullCatalogue/<id>`).
+- Bevat ook een eigen bibliografische controlevocabulaire (`skos:ConceptScheme`
+  met codes als `COLL`/`COUNTY`/`DOCTYPE`/`GEOKEYW`/`PLACE`/`PROVINCE`/`ROLE`/
+  `SUBJECT`/`TECHN` - klassieke MARC/AACR2-achtige veldwaarden) én dezelfde
+  CHT/ABR-conceptschemes zelf gespiegeld (dus resolvebaar met de al
+  bestaande CHT/ABR-thesaurusintegratie, geen nieuwe adapter nodig voor die
+  keywords specifiek).
+
+**Belangrijkste vondst: een harde join-sleutel terug naar Rijksmonumenten.**
+Elk Book kan een of meer
+`https://linkeddata.cultureelerfgoed.nl/def/ceo#rijksmonumentnummer`-triples
+hebben - exact dezelfde eigenschap en waardevorm (`"18073"`) die
+`rce-adapter.ts` overal al gebruikt als join-sleutel. Geen fuzzy matching
+op plaatsnaam nodig. Live geverifieerd:
+- 12.552 `ceo:rijksmonumentnummer`-triples op Book, verdeeld over 9.938
+  unieke boeken en **6.511 unieke rijksmonumentnummers** (ca. 10% van alle
+  rijksmonumenten heeft dus minstens één gekoppelde publicatie).
+- Voorbeeld: rijksmonumentnummer 18073 (Laakmolen, 's-Gravenhage) →
+  "De Laakmolen : de restauratie en nieuwbouw van de Laakmolen te
+  's-Gravenhage" (1988), auteurs Ambachtsheer H.F. en Stal C.J.J.,
+  `sameAs` → `catalogus.cultureelerfgoed.nl/Details/fullCatalogue/1131`.
+- Fan-out is scheef verdeeld (net als bij de archeologiedomeinen): de
+  meeste gekoppelde rijksmonumenten hebben 1-3 boeken, een klein aantal
+  bekende/veel onderzochte monumenten heeft er tientallen (top gevonden:
+  149 op één rijksmonumentnummer) - een cap per monument is dus nodig, niet
+  alleen theoretisch.
+- Performance: een gebatchte `VALUES`-query over 8 rijksmonumentnummers
+  (patroon identiek aan de bestaande enrichment-queries in `rce-adapter.ts`)
+  antwoordde in ~0,8s.
+
+**Nog niet uitgezocht**: of `ArcheologischOnderzoeksgebied`/`ArcheologischComplex`
+(die geen rijksmonumentnummer hebben) ook op een andere manier aan
+bibliotheekrecords te koppelen zijn (bv. via `schema:spatial`-plaatsnaam of
+een ander CEO-veld) - alleen `ceo:rijksmonumentnummer` is bevestigd als
+CEO-namespace-eigenschap op Book, geen andere is gevonden bij een gerichte
+`FILTER(CONTAINS(STR(?p), "cultureelerfgoed.nl/def/ceo"))`-check.
+
+**Conclusie**: dit is een sterke kandidaat voor een verticale schijf,
+opgebouwd volgens exact hetzelfde patroon als de bestaande verrijkingen
+(afbeelding/groenaanleg/archeologisch terrein). Plan geschreven:
+[`005-bibliotheek-literatuur.md`](../vertical-slices/005-bibliotheek-literatuur.md).

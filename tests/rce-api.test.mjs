@@ -3,6 +3,7 @@ import test from "node:test";
 import { GET } from "../app/api/rce/search/route.ts";
 
 const SPARQL = "https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/cho/sparql";
+const BIBLIOTHEEK_SPARQL = "https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/bibliotheek/sparql";
 
 test("rejects invalid application API input before contacting RCE", async () => {
   const response = await GET(new Request("https://doorzoeker.test/api/rce/search?q=&page=0", { headers: { "cf-connecting-ip": "test-invalid" } }));
@@ -20,6 +21,7 @@ test("returns a stable application API contract for a monument number", async (c
   globalThis.caches = { default: { match() { throw new Error("cache unavailable"); }, put() { throw new Error("cache unavailable"); } } };
   globalThis.fetch = async (input) => {
     const url = decodeURIComponent(String(input));
+    if (url.startsWith(BIBLIOTHEEK_SPARQL)) return Response.json({ results: { bindings: [] } });
     assert.match(url, new RegExp(`^${SPARQL.replaceAll(".", "\\.")}`));
     // The details query now also joins heeftBRKRelatie (for a gemeente
     // fallback), so match on "perceelnummer" - only the dedicated parcel
@@ -79,4 +81,40 @@ test("does not require q when a valid concept-URI is present", async (context) =
   const document = await response.json();
   assert.equal(document.results[0].monumentNumber, "36046");
   assert.equal(document.results[0].monumentAardConceptUri, conceptUri);
+});
+
+test("attaches gekoppelde literatuur from the separate rce/bibliotheek dataset onto a search result", async (context) => {
+  // Taak #6 / slice 005: literatuur is een verrijking op het bestaande
+  // /api/rce/search-contract, geen eigen route - net als groenaanleg en
+  // msp_indicatie.
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalCaches === undefined) delete globalThis.caches;
+    else globalThis.caches = originalCaches;
+  });
+  globalThis.caches = { default: { match() { throw new Error("cache unavailable"); }, put() { throw new Error("cache unavailable"); } } };
+  globalThis.fetch = async (input) => {
+    const url = decodeURIComponent(String(input));
+    if (url.startsWith(BIBLIOTHEEK_SPARQL)) {
+      return Response.json({ results: { bindings: [{
+        rmnr: { value: "18073" }, boek: { value: "https://linkeddata.cultureelerfgoed.nl/bib/id/001a40f9" },
+        titel: { value: "De Laakmolen" }, jaar: { value: "1988" },
+        sameAs: { value: "https://catalogus.cultureelerfgoed.nl/Details/fullCatalogue/1131" },
+        auteurNaam: { value: "Ambachtsheer, H.F." },
+      }] } });
+    }
+    if (url.includes("perceelnummer")) return Response.json({ results: { bindings: [] } });
+    if (url.includes("GROUP_CONCAT")) return Response.json({ results: { bindings: [{ rmnr: { value: "18073" } }] } });
+    return Response.json({ results: { bindings: [{ cho: { value: "rm:18073" }, choi: { value: "18073" }, rmnr: { value: "18073" } }] } });
+  };
+
+  const response = await GET(new Request("https://doorzoeker.test/api/rce/search?q=18073&page=1", { headers: { "cf-connecting-ip": "test-literatuur-success" } }));
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.deepEqual(document.results[0].literature, [{
+    uri: "https://linkeddata.cultureelerfgoed.nl/bib/id/001a40f9", title: "De Laakmolen", year: "1988",
+    authors: ["Ambachtsheer, H.F."], sourceUrl: "https://catalogus.cultureelerfgoed.nl/Details/fullCatalogue/1131",
+  }]);
 });

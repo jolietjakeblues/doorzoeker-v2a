@@ -45,6 +45,7 @@ import {
   type ComplexMember,
   type RceMonument,
 } from "../rce.ts";
+import { fetchLiteratuur } from "./bibliotheek-adapter.ts";
 import { fetchSparql, requestSignal } from "./sparql-client.ts";
 
 const REST_ENDPOINT = "https://api.linkeddata.cultureelerfgoed.nl/queries/rce/rest-api-rijksmonumenten/run";
@@ -63,22 +64,23 @@ async function timed<T>(event: string, work: () => Promise<T>): Promise<T> {
   return result;
 }
 
-// Five independent enrichment lookups keyed by the monument's own CHO subject
-// URI (or, for images/MSP, its rijksmonumentnummer - that's the join key
-// those two graphs themselves use), run in parallel: archaeological terrain
-// data (only for monuments with an archaeological monumentaard), complex
-// membership, a representative photo, historic garden/landscape
-// classification, and MSP-aanwijzing (only relevant for their respective
-// subsets, but cheap enough to just ask for all of them). None of these is a
-// parallel search - all five just attach extra facts to Rijksmonument
-// records already found.
+// Six independent enrichment lookups keyed by the monument's own CHO subject
+// URI (or, for images/MSP/literatuur, its rijksmonumentnummer - that's the
+// join key those graphs themselves use), run in parallel: archaeological
+// terrain data (only for monuments with an archaeological monumentaard),
+// complex membership, a representative photo, historic garden/landscape
+// classification, MSP-aanwijzing, and gekoppelde literatuur uit de aparte
+// rce/bibliotheek-dataset (only relevant for their respective subsets, but
+// cheap enough to just ask for all of them). None of these is a parallel
+// search - all six just attach extra facts to Rijksmonument records already
+// found.
 async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): Promise<RceMonument[]> {
   const choUris = monuments.map((monument) => monument.sourceUrl).filter(Boolean);
   if (!choUris.length) return monuments;
   const archaeological = monuments.filter((monument) => monument.monumentNature?.toLocaleLowerCase("nl").includes("archeolog") && monument.sourceUrl);
   const monumentNumbers = monuments.map((monument) => monument.monumentNumber).filter(Boolean);
 
-  const [terreinenByMonument, complexesByMonument, imagesByNumber, groenaanlegByMonument, mspNumbers] = await Promise.all([
+  const [terreinenByMonument, complexesByMonument, imagesByNumber, groenaanlegByMonument, mspNumbers, literatuurByNumber] = await Promise.all([
     archaeological.length
       ? timed("enrich.terrein", () => fetchSparql(buildArcheologischTerreinQuery(archaeological.map((monument) => monument.sourceUrl)), signal).then(parseArcheologischTerreinResults))
       : Promise.resolve(new Map<string, ArcheologischTerrein[]>()),
@@ -90,6 +92,9 @@ async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): 
     monumentNumbers.length
       ? timed("enrich.msp", () => fetchSparql(buildMspIndicatieQuery(monumentNumbers), signal).then(parseMspIndicatieResults))
       : Promise.resolve(new Set<string>()),
+    monumentNumbers.length
+      ? timed("enrich.literatuur", () => fetchLiteratuur(monumentNumbers, signal))
+      : Promise.resolve(new Map<string, RceMonument["literature"]>()),
   ]);
 
   return monuments.map((monument) => {
@@ -98,7 +103,8 @@ async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): 
     const image = imagesByNumber.get(monument.monumentNumber);
     const groenaanleg = groenaanlegByMonument.get(monument.sourceUrl);
     const msp = mspNumbers.has(monument.monumentNumber);
-    if (!archaeologicalSites && !complexes && !image && !groenaanleg && !msp) return monument;
+    const literature = literatuurByNumber.get(monument.monumentNumber);
+    if (!archaeologicalSites && !complexes && !image && !groenaanleg && !msp && !literature) return monument;
     return {
       ...monument,
       ...(archaeologicalSites ? { archaeologicalSites } : {}),
@@ -106,6 +112,7 @@ async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): 
       ...(image ? { image } : {}),
       ...(groenaanleg ? { groenaanleg } : {}),
       ...(msp ? { msp } : {}),
+      ...(literature ? { literature } : {}),
     };
   });
 }
