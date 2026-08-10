@@ -1,9 +1,10 @@
-import { browseRceObjects, searchByActorConcept, searchByArcheologischeComplexTypeConcept, searchByArcheologischeWaarderingConcept, searchByGebeurtenisConcept, searchByMonumentAardConcept, searchByVondstenConcept, searchRceMonuments } from "../../../../lib/server/rce-adapter.ts";
+import { browseRceObjects, searchByActorConcept, searchByArcheologischeComplexTypeConcept, searchByArcheologischeWaarderingConcept, searchByFunctieConcept, searchByGebeurtenisConcept, searchByMonumentAardConcept, searchByVondstenConcept, searchRceMonuments } from "../../../../lib/server/rce-adapter.ts";
 import { CONCEPT_URI_PATTERN } from "../concept/route.ts";
 
-type ConceptVeld = "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype";
+type ConceptVeld = "functie" | "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype";
 
 function searchByConceptField(veld: ConceptVeld, conceptUri: string, signal?: AbortSignal) {
+  if (veld === "functie") return searchByFunctieConcept(conceptUri, signal);
   if (veld === "waardering") return searchByArcheologischeWaarderingConcept(conceptUri, signal);
   if (veld === "gebeurtenis") return searchByGebeurtenisConcept(conceptUri, signal);
   if (veld === "actor") return searchByActorConcept(conceptUri, signal);
@@ -87,7 +88,7 @@ export async function GET(request: Request) {
     // (monumentaard).
     const conceptParam = url.searchParams.get("concept");
     const veldParam = url.searchParams.get("veld");
-    const veld: ConceptVeld = veldParam === "waardering" || veldParam === "gebeurtenis" || veldParam === "actor" || veldParam === "vondsttype" || veldParam === "materiaal" || veldParam === "toestand" || veldParam === "archeologischcomplextype" ? veldParam : "monumentaard";
+    const veld: ConceptVeld = veldParam === "functie" || veldParam === "waardering" || veldParam === "gebeurtenis" || veldParam === "actor" || veldParam === "vondsttype" || veldParam === "materiaal" || veldParam === "toestand" || veldParam === "archeologischcomplextype" ? veldParam : "monumentaard";
     if (conceptParam && !CONCEPT_URI_PATTERN.test(conceptParam)) {
       return Response.json({ error: "Ongeldige concept-URI." }, { status: 400 });
     }

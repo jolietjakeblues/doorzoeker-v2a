@@ -1305,7 +1305,61 @@ export function parseOnderzoeksgebiedAggregatenResults(document: unknown): Onder
 // staan als named graphs op rce/cho; Referentienetwerk 2 heeft een eigen
 // SPARQL-endpoint. RN2 is dus niet alleen een resolver voor concept-URI's,
 // maar zelf ook een thesaurus die met de objectdata is verweven.
-export type TermSuggestion = { uri: string; label: string; sourceUri: string; sourceName: string };
+export type TermSuggestion = {
+  uri: string;
+  label: string;
+  sourceUri: string;
+  sourceName: string;
+  conceptField?: "functie" | "monumentaard" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype";
+  usageCount?: number;
+};
+
+export function buildTermUsageQuery(conceptUris: string[]) {
+  return `PREFIX ceo: <${CEO}>
+SELECT ?concept ?field (COUNT(DISTINCT ?object) AS ?count) WHERE {
+  VALUES ?concept { ${conceptUris.map((uri) => `<${uri}>`).join(" ")} }
+  GRAPH <${INSTANCES_GRAPH}> {
+    { ?object a ceo:Rijksmonument ; ceo:heeftMonumentAard ?concept . BIND("monumentaard" AS ?field) }
+    UNION { ?object a ceo:Rijksmonument ; ceo:heeftOorspronkelijkeFunctie/ceo:heeftFunctieNaam ?concept . BIND("functie" AS ?field) }
+    UNION { ?object a ceo:Rijksmonument ; ceo:heeftHuidigeFunctie/ceo:heeftFunctieNaam ?concept . BIND("functie" AS ?field) }
+    UNION { ?object a ceo:Vondsten ; ceo:heeftType/ceo:heeftTypeNaam ?concept . BIND("vondsttype" AS ?field) }
+    UNION { ?object a ceo:Vondsten ; ceo:heeftMateriaal/ceo:heeftMateriaalNaam ?concept . BIND("materiaal" AS ?field) }
+    UNION { ?object a ceo:Vondsten ; ceo:heeftToestand ?concept . BIND("toestand" AS ?field) }
+    UNION { ?object a ceo:ArcheologischComplex ; ceo:heeftType/ceo:heeftTypeNaam ?concept . BIND("archeologischcomplextype" AS ?field) }
+  }
+}
+GROUP BY ?concept ?field`;
+}
+
+export function buildFunctieConceptQuery(conceptUri: string) {
+  return `PREFIX ceo: <${CEO}>
+SELECT DISTINCT ?rmnr WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ;
+         ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> .
+    { ?cho ceo:heeftOorspronkelijkeFunctie/ceo:heeftFunctieNaam <${conceptUri}> . }
+    UNION
+    { ?cho ceo:heeftHuidigeFunctie/ceo:heeftFunctieNaam <${conceptUri}> . }
+  }
+}
+LIMIT 100`;
+}
+
+export function parseTermUsageResults(document: unknown) {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return new Map<string, { conceptField: NonNullable<TermSuggestion["conceptField"]>; usageCount: number }>();
+  const usage = new Map<string, { conceptField: NonNullable<TermSuggestion["conceptField"]>; usageCount: number }>();
+  for (const binding of bindings) {
+    const uri = binding.concept?.value;
+    const field = binding.field?.value;
+    const conceptField = field === "functie" || field === "monumentaard" || field === "vondsttype" || field === "materiaal" || field === "toestand" || field === "archeologischcomplextype" ? field : undefined;
+    const usageCount = Number(binding.count?.value ?? "0");
+    if (!uri || !conceptField || !usageCount) continue;
+    const current = usage.get(uri);
+    if (!current || usageCount > current.usageCount) usage.set(uri, { conceptField, usageCount });
+  }
+  return usage;
+}
 
 const CHO_REFERENTIENETWERK_SCHEMES = [
   "https://data.cultureelerfgoed.nl/term/id/rn/2/a4a7933c-e096-4bcf-a921-4f70a78749fe", // Archeologisch Informatie Systeem

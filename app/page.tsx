@@ -80,7 +80,13 @@ export default function Home() {
     setActiveSuggestion,
     commitSuggestion,
     handleQueryKeyDown,
-  } = useTermSuggestions(query, active, selectTermSuggestion);
+  } = useTermSuggestions(query, active, (suggestion) => {
+    if (suggestion.conceptField) {
+      void executeConceptSearch(suggestion, suggestion.conceptField);
+      return;
+    }
+    selectTermSuggestion(suggestion);
+  });
   const { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud } =
     useSelectedDetailEnrichment(selected);
   const opDezeDag = useOpDezeDag();

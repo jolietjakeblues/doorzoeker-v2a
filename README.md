@@ -67,10 +67,14 @@ Woordsuggesties komen uit vier schema's binnen Referentienetwerk 2:
 - Kennisregistratie;
 - Monumenten Registratie Systeem.
 
-Een gekozen suggestie blijft een tekstzoekopdracht en wordt ook zo aangeduid.
-Exact zoeken op een concept-URI gebeurt alleen bij velden waarvoor Doorzoeker
-de relatie kent: monumentaard, archeologische waardering, gebeurtenistype en
-actor. Het losse ABR wordt niet gebruikt als interne CHO-begrippenlaag.
+Doorzoeker controleert per suggestie of die concept-URI werkelijk in een
+ondersteund CHO-veld voorkomt. Is dat zo, dan toont de zoekbalk het aantal
+gekoppelde objecten en zoekt een klik exact op de URI. Dit werkt voor functie,
+monumentaard, vondsttype, materiaal, toestand en archeologisch complextype.
+Een term zonder aangetoonde koppeling blijft zichtbaar een tekstzoekopdracht;
+de thesaurus wordt dus niet voorgesteld als een volledige CHO-index. Ook
+archeologische waardering, gebeurtenistype en actor zijn vanuit records exact
+doorzoekbaar. Het losse ABR wordt niet gebruikt als interne CHO-begrippenlaag.
 Bibliotheek en Beeldbank gebruiken CHT in hun eigen brondata.
 
 ## Kaart en geometrie

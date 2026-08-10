@@ -7,6 +7,7 @@ import {
   searchByArcheologischeWaarderingConcept,
   searchByArcheologischComplexTypeConcept,
   searchByGebeurtenisConcept,
+  searchByFunctieConcept,
   searchByMonumentAardConcept,
   searchByMateriaalConcept,
   searchByToestandConcept,
@@ -318,7 +319,9 @@ export function useSearchState() {
     setRemoteState("loading");
     try {
       const records =
-        veld === "waardering"
+        veld === "functie"
+          ? await searchByFunctieConcept(concept.uri, controller.signal)
+          : veld === "waardering"
           ? await searchByArcheologischeWaarderingConcept(
               concept.uri,
               controller.signal,

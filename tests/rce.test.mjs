@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
 import { buildArchaeologyBrowseQuery, parseArchaeologyBrowseNumbers } from "../lib/rce.ts";
+import { buildFunctieConceptQuery, buildTermUsageQuery, parseTermUsageResults } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -239,6 +240,27 @@ test("discovers names, addresses, functions, types and descriptions as separate 
   assert.match(omschrijving, /ceo:formeelStandpunt true/);
   assert.match(queries.find((q) => q.bron === "naam").query, /ceo:heeftNaam\/ceo:naam \?match/);
   assert.match(queries.find((q) => q.bron === "volledig adres").query, /ceo:heeftBAGRelatie\/ceo:volledigAdres \?match/);
+});
+
+test("measures how Referentienetwerk concepts are actually used in CHO", () => {
+  const uri = "https://data.cultureelerfgoed.nl/term/id/rn/2/woonhuis";
+  const query = buildTermUsageQuery([uri]);
+  assert.match(query, new RegExp(`<${uri}>`));
+  assert.match(query, /heeftOorspronkelijkeFunctie\/ceo:heeftFunctieNaam/);
+  assert.match(query, /heeftMateriaal\/ceo:heeftMateriaalNaam/);
+  assert.deepEqual(parseTermUsageResults({ results: { bindings: [
+    { concept: { value: uri }, field: { value: "functie" }, count: { value: "42" } },
+    { concept: { value: uri }, field: { value: "onbekend" }, count: { value: "99" } },
+  ] } }).get(uri), { conceptField: "functie", usageCount: 42 });
+});
+
+test("builds an exact function search for original and current functions", () => {
+  const uri = "https://data.cultureelerfgoed.nl/term/id/rn/2/woonhuis";
+  const query = buildFunctieConceptQuery(uri);
+  assert.match(query, /heeftOorspronkelijkeFunctie\/ceo:heeftFunctieNaam/);
+  assert.match(query, /heeftHuidigeFunctie\/ceo:heeftFunctieNaam/);
+  assert.equal(query.match(new RegExp(`<${uri}>`, "g"))?.length, 2);
+  assert.match(query, new RegExp(`ceo:heeftJuridischeStatus <${RCE_SEMANTICS.activeLegalStatus}>`));
 });
 
 test("merges discovery branches, dedupes by best score, and sorts for page-style slicing", () => {

@@ -87,6 +87,7 @@ export type Item = {
 
 export const EMPTY_ITEMS: Item[] = [];
 export type ConceptField =
+  | "functie"
   | "monumentaard"
   | "waardering"
   | "gebeurtenis"
@@ -347,6 +348,7 @@ export function parseUrlState(search: string) {
   const municipality = params.get("gemeente");
   const conceptField = params.get("veld");
   const parsedConceptField: ConceptField | undefined =
+    conceptField === "functie" ||
     conceptField === "monumentaard" ||
     conceptField === "waardering" ||
     conceptField === "gebeurtenis" ||

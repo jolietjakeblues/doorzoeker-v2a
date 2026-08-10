@@ -36,6 +36,14 @@ Gecommit en gepusht (`965942a`).
 
 Het label is presentatie. De URI is identiteit.
 
+**Fase 3 (zoekbalk) gebouwd op 2026-08-10.** Suggesties worden nu tegen de
+CHO-instanties gecontroleerd. Bij werkelijk gebruik als functie,
+monumentaard, vondsttype, materiaal, toestand of archeologisch complextype
+toont Doorzoeker het aantal gekoppelde objecten en zoekt een klik exact op de
+URI. Een term die wel in RN2 staat maar niet aantoonbaar in zo'n veld voorkomt,
+blijft herkenbaar een tekstzoekopdracht. Daarmee helpt RN2 gericht, zonder een
+misplaatst gevoel van volledigheid te geven.
+
 ## Aanleiding
 
 De algemene CHO-zoekbalk gebruikt vier schema's uit Referentienetwerk 2 voor
@@ -43,9 +51,9 @@ woordsuggesties: Archeologisch Informatie Systeem, Cultuurhistorische Object
 Informatie, Kennisregistratie en Monumenten Registratie Systeem. CHT hoort bij
 Bibliotheek en Beeldbank; het losse ABR wordt intern niet gebruikt. RN2 is
 rechtstreeks met de objectdata verweven via concept-URI's. Een gekozen
-suggestie bewaart concept-URI, thesaurus-URI en thesaurusnaam in de URL, maar
-blijft in de algemene zoekbalk een tekstzoekopdracht. Alleen gecontroleerde
-veldroutes zoeken exact op identiteit.
+suggestie bewaart concept-URI, thesaurus-URI en thesaurusnaam. Voor
+gecontroleerde CHO-veldroutes zoekt de zoekbalk exact op identiteit; overige
+suggesties blijven tekstzoekopdrachten.
 
 Gevolg: concept-URI's die al in de RCE-data aanwezig zijn worden niet
 benut, classificaties worden gereduceerd tot strings, het verschil tussen

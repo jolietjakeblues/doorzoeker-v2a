@@ -124,7 +124,11 @@ export function SearchHero({
                   onClick={() => commitSuggestion(suggestion)}
                 >
                   {suggestion.label}
-                  <small>{suggestion.sourceName} · zoekt op tekst</small>
+                  <small>
+                    {suggestion.conceptField && suggestion.usageCount
+                      ? `${suggestion.usageCount.toLocaleString("nl-NL")} ${suggestion.usageCount === 1 ? "object" : "objecten"} · exact gekoppeld als ${suggestion.conceptField === "archeologischcomplextype" ? "complextype" : suggestion.conceptField}`
+                      : `${suggestion.sourceName} · zoekt op tekst`}
+                  </small>
                 </button>
               </li>
             ))}

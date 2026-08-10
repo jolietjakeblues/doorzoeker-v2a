@@ -133,10 +133,14 @@ Referentienetwerk 2:
 - Kennisregistratie;
 - Monumenten Registratie Systeem.
 
-Een suggestie is een tekstvoorstel en wordt als zodanig aangeduid. Alleen
-velden waarvoor een gecontroleerde route bestaat — monumentaard,
-archeologische waardering, gebeurtenistype en actor — kunnen exact op een
-concept-URI worden doorzocht. Bibliotheek en Beeldbank gebruiken CHT in hun
+De suggestiedienst controleert in CHO of een concept werkelijk als functie,
+monumentaard, vondsttype, materiaal, toestand of archeologisch complextype is
+gekoppeld. Bij zo'n term toont de GUI het gemeten aantal objecten en zoekt een
+klik exact op de concept-URI. Zonder aangetoonde koppeling staat er expliciet
+`zoekt op tekst`. Zo wekt een bruikbaar thesauruswoord geen onterechte indruk
+dat alle CHO-objecten ermee zijn geclassificeerd. Archeologische waardering,
+gebeurtenistype en actor zijn daarnaast vanuit records exact doorzoekbaar.
+Bibliotheek en Beeldbank gebruiken CHT in hun
 eigen brondata; dat maakt CHT niet automatisch een algemene CHO-zoekindex.
 
 ## Bewuste grenzen

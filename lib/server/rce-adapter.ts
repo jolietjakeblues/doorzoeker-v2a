@@ -14,6 +14,7 @@ import {
   buildComplexMembersQuery,
   buildComplexQuery,
   buildGebeurtenisConceptQuery,
+  buildFunctieConceptQuery,
   buildGebeurtenissenQuery,
   buildGroenaanlegQuery,
   buildGrondsporenDetailsQuery,
@@ -288,6 +289,10 @@ async function optionalSearch<T>(event: string, work: () => Promise<T>, fallback
     console.warn(JSON.stringify({ event: `${event}.unavailable`, message: error instanceof Error ? error.message : "unknown" }));
     return fallback;
   }
+}
+
+export async function searchByFunctieConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
+  return searchByConceptMatchQuery(buildFunctieConceptQuery(conceptUri), signal);
 }
 
 export async function fetchVondstlocatieInhoud(locatieUri: string, signal?: AbortSignal) {

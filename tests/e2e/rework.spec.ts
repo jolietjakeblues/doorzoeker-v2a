@@ -486,6 +486,31 @@ test("een gekozen termsuggestie behoudt URI en bron na herladen", async ({
   );
 });
 
+test("een aantoonbaar gekoppelde RN2-term zoekt exact op de concept-URI", async ({ page }) => {
+  const conceptUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/woonhuis";
+  await page.route("**/api/terms/suggest**", (route) => route.fulfill({ json: {
+    suggestions: [{
+      uri: conceptUri,
+      label: "Woonhuis",
+      sourceUri: "https://data.cultureelerfgoed.nl/term/id/rn/2/mrs",
+      sourceName: "Monumenten Registratie Systeem",
+      conceptField: "functie",
+      usageCount: 13140,
+    }],
+  } }));
+
+  const search = page.getByRole("combobox", { name: "Zoeken" });
+  await search.fill("woon");
+  const option = page.getByRole("option").getByRole("button", { name: /Woonhuis.*13\.140 objecten.*exact gekoppeld als functie/ });
+  await expect(option).toBeVisible();
+  const requestPromise = page.waitForRequest((request) => request.url().includes("/api/rce/search?"));
+  await option.click();
+  const requestUrl = new URL((await requestPromise).url());
+  expect(requestUrl.searchParams.get("concept")).toBe(conceptUri);
+  expect(requestUrl.searchParams.get("veld")).toBe("functie");
+  await expect.poll(() => new URL(page.url()).searchParams.get("veld")).toBe("functie");
+});
+
 test("browser-terug en -vooruit herstellen de zoekopdracht", async ({
   page,
 }) => {

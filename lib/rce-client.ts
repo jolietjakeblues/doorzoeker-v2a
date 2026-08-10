@@ -21,7 +21,7 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
 // een tekstzoekopdracht - zie docs/vertical-slices/004-referentienetwerk-concepten.md.
 // `veld` bepaalt via welke eigenschap gezocht wordt; de aanroeper weet dit
 // al op basis van welk label is aangeklikt.
-async function searchByConcept(conceptUri: string, veld: "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype", signal?: AbortSignal) {
+async function searchByConcept(conceptUri: string, veld: "functie" | "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype", signal?: AbortSignal) {
   const response = await fetch(`/api/rce/search?concept=${encodeURIComponent(conceptUri)}&veld=${veld}`, {
     headers: { Accept: "application/json" },
     signal,
@@ -58,6 +58,10 @@ export async function browseRceObjects(kind: BrowseKind, signal?: AbortSignal, p
   if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
   const document = await response.json() as SearchResponse;
   return { results: document.results, hasMore: document.hasMore ?? false, page: document.page ?? page };
+}
+
+export async function searchByFunctieConcept(conceptUri: string, signal?: AbortSignal) {
+  return searchByConcept(conceptUri, "functie", signal);
 }
 
 // Complexleden worden pas opgehaald zodra een gebruiker een complex opent -
