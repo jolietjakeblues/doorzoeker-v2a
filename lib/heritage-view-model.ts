@@ -55,6 +55,7 @@ export type Item = {
   legalStatus?: string;
   originalFunctionNames?: string[];
   currentFunctionNames?: string[];
+  functionConcepts?: { uri: string; label: string }[];
   typeNames?: string[];
   parcels?: RceParcel[];
   archaeologicalSites?: ArcheologischTerrein[];
@@ -96,6 +97,48 @@ export type ConceptField =
   | "materiaal"
   | "toestand"
   | "archeologischcomplextype";
+export type LinkedConcept = {
+  uri: string;
+  label: string;
+  field: ConceptField;
+  group: string;
+};
+
+export function linkedConcepts(item: Item): LinkedConcept[] {
+  const concepts: LinkedConcept[] = [];
+  for (const concept of item.functionConcepts ?? [])
+    concepts.push({ ...concept, field: "functie", group: "Functie" });
+  if (item.monumentAardConcept)
+    concepts.push({
+      ...item.monumentAardConcept,
+      field: "monumentaard",
+      group: "Monumentaard",
+    });
+  if (item.archaeologicalValuation && item.archaeologicalValuationConceptUri)
+    concepts.push({
+      uri: item.archaeologicalValuationConceptUri,
+      label: item.archaeologicalValuation,
+      field: "waardering",
+      group: "Waardering",
+    });
+  for (const concept of item.archaeologicalFindTypes ?? [])
+    concepts.push({ ...concept, field: "vondsttype", group: "Vondsttype" });
+  for (const concept of item.archaeologicalMaterials ?? [])
+    concepts.push({ ...concept, field: "materiaal", group: "Materiaal" });
+  if (item.archaeologicalCondition)
+    concepts.push({
+      ...item.archaeologicalCondition,
+      field: "toestand",
+      group: "Toestand",
+    });
+  if (item.archaeologicalComplexType)
+    concepts.push({
+      ...item.archaeologicalComplexType,
+      field: "archeologischcomplextype",
+      group: "Archeologisch complextype",
+    });
+  return concepts;
+}
 export type MapViewport = { lat: number; lng: number; zoom: number };
 export type SelectedTermIdentity = {
   uri: string;
@@ -330,6 +373,7 @@ export function toItem(record: RceMonument): Item {
     legalStatus: record.legalStatus,
     originalFunctionNames,
     currentFunctionNames: record.currentFunctionNames,
+    functionConcepts: record.functionConcepts,
     typeNames: record.typeNames,
     lat: record.lat ?? 0,
     lng: record.lng ?? 0,

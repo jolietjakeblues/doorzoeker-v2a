@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
 import { buildArchaeologyBrowseQuery, parseArchaeologyBrowseNumbers } from "../lib/rce.ts";
-import { buildFunctieConceptQuery, buildTermUsageQuery, parseTermUsageResults } from "../lib/rce.ts";
+import { buildFunctieConceptQuery, buildTermUsageQuery, parseFacetResults, parseTermUsageResults } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -216,7 +216,9 @@ test("queries formal original and current functions as separate facets", () => {
   const query = buildRceFacetsQuery(["36046", "1"]);
   assert.match(query, /ceo:heeftOorspronkelijkeFunctie \?oorspronkelijkeNode/);
   assert.match(query, /ceo:heeftHuidigeFunctie \?huidigeNode/);
-  assert.equal((query.match(/ceo:formeelStandpunt true/g) ?? []).length, 2);
+  assert.equal((query.match(/ceo:formeelStandpunt true/g) ?? []).length, 3);
+  assert.match(query, /ceo:heeftFunctieNaam \?functieConcept/);
+  assert.match(query, /STR\(\?functieConcept\)/);
   assert.match(query, /ceo:heeftType\/ceo:heeftTypeNaam\/skos:prefLabel/);
 });
 
@@ -240,6 +242,23 @@ test("discovers names, addresses, functions, types and descriptions as separate 
   assert.match(omschrijving, /ceo:formeelStandpunt true/);
   assert.match(queries.find((q) => q.bron === "naam").query, /ceo:heeftNaam\/ceo:naam \?match/);
   assert.match(queries.find((q) => q.bron === "volledig adres").query, /ceo:heeftBAGRelatie\/ceo:volledigAdres \?match/);
+});
+
+test("keeps function labels paired with their concept URIs", () => {
+  const facets = parseFacetResults({
+    results: {
+      bindings: [{
+        rmnr: { value: "36046" },
+        functieConcepten: {
+          value: "https://data.cultureelerfgoed.nl/term/id/rn/2/abc~~Woonhuis||https://data.cultureelerfgoed.nl/term/id/rn/2/def~~Museum",
+        },
+      }],
+    },
+  });
+  assert.deepEqual(facets.get("36046").functionConcepts, [
+    { uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/abc", label: "Woonhuis" },
+    { uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/def", label: "Museum" },
+  ]);
 });
 
 test("measures how Referentienetwerk concepts are actually used in CHO", () => {

@@ -7,14 +7,26 @@ type OnderzoeksgebiedVerrijkingResponse = OnderzoeksgebiedAggregaten & { complex
 type OpDezeDagResponse = { monument: RceMonument | null };
 
 export async function searchRceMonuments(query: string, signal?: AbortSignal, page = 1) {
-  const params = new URLSearchParams({ q: query, page: String(page) });
-  const response = await fetch(`/api/rce/search?${params}`, {
-    headers: { Accept: "application/json" },
-    signal,
-  });
-  if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
-  const document = await response.json() as SearchResponse;
-  return { results: document.results, hasMore: document.hasMore ?? false, page: document.page ?? page };
+  const requestScope = async (scope: string) => {
+    const params = new URLSearchParams({ q: query, page: String(page), scope });
+    const response = await fetch(`/api/rce/search?${params}`, { headers: { Accept: "application/json" }, signal });
+    if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
+    return await response.json() as SearchResponse;
+  };
+  const core = await requestScope("core");
+  if (page !== 1 || /^\d{4,6}$/.test(query.trim()) || /^\d{4}\s?[A-Za-z]{2}$/.test(query.trim()))
+    return { results: core.results, hasMore: core.hasMore ?? false, page: core.page ?? page };
+  const additions = await Promise.allSettled([
+    requestScope("heritage"),
+    requestScope("archaeology-a"),
+    requestScope("archaeology-b"),
+  ]);
+  const byId = new Map(core.results.map((item) => [item.sourceUrl || `${item.monumentNature}:${item.monumentNumber}`, item]));
+  for (const addition of additions)
+    if (addition.status === "fulfilled")
+      for (const item of addition.value.results)
+        byId.set(item.sourceUrl || `${item.monumentNature}:${item.monumentNumber}`, item);
+  return { results: [...byId.values()], hasMore: core.hasMore ?? false, page: core.page ?? page };
 }
 
 // Exact zoeken op een concept-URI uit het Referentienetwerk in plaats van

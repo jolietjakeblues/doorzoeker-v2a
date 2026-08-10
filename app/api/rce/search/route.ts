@@ -102,6 +102,8 @@ export async function GET(request: Request) {
       return Response.json({ error: "Ongeldige concept-URI." }, { status: 400 });
     }
     const page = Number(url.searchParams.get("page") ?? "1");
+    const scopeParam = url.searchParams.get("scope");
+    const scope = scopeParam === "core" || scopeParam === "heritage" || scopeParam === "archaeology-a" || scopeParam === "archaeology-b" ? scopeParam : "all";
     if ((!browse && !conceptParam && (!query || query.length > 120)) || !Number.isInteger(page) || page < 1 || page > 20) {
       return Response.json({ error: "Ongeldige zoekopdracht." }, { status: 400 });
     }
@@ -113,7 +115,7 @@ export async function GET(request: Request) {
       ? `${url.origin}/api/rce/search?browse=${browse}&page=${page}`
       : conceptParam
         ? `${url.origin}/api/rce/search?concept=${encodeURIComponent(conceptParam)}&veld=${veld}`
-        : `${url.origin}/api/rce/search?q=${encodeURIComponent(query.toLocaleLowerCase("nl"))}&page=${page}`);
+        : `${url.origin}/api/rce/search?q=${encodeURIComponent(query.toLocaleLowerCase("nl"))}&page=${page}&scope=${scope}`);
     const memoryCached = responseCache.get(cacheKey.url);
     if (memoryCached && memoryCached.expiresAt > Date.now()) {
       return new Response(memoryCached.body, {
@@ -128,7 +130,7 @@ export async function GET(request: Request) {
       ? await browseRceObjects(browse, request.signal, page)
       : conceptParam
         ? await searchByConceptField(veld, conceptParam, request.signal)
-        : await searchRceMonuments(query, request.signal, page);
+        : await searchRceMonuments(query, request.signal, page, scope);
     const isPagedTextSearch = !browse && !conceptParam && !/^\d{4,6}$/.test(query) && !/^\d{4}\s?[A-Za-z]{2}$/.test(query);
     const isPagedBrowse = browse === "rijksmonument" || browse === "archeologischterrein" || browse === "onderzoeksgebied" || browse === "vondstlocatie" || browse === "archeologischcomplex" || browse === "vondsten" || browse === "grondsporen";
     const pageSize = 25;

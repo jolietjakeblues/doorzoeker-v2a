@@ -697,7 +697,12 @@ export default function Home() {
               </button>
             </div>
           ) : view === "list" ? (
-            <div className="cards">
+            <>
+              <p className="results-help">
+                Open een resultaat voor de kaart, relaties, brongegevens en
+                gekoppelde begrippen.
+              </p>
+              <div className="cards">
               {results.map((item) => (
                 <HeritageResultCard
                   key={item.id}
@@ -708,7 +713,8 @@ export default function Home() {
                   }
                 />
               ))}
-            </div>
+              </div>
+            </>
           ) : (
             <div className="map-view">
               <HeritageMap
@@ -795,6 +801,9 @@ export default function Home() {
               <small>{statusLabel(selected.objectType)}</small>
             </div>
             <div className="detail-copy">
+              <p className="detail-guide">
+                In dit venster: locatie, kenmerken, relaties en bronnen.
+              </p>
               {!selectedIdentifierRepeatsTitle ? (
                 <small>
                   {selectedIdentifier?.label.toLocaleUpperCase("nl")}{" "}

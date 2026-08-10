@@ -1,11 +1,50 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  linkedConcepts,
   parseUrlState,
   primaryIdentifier,
 } from "../lib/heritage-view-model.ts";
 
 const base = { objectNumber: "cho-42" };
+
+test("collects only linked concepts that support an exact search", () => {
+  assert.deepEqual(
+    linkedConcepts({
+      functionConcepts: [
+        { uri: "https://example.test/woonhuis", label: "Woonhuis" },
+      ],
+      archaeologicalValuation: "Hoge archeologische waarde",
+      archaeologicalValuationConceptUri: "https://example.test/waardering",
+      archaeologicalMaterials: [
+        { uri: "https://example.test/messing", label: "messing" },
+      ],
+      archaeologicalStyles: [
+        { uri: "https://example.test/romeins", label: "Romeins" },
+      ],
+    }),
+    [
+      {
+        uri: "https://example.test/woonhuis",
+        label: "Woonhuis",
+        field: "functie",
+        group: "Functie",
+      },
+      {
+        uri: "https://example.test/waardering",
+        label: "Hoge archeologische waarde",
+        field: "waardering",
+        group: "Waardering",
+      },
+      {
+        uri: "https://example.test/messing",
+        label: "messing",
+        field: "materiaal",
+        group: "Materiaal",
+      },
+    ],
+  );
+});
 
 test("uses an RM prefix only for a Rijksmonument", () => {
   assert.deepEqual(

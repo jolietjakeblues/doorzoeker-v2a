@@ -127,15 +127,16 @@ export function HeritageResultCard({
             <span>{item.period}</span>
           ) : null}
         </div>
+        <button
+          className="open card-open"
+          type="button"
+          onClick={() => onOpen(item)}
+          aria-label={`Bekijk gegevens van ${item.title}`}
+        >
+          <span>Bekijk gegevens</span>
+          <b aria-hidden="true">→</b>
+        </button>
       </div>
-      <button
-        className="open"
-        type="button"
-        onClick={() => onOpen(item)}
-        aria-label={`Details van ${item.title}`}
-      >
-        →
-      </button>
     </article>
   );
 }

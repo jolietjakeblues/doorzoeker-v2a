@@ -65,6 +65,7 @@ export type RceMonument = {
   functionName?: string;
   originalFunctionNames?: string[];
   currentFunctionNames?: string[];
+  functionConcepts?: { uri: string; label: string }[];
   typeNames?: string[];
   legalStatus?: string;
   description?: string;
@@ -462,6 +463,7 @@ PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 SELECT ?rmnr
   (GROUP_CONCAT(DISTINCT STR(?oorspronkelijkeFunctie); separator="||") AS ?oorspronkelijkeFuncties)
   (GROUP_CONCAT(DISTINCT STR(?huidigeFunctie); separator="||") AS ?huidigeFuncties)
+  (GROUP_CONCAT(DISTINCT CONCAT(STR(?functieConcept), "~~", STR(?functieLabel)); separator="||") AS ?functieConcepten)
   (GROUP_CONCAT(DISTINCT STR(?typeNaam); separator="||") AS ?typen)
 WHERE {
   GRAPH <${INSTANCES_GRAPH}> {
@@ -476,6 +478,13 @@ WHERE {
       ?cho ceo:heeftHuidigeFunctie ?huidigeNode .
       ?huidigeNode ceo:formeelStandpunt true ; ceo:heeftFunctieNaam/skos:prefLabel ?huidigeFunctie .
     }
+    OPTIONAL {
+      { ?cho ceo:heeftOorspronkelijkeFunctie ?functieNode . }
+      UNION
+      { ?cho ceo:heeftHuidigeFunctie ?functieNode . }
+      ?functieNode ceo:formeelStandpunt true ; ceo:heeftFunctieNaam ?functieConcept .
+      ?functieConcept skos:prefLabel ?functieLabel .
+    }
     OPTIONAL { ?cho ceo:heeftType/ceo:heeftTypeNaam/skos:prefLabel ?typeNaam . }
   }
 }
@@ -487,6 +496,10 @@ export function parseFacetResults(document: unknown) {
   return new Map(bindings.map((binding) => [binding.rmnr?.value ?? "", {
     originalFunctionNames: binding.oorspronkelijkeFuncties?.value?.split("||").filter(Boolean) ?? [],
     currentFunctionNames: binding.huidigeFuncties?.value?.split("||").filter(Boolean) ?? [],
+    functionConcepts: binding.functieConcepten?.value?.split("||").flatMap((value) => {
+      const [uri, label] = value.split("~~");
+      return uri && label ? [{ uri, label }] : [];
+    }) ?? [],
     typeNames: binding.typen?.value?.split("||").filter(Boolean) ?? [],
     legalStatus: "rijksmonument",
   }]));

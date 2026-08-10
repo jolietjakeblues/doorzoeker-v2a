@@ -316,7 +316,7 @@ test("een vondstlocatie toont vondsten met hun RN2-bron", async ({ page }) => {
   } }));
   await page.getByRole("combobox", { name: "Zoeken" }).fill("102482");
   await page.getByRole("button", { name: "Doorzoek RCE" }).click();
-  await page.getByRole("button", { name: "Details van Padstuk-Dres" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Padstuk-Dres" }).click();
   await expect(page.getByText("Archis-vondst 5888", { exact: true })).toBeVisible();
   await expect(page.getByText(/aardewerk \(Archeologisch Informatie Systeem\).*fragment \(Cultuurhistorische Object Informatie\)/)).toBeVisible();
 });
@@ -334,7 +334,7 @@ test("een grondspoor toont aantal, RN2-bron en bijbehorende vondstlocatie", asyn
   }], page: 1, hasMore: false } }));
   await page.getByRole("combobox", { name: "Zoeken" }).fill("Karrespoor");
   await page.getByRole("button", { name: "Doorzoek RCE" }).click();
-  await page.getByRole("button", { name: "Details van Karrespoor" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Karrespoor" }).click();
   await expect(page.getByText("Archeologisch grondspoor", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("onbekend (Archeologisch Informatie Systeem)", { exact: true })).toBeVisible();
   await expect(page.getByText("Bijbehorende vondstlocatie", { exact: true })).toBeVisible();
@@ -359,7 +359,7 @@ test("materiaal van een vondst zoekt exact verder via de RN2-URI", async ({ page
   });
   await page.getByRole("combobox", { name: "Zoeken" }).fill("10015422");
   await page.getByRole("button", { name: "Doorzoek RCE" }).click();
-  await page.getByRole("button", { name: /Details van/ }).click();
+  await page.getByRole("button", { name: /Bekijk gegevens van/ }).click();
   await expect(page.getByRole("button", { name: "messing", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "messing", exact: true }).click();
   await expect(page).toHaveURL(/veld=materiaal/);
@@ -380,7 +380,7 @@ test("een archeologisch complex blijft onderscheiden van een gebouwd complex", a
   await page.getByRole("button", { name: "Doorzoek RCE" }).click();
   await expect(page.getByText("Archeologisch complex", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Complex van rijksmonumenten", { exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "Details van watermolen" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van watermolen" }).click();
   await expect(page.getByRole("button", { name: "watermolen", exact: true })).toBeVisible();
   await expect(page.getByText("Collse Watermolen", { exact: true })).toBeVisible();
 });
@@ -402,7 +402,7 @@ test("een complexdetail toont geen lege monumentvelden", async ({ page }) => {
   await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
   await page.getByRole("button", { name: "Doorzoek RCE" }).click();
   await page
-    .getByRole("button", { name: "Details van Historisch boerderijcomplex" })
+    .getByRole("button", { name: "Bekijk gegevens van Historisch boerderijcomplex" })
     .click();
   const dialog = page.getByRole("dialog");
   const detailLayer = await page.locator(".backdrop").evaluate((element) =>
@@ -425,7 +425,7 @@ test("de detaildialoog houdt focus vast en herstelt hem na Escape", async ({
   await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
   await page.getByRole("button", { name: "Doorzoek RCE" }).click();
   const opener = page.getByRole("button", {
-    name: "Details van Historisch boerderijcomplex",
+    name: "Bekijk gegevens van Historisch boerderijcomplex",
   });
   await opener.click();
 
@@ -578,11 +578,17 @@ test("groenaanleg verdwijnt wanneer de overige filters geen keuze meer overlaten
         page: 1,
         hasMore: false,
         results: [
-          { ...records[0], choNumber: "cho-goirle", monumentNumber: "1" },
+          {
+            ...records[0],
+            choNumber: "cho-goirle",
+            monumentNumber: "1",
+            sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-goirle",
+          },
           {
             ...records[0],
             choNumber: "cho-utrecht",
             monumentNumber: "2",
+            sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-utrecht",
             place: "Utrecht",
             municipality: "Utrecht",
             provinceCode: "UT",
