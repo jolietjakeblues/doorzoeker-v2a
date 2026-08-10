@@ -2,7 +2,7 @@ import type { FormEvent, KeyboardEventHandler } from "react";
 import type { TermSuggestion } from "@/lib/terms-client";
 
 type RemoteState = "idle" | "loading" | "error" | "success";
-type BrowseKind = "werelderfgoed" | "gezicht" | "complex";
+type BrowseKind = "rijksmonument" | "werelderfgoed" | "gezicht" | "complex";
 
 const DIRECT_SEARCHES = [
   "36046",
@@ -141,6 +141,9 @@ export function SearchHero({
       </nav>
       <nav aria-label="Bekijk een volledige collectie">
         Bekijk alles:{" "}
+        <button type="button" onClick={() => onBrowse("rijksmonument")}>
+          Rijksmonumenten
+        </button>
         <button type="button" onClick={() => onBrowse("werelderfgoed")}>
           Werelderfgoed
         </button>

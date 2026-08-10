@@ -150,11 +150,38 @@ test("de startpagina biedt een brede reeks directe zoekvoorbeelden", async ({ pa
   const collecties = page.getByRole("navigation", {
     name: "Bekijk een volledige collectie",
   });
+  await expect(collecties.getByRole("button", { name: "Rijksmonumenten" })).toBeVisible();
   await expect(collecties.getByRole("button", { name: "Werelderfgoed" })).toBeVisible();
   await expect(collecties.getByRole("button", { name: "Gezichten" })).toBeVisible();
   await expect(
     collecties.getByRole("button", { name: "Gebouwde complexen" }),
   ).toBeVisible();
+});
+
+test("Rijksmonumenten zijn per 25 te doorbladeren", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const requestedPage = Number(new URL(route.request().url()).searchParams.get("page") ?? "1");
+    const count = requestedPage === 1 ? 25 : 2;
+    return route.fulfill({
+      json: {
+        results: Array.from({ length: count }, (_, index) => ({
+          ...records[0],
+          choNumber: `cho-${requestedPage}-${index}`,
+          monumentNumber: `${requestedPage}${String(index).padStart(5, "0")}`,
+          name: `Rijksmonument pagina ${requestedPage}, nummer ${index + 1}`,
+        })),
+        page: requestedPage,
+        hasMore: requestedPage === 1,
+      },
+    });
+  });
+
+  await page.getByRole("button", { name: "Rijksmonumenten", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "25 resultaten voor “Rijksmonumenten”" })).toBeVisible();
+  await page.getByRole("button", { name: "Laad 25 volgende resultaten" }).click();
+  await expect(page.getByRole("heading", { name: "27 resultaten voor “Rijksmonumenten”" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Laad 25 volgende resultaten" })).toHaveCount(0);
 });
 
 test("zoeken toont een rustige laadstaat op de plaats van de resultaten", async ({ page }) => {

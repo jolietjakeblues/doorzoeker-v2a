@@ -8,7 +8,7 @@ zelfstandig doorzoekbare objecten, gekoppelde gegevens en alleen tellingen.
 
 | Objectsoort | Zoeken of bekijken | Kaartweergave | Detailweergave |
 | --- | --- | --- | --- |
-| Rijksmonument | Vrij zoeken; gebouwd en archeologisch te filteren | Gebouwde monumenten als marker; archeologische monumenten met Polygon/MultiPolygon als vlak | Registergegevens, functies, percelen, foto, literatuur, bouwgeschiedenis en gekoppelde gegevens |
+| Rijksmonument | Vrij zoeken; gebouwd en archeologisch te filteren; het register is daarnaast per 25 records te doorbladeren | Gebouwde monumenten als marker; archeologische monumenten met Polygon/MultiPolygon als vlak | Registergegevens, functies, percelen, foto, literatuur, bouwgeschiedenis en gekoppelde gegevens |
 | Werelderfgoed | Volledige kleine collectie bekijken en op naam zoeken | Polygon of MultiPolygon | Eigen nummer, naam, geometrie en officiële bron |
 | Gezicht | Rijksbeschermde stads- en dorpsgezichten bekijken en op naam zoeken | Polygon of MultiPolygon | Gezichtsnummer, naam, geometrie en officiële bron |
 | Complex | Complexen van gebouwde Rijksmonumenten bekijken en op naam zoeken | In de resultaten als marker van het hoofdobject; in het detail worden de geometrieën van de afzonderlijke leden samen getoond | Hoofdobject, onderdelen en doorklikbare ledenlijst |

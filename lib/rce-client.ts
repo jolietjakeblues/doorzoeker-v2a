@@ -1,6 +1,7 @@
 import type { ComplexMember, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, RceMonument, VondstlocatieInhoud } from "@/lib/rce";
 
 export type SearchResponse = { results: RceMonument[]; page?: number; pageSize?: number; hasMore?: boolean };
+export type BrowseKind = "rijksmonument" | "werelderfgoed" | "gezicht" | "complex";
 type ComplexMembersResponse = { members: ComplexMember[] };
 type OnderzoeksgebiedVerrijkingResponse = OnderzoeksgebiedAggregaten & { complexen: OnderzoeksgebiedComplex[]; vondstlocaties: OnderzoeksgebiedVondstlocatie[] };
 type OpDezeDagResponse = { monument: RceMonument | null };
@@ -49,14 +50,14 @@ export async function searchByActorConcept(conceptUri: string, signal?: AbortSig
 // Bekijk de volledige collectie Werelderfgoed, Gezichten of Complexen, los
 // van een zoekterm - anders zijn deze typen alleen vindbaar als hun naam
 // toevallig met de ingetypte tekst matcht.
-export async function browseRceObjects(kind: "werelderfgoed" | "gezicht" | "complex", signal?: AbortSignal) {
-  const response = await fetch(`/api/rce/search?browse=${kind}`, {
+export async function browseRceObjects(kind: BrowseKind, signal?: AbortSignal, page = 1) {
+  const response = await fetch(`/api/rce/search?browse=${kind}&page=${page}`, {
     headers: { Accept: "application/json" },
     signal,
   });
   if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
   const document = await response.json() as SearchResponse;
-  return document.results;
+  return { results: document.results, hasMore: document.hasMore ?? false, page: document.page ?? page };
 }
 
 // Complexleden worden pas opgehaald zodra een gebruiker een complex opent -

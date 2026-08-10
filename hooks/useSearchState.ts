@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFilteredResults } from "@/hooks/useFilteredResults";
 import {
   browseRceObjects,
+  type BrowseKind,
   searchByActorConcept,
   searchByArcheologischeWaarderingConcept,
   searchByArcheologischComplexTypeConcept,
@@ -84,6 +85,7 @@ export function useSearchState() {
   const [resultPage, setResultPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [activeBrowseKind, setActiveBrowseKind] = useState<BrowseKind | undefined>();
   const searchController = useRef<AbortController | null>(null);
   const searchSequence = useRef(0);
   const pendingSelectedId = useRef(EMPTY_URL_STATE.selectedId);
@@ -233,6 +235,7 @@ export function useSearchState() {
     setActive(term);
     setActiveConceptUri(undefined);
     setActiveConceptVeld(undefined);
+    setActiveBrowseKind(undefined);
     setSelectedTerm(termIdentity);
     setSelected(null);
     setView("list");
@@ -296,6 +299,7 @@ export function useSearchState() {
     setActive(concept.label);
     setActiveConceptUri(concept.uri);
     setActiveConceptVeld(veld);
+    setActiveBrowseKind(undefined);
     setSelectedTerm(undefined);
     setSelected(null);
     setView("list");
@@ -349,7 +353,7 @@ export function useSearchState() {
   // Werelderfgoed en Gezicht zijn anders te vinden dan Rijksmonumenten: er is
   // geen zoekterm voor "laat alles zien", dus browsen ze de volledige (kleine)
   // collectie in plaats van op naam te matchen.
-  async function browseType(kind: "werelderfgoed" | "gezicht" | "complex") {
+  async function browseType(kind: BrowseKind) {
     beginHistoryEntry();
     searchController.current?.abort();
     const controller = new AbortController();
@@ -357,7 +361,9 @@ export function useSearchState() {
     const sequence = ++searchSequence.current;
     setQuery("");
     setActive(
-      kind === "werelderfgoed"
+      kind === "rijksmonument"
+        ? "Rijksmonumenten"
+        : kind === "werelderfgoed"
         ? "Werelderfgoed"
         : kind === "gezicht"
           ? "Rijksbeschermde gezichten"
@@ -365,12 +371,15 @@ export function useSearchState() {
     );
     setActiveConceptUri(undefined);
     setActiveConceptVeld(undefined);
+    setActiveBrowseKind(kind);
     setSelectedTerm(undefined);
     setSelected(null);
     setView("list");
     setMapViewport(undefined);
     setObjectType(
-      kind === "werelderfgoed"
+      kind === "rijksmonument"
+        ? "Rijksmonument"
+        : kind === "werelderfgoed"
         ? "Werelderfgoed"
         : kind === "gezicht"
           ? "Gezicht"
@@ -388,10 +397,10 @@ export function useSearchState() {
     setHasMore(false);
     setRemoteState("loading");
     try {
-      const records = await browseRceObjects(kind, controller.signal);
+      const response = await browseRceObjects(kind, controller.signal);
       if (sequence !== searchSequence.current) return;
-      setRemoteResults(records.map((record) => toItem(record)));
-      setHasMore(false);
+      setRemoteResults(response.results.map((record) => toItem(record)));
+      setHasMore(response.hasMore);
       setRemoteState("success");
     } catch {
       if (controller.signal.aborted || sequence !== searchSequence.current)
@@ -404,17 +413,19 @@ export function useSearchState() {
     if (!active || loadingMore || activeConceptUri) return;
     const nextPage = resultPage + 1;
     const lastResult = remoteResults?.at(-1);
-    if (
+    if (!activeBrowseKind && (
       !lastResult?.monumentNumber ||
       !lastResult.matchedText ||
       lastResult.matchScore === undefined
-    ) {
+    )) {
       setHasMore(false);
       return;
     }
     setLoadingMore(true);
     try {
-      const response = await searchRceMonuments(active, undefined, nextPage);
+      const response = activeBrowseKind
+        ? await browseRceObjects(activeBrowseKind, undefined, nextPage)
+        : await searchRceMonuments(active, undefined, nextPage);
       const additions = response.results.map((record) => toItem(record));
       setRemoteResults((current) => {
         const merged = new Map(
@@ -484,6 +495,7 @@ export function useSearchState() {
     setActive("");
     setActiveConceptUri(undefined);
     setActiveConceptVeld(undefined);
+    setActiveBrowseKind(undefined);
     setSelectedTerm(undefined);
     setObjectType("Alle");
     setMonumentAard("Alle");

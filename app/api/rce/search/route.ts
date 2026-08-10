@@ -78,7 +78,7 @@ export async function GET(request: Request) {
     const browseParam = url.searchParams.get("browse");
     // "Browsen" (alle Werelderfgoed, Gezichten of Complexen tonen) is geen
     // tekstzoekopdracht: q mag hier leeg zijn.
-    const browse = browseParam === "werelderfgoed" || browseParam === "gezicht" || browseParam === "complex" ? browseParam : undefined;
+    const browse = browseParam === "rijksmonument" || browseParam === "werelderfgoed" || browseParam === "gezicht" || browseParam === "complex" ? browseParam : undefined;
     // Conceptzoekopdracht: exacte match op een concept-URI uit het
     // Referentienetwerk in plaats van tekstzoeken. `veld` bepaalt via welk
     // eigenschap gezocht wordt - de aanroeper (UI) weet dit al op basis van
@@ -92,7 +92,7 @@ export async function GET(request: Request) {
       return Response.json({ error: "Ongeldige concept-URI." }, { status: 400 });
     }
     const page = Number(url.searchParams.get("page") ?? "1");
-    if (!browse && !conceptParam && (!query || query.length > 120 || !Number.isInteger(page) || page < 1 || page > 20)) {
+    if ((!browse && !conceptParam && (!query || query.length > 120)) || !Number.isInteger(page) || page < 1 || page > 20) {
       return Response.json({ error: "Ongeldige zoekopdracht." }, { status: 400 });
     }
     if (!consumeRateLimit(clientId(request))) {
@@ -100,7 +100,7 @@ export async function GET(request: Request) {
     }
 
     const cacheKey = new Request(browse
-      ? `${url.origin}/api/rce/search?browse=${browse}`
+      ? `${url.origin}/api/rce/search?browse=${browse}&page=${page}`
       : conceptParam
         ? `${url.origin}/api/rce/search?concept=${encodeURIComponent(conceptParam)}&veld=${veld}`
         : `${url.origin}/api/rce/search?q=${encodeURIComponent(query.toLocaleLowerCase("nl"))}&page=${page}`);
@@ -115,19 +115,20 @@ export async function GET(request: Request) {
     if (cached) return cached;
 
     const results = browse
-      ? await browseRceObjects(browse, request.signal)
+      ? await browseRceObjects(browse, request.signal, page)
       : conceptParam
         ? await searchByConceptField(veld, conceptParam, request.signal)
         : await searchRceMonuments(query, request.signal, page);
     const isPagedTextSearch = !browse && !conceptParam && !/^\d{4,6}$/.test(query) && !/^\d{4}\s?[A-Za-z]{2}$/.test(query);
+    const isPagedBrowse = browse === "rijksmonument";
     const pageSize = 25;
     const collectionNatures = new Set(["werelderfgoed", "gezicht", "complex", "archeologischonderzoeksgebied", "archeologischterrein", "vondstlocatie", "grondsporen", "vondsten", "archeologischcomplex"]);
     const pagedResultCount = results.filter((result) => !collectionNatures.has(result.monumentNature ?? "")).length;
     const body = JSON.stringify({
       results,
-      page: isPagedTextSearch ? page : 1,
+      page: isPagedTextSearch || isPagedBrowse ? page : 1,
       pageSize,
-      hasMore: isPagedTextSearch && pagedResultCount >= pageSize,
+      hasMore: isPagedBrowse ? results.length >= pageSize : isPagedTextSearch && pagedResultCount >= pageSize,
     });
     const response = new Response(body, {
       headers: {
