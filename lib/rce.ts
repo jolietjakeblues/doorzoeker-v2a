@@ -1055,7 +1055,13 @@ export function parseGezichtResults(document: unknown): RceMonument[] {
 // het erf" zou kunnen laten landen.
 export function buildComplexenQuery(term: string) {
   const needle = escapeSparqlString(term.toLocaleLowerCase("nl"));
-  const filter = term ? `FILTER(CONTAINS(LCASE(STR(?naamValue)), "${needle}"))` : "";
+  const filter = term
+    ? `FILTER(
+      CONTAINS(LCASE(STR(?naamValue)), "${needle}") ||
+      STR(?complexnummer) = "${escapeSparqlString(term)}" ||
+      STR(?choi) = "${escapeSparqlString(term)}"
+    )`
+    : "";
   return `PREFIX ceo: <${CEO}>
 PREFIX geo: <http://www.opengis.net/ont/geosparql#>
 SELECT ?complex ?choi ?complexnummer
