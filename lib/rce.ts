@@ -1336,14 +1336,23 @@ const ARCHEOLOGISCH_TERREIN_SOURCES: { bron: string; rang: number; pattern: stri
   { bron: "waardering (archeologisch terrein)", rang: 5, pattern: "?terrein ceo:heeftArcheologischeWaardering/skos:prefLabel ?match ." },
 ];
 
-export type ArchaeologyBrowseKind = "archeologischterrein" | "onderzoeksgebied";
+export type ArchaeologyBrowseKind =
+  | "archeologischterrein"
+  | "onderzoeksgebied"
+  | "vondstlocatie"
+  | "archeologischcomplex";
 
 // Collecties worden alleen op hun stabiele CHO-nummer gepagineerd. De
 // bestaande detailquery haalt daarna voor precies deze 25 nummers de
 // inhoudelijke velden op; zo hoeft een zware detailquery nooit de volledige
 // archeologische collectie te sorteren.
 export function buildArchaeologyBrowseQuery(kind: ArchaeologyBrowseKind, page: number) {
-  const className = kind === "archeologischterrein" ? "ArcheologischTerrein" : "ArcheologischOnderzoeksgebied";
+  const className = {
+    archeologischterrein: "ArcheologischTerrein",
+    onderzoeksgebied: "ArcheologischOnderzoeksgebied",
+    vondstlocatie: "Vondstlocatie",
+    archeologischcomplex: "ArcheologischComplex",
+  }[kind];
   const offset = Math.max(0, page - 1) * 25;
   return `PREFIX ceo: <${CEO}>
 SELECT DISTINCT ?choi WHERE {

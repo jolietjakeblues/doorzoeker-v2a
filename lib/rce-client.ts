@@ -1,7 +1,7 @@
 import type { ComplexMember, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, RceMonument, VondstlocatieInhoud } from "@/lib/rce";
 
 export type SearchResponse = { results: RceMonument[]; page?: number; pageSize?: number; hasMore?: boolean };
-export type BrowseKind = "rijksmonument" | "archeologischterrein" | "onderzoeksgebied" | "werelderfgoed" | "gezicht" | "complex";
+export type BrowseKind = "rijksmonument" | "archeologischterrein" | "onderzoeksgebied" | "vondstlocatie" | "archeologischcomplex" | "werelderfgoed" | "gezicht" | "complex";
 type ComplexMembersResponse = { members: ComplexMember[] };
 type OnderzoeksgebiedVerrijkingResponse = OnderzoeksgebiedAggregaten & { complexen: OnderzoeksgebiedComplex[]; vondstlocaties: OnderzoeksgebiedVondstlocatie[] };
 type OpDezeDagResponse = { monument: RceMonument | null };

@@ -1070,4 +1070,7 @@ test("pagineert archeologische terreinen en onderzoeksgebieden op stabiel CHO-nu
     parseArchaeologyBrowseNumbers({ results: { bindings: [{ choi: { value: "10" } }, { choi: { value: "20" } }] } }),
     ["10", "20"],
   );
+
+  assert.match(buildArchaeologyBrowseQuery("vondstlocatie", 2), /a ceo:Vondstlocatie/);
+  assert.match(buildArchaeologyBrowseQuery("archeologischcomplex", 2), /a ceo:ArcheologischComplex/);
 });

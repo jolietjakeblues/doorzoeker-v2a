@@ -2,7 +2,7 @@ import type { FormEvent, KeyboardEventHandler } from "react";
 import type { TermSuggestion } from "@/lib/terms-client";
 
 type RemoteState = "idle" | "loading" | "error" | "success";
-type BrowseKind = "rijksmonument" | "archeologischterrein" | "onderzoeksgebied" | "werelderfgoed" | "gezicht" | "complex";
+type BrowseKind = "rijksmonument" | "archeologischterrein" | "onderzoeksgebied" | "vondstlocatie" | "archeologischcomplex" | "werelderfgoed" | "gezicht" | "complex";
 
 const DIRECT_SEARCHES = [
   "36046",
@@ -158,6 +158,12 @@ export function SearchHero({
         </button>
         <button type="button" onClick={() => onBrowse("onderzoeksgebied")}>
           Onderzoeksgebieden
+        </button>
+        <button type="button" onClick={() => onBrowse("vondstlocatie")}>
+          Vondstlocaties
+        </button>
+        <button type="button" onClick={() => onBrowse("archeologischcomplex")}>
+          Archeologische complexen
         </button>
       </nav>
       <p className={`source-status ${remoteState}`} aria-live="polite">

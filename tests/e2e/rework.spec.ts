@@ -158,6 +158,37 @@ test("de startpagina biedt een brede reeks directe zoekvoorbeelden", async ({ pa
   ).toBeVisible();
   await expect(collecties.getByRole("button", { name: "Archeologische terreinen" })).toBeVisible();
   await expect(collecties.getByRole("button", { name: "Onderzoeksgebieden" })).toBeVisible();
+  await expect(collecties.getByRole("button", { name: "Vondstlocaties" })).toBeVisible();
+  await expect(collecties.getByRole("button", { name: "Archeologische complexen" })).toBeVisible();
+});
+
+test("vondstlocaties en archeologische complexen zijn als collectie te openen", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const kind = new URL(route.request().url()).searchParams.get("browse");
+    return route.fulfill({ json: {
+      results: [{
+        ...records[2],
+        choNumber: kind === "vondstlocatie" ? "locatie-1" : "complex-1",
+        monumentNumber: kind === "vondstlocatie" ? "11111" : "22222",
+        monumentNature: kind === "vondstlocatie" ? "vondstlocatie" : "archeologischcomplex",
+        name: kind === "vondstlocatie" ? "Testvondstlocatie" : "Testcomplex",
+      }],
+      page: 1,
+      hasMore: false,
+    } });
+  });
+
+  await page.getByRole("button", { name: "Vondstlocaties", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "1 resultaat voor “Vondstlocaties”" })).toBeVisible();
+  await expect(page.getByText("Archeologische vondstlocatie", { exact: true }).first()).toBeVisible();
+
+  const startDataReady = page.waitForResponse((response) => response.url().includes("/api/rce/op-deze-dag"));
+  await page.goto("/");
+  await startDataReady;
+  await page.getByRole("button", { name: "Archeologische complexen", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "1 resultaat voor “Archeologische complexen”" })).toBeVisible();
+  await expect(page.getByText("Archeologisch complex", { exact: true }).first()).toBeVisible();
 });
 
 test("archeologische terreinen en onderzoeksgebieden zijn als collectie te openen", async ({ page }) => {
