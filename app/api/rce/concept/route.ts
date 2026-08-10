@@ -8,8 +8,14 @@ const CACHE_SECONDS = 3600;
 // Alleen bekende, publieke term-namespaces toestaan, geen willekeurige
 // gebruikersinput: de query interpoleert deze waarde direct in een SPARQL
 // <...>-node, dus een waarde met een ">" erin zou een injectie mogelijk
-// maken. rn/2 = Referentienetwerk, cht/abr = de al bestaande thesauri.
-export const CONCEPT_URI_PATTERN = /^https:\/\/data\.cultureelerfgoed\.nl\/term\/id\/(rn\/2|cht|abr)\/[0-9a-fA-F-]+$/;
+// maken. rn/2 = Referentienetwerk, cht/abr = de al bestaande thesauri, rn
+// (zonder /2/) = actor-concepten uit graph/actorenrol (zie
+// docs/vertical-slices/007-bouwgeschiedenis.md). Let op: resolveConcept()
+// hieronder bevraagt alleen het aparte Referentienetwerk-endpoint, niet
+// rce/cho - een rn/<uuid>-actor-URI valideert hier dus wel, maar levert nu
+// nog een 404 op via déze route (wordt momenteel alleen gebruikt via
+// /api/rce/search?veld=actor, dat wél de juiste graph bevraagt).
+export const CONCEPT_URI_PATTERN = /^https:\/\/data\.cultureelerfgoed\.nl\/term\/id\/(rn\/2|rn|cht|abr)\/[0-9a-fA-F-]+$/;
 
 export async function GET(request: Request) {
   const startedAt = Date.now();

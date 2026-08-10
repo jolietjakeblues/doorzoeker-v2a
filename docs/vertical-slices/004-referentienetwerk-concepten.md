@@ -15,6 +15,23 @@ echte RCE-data: klikken op "Gebouwd" bij rijksmonument 26722 (concept-URI
 gebouwd"-monumenten op via een exacte match, niet via labeltekst. Zie
 "Openstaande vragen" hieronder voor wat bewust nog niet is aangepakt.
 
+**Fase 2 (archeologische waardering) gebouwd en live geverifieerd
+(2026-08-10).** Na de live-bevestiging dat `heeftArcheologischeWaardering`
+dezelfde `rn/2`-namespace gebruikt als monumentaard (zie "Openstaande
+vragen"), is exact hetzelfde patroon toegepast op de waardering van een
+gekoppeld ArcheologischTerrein: `ArcheologischTerrein.waarderingConceptUri`,
+`buildArcheologischeWaarderingConceptQuery`, een gedeelde
+`parseConceptSearchMatches` (hernoemd vanuit het monumentaard-specifieke
+`parseMonumentAardConceptMatches`, want nu door twee velden gebruikt), en
+een expliciete `veld`-parameter op `?concept=` (`monumentaard` of
+`waardering`) zodat de route ondubbelzinnig weet welke van de twee
+zoekfuncties aan te roepen - geen giswerk of dubbele round-trip. Klikbaar
+gemaakt in de "Archeologisch terrein"-detailrij. Live geverifieerd tegen
+rijksmonument 330373: klikken op "zeer hoge archeologische waarde
+beschermd" levert 25 andere archeologische rijksmonumenten op met exact
+diezelfde waardering-concept-URI. 97/97 tests, typecheck, lint groen.
+Gecommit en gepusht (`965942a`).
+
 ## Principe
 
 Het label is presentatie. De URI is identiteit.

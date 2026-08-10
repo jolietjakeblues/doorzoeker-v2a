@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAbrTermSuggestQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGezichtQuery, buildGroenaanlegQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGezichtResults, parseGroenaanlegResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseParcelResults, parseRceMonuments, parseSparqlResults, parseWerelderfgoedResults, parseWktGeometry, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
+import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseParcelResults, parseRceMonuments, parseSparqlResults, parseWerelderfgoedResults, parseWktGeometry, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -735,4 +735,77 @@ test("parses msp_indicatie results into a set of aangewezen rijksmonumentnummers
   assert.equal(numbers.has("36046"), true);
   assert.equal(numbers.has("45708"), true);
   assert.equal(numbers.has("99999"), false);
+});
+
+test("looks up bouwgeschiedenis via heeftGebeurtenis, joining the actorenrol-graph nested inside the same OPTIONAL that binds ?ar", () => {
+  // De actorenrol-join moet GENEST staan binnen de OPTIONAL die ?ar bindt -
+  // een aparte, niet-geneste OPTIONAL met een soms-ongebonden ?ar veroorzaakt
+  // live een kruisproduct-explosie (11+ miljoen tekens op één monument),
+  // empirisch aangetoond voordat deze vorm is vastgesteld.
+  const query = buildGebeurtenissenQuery(["https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/rijksmonument/10047"]);
+  assert.match(query, /ceo:heeftGebeurtenis \?g/);
+  assert.match(query, /ceo:heeftGebeurtenisNaam \?naamUri \. \?naamUri skos:prefLabel \?naamLabel/);
+  assert.match(query, /ceo:heeftDatering\/ceo:heeftBeginDatering\/ceo:datum \?beginDatum/);
+  assert.match(query, /ceo:heeftDatering\/ceo:heeftEindDatering\/ceo:datum \?eindDatum/);
+  const actorEnRolBlock = query.slice(query.indexOf("ceo:heeftActorEnRol"));
+  assert.match(actorEnRolBlock, /GRAPH <https:\/\/linkeddata\.cultureelerfgoed\.nl\/graph\/actorenrol> \{ \?ar ceo:heeftActor \?actorConceptUri \. \}/);
+});
+
+test("groups gebeurtenis-rijen per (rm, gebeurtenis), collecting distinct actoren", () => {
+  const document = { results: { bindings: [
+    { rm: { value: "rm:1" }, g: { value: "g:1" }, naamUri: { value: "https://data.cultureelerfgoed.nl/term/id/rn/2/a88b115d" }, naamLabel: { value: "vervaardiging" }, beginDatum: { value: "1934-01-01" }, eindDatum: { value: "1934-12-31" } },
+    { rm: { value: "rm:1" }, g: { value: "g:2" }, naamUri: { value: "https://data.cultureelerfgoed.nl/term/id/rn/2/9bf08937" }, naamLabel: { value: "niet bepaald" }, ar: { value: "ar:56338" }, actorNaam: { value: "Bedaux, Jos ; Noord-Brabant" }, actorRol: { value: "architect / bouwkundige / constructeur" }, actorConceptUri: { value: "https://data.cultureelerfgoed.nl/term/id/rn/f8c2048b" } },
+  ] } };
+  const byMonument = parseGebeurtenissenResults(document);
+  assert.deepEqual(byMonument.get("rm:1"), [
+    { naam: "vervaardiging", naamConceptUri: "https://data.cultureelerfgoed.nl/term/id/rn/2/a88b115d", beginDatum: "1934-01-01", eindDatum: "1934-12-31", actoren: [] },
+    { naam: "niet bepaald", naamConceptUri: "https://data.cultureelerfgoed.nl/term/id/rn/2/9bf08937", beginDatum: undefined, eindDatum: undefined, actoren: [{ naam: "Bedaux, Jos ; Noord-Brabant", rol: "architect / bouwkundige / constructeur", actorConceptUri: "https://data.cultureelerfgoed.nl/term/id/rn/f8c2048b" }] },
+  ]);
+});
+
+test("collects multiple distinct rows for the same gebeurtenis into one actoren-lijst, deduped by naam", () => {
+  const document = { results: { bindings: [
+    { rm: { value: "rm:1" }, g: { value: "g:1" }, naamLabel: { value: "restauratie" }, ar: { value: "ar:1" }, actorNaam: { value: "Kramer, Hendrik ; Stad Leeuwarden" }, actorRol: { value: "architect / bouwkundige / constructeur" } },
+    { rm: { value: "rm:1" }, g: { value: "g:1" }, naamLabel: { value: "restauratie" }, ar: { value: "ar:1" }, actorNaam: { value: "Kramer, Hendrik ; Stad Leeuwarden" }, actorRol: { value: "architect / bouwkundige / constructeur" } },
+  ] } };
+  const [gebeurtenis] = parseGebeurtenissenResults(document).get("rm:1");
+  assert.equal(gebeurtenis.actoren.length, 1);
+});
+
+test("sorts gebeurtenissen chronologically by beginDatum, missing dates last, and caps at 10 per monument", () => {
+  const bindings = Array.from({ length: 12 }, (_, index) => ({
+    rm: { value: "rm:1" }, g: { value: `g:${index}` }, naamLabel: { value: `Gebeurtenis ${index}` }, beginDatum: { value: `${1900 + index}-01-01` },
+  }));
+  bindings.push({ rm: { value: "rm:1" }, g: { value: "g:ongedateerd" }, naamLabel: { value: "Zonder datum" } });
+  const events = parseGebeurtenissenResults({ results: { bindings } }).get("rm:1");
+  assert.equal(events.length, 10);
+  assert.equal(events[0].naam, "Gebeurtenis 0");
+  assert.equal(events[9].naam, "Gebeurtenis 9");
+});
+
+test("skips rows without a monument, event URI, or gebeurtenisnaam", () => {
+  const document = { results: { bindings: [
+    { g: { value: "g:1" }, naamLabel: { value: "vervaardiging" } },
+    { rm: { value: "rm:1" }, naamLabel: { value: "vervaardiging" } },
+    { rm: { value: "rm:1" }, g: { value: "g:1" } },
+  ] } };
+  assert.equal(parseGebeurtenissenResults(document).size, 0);
+  assert.deepEqual(parseGebeurtenissenResults({}), new Map());
+});
+
+test("builds an exact-match query on a gebeurtenistype concept-URI", () => {
+  const uri = "https://data.cultureelerfgoed.nl/term/id/rn/2/a88b115d-ad65-4403-99aa-31210af8bd6d";
+  const query = buildGebeurtenisConceptQuery(uri);
+  assert.match(query, new RegExp(`ceo:heeftGebeurtenisNaam <${uri.replaceAll(".", "\\.")}>`));
+  assert.match(query, new RegExp(`ceo:heeftJuridischeStatus <${RCE_SEMANTICS.activeLegalStatus}>`));
+  assert.match(query, /LIMIT 100/);
+});
+
+test("builds an exact-match query on an actor concept-URI, joining the actorenrol-graph back to instanties-rce via heeftActorEnRol", () => {
+  const uri = "https://data.cultureelerfgoed.nl/term/id/rn/f8c2048b-3ddb-4f4b-93d8-12d92b61598b";
+  const query = buildActorConceptQuery(uri);
+  assert.match(query, new RegExp(`GRAPH <https://linkeddata\\.cultureelerfgoed\\.nl/graph/actorenrol> \\{\\s*\\?ar ceo:heeftActor <${uri.replaceAll(".", "\\.")}> \\.`));
+  assert.match(query, /ceo:heeftGebeurtenis\/ceo:heeftActorEnRol \?ar/);
+  assert.match(query, new RegExp(`ceo:heeftJuridischeStatus <${RCE_SEMANTICS.activeLegalStatus}>`));
+  assert.match(query, /LIMIT 100/);
 });

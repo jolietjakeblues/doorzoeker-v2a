@@ -174,3 +174,172 @@ CEO-namespace-eigenschap op Book, geen andere is gevonden bij een gerichte
 opgebouwd volgens exact hetzelfde patroon als de bestaande verrijkingen
 (afbeelding/groenaanleg/archeologisch terrein). Plan geschreven:
 [`005-bibliotheek-literatuur.md`](../vertical-slices/005-bibliotheek-literatuur.md).
+
+## Ruimtelijke "ligt in"-relatie Rijksmonument ↔ Werelderfgoed/Gezicht — verkend (2026-08-10)
+
+Uit de README's "nog niet gebouwd"-lijst: staat een Rijksmonument fysiek
+binnen een Werelderfgoed- of Gezicht-gebied? Live onderzocht op
+`rce/cho`, geen apart dataset dit keer.
+
+**Geen gemodelleerde eigenschap - exhaustief uitgesloten, niet alleen een
+steekproef.** `ligtInObject` (de property die al ArcheologischTerrein aan
+een Rijksmonument koppelt) heeft als domein/bereik in de ontologie de
+generieke `CultuurhistorischObject`-superklasse, dus in theorie zou hij
+ook Rijksmonument → Werelderfgoed/Gezicht kunnen koppelen. Een exacte
+`COUNT(*)` over de volle graaf levert **0** op voor beide combinaties, en
+een bredere check op *elke* eigenschap (niet alleen `ligtInObject`) tussen
+een Rijksmonument en een Werelderfgoed- of Gezicht-instantie levert ook
+niets op. De enige inkomende relaties die Werelderfgoed/Gezicht wél
+hebben (`Kennisregistratie`/`Naam` via `heeftBetrekkingOp`) zijn
+metadata-/naamregistraties, geen ruimtelijke koppeling. Conclusie: er is
+geen kant-en-klare property om op te zoeken; dit is puur een geometrische
+vraag.
+
+**Geometrisch wél mogelijk - de SPARQL-dienst ondersteunt GeoSPARQL.**
+`geof:sfWithin(?rmWkt, ?gebiedWkt)` werkt en geeft correcte resultaten:
+tegen de polygoon van Werelderfgoed "Molens bij Kinderdijk-Elshout"
+(wenr 818) levert dit precies de verwachte molens en het Wisboomgemaal op
+(rijksmonumentnummers 30541-30556 e.a.), niet een toevallige of lege set.
+
+**Maar te traag voor een live opzoeking op de huidige schaal.** Dezelfde
+`sfWithin`-check tegen die ene Kinderdijk-polygoon, maar dan zonder een
+plaatsnaam-voorfilter (dus over de volle ~62K Rijksmonumenten-graaf),
+duurde **14,2 seconden** voor een enkel Werelderfgoed-doel. Werelderfgoed
+telt 18 instanties (vergelijkbare kosten zouden dus al enkele minuten
+totaal kosten, eenmalig te doen), maar Gezicht telt 472 instanties -
+brute-force tegen alle 472 zou onwerkbaar lang duren zonder een
+bounding-box-voorfilter om het aantal kandidaat-Rijksmonumenten eerst drastisch te
+verkleinen.
+
+**Conclusie / vervolg indien opgepakt**: geen live per-zoekopdracht- of
+per-detailpagina-berekening bouwen (te traag, zou de bestaande
+enrichment-timingbudgetten ver overschrijden). Wel haalbaar als eenmalige
+offline batch: voor de 18 Werelderfgoed-instanties (klein, stabiel aantal
+- verandert zelden) de bijbehorende rijksmonumentnummers vooraf berekenen
+en als klein statisch bestand meeleveren met de app, in plaats van elke
+keer live te bevragen. Gezicht (472 instanties) zou eerst een
+bounding-box-voorfilter nodig hebben om diezelfde aanpak haalbaar te
+maken - niet onderzocht hoeveel dat de tijd per Gezicht zou terugbrengen.
+Plan geschreven voor de Werelderfgoed-helft (offline batch, geen live
+berekening): [`006-werelderfgoed-ligt-in.md`](../vertical-slices/006-werelderfgoed-ligt-in.md).
+Gezicht blijft bewust buiten deze eerste schijf.
+
+## `ceo:heeftGebeurtenis` — bouwgeschiedenis, actoren en meerdere adressen (verkend 2026-08-10)
+
+Gebruikersvraag: "bij Rijksmonumenten is meer data beschikbaar, soms meer
+adressen, soms een datering en actor (via heeftGebeurtenis)". Live
+onderzocht op `rce/cho`, geen apart dataset. Belangrijkste les vooraf:
+**de ontologie zegt niet altijd wat de data doet** - hieronder twee keer
+concreet aangetoond.
+
+### Padstructuur (empirisch bevestigd, niet uit de ontologie alleen)
+
+```
+Rijksmonument --heeftGebeurtenis--> Gebeurtenis
+  --heeftGebeurtenisNaam--> skos:Concept (rn/2-namespace, resolvebaar)
+  --heeftDatering--> Datering
+      --heeftBeginDatering--> BeginDatering (CHO-lokale proxy) --ceo:datum--> xsd:date, bv. "1850-01-01"
+      --heeftEindDatering--> EindDatering (proxy) --ceo:datum--> xsd:date
+      --heeftBetrouwbaarheid / heeftIndicatieNauwkeurigheid--> skos:Concept (rn/2, bv. "onbekend"/"globaal")
+  --heeftActorEnRol--> ActorEnRol
+      --heeftActor--> platte tekst-literal in graph/instanties-rce,
+                       maar resolvebare concept-URI in graph/actorenrol
+                       (zelfde ActorEnRol-subject-URI!) - zie hieronder
+      --heeftRol--> idem: literal in instanties-rce, URI in graph/actorenrol
+```
+
+`heeftGebeurtenisNaam` volgt het bekende patroon: een echte, resolvebare
+`rn/2`-concept-URI. Top-4 gebeurtenistypen (aantal *gebeurtenissen*, niet
+monumenten): "vervaardiging" (20.037), "niet bepaald" (9.888),
+"verbouwing" (2.653), "restauratie" (295) - een bruikbare, klikbare
+bouwgeschiedenis-classificatie, exact hetzelfde patroon als monumentaard/
+waardering.
+
+**`ceo:datum` op de begin-/einddatering-proxy is een gewone `xsd:date`-
+literal** (bv. "1850-01-01") - geen concept-opzoeking nodig voor de
+datering zelf. De `heeftBetrouwbaarheid`/`heeftIndicatieNauwkeurigheid`-
+concepten ("onbekend"/"globaal") zijn losse precisie-indicatoren op
+hetzelfde Datering-object, geen deel van de datumketen zelf - dit werd
+in een eerste (te snelle) query per ongeluk door elkaar gehaald door
+`?dateringNode ?p ?o` te vlak te bevragen; opsplitsen naar de losse
+properties gaf de juiste, ontrafelde structuur.
+
+### Correctie op een eerste, te snelle conclusie: `heeftActor`/`heeftRol` zíjn te resolven - via een aparte graph
+
+**Eerste inschatting (achterhaald, hieronder gecorrigeerd na een tip van
+de gebruiker om specifiek naar `graph/actorenrol` te kijken):** de
+ontologie declareert `rdfs:range skos:Concept` voor beide properties,
+maar een query op `graph/instanties-rce` alleen toont platte
+tekst-literals - `heeftActor` → `"Kramer, Hendrik ; Stad Leeuwarden"`
+(naam + provincie/stad als één string), `heeftRol` →
+`"architect / bouwkundige / constructeur"`. Dat leek een
+ontologie-afwijking, maar is het niet.
+
+**Werkelijke structuur: `graph/instanties-rce` bevat een gedenormaliseerde
+kopie, `graph/actorenrol` de resolvebare identiteit.** Dezelfde
+ActorEnRol-subject-URI (bv.
+`https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/actorenrol/55555`)
+bestaat in **beide** named graphs op hetzelfde `rce/cho`-endpoint:
+
+- in `graph/instanties-rce` (waar Doorzoeker al standaard op zoekt):
+  `heeftActor`/`heeftRol` zijn platte literals, zoals hierboven;
+- in de **aparte** `graph/actorenrol` (9.867 `ActorEnRol`- en 4.053
+  `skos:Concept`-instanties): diezelfde subject-URI heeft `heeftActor`/
+  `heeftRol` als échte concept-URI's onder de
+  `https://data.cultureelerfgoed.nl/term/id/rn/<uuid>`-namespace (let op:
+  `rn/`, **niet** `rn/2/` - een verwante maar andere namespace dan de
+  Referentienetwerk-2-concepten die de rest van dit document gebruikt).
+  Die concepten hebben zelf weer een `skos:prefLabel` die exact het
+  literal uit `instanties-rce` reproduceert (`"Kramer, Hendrik ; Stad
+  Leeuwarden"`) - dus dezelfde weergavetekst, nu met een echte identiteit
+  erachter.
+
+Met een extra `GRAPH <graph/actorenrol> { ?ar ceo:heeftActor ?actorUri }`
+naast de bestaande `graph/instanties-rce`-patronen (gejoined op dezelfde
+`?ar`-URI) is de actor dus wél als concept-URI op te halen. Live geverifieerd:
+**6.979 van de 18.615 Rijksmonumenten met een Gebeurtenis (~37,5%) hebben
+zo'n resolvebare actor-URI.** Het `"Naam ; Provincie"`-stringformaat blijft
+overigens wel identiek aan de niet-ABR-actorreferenties uit de
+Referentienetwerk-2-dataset (bv. "Blokdijk, M. ; Noord-Brabant") - een
+algemene RCE-notatieconventie voor personen/organisaties zonder aparte
+naamregistratie, nu dus in *twee* aparte plekken met dezelfde vorm
+teruggevonden.
+
+`heeftRol` resolveert via dezelfde route naar een eigen concept-URI, maar
+het is een klein, generiek vocabulaire (rollen als "architect",
+"aannemer", "beeldhouwer") - klikken daarop zou een enorme, weinig
+zeggende resultatenset opleveren. Alleen de **actor**-URI is dus
+interessant als klikbare identiteit, niet de rol.
+
+### Omvang en scheefheid
+
+- **18.615 van de ~62.000 Rijksmonumenten (~30%) hebben minstens één
+  Gebeurtenis** - een aanzienlijk deel, groter dan groenaanleg (1.403) of
+  literatuur (6.511), in de buurt van msp_indicatie (13.988).
+- Van de 32.873 Gebeurtenis-instanties heeft maar **11.581 (~35%) ook
+  daadwerkelijk een `heeftActorEnRol`** - actor/rol is dus vaker afwezig
+  dan aanwezig, zelfs wanneer er wel een gebeurtenis geregistreerd is.
+- **Meerdere BAG-adressen per Rijksmonument komen voor, en kunnen extreem
+  schever verdeeld zijn dan verwacht**: rijksmonumentnummer 77667 heeft
+  **513** `heeftBasisregistratieRelatie/heeftBAGRelatie`-verwijzingen,
+  67413 heeft er 486, 66204 heeft er 301 (vermoedelijk grote ensembles/
+  gebouwencomplexen met veel losse adreseenheden). Een eventuele
+  "toon alle adressen"-functie heeft dus, net als literatuur eerder,
+  sowieso een cap nodig - dit is geen randgeval maar een reëel scenario.
+
+### Conclusie
+
+Bouwgeschiedenis (gebeurtenistype + datum) is een sterke, schone
+kandidaat voor een vertical-slice-verrijking - zelfde klikbare-concept-
+patroon als monumentaard/waardering, met een echte `xsd:date` erbij, op
+~30% van de Rijksmonumenten. **Actor is, na de correctie hierboven, ook
+klikbaar te maken** (~37,5% van de Gebeurtenis-monumenten heeft een
+resolvebare actor-URI via `graph/actorenrol`) - een architect/aannemer
+aanklikken en alle andere rijksmonumenten vinden waar diezelfde actor aan
+werkte, exact dezelfde "label is presentatie, URI is identiteit"-lijn als
+monumentaard/waardering, nu toegepast op personen/organisaties in plaats
+van classificaties. Rol blijft bewust niet klikbaar (te generiek
+vocabulaire, weinig zeggende resultaten). Adressen tonen vereist een cap
+vanwege de geobserveerde uitschieters (500+), en blijft buiten scope.
+**Gebouwd en live geverifieerd (2026-08-10)**:
+[`007-bouwgeschiedenis.md`](../vertical-slices/007-bouwgeschiedenis.md).

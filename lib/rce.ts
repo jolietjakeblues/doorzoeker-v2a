@@ -6,6 +6,11 @@ const GEZICHT_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/gezicht_hvdl
 const IMAGE_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/image-1";
 const GROENAANLEG_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/groenaanleg";
 const MSP_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/msp_indicatie";
+// Zelfde ActorEnRol-subject-URI's als in INSTANCES_GRAPH, maar hier heeft
+// heeftActor/heeftRol een echte concept-URI (namespace term/id/rn/<uuid>,
+// zonder de "2") in plaats van de platte tekst-literal die INSTANCES_GRAPH
+// voor diezelfde properties geeft - zie docs/vertical-slices/007-bouwgeschiedenis.md.
+const ACTORENROL_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/actorenrol";
 const CHT_THESAURUS_GRAPH = "https://data.cultureelerfgoed.nl/term/id/cht/thesaurus";
 const ABR_THESAURUS_GRAPH = "https://data.cultureelerfgoed.nl/term/id/abr/thesaurus";
 // De twee hoofdtakken (skos:hasTopConcept) van de CHT waar Termennetwerk een
@@ -84,10 +89,17 @@ export type RceMonument = {
   groenaanleg?: Groenaanleg;
   msp?: boolean;
   literature?: LiteratureRef[];
+  gebeurtenissen?: Gebeurtenis[];
 };
 
 export type MonumentImage = { url: string; title?: string; license?: string; sourceUrl?: string };
 export type Groenaanleg = { typeAanleg?: string; categorie?: string };
+// Bouwgeschiedenis via ceo:heeftGebeurtenis - zie
+// docs/vertical-slices/007-bouwgeschiedenis.md. `actorConceptUri` is alleen
+// gevuld wanneer de aparte actorenrol-graph een resolvebare concept-URI
+// teruggeeft voor deze actor (niet gegarandeerd - zie de verkenning).
+export type GebeurtenisActor = { naam: string; rol?: string; actorConceptUri?: string };
+export type Gebeurtenis = { naam: string; naamConceptUri?: string; beginDatum?: string; eindDatum?: string; actoren: GebeurtenisActor[] };
 // Uit de aparte rce/bibliotheek-dataset (niet rce/cho zelf) - zie
 // docs/vertical-slices/005-bibliotheek-literatuur.md. Query/parse-logica
 // leeft in lib/server/bibliotheek-adapter.ts, net als bij de
@@ -684,6 +696,105 @@ export function parseGroenaanlegResults(document: unknown): Map<string, Groenaan
     byMonument.set(monumentUri, { typeAanleg, categorie });
   }
   return byMonument;
+}
+
+// Bouwgeschiedenis (taak: docs/vertical-slices/007-bouwgeschiedenis.md).
+// De actorenrol-join staat bewust GENEST binnen dezelfde OPTIONAL die ?ar
+// bindt: een aparte, niet-geneste OPTIONAL met een (soms) ongebonden ?ar
+// laat de query-engine matchen tegen alle ~9.900 ActorEnRol-triples in de
+// actorenrol-graph tegelijk - een kruisproduct-explosie die live is
+// aangetoond (11+ miljoen tekens resultaat op één monument) voordat deze
+// vorm empirisch is vastgesteld als de juiste.
+export function buildGebeurtenissenQuery(choUris: string[]) {
+  const values = choUris.map((uri) => `<${uri}>`).join(" ");
+  return `PREFIX ceo: <${CEO}>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT ?rm ?g ?naamUri ?naamLabel ?beginDatum ?eindDatum ?ar ?actorNaam ?actorRol ?actorConceptUri WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    VALUES ?rm { ${values} }
+    ?rm ceo:heeftGebeurtenis ?g .
+    OPTIONAL { ?g ceo:heeftGebeurtenisNaam ?naamUri . ?naamUri skos:prefLabel ?naamLabel . }
+    OPTIONAL { ?g ceo:heeftDatering/ceo:heeftBeginDatering/ceo:datum ?beginDatum . }
+    OPTIONAL { ?g ceo:heeftDatering/ceo:heeftEindDatering/ceo:datum ?eindDatum . }
+    OPTIONAL {
+      ?g ceo:heeftActorEnRol ?ar .
+      OPTIONAL { ?ar ceo:heeftActor ?actorNaam . }
+      OPTIONAL { ?ar ceo:heeftRol ?actorRol . }
+      OPTIONAL { GRAPH <${ACTORENROL_GRAPH}> { ?ar ceo:heeftActor ?actorConceptUri . } }
+    }
+  }
+}`;
+}
+
+export function parseGebeurtenissenResults(document: unknown): Map<string, Gebeurtenis[]> {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  const byMonument = new Map<string, Gebeurtenis[]>();
+  if (!Array.isArray(bindings)) return byMonument;
+
+  const byEvent = new Map<string, { rm: string; gebeurtenis: Gebeurtenis }>();
+  for (const binding of bindings) {
+    const rm = binding.rm?.value;
+    const eventUri = binding.g?.value;
+    const naam = binding.naamLabel?.value;
+    if (!rm || !eventUri || !naam) continue;
+    const existing = byEvent.get(eventUri);
+    const gebeurtenis = existing?.gebeurtenis ?? {
+      naam,
+      naamConceptUri: binding.naamUri?.value,
+      beginDatum: binding.beginDatum?.value,
+      eindDatum: binding.eindDatum?.value,
+      actoren: [],
+    };
+    if (!existing) byEvent.set(eventUri, { rm, gebeurtenis });
+    const actorNaam = binding.actorNaam?.value;
+    if (actorNaam && !gebeurtenis.actoren.some((actor) => actor.naam === actorNaam)) {
+      gebeurtenis.actoren.push({ naam: actorNaam, rol: binding.actorRol?.value, actorConceptUri: binding.actorConceptUri?.value });
+    }
+  }
+
+  for (const { rm, gebeurtenis } of byEvent.values()) {
+    const forMonument = byMonument.get(rm) ?? [];
+    forMonument.push(gebeurtenis);
+    byMonument.set(rm, forMonument);
+  }
+  const MAX_PER_MONUMENT = 10;
+  for (const [rm, events] of byMonument) {
+    events.sort((a, b) => (a.beginDatum ?? "9999").localeCompare(b.beginDatum ?? "9999"));
+    byMonument.set(rm, events.slice(0, MAX_PER_MONUMENT));
+  }
+  return byMonument;
+}
+
+// Exacte conceptzoekopdracht op het gebeurtenistype (bv. "vervaardiging",
+// "restauratie") - zelfde patroon als monumentaard/waardering.
+export function buildGebeurtenisConceptQuery(conceptUri: string) {
+  return `PREFIX ceo: <${CEO}>
+SELECT ?rmnr WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?rm a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ; ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> ;
+        ceo:heeftGebeurtenis ?g .
+    ?g ceo:heeftGebeurtenisNaam <${conceptUri}> .
+  }
+}
+LIMIT 100`;
+}
+
+// Exacte conceptzoekopdracht op de actor (architect/aannemer/...) - anders
+// dan de andere conceptzoekopdrachten moet deze over twee named graphs op
+// hetzelfde rce/cho-endpoint heen: de match zelf zit in de actorenrol-graph,
+// de weg terug naar het Rijksmonument in instanties-rce.
+export function buildActorConceptQuery(actorConceptUri: string) {
+  return `PREFIX ceo: <${CEO}>
+SELECT ?rmnr WHERE {
+  GRAPH <${ACTORENROL_GRAPH}> {
+    ?ar ceo:heeftActor <${actorConceptUri}> .
+  }
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?rm a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ; ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> ;
+        ceo:heeftGebeurtenis/ceo:heeftActorEnRol ?ar .
+  }
+}
+LIMIT 100`;
 }
 
 // De leden van een complex zijn bewust NIET onderdeel van de gewone

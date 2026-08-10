@@ -113,6 +113,60 @@ test("dispatches to the archeologische-waardering concept search when veld=waard
   assert.equal(document.results[0].monumentNumber, "45708");
 });
 
+test("dispatches to the gebeurtenis concept search when veld=gebeurtenis", async (context) => {
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalCaches === undefined) delete globalThis.caches;
+    else globalThis.caches = originalCaches;
+  });
+  globalThis.caches = { default: { match() { throw new Error("cache unavailable"); }, put() { throw new Error("cache unavailable"); } } };
+  const conceptUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/a88b115d-ad65-4403-99aa-31210af8bd6d";
+  globalThis.fetch = async (input) => {
+    const url = decodeURIComponent(String(input));
+    if (url.includes("heeftMonumentAard") && url.includes("SELECT ?rmnr")) throw new Error("moet niet op monumentaard zoeken wanneer veld=gebeurtenis is meegegeven");
+    if (url.includes("heeftGebeurtenisNaam") && url.includes("SELECT ?rmnr")) {
+      return Response.json({ results: { bindings: [{ rmnr: { value: "10047" } }] } });
+    }
+    if (url.includes("perceelnummer")) return Response.json({ results: { bindings: [] } });
+    if (url.includes("GROUP_CONCAT")) return Response.json({ results: { bindings: [{ rmnr: { value: "10047" } }] } });
+    return Response.json({ results: { bindings: [{ cho: { value: "rm:10047" }, choi: { value: "10047" }, rmnr: { value: "10047" } }] } });
+  };
+
+  const response = await GET(new Request(`https://doorzoeker.test/api/rce/search?concept=${encodeURIComponent(conceptUri)}&veld=gebeurtenis`, { headers: { "cf-connecting-ip": "test-gebeurtenis-success" } }));
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.equal(document.results[0].monumentNumber, "10047");
+});
+
+test("dispatches to the actor concept search when veld=actor", async (context) => {
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalCaches === undefined) delete globalThis.caches;
+    else globalThis.caches = originalCaches;
+  });
+  globalThis.caches = { default: { match() { throw new Error("cache unavailable"); }, put() { throw new Error("cache unavailable"); } } };
+  const conceptUri = "https://data.cultureelerfgoed.nl/term/id/rn/f8c2048b-3ddb-4f4b-93d8-12d92b61598b";
+  globalThis.fetch = async (input) => {
+    const url = decodeURIComponent(String(input));
+    if (url.includes("heeftMonumentAard") && url.includes("SELECT ?rmnr")) throw new Error("moet niet op monumentaard zoeken wanneer veld=actor is meegegeven");
+    if (url.includes("heeftActorEnRol") && url.includes("SELECT ?rmnr")) {
+      return Response.json({ results: { bindings: [{ rmnr: { value: "10047" } }] } });
+    }
+    if (url.includes("perceelnummer")) return Response.json({ results: { bindings: [] } });
+    if (url.includes("GROUP_CONCAT")) return Response.json({ results: { bindings: [{ rmnr: { value: "10047" } }] } });
+    return Response.json({ results: { bindings: [{ cho: { value: "rm:10047" }, choi: { value: "10047" }, rmnr: { value: "10047" } }] } });
+  };
+
+  const response = await GET(new Request(`https://doorzoeker.test/api/rce/search?concept=${encodeURIComponent(conceptUri)}&veld=actor`, { headers: { "cf-connecting-ip": "test-actor-success" } }));
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.equal(document.results[0].monumentNumber, "10047");
+});
+
 test("attaches gekoppelde literatuur from the separate rce/bibliotheek dataset onto a search result", async (context) => {
   // Taak #6 / slice 005: literatuur is een verrijking op het bestaande
   // /api/rce/search-contract, geen eigen route - net als groenaanleg en

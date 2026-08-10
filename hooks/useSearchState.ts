@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { browseRceObjects, searchByArcheologischeWaarderingConcept, searchByMonumentAardConcept, searchRceMonuments } from "@/lib/rce-client";
+import { browseRceObjects, searchByActorConcept, searchByArcheologischeWaarderingConcept, searchByGebeurtenisConcept, searchByMonumentAardConcept, searchRceMonuments } from "@/lib/rce-client";
 import { EMPTY_ITEMS, EMPTY_URL_STATE, readUrlState, statusLabel, toItem, type Item } from "@/lib/heritage-view-model";
 
 // Alle zoek-, filter-, resultaat- en URL-state van Doorzoeker leeft in één
@@ -122,7 +122,7 @@ export function useSearchState() {
   // waardering-label in de resultatenlijst of het detailpaneel. `veld`
   // bepaalt via welke eigenschap gezocht wordt (de aanroeper weet dit al op
   // basis van welk label is aangeklikt).
-  async function executeConceptSearch(concept: { uri: string; label: string }, veld: "monumentaard" | "waardering" = "monumentaard") {
+  async function executeConceptSearch(concept: { uri: string; label: string }, veld: "monumentaard" | "waardering" | "gebeurtenis" | "actor" = "monumentaard") {
     searchController.current?.abort();
     const controller = new AbortController();
     searchController.current = controller;
@@ -144,7 +144,11 @@ export function useSearchState() {
     try {
       const records = veld === "waardering"
         ? await searchByArcheologischeWaarderingConcept(concept.uri, controller.signal)
-        : await searchByMonumentAardConcept(concept.uri, controller.signal);
+        : veld === "gebeurtenis"
+          ? await searchByGebeurtenisConcept(concept.uri, controller.signal)
+          : veld === "actor"
+            ? await searchByActorConcept(concept.uri, controller.signal)
+            : await searchByMonumentAardConcept(concept.uri, controller.signal);
       if (sequence !== searchSequence.current) return;
       setRemoteResults(records.map((record) => toItem(record)));
       setHasMore(false);

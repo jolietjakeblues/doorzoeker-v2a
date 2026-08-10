@@ -1,5 +1,14 @@
-import { browseRceObjects, searchByArcheologischeWaarderingConcept, searchByMonumentAardConcept, searchRceMonuments } from "../../../../lib/server/rce-adapter.ts";
+import { browseRceObjects, searchByActorConcept, searchByArcheologischeWaarderingConcept, searchByGebeurtenisConcept, searchByMonumentAardConcept, searchRceMonuments } from "../../../../lib/server/rce-adapter.ts";
 import { CONCEPT_URI_PATTERN } from "../concept/route.ts";
+
+type ConceptVeld = "monumentaard" | "waardering" | "gebeurtenis" | "actor";
+
+function searchByConceptField(veld: ConceptVeld, conceptUri: string, signal?: AbortSignal) {
+  if (veld === "waardering") return searchByArcheologischeWaarderingConcept(conceptUri, signal);
+  if (veld === "gebeurtenis") return searchByGebeurtenisConcept(conceptUri, signal);
+  if (veld === "actor") return searchByActorConcept(conceptUri, signal);
+  return searchByMonumentAardConcept(conceptUri, signal);
+}
 
 export const runtime = "edge";
 
@@ -76,7 +85,7 @@ export async function GET(request: Request) {
     // (monumentaard).
     const conceptParam = url.searchParams.get("concept");
     const veldParam = url.searchParams.get("veld");
-    const veld = veldParam === "waardering" ? "waardering" : "monumentaard";
+    const veld: ConceptVeld = veldParam === "waardering" || veldParam === "gebeurtenis" || veldParam === "actor" ? veldParam : "monumentaard";
     if (conceptParam && !CONCEPT_URI_PATTERN.test(conceptParam)) {
       return Response.json({ error: "Ongeldige concept-URI." }, { status: 400 });
     }
@@ -106,9 +115,7 @@ export async function GET(request: Request) {
     const results = browse
       ? await browseRceObjects(browse, request.signal)
       : conceptParam
-        ? veld === "waardering"
-          ? await searchByArcheologischeWaarderingConcept(conceptParam, request.signal)
-          : await searchByMonumentAardConcept(conceptParam, request.signal)
+        ? await searchByConceptField(veld, conceptParam, request.signal)
         : await searchRceMonuments(query, request.signal, page);
     const body = JSON.stringify({ results });
     const response = new Response(body, {

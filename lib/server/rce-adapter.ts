@@ -1,4 +1,5 @@
 import {
+  buildActorConceptQuery,
   buildArcheologischeWaarderingConceptQuery,
   buildArcheologischOnderzoekDetailsQuery,
   buildArcheologischOnderzoekDiscoveryQueries,
@@ -6,6 +7,8 @@ import {
   buildComplexenQuery,
   buildComplexMembersQuery,
   buildComplexQuery,
+  buildGebeurtenisConceptQuery,
+  buildGebeurtenissenQuery,
   buildGroenaanlegQuery,
   buildImageQuery,
   buildMonumentAardConceptQuery,
@@ -31,6 +34,7 @@ import {
   parseConceptSearchMatches,
   parseDiscoveryBranchResults,
   parseFacetResults,
+  parseGebeurtenissenResults,
   parseGezichtResults,
   parseGroenaanlegResults,
   parseImageResults,
@@ -53,23 +57,24 @@ const REST_ENDPOINT = "https://api.linkeddata.cultureelerfgoed.nl/queries/rce/re
 
 type SparqlBinding = Record<string, { value?: string } | undefined>;
 
-// Six independent enrichment lookups keyed by the monument's own CHO subject
-// URI (or, for images/MSP/literatuur, its rijksmonumentnummer - that's the
-// join key those graphs themselves use), run in parallel: archaeological
-// terrain data (only for monuments with an archaeological monumentaard),
-// complex membership, a representative photo, historic garden/landscape
-// classification, MSP-aanwijzing, and gekoppelde literatuur uit de aparte
-// rce/bibliotheek-dataset (only relevant for their respective subsets, but
-// cheap enough to just ask for all of them). None of these is a parallel
-// search - all six just attach extra facts to Rijksmonument records already
-// found.
+// Seven independent enrichment lookups keyed by the monument's own CHO
+// subject URI (or, for images/MSP/literatuur, its rijksmonumentnummer -
+// that's the join key those graphs themselves use), run in parallel:
+// archaeological terrain data (only for monuments with an archaeological
+// monumentaard), complex membership, a representative photo, historic
+// garden/landscape classification, MSP-aanwijzing, gekoppelde literatuur uit
+// de aparte rce/bibliotheek-dataset, en bouwgeschiedenis (heeftGebeurtenis,
+// zie 007-bouwgeschiedenis.md) (only relevant for their respective subsets,
+// but cheap enough to just ask for all of them). None of these is a
+// parallel search - all seven just attach extra facts to Rijksmonument
+// records already found.
 async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): Promise<RceMonument[]> {
   const choUris = monuments.map((monument) => monument.sourceUrl).filter(Boolean);
   if (!choUris.length) return monuments;
   const archaeological = monuments.filter((monument) => monument.monumentNature?.toLocaleLowerCase("nl").includes("archeolog") && monument.sourceUrl);
   const monumentNumbers = monuments.map((monument) => monument.monumentNumber).filter(Boolean);
 
-  const [terreinenByMonument, complexesByMonument, imagesByNumber, groenaanlegByMonument, mspNumbers, literatuurByNumber] = await Promise.all([
+  const [terreinenByMonument, complexesByMonument, imagesByNumber, groenaanlegByMonument, mspNumbers, literatuurByNumber, gebeurtenissenByMonument] = await Promise.all([
     archaeological.length
       ? timed("enrich.terrein", () => fetchSparql(buildArcheologischTerreinQuery(archaeological.map((monument) => monument.sourceUrl)), signal).then(parseArcheologischTerreinResults))
       : Promise.resolve(new Map<string, ArcheologischTerrein[]>()),
@@ -84,6 +89,7 @@ async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): 
     monumentNumbers.length
       ? timed("enrich.literatuur", () => fetchLiteratuur(monumentNumbers, signal))
       : Promise.resolve(new Map<string, RceMonument["literature"]>()),
+    timed("enrich.gebeurtenissen", () => fetchSparql(buildGebeurtenissenQuery(choUris), signal).then(parseGebeurtenissenResults)),
   ]);
 
   return monuments.map((monument) => {
@@ -93,7 +99,8 @@ async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): 
     const groenaanleg = groenaanlegByMonument.get(monument.sourceUrl);
     const msp = mspNumbers.has(monument.monumentNumber);
     const literature = literatuurByNumber.get(monument.monumentNumber);
-    if (!archaeologicalSites && !complexes && !image && !groenaanleg && !msp && !literature) return monument;
+    const gebeurtenissen = gebeurtenissenByMonument.get(monument.sourceUrl);
+    if (!archaeologicalSites && !complexes && !image && !groenaanleg && !msp && !literature && !gebeurtenissen) return monument;
     return {
       ...monument,
       ...(archaeologicalSites ? { archaeologicalSites } : {}),
@@ -102,6 +109,7 @@ async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): 
       ...(groenaanleg ? { groenaanleg } : {}),
       ...(msp ? { msp } : {}),
       ...(literature ? { literature } : {}),
+      ...(gebeurtenissen ? { gebeurtenissen } : {}),
     };
   });
 }
@@ -178,6 +186,14 @@ export async function searchByMonumentAardConcept(conceptUri: string, signal?: A
 
 export async function searchByArcheologischeWaarderingConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
   return searchByConceptMatchQuery(buildArcheologischeWaarderingConceptQuery(conceptUri), signal);
+}
+
+export async function searchByGebeurtenisConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
+  return searchByConceptMatchQuery(buildGebeurtenisConceptQuery(conceptUri), signal);
+}
+
+export async function searchByActorConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
+  return searchByConceptMatchQuery(buildActorConceptQuery(conceptUri), signal);
 }
 
 // Archeologisch onderzoeksgebied is geen kleine collectie zoals Werelderfgoed/
