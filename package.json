@@ -21,13 +21,13 @@
         "react-dom": "^19.2.8"
     },
     "devDependencies": {
-        "@cloudflare/vite-plugin": "^1.51.0",
+        "@cloudflare/vite-plugin": "^1.51.1",
         "@cloudflare/workers-types": "^5.20260804.1",
         "@eslint/js": "9.39.4",
         "@next/eslint-plugin-next": "16.3.0",
         "@playwright/test": "^1.62.1",
         "@types/leaflet": "^1.9.21",
-        "@types/node": "22.19.19",
+        "@types/node": "26.1.2",
         "@types/react": "19.2.14",
         "@types/react-dom": "19.2.3",
         "@vitejs/plugin-react": "6.0.2",
@@ -42,7 +42,7 @@
         "typescript-eslint": "8.59.3",
         "vinext": "^1.0.0-beta.4",
         "vite": "^8.2.1",
-        "wrangler": "^4.119.0"
+        "wrangler": "^4.120.0"
     },
     "type": "module"
 }
