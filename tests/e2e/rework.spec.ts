@@ -258,3 +258,24 @@ test("browser-terug en -vooruit herstellen de zoekopdracht", async ({
   await page.goForward();
   await expect(search).toHaveValue("Tweede zoekactie");
 });
+
+test("een oude verbindingsfout verdwijnt zodra een nieuwe zoekterm wordt ingevoerd", async ({
+  page,
+}) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) =>
+    route.fulfill({ status: 502, json: { error: "Tijdelijk niet bereikbaar" } }),
+  );
+
+  const search = page.getByRole("combobox", { name: "Zoeken" });
+  await search.fill("Eerste zoekactie");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(
+    page.getByText("De RCE Linked Data-service is momenteel niet bereikbaar."),
+  ).toBeVisible();
+
+  await search.fill("vuurtoren");
+  await expect(
+    page.getByText("De RCE Linked Data-service is momenteel niet bereikbaar."),
+  ).toHaveCount(0);
+});

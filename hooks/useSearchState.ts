@@ -184,8 +184,21 @@ export function useSearchState() {
     setExcludedStatuses([]);
   }
 
+  // Een mislukte zoekopdracht hoort niet als rode waarschuwing te blijven
+  // staan zodra iemand alweer een nieuwe term invoert. Op dat moment is de
+  // fout oud nieuws; de nieuwe zoekopdracht is nog niet uitgevoerd.
+  function editQuery(value: string) {
+    setQuery(value);
+    if (selectedTerm?.label !== value) setSelectedTerm(undefined);
+    if (remoteState === "error") {
+      setActive("");
+      setRemoteResults(null);
+      setRemoteState("idle");
+    }
+  }
+
   function selectTermSuggestion(term: SelectedTermIdentity) {
-    setQuery(term.label);
+    editQuery(term.label);
     setSelectedTerm(term);
   }
 
@@ -466,7 +479,7 @@ export function useSearchState() {
 
   return {
     query,
-    setQuery,
+    setQuery: editQuery,
     active,
     view,
     setView,
