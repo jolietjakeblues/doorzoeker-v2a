@@ -55,6 +55,7 @@ export type Item = {
   legalStatus?: string;
   originalFunctionNames?: string[];
   currentFunctionNames?: string[];
+  functionConcepts?: { uri: string; label: string }[];
   typeNames?: string[];
   parcels?: RceParcel[];
   archaeologicalSites?: ArcheologischTerrein[];
@@ -105,6 +106,8 @@ export type LinkedConcept = {
 
 export function linkedConcepts(item: Item): LinkedConcept[] {
   const concepts: LinkedConcept[] = [];
+  for (const concept of item.functionConcepts ?? [])
+    concepts.push({ ...concept, field: "functie", group: "Functie" });
   if (item.monumentAardConcept)
     concepts.push({
       ...item.monumentAardConcept,
@@ -370,6 +373,7 @@ export function toItem(record: RceMonument): Item {
     legalStatus: record.legalStatus,
     originalFunctionNames,
     currentFunctionNames: record.currentFunctionNames,
+    functionConcepts: record.functionConcepts,
     typeNames: record.typeNames,
     lat: record.lat ?? 0,
     lng: record.lng ?? 0,

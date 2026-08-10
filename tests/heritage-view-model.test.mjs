@@ -11,6 +11,9 @@ const base = { objectNumber: "cho-42" };
 test("collects only linked concepts that support an exact search", () => {
   assert.deepEqual(
     linkedConcepts({
+      functionConcepts: [
+        { uri: "https://example.test/woonhuis", label: "Woonhuis" },
+      ],
       archaeologicalValuation: "Hoge archeologische waarde",
       archaeologicalValuationConceptUri: "https://example.test/waardering",
       archaeologicalMaterials: [
@@ -21,6 +24,12 @@ test("collects only linked concepts that support an exact search", () => {
       ],
     }),
     [
+      {
+        uri: "https://example.test/woonhuis",
+        label: "Woonhuis",
+        field: "functie",
+        group: "Functie",
+      },
       {
         uri: "https://example.test/waardering",
         label: "Hoge archeologische waarde",

@@ -335,12 +335,6 @@ header p a {
   font-size: 12px;
   line-height: 1.5;
 }
-.keyword-list { display: grid; gap: .4rem; }
-.keyword-list button { align-items: baseline; background: transparent; border: 0; border-bottom: 1px solid #d7dfe4; color: #153f64; cursor: pointer; display: grid; font: inherit; grid-template-columns: minmax(0, 1fr) auto; padding: .45rem 0; text-align: left; }
-.keyword-list button span { font-weight: 650; }
-.keyword-list button small { color: #5d6a72; grid-column: 1; }
-.keyword-list button em { font-style: normal; grid-column: 2; grid-row: 1 / span 2; }
-.keyword-list button:hover span { text-decoration: underline; }
 .results-help, .detail-guide { color: #52636d; font-size: .92rem; }
 .results-help { margin: 0 0 1rem; }
 .detail-guide { margin: 0 0 1.2rem; }
@@ -563,6 +557,9 @@ h2 {
 .cards article:hover {
   border-color: var(--rce-blue);
 }
+.cards article.heritage-card {
+  grid-template-columns: 140px minmax(0, 1fr);
+}
 .tile {
   display: grid;
   place-content: center;
@@ -713,12 +710,18 @@ h2 {
   color: var(--rce-blue);
   font-size: 22px;
 }
-.open span { display: none; }
-.open b { font-size: 1.35rem; }
-@media (min-width: 900px) {
-  .open { gap: .45rem; padding-inline: .85rem; width: auto; }
-  .open span { display: inline; white-space: nowrap; }
+.card-open {
+  align-items: center;
+  background: none;
+  border: 0;
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 700;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 0;
 }
+.card-open b { font-size: 18px; }
 .open:hover {
   background: var(--rce-blue);
   color: #fff;
@@ -1166,10 +1169,13 @@ h2 {
   .cards article {
     grid-template-columns: 90px 1fr;
   }
+  .cards article.heritage-card {
+    grid-template-columns: 90px minmax(0, 1fr);
+  }
   .copy > p:not(.address) {
     display: none;
   }
-  .open {
+  .cards article > .open {
     position: absolute;
     right: 12px;
     bottom: 12px;
@@ -1207,6 +1213,9 @@ h2 {
     padding: 0 14px;
   }
   .cards article {
+    grid-template-columns: 1fr;
+  }
+  .cards article.heritage-card {
     grid-template-columns: 1fr;
   }
   .tile {

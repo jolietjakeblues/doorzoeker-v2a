@@ -8,7 +8,6 @@ import { CardDescription, HeritageResultCard } from "./HeritageResultCard";
 import { HeritageDetailFacts } from "./HeritageDetailFacts";
 import {
   MONUMENT_REGISTER_BASE_URL,
-  linkedConcepts,
   primaryIdentifier,
   statusLabel,
   typeBadge,
@@ -113,25 +112,6 @@ export default function Home() {
   const contextStatuses = [
     ...new Set(objectTypeResults.map((item) => statusLabel(item.objectType))),
   ];
-  const contextConcepts = useMemo(() => {
-    const concepts = new Map<
-      string,
-      ReturnType<typeof linkedConcepts>[number] & { count: number }
-    >();
-    for (const item of objectTypeResults) {
-      const seen = new Set<string>();
-      for (const concept of linkedConcepts(item)) {
-        const key = `${concept.field}|${concept.uri}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        const current = concepts.get(key);
-        concepts.set(key, { ...concept, count: (current?.count ?? 0) + 1 });
-      }
-    }
-    return [...concepts.values()].sort(
-      (a, b) => b.count - a.count || a.label.localeCompare(b.label, "nl"),
-    );
-  }, [objectTypeResults]);
   const contextMatchSources = [
     ...new Set(
       objectTypeResults
@@ -413,33 +393,6 @@ export default function Home() {
                   ))}
                 </select>
               </label>
-            </fieldset>
-          )}
-          {contextConcepts.length > 0 && (
-            <fieldset className="keyword-filter">
-              <legend>Trefwoorden</legend>
-              <details className="hint">
-                <summary>Wat staat hier?</summary>
-                <p>
-                  Dit zijn begrippen die werkelijk aan de geladen resultaten
-                  zijn gekoppeld. Meer begrippen en brongegevens staan bij het
-                  afzonderlijke object.
-                </p>
-              </details>
-              <div className="keyword-list">
-                {contextConcepts.map((concept) => (
-                  <button
-                    key={`${concept.field}|${concept.uri}`}
-                    type="button"
-                    onClick={() => void executeConceptSearch(concept, concept.field)}
-                    title={`Zoek op dit RCE-begrip (${concept.group})`}
-                  >
-                    <span>{concept.label}</span>
-                    <small>{concept.group}</small>
-                    <em>{concept.count}</em>
-                  </button>
-                ))}
-              </div>
             </fieldset>
           )}
           {contextMatchSources.length > 0 && (
