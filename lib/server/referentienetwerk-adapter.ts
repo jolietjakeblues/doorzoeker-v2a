@@ -6,7 +6,7 @@ import { fetchSparql, timed } from "./sparql-client.ts";
 // Referentienetwerk-dienst, niet op rce/cho zelf. Zie
 // docs/vertical-slices/004-referentienetwerk-concepten.md voor de
 // empirische onderbouwing.
-const REFERENTIENETWERK_ENDPOINT = "https://api.linkeddata.cultureelerfgoed.nl/datasets/thesauri/referentienetwerk/sparql";
+export const REFERENTIENETWERK_ENDPOINT = "https://api.linkeddata.cultureelerfgoed.nl/datasets/thesauri/referentienetwerk/sparql";
 
 export type ConceptRef = { uri: string; label: string };
 export type ResolvedConcept = ConceptRef & { schemeUri?: string; schemeLabel?: string; broader?: ConceptRef[] };

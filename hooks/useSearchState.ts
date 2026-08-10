@@ -16,6 +16,7 @@ import {
   type ConceptField,
   type Item,
   type MapViewport,
+  type SelectedTermIdentity,
 } from "@/lib/heritage-view-model";
 
 // Alle zoek-, filter-, resultaat- en URL-state van Doorzoeker leeft in één
@@ -42,6 +43,9 @@ export function useSearchState() {
   const [activeConceptVeld, setActiveConceptVeld] = useState<
     ConceptField | undefined
   >(undefined);
+  const [selectedTerm, setSelectedTerm] = useState<
+    SelectedTermIdentity | undefined
+  >(EMPTY_URL_STATE.selectedTerm);
   const [objectType, setObjectType] = useState(EMPTY_URL_STATE.objectType);
   const [monumentAard, setMonumentAard] = useState(
     EMPTY_URL_STATE.monumentAard,
@@ -80,6 +84,12 @@ export function useSearchState() {
   const searchSequence = useRef(0);
   const pendingSelectedId = useRef(EMPTY_URL_STATE.selectedId);
   const urlStateHydrated = useRef(false);
+  const restoringHistory = useRef(false);
+
+  function beginHistoryEntry() {
+    if (!urlStateHydrated.current || restoringHistory.current) return;
+    window.history.pushState({}, "", window.location.href);
+  }
 
   useEffect(() => {
     if (!urlStateHydrated.current) return;
@@ -87,6 +97,11 @@ export function useSearchState() {
     if (active) params.set("q", active);
     if (activeConceptUri) params.set("concept", activeConceptUri);
     if (activeConceptVeld) params.set("veld", activeConceptVeld);
+    if (selectedTerm) {
+      params.set("begrip", selectedTerm.uri);
+      params.set("begripbron", selectedTerm.sourceUri);
+      params.set("begripbronnaam", selectedTerm.sourceName);
+    }
     if (objectType !== "Alle") params.set("soort", objectType);
     if (monumentAard !== "Alle") params.set("aard", monumentAard);
     if (province !== "Alle") params.set("provincie", province);
@@ -114,6 +129,7 @@ export function useSearchState() {
     active,
     activeConceptUri,
     activeConceptVeld,
+    selectedTerm,
     excludedStatuses,
     functionFilter,
     matchSourceFilter,
@@ -168,7 +184,16 @@ export function useSearchState() {
     setExcludedStatuses([]);
   }
 
-  async function executeSearch(term: string) {
+  function selectTermSuggestion(term: SelectedTermIdentity) {
+    setQuery(term.label);
+    setSelectedTerm(term);
+  }
+
+  async function executeSearch(
+    term: string,
+    termIdentity = selectedTerm?.label === term ? selectedTerm : undefined,
+  ) {
+    beginHistoryEntry();
     searchController.current?.abort();
     const controller = new AbortController();
     searchController.current = controller;
@@ -177,6 +202,7 @@ export function useSearchState() {
     setActive(term);
     setActiveConceptUri(undefined);
     setActiveConceptVeld(undefined);
+    setSelectedTerm(termIdentity);
     setSelected(null);
     setView("list");
     setMapViewport(undefined);
@@ -230,6 +256,7 @@ export function useSearchState() {
     concept: { uri: string; label: string },
     veld: ConceptField = "monumentaard",
   ) {
+    beginHistoryEntry();
     searchController.current?.abort();
     const controller = new AbortController();
     searchController.current = controller;
@@ -238,6 +265,7 @@ export function useSearchState() {
     setActive(concept.label);
     setActiveConceptUri(concept.uri);
     setActiveConceptVeld(veld);
+    setSelectedTerm(undefined);
     setSelected(null);
     setView("list");
     setMapViewport(undefined);
@@ -283,6 +311,7 @@ export function useSearchState() {
   // geen zoekterm voor "laat alles zien", dus browsen ze de volledige (kleine)
   // collectie in plaats van op naam te matchen.
   async function browseType(kind: "werelderfgoed" | "gezicht" | "complex") {
+    beginHistoryEntry();
     searchController.current?.abort();
     const controller = new AbortController();
     searchController.current = controller;
@@ -297,6 +326,7 @@ export function useSearchState() {
     );
     setActiveConceptUri(undefined);
     setActiveConceptVeld(undefined);
+    setSelectedTerm(undefined);
     setSelected(null);
     setView("list");
     setMapViewport(undefined);
@@ -363,30 +393,50 @@ export function useSearchState() {
       setLoadingMore(false);
     }
   }
+
+  function restoreUrlState(initial: ReturnType<typeof readUrlState>) {
+    restoringHistory.current = true;
+    pendingSelectedId.current = initial.selectedId;
+    if (initial.conceptUri && initial.conceptField)
+      void executeConceptSearch(
+        { uri: initial.conceptUri, label: initial.query || "Gekozen begrip" },
+        initial.conceptField,
+      );
+    else if (initial.query)
+      void executeSearch(initial.query, initial.selectedTerm);
+    else reset();
+    setObjectType(initial.objectType);
+    setMonumentAard(initial.monumentAard);
+    setProvince(initial.province);
+    setMunicipality(initial.municipality);
+    setFunctionFilter(initial.functionFilter);
+    setMatchSourceFilter(initial.matchSourceFilter);
+    setExcludedStatuses(initial.excludedStatuses);
+    setOnlyGroenaanleg(initial.onlyGroenaanleg);
+    setOnlyMsp(initial.onlyMsp);
+    setView(initial.view);
+    setMapViewport(initial.mapViewport);
+    restoringHistory.current = false;
+  }
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const initial = readUrlState();
       urlStateHydrated.current = true;
-      pendingSelectedId.current = initial.selectedId;
-      if (initial.conceptUri && initial.conceptField)
-        void executeConceptSearch(
-          { uri: initial.conceptUri, label: initial.query || "Gekozen begrip" },
-          initial.conceptField,
-        );
-      else if (initial.query) void executeSearch(initial.query);
-      setObjectType(initial.objectType);
-      setMonumentAard(initial.monumentAard);
-      setProvince(initial.province);
-      setMunicipality(initial.municipality);
-      setFunctionFilter(initial.functionFilter);
-      setMatchSourceFilter(initial.matchSourceFilter);
-      setExcludedStatuses(initial.excludedStatuses);
-      setOnlyGroenaanleg(initial.onlyGroenaanleg);
-      setOnlyMsp(initial.onlyMsp);
-      setView(initial.view);
-      setMapViewport(initial.mapViewport);
+      restoreUrlState(readUrlState());
     }, 0);
     return () => window.clearTimeout(timer);
+    // Deze hydratatie leest de URL bewust alleen bij de eerste mount. De
+    // zoekfuncties veranderen mee met state en mogen dit effect niet herstarten.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    function handlePopState() {
+      restoreUrlState(readUrlState());
+    }
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+    // De listener blijft stabiel; hij leest bij ieder event de actuele URL.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => () => searchController.current?.abort(), []);
 
@@ -395,6 +445,7 @@ export function useSearchState() {
     setActive("");
     setActiveConceptUri(undefined);
     setActiveConceptVeld(undefined);
+    setSelectedTerm(undefined);
     setObjectType("Alle");
     setMonumentAard("Alle");
     setProvince("Alle");
@@ -404,6 +455,7 @@ export function useSearchState() {
     setExcludedStatuses([]);
     setOnlyGroenaanleg(false);
     setOnlyMsp(false);
+    setView("list");
     setSelected(null);
     setMapViewport(undefined);
     setRemoteResults(null);
@@ -456,6 +508,8 @@ export function useSearchState() {
     results,
     activeConceptUri,
     activeConceptVeld,
+    selectedTerm,
+    selectTermSuggestion,
     executeSearch,
     executeConceptSearch,
     browseType,

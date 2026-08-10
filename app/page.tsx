@@ -63,6 +63,7 @@ export default function Home() {
     results,
     activeConceptUri,
     activeConceptVeld,
+    selectTermSuggestion,
     executeSearch,
     executeConceptSearch,
     browseType,
@@ -77,7 +78,7 @@ export default function Home() {
     setActiveSuggestion,
     commitSuggestion,
     handleQueryKeyDown,
-  } = useTermSuggestions(query, active, setQuery);
+  } = useTermSuggestions(query, active, selectTermSuggestion);
   const { complexMembers, onderzoeksgebiedVerrijking } =
     useSelectedDetailEnrichment(selected);
   const opDezeDag = useOpDezeDag();

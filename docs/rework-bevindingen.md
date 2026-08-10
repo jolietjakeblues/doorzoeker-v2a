@@ -21,6 +21,15 @@ niet wordt onderbroken.
   resultaten.
 - Zoekopdracht, filters, pagina, gekozen object, weergave en kaartpositie zijn
   via de URL opnieuw te openen.
+- Een gekozen thesaurusterm behoudt zijn canonieke URI en bron in de gedeelde
+  URL, ook wanneer de zoekactie zelf als gewone tekstzoekopdracht wordt
+  uitgevoerd.
+- De zoekbalk bevraagt CHT, ABR én Referentienetwerk 2 als thesaurusbronnen.
+  Bij RN2 blijft ook het concrete `skos:inScheme` bewaard en zichtbaar; RN2 is
+  tegelijk de identiteitslaag waarmee delen van de objectdata zijn gekoppeld.
+- Browser-terug en -vooruit herstellen eerdere zoekopdrachten. Kleine
+  wijzigingen binnen een zoekopdracht, zoals filteren of de kaart verschuiven,
+  blijven binnen dezelfde geschiedenisstap.
 - Het detailpaneel sluit met Escape, houdt de toetsenbordfocus binnen het
   paneel en zet de focus na sluiten terug.
 - De primaire zoek-, filter-, detail- en kaartflows draaien als browsertests in

@@ -38,12 +38,11 @@ Het label is presentatie. De URI is identiteit.
 
 ## Aanleiding
 
-Doorzoeker gebruikt thesauri (CHT, ABR) en het Referentienetwerk op dit
-moment uitsluitend voor tekstsuggesties in de zoekbalk (zie
-`docs/adr/0002-hybride-gegevensarchitectuur.md`, sectie "Termen-adapter
-herzien"). Zodra een gebruiker een suggestie kiest of een zoekterm
-intypt, verdwijnt de concept-URI uit de zoekflow: er wordt verder gezocht
-op het label (`CONTAINS(LCASE(STR(?label)), ...)`), niet op identiteit.
+Doorzoeker gebruikt CHT, ABR en Referentienetwerk 2 als thesaurusbronnen voor
+tekstsuggesties. RN2 is daarnaast rechtstreeks met de objectdata verweven via
+concept-URI's. Een gekozen suggestie bewaart inmiddels concept-URI,
+thesaurus-URI en thesaurusnaam in de URL; voor velden met een gecontroleerde
+exacte route wordt ook op die identiteit gezocht.
 
 Gevolg: concept-URI's die al in de RCE-data aanwezig zijn worden niet
 benut, classificaties worden gereduceerd tot strings, het verschil tussen
@@ -101,9 +100,9 @@ identiteit gezocht kan worden in plaats van op toevallige labelgelijkenis.
 
 ## Waarom niet meteen breed uitrollen
 
-- CHT/ABR-termsuggesties (al gebouwd) blijven bestaan voor vrije
-  tekstinvoer - dit plan vervangt dat niet, het voegt een preciezere laag
-  toe voor velden die al een concept-URI dragen.
+- CHT-, ABR- en RN2-termsuggesties blijven bestaan voor vrije tekstinvoer.
+  De preciezere laag wordt gebruikt voor velden die al een gecontroleerde
+  concept-URI-route hebben.
 - Niet elk veld is al gecontroleerd op welke URI-namespace het gebruikt
   (zie "Openstaande vragen" hieronder) - vooraf aannemen dat het
   Referentienetwerk is, is precies de fout die dit plan wil vermijden.
@@ -206,9 +205,9 @@ vervangen in deze eerste schijf).
 - Sequencing ten opzichte van de nog uitgestelde `page.tsx`-opsplitsing en
   taak #6 (`rce/bibliotheek`) - drie aparte architectuurtrajecten, bewust
   niet tegelijk aangepakt.
-- Of CHT/ABR-termsuggesties op termijn ook naar concept-URI's uit het
-  Referentienetwerk zouden moeten verwijzen in plaats van los te blijven
-  bestaan naast deze nieuwe, preciezere laag.
+- Hoe gelijkwaardige of verwante begrippen uit CHT, ABR en RN2 in de interface
+  aan elkaar getoond moeten worden; ze hebben ieder hun eigen canonieke URI en
+  worden daarom niet stilzwijgend samengevoegd.
 
 ## Openstaande vragen
 

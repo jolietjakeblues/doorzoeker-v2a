@@ -7,7 +7,11 @@ import { fetchTermSuggestions, type TermSuggestion } from "@/lib/terms-client";
 // als volledige zoekopdracht is uitgevoerd), en communiceren terug via
 // `onCommit` zodra een suggestie gekozen wordt - de rest van de app hoeft
 // niets van de interne combobox-mechaniek te weten.
-export function useTermSuggestions(query: string, active: string, onCommit: (label: string) => void) {
+export function useTermSuggestions(
+  query: string,
+  active: string,
+  onCommit: (suggestion: TermSuggestion) => void,
+) {
   const [suggestions, setSuggestions] = useState<TermSuggestion[]>([]);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
@@ -17,7 +21,10 @@ export function useTermSuggestions(query: string, active: string, onCommit: (lab
     if (term.length < 2 || term === active) return;
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
-      const nextSuggestions = await fetchTermSuggestions(term, controller.signal).catch(() => []);
+      const nextSuggestions = await fetchTermSuggestions(
+        term,
+        controller.signal,
+      ).catch(() => []);
       if (!controller.signal.aborted) {
         setSuggestions(nextSuggestions);
         setSuggestionsOpen(nextSuggestions.length > 0);
@@ -31,7 +38,7 @@ export function useTermSuggestions(query: string, active: string, onCommit: (lab
   }, [active, query]);
 
   function commitSuggestion(suggestion: TermSuggestion) {
-    onCommit(suggestion.label);
+    onCommit(suggestion);
     setSuggestionsOpen(false);
     setActiveSuggestion(-1);
   }
@@ -45,7 +52,9 @@ export function useTermSuggestions(query: string, active: string, onCommit: (lab
     if (!suggestionsOpen || suggestions.length === 0) return;
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setActiveSuggestion((index) => Math.min(index + 1, suggestions.length - 1));
+      setActiveSuggestion((index) =>
+        Math.min(index + 1, suggestions.length - 1),
+      );
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
       setActiveSuggestion((index) => Math.max(index - 1, -1));
@@ -59,5 +68,13 @@ export function useTermSuggestions(query: string, active: string, onCommit: (lab
     }
   }
 
-  return { suggestions, suggestionsOpen, setSuggestionsOpen, activeSuggestion, setActiveSuggestion, commitSuggestion, handleQueryKeyDown };
+  return {
+    suggestions,
+    suggestionsOpen,
+    setSuggestionsOpen,
+    activeSuggestion,
+    setActiveSuggestion,
+    commitSuggestion,
+    handleQueryKeyDown,
+  };
 }

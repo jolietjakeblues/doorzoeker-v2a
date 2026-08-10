@@ -61,9 +61,23 @@ async function mockRce(page: Page) {
   await page.route("**/api/rce/op-deze-dag", (route) =>
     route.fulfill({ json: { monument: null } }),
   );
-  await page.route("**/api/terms/suggest**", (route) =>
-    route.fulfill({ json: { suggestions: [] } }),
-  );
+  await page.route("**/api/terms/suggest**", (route) => {
+    const query = new URL(route.request().url()).searchParams.get("q") ?? "";
+    return route.fulfill({
+      json: {
+        suggestions: query.toLocaleLowerCase("nl").startsWith("kerk")
+          ? [
+              {
+                uri: "https://example.test/term/kerk",
+                label: "Kerk",
+                sourceUri: "https://example.test/cht",
+                sourceName: "Cultuurhistorische Thesaurus",
+              },
+            ]
+          : [],
+      },
+    });
+  });
   await page.route("**/api/rce/complex-members**", (route) =>
     route.fulfill({ json: { members: [] } }),
   );
@@ -186,4 +200,61 @@ test("de kaartpositie blijft in de URL staan na herladen", async ({ page }) => {
     page.getByRole("button", { name: "Kaartweergave" }),
   ).toHaveAttribute("aria-pressed", "true");
   expect(page.url()).toBe(sharedUrl);
+});
+
+test("een gekozen termsuggestie behoudt URI en bron na herladen", async ({
+  page,
+}) => {
+  const search = page.getByRole("combobox", { name: "Zoeken" });
+  await search.fill("kerk");
+  await page
+    .getByRole("option")
+    .getByRole("button", { name: /Kerk.*Cultuurhistorische Thesaurus/ })
+    .click();
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("begrip"))
+    .toBe("https://example.test/term/kerk");
+  expect(new URL(page.url()).searchParams.get("begripbron")).toBe(
+    "https://example.test/cht",
+  );
+
+  await page.reload();
+  await expect(search).toHaveValue("Kerk");
+  expect(new URL(page.url()).searchParams.get("begripbronnaam")).toBe(
+    "Cultuurhistorische Thesaurus",
+  );
+});
+
+test("browser-terug en -vooruit herstellen de zoekopdracht", async ({
+  page,
+}) => {
+  const search = page.getByRole("combobox", { name: "Zoeken" });
+  await search.fill("Eerste zoekactie");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: "3 resultaten voor “Eerste zoekactie”",
+    }),
+  ).toBeVisible();
+
+  await search.fill("Tweede zoekactie");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: "3 resultaten voor “Tweede zoekactie”",
+    }),
+  ).toBeVisible();
+
+  await page.goBack();
+  await expect(search).toHaveValue("Eerste zoekactie");
+  await expect(
+    page.getByRole("heading", {
+      name: "3 resultaten voor “Eerste zoekactie”",
+    }),
+  ).toBeVisible();
+
+  await page.goForward();
+  await expect(search).toHaveValue("Tweede zoekactie");
 });

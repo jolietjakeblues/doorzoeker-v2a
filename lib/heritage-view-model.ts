@@ -70,11 +70,18 @@ export type ConceptField =
   | "gebeurtenis"
   | "actor";
 export type MapViewport = { lat: number; lng: number; zoom: number };
+export type SelectedTermIdentity = {
+  uri: string;
+  label: string;
+  sourceUri: string;
+  sourceName: string;
+};
 
 export const EMPTY_URL_STATE = {
   query: "",
   conceptUri: "",
   conceptField: undefined as ConceptField | undefined,
+  selectedTerm: undefined as SelectedTermIdentity | undefined,
   objectType: "Alle",
   monumentAard: "Alle",
   province: "Alle",
@@ -280,10 +287,23 @@ export function parseUrlState(search: string) {
     mapZoom <= 19
       ? { lat: mapLat, lng: mapLng, zoom: mapZoom }
       : undefined;
+  const termUri = params.get("begrip");
+  const termSourceUri = params.get("begripbron");
+  const termSourceName = params.get("begripbronnaam");
+  const selectedTerm =
+    termUri && termSourceUri && termSourceName
+      ? {
+          uri: termUri,
+          label: params.get("q") ?? "",
+          sourceUri: termSourceUri,
+          sourceName: termSourceName,
+        }
+      : undefined;
   return {
     query: params.get("q") ?? "",
     conceptUri: params.get("concept") ?? "",
     conceptField: parsedConceptField,
+    selectedTerm,
     objectType:
       objectType === "Rijksmonument" ||
       objectType === "Werelderfgoed" ||

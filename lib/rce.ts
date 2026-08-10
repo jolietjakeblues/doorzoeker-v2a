@@ -1282,14 +1282,44 @@ export function parseOnderzoeksgebiedAggregatenResults(document: unknown): Onder
   };
 }
 
-// Termsuggesties komen rechtstreeks uit RCE's eigen Referentienetwerk (de CHT-
-// en ABR-thesauri), niet via het externe Termennetwerk van Netwerk Digitaal
-// Erfgoed. Dat laatste is slechts een doorgeefluik: dezelfde termen worden
-// vanuit het Referentienetwerk daar ook naartoe gepubliceerd voor sectorbrede
-// kruisbevraging, maar voor een RCE-specifieke app als Doorzoeker is die
-// omweg overbodig - de brondata staat al op dezelfde SPARQL-dienst die de
-// rest van de applicatie gebruikt, zonder extra netwerkafhankelijkheid.
+// Termsuggesties komen rechtstreeks uit de thesauri van de RCE. CHT en ABR
+// staan als named graphs op rce/cho; Referentienetwerk 2 heeft een eigen
+// SPARQL-endpoint. RN2 is dus niet alleen een resolver voor concept-URI's,
+// maar zelf ook een thesaurus die met de objectdata is verweven.
 export type TermSuggestion = { uri: string; label: string; sourceUri: string; sourceName: string };
+
+export function buildReferentienetwerkTermSuggestQuery(term: string, limit: number) {
+  const needle = escapeSparqlString(term.trim().toLocaleLowerCase("nl"));
+  return `PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX dct: <http://purl.org/dc/terms/>
+SELECT ?concept ?label ?scheme ?schemeLabel WHERE {
+  ?concept a skos:Concept ; skos:prefLabel ?label .
+  FILTER(LANG(?label) = "nl")
+  FILTER(STRSTARTS(STR(?concept), "https://data.cultureelerfgoed.nl/term/id/rn/2/"))
+  FILTER(CONTAINS(LCASE(STR(?label)), "${needle}"))
+  OPTIONAL {
+    ?concept skos:inScheme ?scheme .
+    OPTIONAL { ?scheme dct:title ?schemeLabel . FILTER(LANG(?schemeLabel) = "" || LANG(?schemeLabel) = "nl") }
+  }
+}
+LIMIT ${limit}`;
+}
+
+export function parseReferentienetwerkTermSuggestResults(document: unknown): TermSuggestion[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.flatMap((binding) => {
+    const uri = binding.concept?.value;
+    const label = binding.label?.value;
+    if (!uri || !label) return [];
+    return [{
+      uri,
+      label,
+      sourceUri: binding.scheme?.value ?? "https://data.cultureelerfgoed.nl/term/id/rn/2",
+      sourceName: binding.schemeLabel?.value ?? "Referentienetwerk 2",
+    }];
+  });
+}
 
 export function buildChtTermSuggestQuery(term: string, limit: number) {
   const needle = escapeSparqlString(term.trim().toLocaleLowerCase("nl"));

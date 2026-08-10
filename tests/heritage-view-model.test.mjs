@@ -78,3 +78,15 @@ test("restores a valid map position and ignores invalid coordinates", () => {
     undefined,
   );
 });
+
+test("restores the canonical identity of a selected thesaurus term", () => {
+  const state = parseUrlState(
+    "?q=Kerk&begrip=https%3A%2F%2Fexample.test%2Fterm%2Fkerk&begripbron=https%3A%2F%2Fexample.test%2Fcht&begripbronnaam=CHT",
+  );
+  assert.deepEqual(state.selectedTerm, {
+    uri: "https://example.test/term/kerk",
+    label: "Kerk",
+    sourceUri: "https://example.test/cht",
+    sourceName: "CHT",
+  });
+});
