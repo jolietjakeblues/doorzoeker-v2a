@@ -4,6 +4,18 @@ import type { TermSuggestion } from "@/lib/terms-client";
 type RemoteState = "idle" | "loading" | "error" | "success";
 type BrowseKind = "werelderfgoed" | "gezicht" | "complex";
 
+const DIRECT_SEARCHES = [
+  "36046",
+  "Woonhuis",
+  "Archeologisch",
+  "Collse",
+  "moutmolen",
+  "Utrecht",
+  "Kinderdijk",
+  "517912",
+  "517443",
+] as const;
+
 type SearchHeroProps = {
   query: string;
   setQuery: (value: string) => void;
@@ -117,7 +129,7 @@ export function SearchHero({
       </div>
       <nav aria-label="Direct zoeken">
         Direct zoeken:{" "}
-        {["36046", "Woonhuis", "Archeologisch", "Utrecht"].map((term) => (
+        {DIRECT_SEARCHES.map((term) => (
           <button type="button" key={term} onClick={() => onSearch(term)}>
             {term}
           </button>
@@ -132,7 +144,7 @@ export function SearchHero({
           Gezichten
         </button>
         <button type="button" onClick={() => onBrowse("complex")}>
-          Complexen
+          Gebouwde complexen
         </button>
       </nav>
       <p className={`source-status ${remoteState}`} aria-live="polite">

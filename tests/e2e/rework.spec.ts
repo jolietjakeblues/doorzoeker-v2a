@@ -129,6 +129,34 @@ test("zoeken toont verschillende erfgoedtypen", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("de startpagina biedt een brede reeks directe zoekvoorbeelden", async ({ page }) => {
+  await page.goto("/");
+
+  const directZoeken = page.getByRole("navigation", { name: "Direct zoeken" });
+  for (const term of [
+    "36046",
+    "Woonhuis",
+    "Archeologisch",
+    "Collse",
+    "moutmolen",
+    "Utrecht",
+    "Kinderdijk",
+    "517912",
+    "517443",
+  ]) {
+    await expect(directZoeken.getByRole("button", { name: term, exact: true })).toBeVisible();
+  }
+
+  const collecties = page.getByRole("navigation", {
+    name: "Bekijk een volledige collectie",
+  });
+  await expect(collecties.getByRole("button", { name: "Werelderfgoed" })).toBeVisible();
+  await expect(collecties.getByRole("button", { name: "Gezichten" })).toBeVisible();
+  await expect(
+    collecties.getByRole("button", { name: "Gebouwde complexen" }),
+  ).toBeVisible();
+});
+
 test("een vondstlocatie toont vondsten met hun RN2-bron", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", (route) => route.fulfill({ json: { results: [{
