@@ -160,7 +160,7 @@ test("de startpagina biedt een brede reeks directe zoekvoorbeelden", async ({ pa
 test("zoeken toont een rustige laadstaat op de plaats van de resultaten", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
     await route.fulfill({ json: { results: records, page: 1, hasMore: false } });
   });
 
