@@ -205,7 +205,7 @@ export default function Home() {
               <summary>Wat betekent dit?</summary>
               <p>
                 Rijksmonument, Werelderfgoed, Gezicht, Complex, Archeologisch
-                terrein, Vondstlocatie, Grondspoor, Vondst en Onderzoeksgebied zijn losse soorten object, geen varianten
+                terrein, Vondstlocatie, Grondspoor, Vondst, Archeologisch complex en Onderzoeksgebied zijn losse soorten object, geen varianten
                 van hetzelfde. Werelderfgoed en Gezicht zijn gebieden waar de
                 RCE verantwoordelijk voor is en die rijksmonumenten kunnen
                 bevatten. Een Complex is zelf geen monument, maar een samenhang
@@ -223,6 +223,7 @@ export default function Home() {
               "Vondstlocatie",
               "Grondspoor",
               "Vondst",
+              "Archeologisch complex",
               "Onderzoeksgebied",
             ].map((option) => (
               <label key={option}>
@@ -1240,6 +1241,7 @@ export default function Home() {
                           selected.objectType === "Vondstlocatie" ||
                           selected.objectType === "Grondspoor" ||
                           selected.objectType === "Vondst" ||
+                          selected.objectType === "Archeologisch complex" ||
                           selected.objectType === "Onderzoeksgebied"
                         ? "Bekijk in de RCE Linked Data"
                         : "Bekijk in het Monumentenregister"}{" "}

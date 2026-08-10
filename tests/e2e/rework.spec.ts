@@ -197,6 +197,24 @@ test("materiaal van een vondst zoekt exact verder via de RN2-URI", async ({ page
   await expect(page.getByText("Bedelaarsgildepenning", { exact: true })).toBeVisible();
 });
 
+test("een archeologisch complex blijft onderscheiden van een gebouwd complex", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({ json: { results: [{
+    choNumber: "10015403", monumentNumber: "10015403", registrationDate: "2016-03-17", street: "", houseNumber: "", postalCode: "",
+    sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischcomplex/10015403", name: "watermolen", description: "Archeologische duiding bij de watermolen.", monumentNature: "archeologischcomplex", place: "Eindhoven", municipality: "Eindhoven",
+    archaeologicalComplexType: { uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/watermolen", label: "watermolen", schemes: [{ uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/ais", label: "Archeologisch Informatie Systeem" }] },
+    archaeologicalContexts: [{ uri: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/vondstlocatie/6175445", label: "Collse Watermolen", type: "Vondstlocatie" }],
+    matchSource: "CHO-nummer (archeologisch complex)", matchedText: "10015403", matchScore: 10,
+  }], page: 1, hasMore: false } }));
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("10015403");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(page.getByText("Archeologisch complex", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Complex van rijksmonumenten", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Details van watermolen" }).click();
+  await expect(page.getByRole("button", { name: "watermolen", exact: true })).toBeVisible();
+  await expect(page.getByText("Collse Watermolen", { exact: true })).toBeVisible();
+});
+
 test("filters volgen het gekozen objecttype", async ({ page }) => {
   await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
   await page.getByRole("button", { name: "Doorzoek RCE" }).click();

@@ -16,6 +16,7 @@ zelfstandig doorzoekbare objecten, gekoppelde gegevens en alleen tellingen.
 | Vondstlocatie | Vrij zoeken op vondstmeldingsnummer, waarnemingsnummer, locatienaam, plaats, omschrijving en verwervingswijze | Geen kaartpunt: de RCE publiceert hiervoor geen coördinaten | Archis-nummers, plaats, omschrijving, verwervingswijze en maximaal 25 complexen, vondstgroepen en grondspoorgroepen per onderdeel |
 | Grondspoor | Vrij zoeken op CHO-nummer, omschrijving, woonplaats en gekoppeld RN2-type | Geen kaartpunt: in de publieke CHO-dataset heeft geen van de 91.980 gecontroleerde records een directe `ceo:heeftGeometrie`-koppeling | Aantal grondsporen, omschrijving, type met conceptschema en bovenliggende vondstlocatie |
 | Vondst | Vrij zoeken op CHO- of Archis-vondstnummer, omschrijving, woonplaats, type, materiaal en toestand | Geen kaartpunt: de RCE publiceert hiervoor geen coördinaten | Aantal, omschrijving, bovenliggende vondstlocatie en aanklikbare RN2-begrippen voor type, materiaal en toestand |
+| Archeologisch complex | Vrij zoeken op CHO-nummer, omschrijving, woonplaats en RN2-complextype | Geen kaartpunt: de RCE publiceert hiervoor geen coördinaten | Aanklikbaar complextype en alle gekoppelde vondstlocaties, archeologische terreinen of onderzoeksgebieden |
 | Archeologisch onderzoeksgebied | Vrij zoeken op woonplaats en onderzoeksomschrijving | Polygon of MultiPolygon | Onderzoeksgegevens en gekoppelde archeologische inhoud |
 
 Een Complex heeft in Doorzoeker geen kunstmatig berekende `union`-geometrie.
@@ -60,7 +61,7 @@ niet zelf een monument of een archeologisch waardevol terrein.
 | Archeologisch Rijksmonument | Zelfstandig Rijksmonument, filterbaar als archeologisch |
 | Archeologisch terrein | Zelfstandig zoekresultaat; daarnaast blijven terreinen met een expliciete `ceo:ligtInObject`-relatie als verrijking bij het Rijksmonument zichtbaar |
 | Archeologisch onderzoeksgebied | Zelfstandig doorzoekbaar object met eigen geometrie en detailweergave |
-| Archeologisch complex | Rechtstreeks gekoppelde eerste bevindingen en complexen onder de getoonde vondstlocaties worden binnen een onderzoeksgebied samengevat |
+| Archeologisch complex | Zelfstandig doorzoekbaar; rechtstreeks gekoppelde complexen en complexen onder vondstlocaties blijven daarnaast binnen hun context zichtbaar |
 | Vondstlocatie | Zelfstandig doorzoekbaar; daarnaast worden tot 25 aan een onderzoeksgebied gekoppelde vondstlocaties daar als context getoond |
 | Vondst | Zelfstandig doorzoekbaar; blijft daarnaast als lijst en telling zichtbaar binnen de gekoppelde vondstlocatie of het onderzoeksgebied |
 | Grondspoor | Zelfstandig doorzoekbaar; blijft daarnaast als lijst en telling zichtbaar binnen de gekoppelde vondstlocatie of het onderzoeksgebied |

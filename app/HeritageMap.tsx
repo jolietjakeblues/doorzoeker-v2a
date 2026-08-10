@@ -21,6 +21,7 @@ type MapItem = {
     | "Vondstlocatie"
     | "Grondspoor"
     | "Vondst"
+    | "Archeologisch complex"
     | "Onderzoeksgebied";
   monumentAard?: "Gebouwd" | "Archeologisch";
   lat: number;
@@ -41,6 +42,7 @@ function markerColor(item: Pick<MapItem, "objectType" | "monumentAard">) {
   if (item.objectType === "Vondstlocatie") return "#7a3e00";
   if (item.objectType === "Grondspoor") return "#8b4513";
   if (item.objectType === "Vondst") return "#9a6700";
+  if (item.objectType === "Archeologisch complex") return "#704214";
   if (item.monumentAard === "Archeologisch") return "#ffb612";
   return "#154273";
 }

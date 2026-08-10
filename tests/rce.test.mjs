@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
+import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -1026,6 +1026,29 @@ test("parses standalone finds with type, material, condition and parent location
   assert.equal(record.archaeologicalCondition.label, "onbekend");
   assert.equal(record.parentObjectLabel, "Collse Watermolen");
   assert.equal(record.wkt, undefined);
+});
+
+test("builds standalone archaeological-complex searches and exact type lookup", () => {
+  const queries = buildArcheologischeComplexDiscoveryQueries("10015403");
+  assert.equal(queries.length, 4);
+  assert.match(queries[0].query, /cultuurhistorischObjectnummer "10015403"/);
+  const uri = "https://data.cultureelerfgoed.nl/term/id/rn/2/watermolen";
+  assert.match(buildArcheologischeComplexConceptQuery(uri), new RegExp(`heeftType/ceo:heeftTypeNaam <${uri}>`));
+  assert.match(buildArcheologischeComplexDetailsQuery(["10015403"]), /VALUES \?parentClass \{ ceo:Vondstlocatie ceo:ArcheologischTerrein ceo:ArcheologischOnderzoeksgebied \}/);
+});
+
+test("parses an archaeological complex with all three possible context types", () => {
+  const discovery = parseArcheologischeComplexDiscoveryResults({ results: { bindings: [{ choi: { value: "10015403" }, match: { value: "watermolen" } }] } }, "type archeologisch complex", "watermolen");
+  assert.equal(discovery[0].monumentNumber, "10015403");
+  const base = { complex: { value: "complex:10015403" }, choi: { value: "10015403" }, typeConcept: { value: "rn:watermolen" }, typeLabel: { value: "watermolen" }, omschrijving: { value: "Complex bij een watermolen" } };
+  const [record] = parseArcheologischeComplexResults({ results: { bindings: [
+    { ...base, parent: { value: "vl:1" }, parentClass: { value: `${CEO}Vondstlocatie` }, parentChoi: { value: "1" }, parentNaam: { value: "Collse Watermolen" }, parentPlaats: { value: "Eindhoven" } },
+    { ...base, parent: { value: "terrein:2" }, parentClass: { value: `${CEO}ArcheologischTerrein` }, parentChoi: { value: "2" } },
+    { ...base, parent: { value: "onderzoek:3" }, parentClass: { value: `${CEO}ArcheologischOnderzoeksgebied` }, parentChoi: { value: "3" } },
+  ] } });
+  assert.equal(record.archaeologicalComplexType.label, "watermolen");
+  assert.deepEqual(record.archaeologicalContexts.map((item) => item.type), ["Vondstlocatie", "Archeologisch terrein", "Onderzoeksgebied"]);
+  assert.equal(record.place, "Eindhoven");
 });
 
 test("returns undefined when there are no op-deze-dag candidates at all", () => {

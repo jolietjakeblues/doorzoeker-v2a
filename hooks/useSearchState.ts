@@ -4,6 +4,7 @@ import {
   browseRceObjects,
   searchByActorConcept,
   searchByArcheologischeWaarderingConcept,
+  searchByArcheologischComplexTypeConcept,
   searchByGebeurtenisConcept,
   searchByMonumentAardConcept,
   searchByMateriaalConcept,
@@ -328,6 +329,8 @@ export function useSearchState() {
               ? await searchByMateriaalConcept(concept.uri, controller.signal)
             : veld === "toestand"
               ? await searchByToestandConcept(concept.uri, controller.signal)
+            : veld === "archeologischcomplextype"
+              ? await searchByArcheologischComplexTypeConcept(concept.uri, controller.signal)
               : await searchByMonumentAardConcept(
                   concept.uri,
                   controller.signal,

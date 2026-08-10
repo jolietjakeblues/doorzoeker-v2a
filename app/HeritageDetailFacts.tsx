@@ -112,6 +112,12 @@ export function HeritageDetailFacts({
         {item.objectType === "Vondst" && item.parentObjectUrl ? (
           <div><dt>Vondstlocatie</dt><dd><a href={item.parentObjectUrl} target="_blank" rel="noreferrer">{item.parentObjectLabel}</a></dd></div>
         ) : null}
+        {item.objectType === "Archeologisch complex" && item.archaeologicalComplexType ? (
+          <div><dt>Archeologisch complextype</dt><dd><button type="button" className="concept-link" onClick={() => onConceptSearch(item.archaeologicalComplexType!, "archeologischcomplextype")} title={`Zoek alle archeologische complexen van het type ${item.archaeologicalComplexType.label}`}>{item.archaeologicalComplexType.label}</button>{item.archaeologicalComplexType.schemes?.length ? ` (${item.archaeologicalComplexType.schemes.map((scheme) => scheme.label).join(", ")})` : ""}</dd></div>
+        ) : null}
+        {item.objectType === "Archeologisch complex" && item.archaeologicalContexts?.length ? (
+          <div><dt>Hoort bij</dt><dd>{item.archaeologicalContexts.map((context, index) => <span key={context.uri}>{index ? ", " : ""}<a href={context.uri} target="_blank" rel="noreferrer">{context.label}</a> ({context.type})</span>)}</dd></div>
+        ) : null}
       </>
     );
   }

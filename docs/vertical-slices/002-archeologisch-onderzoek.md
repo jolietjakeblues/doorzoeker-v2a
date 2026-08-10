@@ -15,6 +15,11 @@ Vondsten zijn zelfstandig doorzoekbaar op nummer, omschrijving, woonplaats,
 type, materiaal en toestand. De drie classificaties bewaren hun RN2-URI en
 zijn als exacte zoekingang aanklikbaar; `messing` zoekt daardoor via
 `heeftMateriaal/heeftMateriaalNaam`, niet als los tekstwoord.
+Archeologische complexen zijn zelfstandig doorzoekbaar op CHO-nummer,
+omschrijving, woonplaats en complextype. Hun detail houdt de drie geldige
+ouderrelaties uit elkaar: Vondstlocatie, ArcheologischTerrein en
+ArcheologischOnderzoeksgebied. Het archeologische complextype is een
+aanklikbaar AIS-begrip en blijft los van het gebouwde `Complex`.
 
 Zie [`../functionele-dekking.md`](../functionele-dekking.md) voor het precieze
 onderscheid tussen zelfstandig object, gekoppelde lijst en telling.

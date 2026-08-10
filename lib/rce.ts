@@ -105,6 +105,8 @@ export type RceMonument = {
   archaeologicalMaterials?: ArchaeologyConcept[];
   archaeologicalStyles?: ArchaeologyConcept[];
   archaeologicalCondition?: ArchaeologyConcept;
+  archaeologicalComplexType?: ArchaeologyConcept;
+  archaeologicalContexts?: { uri: string; label: string; type: "Vondstlocatie" | "Archeologisch terrein" | "Onderzoeksgebied" }[];
 };
 
 export type MonumentImage = { url: string; title?: string; license?: string; sourceUrl?: string };
@@ -1728,7 +1730,7 @@ export function parseVondstenResults(document: unknown): RceMonument[] {
     const uri = binding.vondst?.value;
     if (!choNumber || !uri) continue;
     const description = binding.omschrijving?.value || "Archeologische vondst.";
-    const record = records.get(choNumber) ?? {
+    const record: RceMonument = records.get(choNumber) ?? {
       choNumber,
       monumentNumber: binding.archisVondstnummer?.value || choNumber,
       registrationDate: binding.registratiedatum?.value ?? "",
@@ -1746,6 +1748,110 @@ export function parseVondstenResults(document: unknown): RceMonument[] {
     if (concept && binding.conceptSoort?.value === "materiaal") add(record.archaeologicalMaterials!, concept);
     if (concept && binding.conceptSoort?.value === "stijl") add(record.archaeologicalStyles!, concept);
     if (concept && binding.conceptSoort?.value === "toestand") record.archaeologicalCondition = concept;
+    records.set(choNumber, record);
+  }
+  return [...records.values()];
+}
+
+const ARCHEOLOGISCHE_COMPLEX_SOURCES: { bron: string; rang: number; pattern: string }[] = [
+  { bron: "CHO-nummer (archeologisch complex)", rang: 1, pattern: "BIND(?choi AS ?match)" },
+  { bron: "omschrijving (archeologisch complex)", rang: 2, pattern: "?complex ceo:heeftOmschrijving/ceo:omschrijving ?match ." },
+  { bron: "type archeologisch complex", rang: 3, pattern: "?complex ceo:heeftType/ceo:heeftTypeNaam ?concept . ?concept skos:prefLabel ?match ." },
+  { bron: "woonplaats (archeologisch complex)", rang: 4, pattern: "?complex ceo:ligtInObject/ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?match ." },
+];
+
+export function buildArcheologischeComplexDiscoveryQueries(term: string): { bron: string; query: string }[] {
+  const needle = escapeSparqlString(term.trim());
+  return ARCHEOLOGISCHE_COMPLEX_SOURCES.map(({ bron, pattern }) => {
+    const exact = /^\d+$/.test(term.trim()) && bron.startsWith("CHO-");
+    const effective = exact ? `?complex ceo:cultuurhistorischObjectnummer "${needle}" . BIND("${needle}" AS ?match)` : pattern;
+    return { bron, query: `PREFIX ceo: <${CEO}>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT DISTINCT ?choi ?match WHERE {
+ GRAPH <${INSTANCES_GRAPH}> {
+  ?complex a ceo:ArcheologischComplex ; ceo:cultuurhistorischObjectnummer ?choi .
+  ${effective}
+  ${exact ? "" : `FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))`}
+ }
+}
+LIMIT 100` };
+  });
+}
+
+export function parseArcheologischeComplexDiscoveryResults(document: unknown, bron: string, term: string): DiscoveryMatch[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  const rang = ARCHEOLOGISCHE_COMPLEX_SOURCES.find((source) => source.bron === bron)?.rang ?? 99;
+  const needle = term.trim().toLocaleLowerCase("nl");
+  return bindings.flatMap((binding) => {
+    const monumentNumber = binding.choi?.value ?? "";
+    const matchedText = binding.match?.value ?? "";
+    if (!monumentNumber) return [];
+    const lower = matchedText.toLocaleLowerCase("nl");
+    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: rang * 10 + (lower === needle ? 0 : lower.startsWith(needle) ? 1 : 2) }];
+  });
+}
+
+export function buildArcheologischeComplexConceptQuery(conceptUri: string) {
+  return `PREFIX ceo: <${CEO}>
+SELECT DISTINCT ?rmnr WHERE {
+ GRAPH <${INSTANCES_GRAPH}> {
+  ?complex a ceo:ArcheologischComplex ; ceo:cultuurhistorischObjectnummer ?choi ; ceo:heeftType/ceo:heeftTypeNaam <${conceptUri}> .
+  BIND(?choi AS ?rmnr)
+ }
+}
+LIMIT 100`;
+}
+
+export function buildArcheologischeComplexDetailsQuery(choNumbers: string[]) {
+  const values = choNumbers.map((number) => `"${escapeSparqlString(number)}"`).join(" ");
+  return `PREFIX ceo: <${CEO}>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT ?complex ?choi ?omschrijving ?registratiedatum ?typeConcept ?typeLabel ?parent ?parentClass ?parentChoi ?parentNaam ?parentPlaats WHERE {
+ GRAPH <${INSTANCES_GRAPH}> {
+  ?complex a ceo:ArcheologischComplex ; ceo:cultuurhistorischObjectnummer ?choi .
+  VALUES ?choi { ${values} }
+  OPTIONAL { ?complex ceo:heeftOmschrijving/ceo:omschrijving ?omschrijving . }
+  OPTIONAL { ?complex ceo:registratiedatum ?registratiedatum . }
+  OPTIONAL { ?complex ceo:heeftType/ceo:heeftTypeNaam ?typeConcept . ?typeConcept skos:prefLabel ?typeLabel . }
+  OPTIONAL {
+   ?complex ceo:ligtInObject ?parent . ?parent a ?parentClass ; ceo:cultuurhistorischObjectnummer ?parentChoi .
+   VALUES ?parentClass { ceo:Vondstlocatie ceo:ArcheologischTerrein ceo:ArcheologischOnderzoeksgebied }
+   OPTIONAL { ?parent ceo:heeftLocatieAanduiding/ceo:locatienaam ?parentNaam . }
+   OPTIONAL { ?parent ceo:heeftNaam/ceo:naam ?parentNaam . }
+   OPTIONAL { ?parent ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?parentPlaats . }
+  }
+ }
+}
+ORDER BY ?choi ?parentClass ?parentChoi
+LIMIT 500`;
+}
+
+export function parseArcheologischeComplexResults(document: unknown): RceMonument[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings ?? [];
+  const records = new Map<string, RceMonument>();
+  for (const binding of bindings) {
+    const choNumber = binding.choi?.value;
+    const uri = binding.complex?.value;
+    if (!choNumber || !uri) continue;
+    const typeConcept = binding.typeConcept?.value && binding.typeLabel?.value ? { uri: binding.typeConcept.value, label: binding.typeLabel.value } : undefined;
+    const description = binding.omschrijving?.value || "Archeologisch complex.";
+    const record: RceMonument = records.get(choNumber) ?? {
+      choNumber, monumentNumber: choNumber, registrationDate: binding.registratiedatum?.value ?? "",
+      street: "", houseNumber: "", postalCode: "", sourceUrl: uri,
+      name: typeConcept && typeConcept.label.toLocaleLowerCase("nl") !== "complextype niet te bepalen" ? typeConcept.label : undefined,
+      monumentNature: "archeologischcomplex", description,
+      place: binding.parentPlaats?.value, municipality: binding.parentPlaats?.value,
+      archaeologicalComplexType: typeConcept,
+      archaeologicalContexts: [],
+    };
+    if (!record.place && binding.parentPlaats?.value) record.place = record.municipality = binding.parentPlaats.value;
+    const parent = binding.parent?.value;
+    const parentClass = binding.parentClass?.value ?? "";
+    if (parent && !record.archaeologicalContexts!.some((item) => item.uri === parent)) {
+      const type = parentClass.endsWith("Vondstlocatie") ? "Vondstlocatie" : parentClass.endsWith("ArcheologischTerrein") ? "Archeologisch terrein" : "Onderzoeksgebied";
+      record.archaeologicalContexts!.push({ uri: parent, type, label: binding.parentNaam?.value && binding.parentNaam.value !== "-" ? binding.parentNaam.value : `${type} ${binding.parentChoi?.value ?? ""}`.trim() });
+    }
     records.set(choNumber, record);
   }
   return [...records.values()];

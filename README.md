@@ -46,7 +46,10 @@ RN2-URI. Zo vindt een klik op `messing` alleen vondsten die werkelijk met dat
 materiaalconcept zijn geclassificeerd.
 Een archeologisch complex is daarbij een
 inhoudelijke duiding, zoals een nederzetting of grafveld; het is niet hetzelfde
-als een Complex van gebouwde Rijksmonumenten.
+als een Complex van gebouwde Rijksmonumenten. Archeologische complexen zijn
+zelfstandig vindbaar op CHO-nummer, omschrijving, woonplaats en RN2-type. Het
+detail toont alle gepubliceerde oudercontexten: vondstlocatie, archeologisch
+terrein en/of onderzoeksgebied.
 
 Zie [Functionele dekking](docs/functionele-dekking.md) voor het precieze
 onderscheid tussen zelfstandige objecten, gekoppelde lijsten en tellingen.
