@@ -1,96 +1,125 @@
-{
-  "rapport": {
-    "titel": "Repository-analyse Doorzoeker V2",
-    "repository": "https://github.com/jolietjakeblues/doorzoeker_v2",
-    "datum": "2026-08-10",
-    "taal": "nl-NL",
-    "scope": "Architectuur, functionaliteit, onderhoudbaarheid, testbaarheid, toegankelijkheid en ontwikkelproces",
-    "samenvatting": "Doorzoeker V2 heeft een sterke data-architectuur, goede beveiligingsgrenzen en degelijke domeindocumentatie. De belangrijkste risico's zitten momenteel in onvolledige paginering, verlies van conceptsemantiek in deelbare URL's, frontendcomplexiteit en beperkte end-to-end testdekking.",
-    "beoordeling": {
-      "sterkste_kant": "De applicatie schermt RCE Linked Data af achter stabiele applicatie-API's en gebruikt canonieke URI's, validatie, caching, time-outs en genormaliseerde view-modellen.",
-      "grootste_risico": "Gedocumenteerd productgedrag en feitelijk gedrag lopen op enkele kernpunten uiteen, met name bij paginering en het herstellen van conceptzoekopdrachten vanuit een URL.",
-      "algemeen_oordeel": "Technisch kansrijk en inhoudelijk volwassen, maar toe aan een stabilisatie- en consolidatiefase voordat de functionaliteit verder wordt uitgebreid."
-    },
-    "positief": [
-      {
-        "id": "POS-001",
-        "categorie": "architectuur",
-        "titel": "Heldere applicatie-API tussen browser en databron",
-        "bevinding": "De browser communiceert met taakgerichte API-routes in plaats van rechtstreeks met RDF-, REST- of SPARQL-details.",
-        "impact": "De UI blijft beter geïsoleerd van wijzigingen in externe RCE-diensten en endpoint-specifieke datastructuren.",
-        "bron": "docs/adr/0002-hybride-gegevensarchitectuur.md"
+        "categorie": "onderhoudbaarheid",
+        "titel": "useSearchState heeft te veel verantwoordelijkheden",
+        "bevinding": "De hook beheert zoekacties, filters, selectie, URL-state, paginering en async lifecycle. Resetlogica wordt over meerdere zoekfuncties herhaald.",
+        "impact": "Gedragsverschillen en regressies ontstaan gemakkelijk wanneer één zoekpad wordt aangepast en andere paden niet.",
+        "aanbeveling": "Centraliseer zoektransities in één reducer of state machine en splits URL-synchronisatie en resultaatfiltering af.",
+        "bron": ["hooks/useSearchState.ts"]
       },
       {
-        "id": "POS-002",
-        "categorie": "security",
-        "titel": "Veilige begrenzing van SPARQL-gebruik",
-        "bevinding": "Willekeurige SPARQL van browsergebruikers wordt niet doorgestuurd en geïnterpoleerde concept- en resource-URI's worden beperkt tot bekende patronen of namespaces.",
-        "impact": "Dit verlaagt het risico op SPARQL-injectie en onbegrensde upstream-query's.",
-        "bron": "app/api/rce/search/route.ts en docs/adr/0002-hybride-gegevensarchitectuur.md"
+        "id": "NEG-007",
+        "prioriteit": "hoog",
+        "categorie": "zoekkwaliteit",
+        "titel": "Facetwaarden gelden alleen voor geladen resultaten",
+        "bevinding": "Provincie-, gemeente-, functie- en andere tellingen worden client-side afgeleid uit baseResults, dus maximaal uit de reeds geladen batch.",
+        "impact": "Tellingen en beschikbare filters kunnen ten onrechte suggereren dat ze de volledige resultaatset beschrijven.",
+        "aanbeveling": "Bereken facetten server-side over de volledige matchset of label ze expliciet als filters binnen de geladen resultaten.",
+        "bron": ["hooks/useSearchState.ts", "app/page.tsx"]
       },
       {
-        "id": "POS-003",
-        "categorie": "betrouwbaarheid",
-        "titel": "Caching, time-outs en observability zijn meegenomen",
-        "bevinding": "De serverroutes gebruiken runtime-caching, een lokale fallbackcache, upstream-time-outs, Server-Timing en gestructureerde logging.",
-        "impact": "De afhankelijkheid van externe RCE-diensten is operationeel beter beheersbaar.",
-        "bron": "app/api/rce/search/route.ts"
+        "id": "NEG-008",
+        "prioriteit": "middel",
+        "categorie": "toegankelijkheid",
+        "titel": "Detaildialoog mist waarschijnlijk volledige toetsenbordafhandeling",
+        "bevinding": "Er zijn dialog-rollen en scroll-lock, maar in de geïnspecteerde code is geen volledige focus-trap, Escape-afhandeling, initiële focus of focusherstel zichtbaar.",
+        "impact": "Toetsenbord- en screenreadergebruikers kunnen context of focus verliezen.",
+        "aanbeveling": "Implementeer een geteste toegankelijke dialogprimitive met focus-trap, Escape, initiële focus en focusherstel.",
+        "bron": ["app/page.tsx", "hooks/useBodyScrollLock.ts"]
       },
       {
-        "id": "POS-004",
-        "categorie": "frontend",
-        "titel": "Async zoekopdrachten worden tegen races beschermd",
-        "bevinding": "Nieuwe zoekopdrachten breken oude verzoeken af en een sequence-id voorkomt dat verouderde antwoorden de nieuwste state overschrijven.",
-        "impact": "Minder kans op flikkerende of incorrecte resultaten bij snel achter elkaar zoeken.",
-        "bron": "hooks/useSearchState.ts"
-      },
-      {
-        "id": "POS-005",
-        "categorie": "performance",
-        "titel": "Detailverrijking wordt lazy geladen",
-        "bevinding": "Complexleden en onderzoeksgebiedverrijking worden pas opgehaald wanneer een relevant detailrecord wordt geopend.",
-        "impact": "De gewone resultatenlijst blijft lichter en veroorzaakt minder kostbare databronaanroepen.",
-        "bron": "hooks/useSelectedDetailEnrichment.ts"
-      },
-      {
-        "id": "POS-006",
-        "categorie": "geo",
-        "titel": "Geometrieën worden inhoudelijk correct behandeld",
-        "bevinding": "Gebiedsobjecten kunnen als polygonen en multipolygonen worden weergegeven; puntresultaten krijgen zoomafhankelijke clustering.",
-        "impact": "De kaart representeert erfgoedgebieden beter dan een eenvoudige centroid- of markerbenadering.",
-        "bron": "app/HeritageMap.tsx"
-      },
-      {
-        "id": "POS-007",
+        "id": "NEG-009",
+        "prioriteit": "hoog",
         "categorie": "testing",
-        "titel": "Nuttige contracttests voor de serverlaag",
-        "bevinding": "Tests dekken invoervalidatie, caching, mapping, conceptzoekopdrachten en bibliotheekverrijking met gemockte upstream-responses.",
-        "impact": "Belangrijke datacontracten en querydispatch zijn beschermd tegen regressies.",
-        "bron": "tests/rce-api.test.mjs en overige tests in tests/"
+        "titel": "Kernflows missen end-to-end regressietests",
+        "bevinding": "De servercontracttests zijn nuttig, maar de gerenderde HTML-test controleert voornamelijk vaste tekst en geen interactief gedrag.",
+        "impact": "Problemen zoals onbereikbare paginering of verloren concept-URI worden niet automatisch ontdekt.",
+        "aanbeveling": "Voeg browsertests toe voor zoeken, filteren, URL-herstel, conceptlinks, paginering, detaildialoog en wisselen tussen lijst en kaart.",
+        "bron": ["tests/rendered-html.test.mjs", "tests/rce-api.test.mjs"]
       },
       {
-        "id": "POS-008",
-        "categorie": "kwaliteit",
-        "titel": "Strikte TypeScript- en lintconfiguratie",
-        "bevinding": "TypeScript strict mode, ESLint, React Hooks-regels en jsx-a11y zijn opgenomen.",
-        "impact": "Veel fouten en toegankelijkheidsproblemen kunnen al tijdens ontwikkeling of CI worden gevonden.",
-        "bron": "tsconfig.json en eslint.config.mjs"
+        "id": "NEG-010",
+        "prioriteit": "laag",
+        "categorie": "ci",
+        "titel": "De build wordt in CI dubbel uitgevoerd",
+        "bevinding": "npm test start zelf met npm run build; daarna voert de workflow nogmaals npm run build uit.",
+        "impact": "Langere CI-doorlooptijd zonder aanvullende dekking.",
+        "aanbeveling": "Splits build-afhankelijke rendered tests van de overige tests of bouw één keer en hergebruik het artefact.",
+        "bron": ["package.json", ".github/workflows/deploy-workers.yml"]
       },
       {
-        "id": "POS-009",
-        "categorie": "devops",
-        "titel": "Geautomatiseerde kwaliteitscontrole en deployment",
-        "bevinding": "Pushes naar main doorlopen dependency-installatie, typecheck, lint, tests, build en Cloudflare Workers-deployment.",
-        "impact": "De releaseketen is reproduceerbaar en bevat meerdere kwaliteitscontroles.",
-        "bron": ".github/workflows/deploy-workers.yml"
-      },
-      {
-        "id": "POS-010",
-        "categorie": "documentatie",
-        "titel": "Sterke domein- en architectuurdocumentatie",
-        "bevinding": "ADR's en verticale slices leggen doelen, afwegingen, gegevensbronnen, acceptatiecriteria en eerdere problemen inhoudelijk vast.",
-        "impact": "Nieuwe ontwikkelaars kunnen zowel technische keuzes als erfgoedsemantiek beter begrijpen.",
-        "bron": "README.md en docs/"
+        "id": "NEG-011",
+        "prioriteit": "middel",
+        "categorie": "proces",
+        "titel": "Hoge ontwikkelsnelheid vergroot consolidatiebehoefte",
+        "bevinding": "Veel databronnen, concepttypen en UI-mogelijkheden zijn in korte tijd toegevoegd.",
+        "impact": "Zonder stabilisatiefase groeit het risico op impliciete koppelingen, regressies en moeilijk te isoleren bugs.",
+        "aanbeveling": "Plan een consolidatiesprint gericht op bestaande contracten, modulegrenzen, performance-metingen en regressietests voordat nieuwe databronnen worden toegevoegd.",
+        "bron": ["Recente commits", "repositorystructuur"]
       }
     ],
-    "negatief": [
+    "aanbevolen_roadmap": [
+      {
+        "volgorde": 1,
+        "actie": "Herdefinieer productpositionering en informatiearchitectuur rond brede RCE-erfgoeddata in plaats van uitsluitend rijksmonumenten.",
+        "gerelateerde_bevindingen": ["NEG-001"]
+      },
+      {
+        "volgorde": 2,
+        "actie": "Herstel paginering en voeg een UI-regressietest toe.",
+        "gerelateerde_bevindingen": ["NEG-002", "NEG-009"]
+      },
+      {
+        "volgorde": 3,
+        "actie": "Bewaar concept-URI en conceptveld in deelbare URL's.",
+        "gerelateerde_bevindingen": ["NEG-003"]
+      },
+      {
+        "volgorde": 4,
+        "actie": "Introduceer typespecifieke resultaatkaarten en detailweergaven.",
+        "gerelateerde_bevindingen": ["NEG-001", "NEG-005"]
+      },
+      {
+        "volgorde": 5,
+        "actie": "Voeg end-to-end tests toe voor primaire gebruikersflows.",
+        "gerelateerde_bevindingen": ["NEG-004", "NEG-008", "NEG-009"]
+      },
+      {
+        "volgorde": 6,
+        "actie": "Splits page.tsx en useSearchState op in kleinere verantwoordelijkheden.",
+        "gerelateerde_bevindingen": ["NEG-005", "NEG-006"]
+      },
+      {
+        "volgorde": 7,
+        "actie": "Maak facetbetekenis expliciet en verplaats facetten zo nodig naar de server.",
+        "gerelateerde_bevindingen": ["NEG-007"]
+      },
+      {
+        "volgorde": 8,
+        "actie": "Verbeter dialoogtoegankelijkheid, kaart-URL-state en CI-efficiëntie.",
+        "gerelateerde_bevindingen": ["NEG-004", "NEG-008", "NEG-010"]
+      }
+    ],
+    "voorgesteld_productmodel": {
+      "overkoepelend_begrip": "RCE-erfgoeddata of cultuurhistorische objecten en kennis",
+      "gelijkwaardige_ingangen": [
+        "Rijksmonumenten",
+        "Werelderfgoed",
+        "Beschermde stads- en dorpsgezichten",
+        "Complexen",
+        "Archeologische terreinen",
+        "Archeologische onderzoeksgebieden",
+        "Vondsten en vondstlocaties",
+        "Begrippen en thesaurusrelaties",
+        "Gekoppelde literatuur en beeldmateriaal"
+      ],
+      "ontwerpprincipe": "Gebruik geen universele monumentkaart of monumentdetailpagina. Render per entiteitstype alleen relevante identifiers, juridische status, eigenschappen, geometrie, relaties en bronverwijzingen.",
+      "mogelijke_hero": "Doorzoek erfgoeddata van de RCE",
+      "mogelijke_intro": "Vind cultuurhistorische objecten, gebieden, archeologische informatie, begrippen en gekoppelde kennis in actuele RCE-bronnen."
+    },
+    "methodologie_en_beperkingen": {
+      "methode": "Statische analyse van de publieke GitHub-repository, documentatie, configuratie, kerncomponenten, hooks, API-routes, tests, recente repositoryactiviteit en officiële RCE Linked Data-documentatie.",
+      "wijzigingen_aan_projectbroncode": false,
+      "runtime_verificatie": false,
+      "beperking": "Build, lint en tests zijn tijdens de oorspronkelijke analyse niet lokaal uitgevoerd doordat lokale shell- en bestandssysteemacties bleven hangen. De toegankelijkheidsbevinding is daarom bewust als waarschijnlijk geformuleerd en moet bij implementatie opnieuw worden geverifieerd."
+    }
+  }
+}
