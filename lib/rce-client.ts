@@ -20,7 +20,7 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
 // een tekstzoekopdracht - zie docs/vertical-slices/004-referentienetwerk-concepten.md.
 // `veld` bepaalt via welke eigenschap gezocht wordt; de aanroeper weet dit
 // al op basis van welk label is aangeklikt.
-async function searchByConcept(conceptUri: string, veld: "monumentaard" | "waardering" | "gebeurtenis" | "actor", signal?: AbortSignal) {
+async function searchByConcept(conceptUri: string, veld: "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand", signal?: AbortSignal) {
   const response = await fetch(`/api/rce/search?concept=${encodeURIComponent(conceptUri)}&veld=${veld}`, {
     headers: { Accept: "application/json" },
     signal,
@@ -81,6 +81,18 @@ export async function fetchOnderzoeksgebiedVerrijking(gebiedUri: string, signal?
   });
   if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
   return await response.json() as OnderzoeksgebiedVerrijkingResponse;
+}
+
+export async function searchByVondstTypeConcept(conceptUri: string, signal?: AbortSignal) {
+  return searchByConcept(conceptUri, "vondsttype", signal);
+}
+
+export async function searchByMateriaalConcept(conceptUri: string, signal?: AbortSignal) {
+  return searchByConcept(conceptUri, "materiaal", signal);
+}
+
+export async function searchByToestandConcept(conceptUri: string, signal?: AbortSignal) {
+  return searchByConcept(conceptUri, "toestand", signal);
 }
 
 export async function fetchVondstlocatieInhoud(locatieUri: string, signal?: AbortSignal) {

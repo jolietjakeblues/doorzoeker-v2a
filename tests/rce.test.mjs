@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
+import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -997,6 +997,34 @@ test("parses a ground trace as a standalone CHO object without invented geometry
   assert.equal(record.name, "Karrespoor");
   assert.equal(record.archaeologicalTraceCount, 1);
   assert.equal(record.place, "Brunssum");
+  assert.equal(record.wkt, undefined);
+});
+
+test("builds optimized standalone find searches and exact RN2 material searches", () => {
+  const queries = buildVondstenDiscoveryQueries("10015422");
+  assert.equal(queries.length, 7);
+  assert.match(queries[0].query, /cultuurhistorischObjectnummer "10015422"/);
+  assert.doesNotMatch(queries[0].query, /FILTER\(STR\(\?match\)/);
+  const material = "https://data.cultureelerfgoed.nl/term/id/rn/2/messing";
+  assert.match(buildVondstenConceptQuery(material, "materiaal"), new RegExp(`heeftMateriaal/ceo:heeftMateriaalNaam <${material}>`));
+  assert.match(buildVondstenConceptQuery(material, "vondsttype"), /heeftType\/ceo:heeftTypeNaam/);
+  assert.match(buildVondstenConceptQuery(material, "toestand"), /ceo:heeftToestand/);
+});
+
+test("parses standalone finds with type, material, condition and parent location", () => {
+  const discovery = parseVondstenDiscoveryResults({ results: { bindings: [{ choi: { value: "10015422" }, match: { value: "messing" } }] } }, "materiaal vondst", "messing");
+  assert.equal(discovery[0].monumentNumber, "10015422");
+  assert.match(buildVondstenDetailsQuery(["10015422"]), /heeftMateriaal\/ceo:heeftMateriaalNaam/);
+  const base = { vondst: { value: "vondst:10015422" }, choi: { value: "10015422" }, aantal: { value: "1" }, omschrijving: { value: "Een messing riemtong" }, vondstlocatie: { value: "locatie:1" }, vondstlocatieNaam: { value: "Collse Watermolen" }, woonplaats: { value: "Eindhoven" } };
+  const [record] = parseVondstenResults({ results: { bindings: [
+    { ...base, conceptSoort: { value: "type" }, concept: { value: "rn:type" }, conceptLabel: { value: "riemtong - langwerpig" } },
+    { ...base, conceptSoort: { value: "materiaal" }, concept: { value: "rn:messing" }, conceptLabel: { value: "messing" } },
+    { ...base, conceptSoort: { value: "toestand" }, concept: { value: "rn:onbekend" }, conceptLabel: { value: "onbekend" } },
+  ] } });
+  assert.equal(record.archaeologicalFindCount, 1);
+  assert.equal(record.archaeologicalMaterials[0].label, "messing");
+  assert.equal(record.archaeologicalCondition.label, "onbekend");
+  assert.equal(record.parentObjectLabel, "Collse Watermolen");
   assert.equal(record.wkt, undefined);
 });
 

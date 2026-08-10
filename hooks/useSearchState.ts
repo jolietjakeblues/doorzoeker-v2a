@@ -6,6 +6,9 @@ import {
   searchByArcheologischeWaarderingConcept,
   searchByGebeurtenisConcept,
   searchByMonumentAardConcept,
+  searchByMateriaalConcept,
+  searchByToestandConcept,
+  searchByVondstTypeConcept,
   searchRceMonuments,
 } from "@/lib/rce-client";
 import {
@@ -319,6 +322,12 @@ export function useSearchState() {
             ? await searchByGebeurtenisConcept(concept.uri, controller.signal)
             : veld === "actor"
               ? await searchByActorConcept(concept.uri, controller.signal)
+            : veld === "vondsttype"
+              ? await searchByVondstTypeConcept(concept.uri, controller.signal)
+            : veld === "materiaal"
+              ? await searchByMateriaalConcept(concept.uri, controller.signal)
+            : veld === "toestand"
+              ? await searchByToestandConcept(concept.uri, controller.signal)
               : await searchByMonumentAardConcept(
                   concept.uri,
                   controller.signal,

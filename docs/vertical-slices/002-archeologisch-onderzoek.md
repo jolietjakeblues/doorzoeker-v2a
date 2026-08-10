@@ -11,6 +11,10 @@ daarnaast een zelfstandige zoekingang; expliciet aan Rijksmonumenten gekoppelde
 terreinen blijven daar ook als verrijking zichtbaar.
 Grondsporen zijn inmiddels eveneens zelfstandig doorzoekbaar op CHO-nummer,
 omschrijving, woonplaats en het gekoppelde type uit Referentienetwerk 2.
+Vondsten zijn zelfstandig doorzoekbaar op nummer, omschrijving, woonplaats,
+type, materiaal en toestand. De drie classificaties bewaren hun RN2-URI en
+zijn als exacte zoekingang aanklikbaar; `messing` zoekt daardoor via
+`heeftMateriaal/heeftMateriaalNaam`, niet als los tekstwoord.
 
 Zie [`../functionele-dekking.md`](../functionele-dekking.md) voor het precieze
 onderscheid tussen zelfstandig object, gekoppelde lijst en telling.
@@ -167,13 +171,13 @@ komen daarom met identieke aantallen terug):
 
 | Ouder (`bevatObject`) | Kind | Aantal |
 |---|---|---|
-| Rijksmonument | ArcheologischTerrein | 1.812 |
-| ArcheologischOnderzoeksgebied | Vondstlocatie | 40.064 |
-| ArcheologischOnderzoeksgebied | ArcheologischComplex | 9.394 |
+| Rijksmonument | ArcheologischTerrein | 3.665 |
+| ArcheologischOnderzoeksgebied | Vondstlocatie | 40.066 |
+| ArcheologischOnderzoeksgebied | ArcheologischComplex | 9.398 |
 | ArcheologischTerrein | ArcheologischComplex | 18.548 |
 | Vondstlocatie | ArcheologischComplex | 332.347 |
-| Vondstlocatie | Grondsporen | 91.978 |
-| Vondstlocatie | Vondsten | 445.300 |
+| Vondstlocatie | Grondsporen | 91.980 |
+| Vondstlocatie | Vondsten | 445.320 |
 
 Twee gevolgen voor stap 3 (de lazy detailverrijking, taak #8):
 

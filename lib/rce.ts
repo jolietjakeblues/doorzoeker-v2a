@@ -100,6 +100,11 @@ export type RceMonument = {
   archaeologicalTypeSchemes?: { uri: string; label: string }[];
   parentObjectUrl?: string;
   parentObjectLabel?: string;
+  archaeologicalFindCount?: number;
+  archaeologicalFindTypes?: ArchaeologyConcept[];
+  archaeologicalMaterials?: ArchaeologyConcept[];
+  archaeologicalStyles?: ArchaeologyConcept[];
+  archaeologicalCondition?: ArchaeologyConcept;
 };
 
 export type MonumentImage = { url: string; title?: string; license?: string; sourceUrl?: string };
@@ -1619,6 +1624,131 @@ export function parseGrondsporenResults(document: unknown): RceMonument[] {
       parentObjectLabel: parentName && parentName !== "-" ? parentName : "Bijbehorende vondstlocatie",
     };
   });
+}
+
+const VONDSTEN_SOURCES: { bron: string; rang: number; pattern: string }[] = [
+  { bron: "CHO-nummer (vondst)", rang: 1, pattern: "BIND(?choi AS ?match)" },
+  { bron: "Archis-vondstnummer", rang: 2, pattern: "?vondst ceo:archis2Vondstnummer ?match ." },
+  { bron: "omschrijving (vondst)", rang: 3, pattern: "?vondst ceo:heeftOmschrijving/ceo:omschrijving ?match ." },
+  { bron: "type vondst", rang: 4, pattern: "?vondst ceo:heeftType/ceo:heeftTypeNaam ?concept . ?concept skos:prefLabel ?match ." },
+  { bron: "materiaal vondst", rang: 5, pattern: "?vondst ceo:heeftMateriaal/ceo:heeftMateriaalNaam ?concept . ?concept skos:prefLabel ?match ." },
+  { bron: "toestand vondst", rang: 6, pattern: "?vondst ceo:heeftToestand ?concept . ?concept skos:prefLabel ?match ." },
+  { bron: "woonplaats (vondst)", rang: 7, pattern: "?vondst ceo:ligtInObject/ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?match ." },
+];
+
+export function buildVondstenDiscoveryQueries(term: string): { bron: string; query: string }[] {
+  const needle = escapeSparqlString(term.trim());
+  return VONDSTEN_SOURCES.map(({ bron, pattern }) => {
+    const exactNumber = /^\d+$/.test(term.trim()) && (bron.startsWith("CHO-") || bron.startsWith("Archis-"));
+    const effectivePattern = exactNumber
+      ? bron.startsWith("CHO-")
+        ? `?vondst ceo:cultuurhistorischObjectnummer "${needle}" . BIND("${needle}" AS ?match)`
+        : `?vondst ceo:archis2Vondstnummer "${needle}" . BIND("${needle}" AS ?match)`
+      : pattern;
+    return { bron, query: `PREFIX ceo: <${CEO}>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT DISTINCT ?choi ?match WHERE {
+ GRAPH <${INSTANCES_GRAPH}> {
+  ?vondst a ceo:Vondsten ; ceo:cultuurhistorischObjectnummer ?choi .
+  ${effectivePattern}
+  ${exactNumber ? "" : `FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))`}
+ }
+}
+LIMIT 100` };
+  });
+}
+
+export function parseVondstenDiscoveryResults(document: unknown, bron: string, term: string): DiscoveryMatch[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  const rang = VONDSTEN_SOURCES.find((source) => source.bron === bron)?.rang ?? 99;
+  const needle = term.trim().toLocaleLowerCase("nl");
+  return bindings.flatMap((binding) => {
+    const monumentNumber = binding.choi?.value ?? "";
+    const matchedText = binding.match?.value ?? "";
+    if (!monumentNumber) return [];
+    const lower = matchedText.toLocaleLowerCase("nl");
+    const matchtype = lower === needle ? 0 : lower.startsWith(needle) ? 1 : 2;
+    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: rang * 10 + matchtype }];
+  });
+}
+
+export type VondstenConceptField = "vondsttype" | "materiaal" | "toestand";
+
+export function buildVondstenConceptQuery(conceptUri: string, field: VondstenConceptField) {
+  const propertyPath = field === "vondsttype" ? "ceo:heeftType/ceo:heeftTypeNaam" : field === "materiaal" ? "ceo:heeftMateriaal/ceo:heeftMateriaalNaam" : "ceo:heeftToestand";
+  return `PREFIX ceo: <${CEO}>
+SELECT DISTINCT ?rmnr WHERE {
+ GRAPH <${INSTANCES_GRAPH}> {
+  ?vondst a ceo:Vondsten ; ceo:cultuurhistorischObjectnummer ?choi ; ${propertyPath} <${conceptUri}> .
+  BIND(?choi AS ?rmnr)
+ }
+}
+LIMIT 100`;
+}
+
+export function buildVondstenDetailsQuery(choNumbers: string[]) {
+  const values = choNumbers.map((number) => `"${escapeSparqlString(number)}"`).join(" ");
+  return `PREFIX ceo: <${CEO}>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT ?vondst ?choi ?archisVondstnummer ?aantal ?omschrijving ?registratiedatum ?vondstlocatie ?vondstlocatieNaam ?woonplaats ?conceptSoort ?concept ?conceptLabel WHERE {
+ GRAPH <${INSTANCES_GRAPH}> {
+  ?vondst a ceo:Vondsten ; ceo:cultuurhistorischObjectnummer ?choi .
+  VALUES ?choi { ${values} }
+  OPTIONAL { ?vondst ceo:archis2Vondstnummer ?archisVondstnummer . }
+  OPTIONAL { ?vondst ceo:aantalVondsten ?aantal . }
+  OPTIONAL { ?vondst ceo:heeftOmschrijving/ceo:omschrijving ?omschrijving . }
+  OPTIONAL { ?vondst ceo:registratiedatum ?registratiedatum . }
+  OPTIONAL {
+   ?vondst ceo:ligtInObject ?vondstlocatie .
+   OPTIONAL { ?vondstlocatie ceo:heeftLocatieAanduiding/ceo:locatienaam ?vondstlocatieNaam . }
+   OPTIONAL { ?vondstlocatie ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?woonplaats . }
+  }
+  OPTIONAL {
+   { ?vondst ceo:heeftType/ceo:heeftTypeNaam ?concept . BIND("type" AS ?conceptSoort) }
+   UNION { ?vondst ceo:heeftMateriaal/ceo:heeftMateriaalNaam ?concept . BIND("materiaal" AS ?conceptSoort) }
+   UNION { ?vondst ceo:heeftStijlEnCultuur/ceo:heeftStijlEnCultuurNaam ?concept . BIND("stijl" AS ?conceptSoort) }
+   UNION { ?vondst ceo:heeftToestand ?concept . BIND("toestand" AS ?conceptSoort) }
+   ?concept skos:prefLabel ?conceptLabel .
+  }
+ }
+}
+ORDER BY ?choi ?conceptSoort ?conceptLabel
+LIMIT 1000`;
+}
+
+export function parseVondstenResults(document: unknown): RceMonument[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings ?? [];
+  const records = new Map<string, RceMonument>();
+  const add = (target: ArchaeologyConcept[], concept: ArchaeologyConcept) => {
+    if (!target.some((item) => item.uri === concept.uri)) target.push(concept);
+  };
+  for (const binding of bindings) {
+    const choNumber = binding.choi?.value;
+    const uri = binding.vondst?.value;
+    if (!choNumber || !uri) continue;
+    const description = binding.omschrijving?.value || "Archeologische vondst.";
+    const record = records.get(choNumber) ?? {
+      choNumber,
+      monumentNumber: binding.archisVondstnummer?.value || choNumber,
+      registrationDate: binding.registratiedatum?.value ?? "",
+      street: "", houseNumber: "", postalCode: "", sourceUrl: uri,
+      name: description.length <= 100 && description !== "Archeologische vondst." ? description : undefined,
+      monumentNature: "vondsten", description,
+      place: binding.woonplaats?.value, municipality: binding.woonplaats?.value,
+      archaeologicalFindCount: Number(binding.aantal?.value ?? "0"),
+      archaeologicalFindTypes: [], archaeologicalMaterials: [], archaeologicalStyles: [],
+      parentObjectUrl: binding.vondstlocatie?.value,
+      parentObjectLabel: binding.vondstlocatieNaam?.value && binding.vondstlocatieNaam.value !== "-" ? binding.vondstlocatieNaam.value : "Bijbehorende vondstlocatie",
+    };
+    const concept = binding.concept?.value && binding.conceptLabel?.value ? { uri: binding.concept.value, label: binding.conceptLabel.value } : undefined;
+    if (concept && binding.conceptSoort?.value === "type") add(record.archaeologicalFindTypes!, concept);
+    if (concept && binding.conceptSoort?.value === "materiaal") add(record.archaeologicalMaterials!, concept);
+    if (concept && binding.conceptSoort?.value === "stijl") add(record.archaeologicalStyles!, concept);
+    if (concept && binding.conceptSoort?.value === "toestand") record.archaeologicalCondition = concept;
+    records.set(choNumber, record);
+  }
+  return [...records.values()];
 }
 
 export type ArchaeologyConcept = { uri: string; label: string; schemeUri?: string; schemeLabel?: string; schemes?: { uri: string; label: string }[] };

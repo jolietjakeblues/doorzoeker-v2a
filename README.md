@@ -39,6 +39,11 @@ woonplaats en type. Het detail toont het aantal, de bovenliggende vondstlocatie
 en de bron van het typebegrip binnen Referentienetwerk 2. De publieke
 CHO-dataset levert voor deze records momenteel geen geometriekoppeling; daarom
 verschijnen ze niet op een verzonnen kaartpositie.
+Vondsten zijn zelfstandig vindbaar op CHO- of Archis-vondstnummer,
+omschrijving, woonplaats, vondsttype, materiaal en toestand. Type, materiaal
+en toestand zijn in het detail aanklikbaar: Doorzoeker zoekt dan exact op de
+RN2-URI. Zo vindt een klik op `messing` alleen vondsten die werkelijk met dat
+materiaalconcept zijn geclassificeerd.
 Een archeologisch complex is daarbij een
 inhoudelijke duiding, zoals een nederzetting of grafveld; het is niet hetzelfde
 als een Complex van gebouwde Rijksmonumenten.
@@ -108,7 +113,6 @@ validatie, time-outs, mapping, caching en foutafhandeling.
 
 ## Nog niet gebouwd
 
-- zelfstandig zoeken en bladeren door afzonderlijke vondsten;
 - ruimtelijke `ligt in`-relaties tussen Rijksmonumenten en
   Werelderfgoed/Gezichten;
 - de geometrie van historische groenaanleg als aparte kaartlaag;

@@ -1,12 +1,13 @@
-import { browseRceObjects, searchByActorConcept, searchByArcheologischeWaarderingConcept, searchByGebeurtenisConcept, searchByMonumentAardConcept, searchRceMonuments } from "../../../../lib/server/rce-adapter.ts";
+import { browseRceObjects, searchByActorConcept, searchByArcheologischeWaarderingConcept, searchByGebeurtenisConcept, searchByMonumentAardConcept, searchByVondstenConcept, searchRceMonuments } from "../../../../lib/server/rce-adapter.ts";
 import { CONCEPT_URI_PATTERN } from "../concept/route.ts";
 
-type ConceptVeld = "monumentaard" | "waardering" | "gebeurtenis" | "actor";
+type ConceptVeld = "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand";
 
 function searchByConceptField(veld: ConceptVeld, conceptUri: string, signal?: AbortSignal) {
   if (veld === "waardering") return searchByArcheologischeWaarderingConcept(conceptUri, signal);
   if (veld === "gebeurtenis") return searchByGebeurtenisConcept(conceptUri, signal);
   if (veld === "actor") return searchByActorConcept(conceptUri, signal);
+  if (veld === "vondsttype" || veld === "materiaal" || veld === "toestand") return searchByVondstenConcept(conceptUri, veld, signal);
   return searchByMonumentAardConcept(conceptUri, signal);
 }
 
@@ -85,7 +86,7 @@ export async function GET(request: Request) {
     // (monumentaard).
     const conceptParam = url.searchParams.get("concept");
     const veldParam = url.searchParams.get("veld");
-    const veld: ConceptVeld = veldParam === "waardering" || veldParam === "gebeurtenis" || veldParam === "actor" ? veldParam : "monumentaard";
+    const veld: ConceptVeld = veldParam === "waardering" || veldParam === "gebeurtenis" || veldParam === "actor" || veldParam === "vondsttype" || veldParam === "materiaal" || veldParam === "toestand" ? veldParam : "monumentaard";
     if (conceptParam && !CONCEPT_URI_PATTERN.test(conceptParam)) {
       return Response.json({ error: "Ongeldige concept-URI." }, { status: 400 });
     }
@@ -119,7 +120,7 @@ export async function GET(request: Request) {
         : await searchRceMonuments(query, request.signal, page);
     const isPagedTextSearch = !browse && !conceptParam && !/^\d{4,6}$/.test(query) && !/^\d{4}\s?[A-Za-z]{2}$/.test(query);
     const pageSize = 25;
-    const collectionNatures = new Set(["werelderfgoed", "gezicht", "complex", "archeologischonderzoeksgebied", "archeologischterrein", "vondstlocatie", "grondsporen"]);
+    const collectionNatures = new Set(["werelderfgoed", "gezicht", "complex", "archeologischonderzoeksgebied", "archeologischterrein", "vondstlocatie", "grondsporen", "vondsten"]);
     const pagedResultCount = results.filter((result) => !collectionNatures.has(result.monumentNature ?? "")).length;
     const body = JSON.stringify({
       results,

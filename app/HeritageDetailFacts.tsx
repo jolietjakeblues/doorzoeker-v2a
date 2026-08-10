@@ -1,4 +1,4 @@
-import { statusLabel, type Item } from "@/lib/heritage-view-model";
+import { statusLabel, type ConceptField, type Item } from "@/lib/heritage-view-model";
 
 type Concept = { uri: string; label: string };
 
@@ -34,7 +34,7 @@ export function HeritageDetailFacts({
   onConceptSearch,
 }: {
   item: Item;
-  onConceptSearch: (concept: Concept) => void;
+  onConceptSearch: (concept: Concept, field?: ConceptField) => void;
 }) {
   const common = (
     <>
@@ -96,6 +96,21 @@ export function HeritageDetailFacts({
             <dt>Vondstlocatie</dt>
             <dd><a href={item.parentObjectUrl} target="_blank" rel="noreferrer">{item.parentObjectLabel}</a></dd>
           </div>
+        ) : null}
+        {item.objectType === "Vondst" && item.archaeologicalFindCount ? (
+          <div><dt>Aantal vondsten</dt><dd>{item.archaeologicalFindCount}</dd></div>
+        ) : null}
+        {item.objectType === "Vondst" && item.archaeologicalFindTypes?.length ? (
+          <div><dt>Type vondst</dt><dd>{item.archaeologicalFindTypes.map((concept, index) => <span key={concept.uri}>{index ? ", " : ""}<button type="button" className="concept-link" onClick={() => onConceptSearch(concept, "vondsttype")} title={`Zoek alle vondsten van het type ${concept.label}`}>{concept.label}</button>{concept.schemes?.length ? ` (${concept.schemes.map((scheme) => scheme.label).join(", ")})` : ""}</span>)}</dd></div>
+        ) : null}
+        {item.objectType === "Vondst" && item.archaeologicalMaterials?.length ? (
+          <div><dt>Materiaal</dt><dd>{item.archaeologicalMaterials.map((concept, index) => <span key={concept.uri}>{index ? ", " : ""}<button type="button" className="concept-link" onClick={() => onConceptSearch(concept, "materiaal")} title={`Zoek alle vondsten van ${concept.label}`}>{concept.label}</button>{concept.schemes?.length ? ` (${concept.schemes.map((scheme) => scheme.label).join(", ")})` : ""}</span>)}</dd></div>
+        ) : null}
+        {item.objectType === "Vondst" && item.archaeologicalCondition ? (
+          <div><dt>Toestand</dt><dd><button type="button" className="concept-link" onClick={() => onConceptSearch(item.archaeologicalCondition!, "toestand")} title={`Zoek alle vondsten met toestand ${item.archaeologicalCondition.label}`}>{item.archaeologicalCondition.label}</button>{item.archaeologicalCondition.schemes?.length ? ` (${item.archaeologicalCondition.schemes.map((scheme) => scheme.label).join(", ")})` : ""}</dd></div>
+        ) : null}
+        {item.objectType === "Vondst" && item.parentObjectUrl ? (
+          <div><dt>Vondstlocatie</dt><dd><a href={item.parentObjectUrl} target="_blank" rel="noreferrer">{item.parentObjectLabel}</a></dd></div>
         ) : null}
       </>
     );

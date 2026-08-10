@@ -170,6 +170,33 @@ test("een grondspoor toont aantal, RN2-bron en bijbehorende vondstlocatie", asyn
   await expect(page.getByText("Bijbehorende vondstlocatie", { exact: true })).toBeVisible();
 });
 
+test("materiaal van een vondst zoekt exact verder via de RN2-URI", async ({ page }) => {
+  const materialUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/91645e25-8d66-44ba-9126-56e64ac5fd1f";
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const url = new URL(route.request().url());
+    const exactMaterial = url.searchParams.get("veld") === "materiaal" && url.searchParams.get("concept") === materialUri;
+    return route.fulfill({ json: { results: [{
+      choNumber: exactMaterial ? "10004949" : "10015422", monumentNumber: exactMaterial ? "10004949" : "10015422", registrationDate: "2016-03-17", street: "", houseNumber: "", postalCode: "",
+      sourceUrl: `https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/vondsten/${exactMaterial ? "10004949" : "10015422"}`,
+      description: exactMaterial ? "Bedelaarsgildepenning" : "Een riemtong van messing.", monumentNature: "vondsten", place: "Eindhoven", municipality: "Eindhoven", archaeologicalFindCount: 1,
+      archaeologicalFindTypes: [{ uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/type", label: exactMaterial ? "penning" : "riemtong - langwerpig", schemes: [{ uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/ais", label: "Archeologisch Informatie Systeem" }] }],
+      archaeologicalMaterials: [{ uri: materialUri, label: "messing", schemes: [{ uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/ais", label: "Archeologisch Informatie Systeem" }] }],
+      archaeologicalCondition: { uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/toestand", label: "onbekend", schemes: [{ uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/choi", label: "Cultuurhistorische Object Informatie" }] },
+      parentObjectUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/vondstlocatie/6175445", parentObjectLabel: "Collse Watermolen",
+      matchSource: exactMaterial ? "materiaal vondst" : "CHO-nummer (vondst)", matchedText: exactMaterial ? "" : "10015422", matchScore: exactMaterial ? 0 : 10,
+    }], page: 1, hasMore: false } });
+  });
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("10015422");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: /Details van/ }).click();
+  await expect(page.getByRole("button", { name: "messing", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "messing", exact: true }).click();
+  await expect(page).toHaveURL(/veld=materiaal/);
+  await expect(page).toHaveURL(new RegExp(encodeURIComponent(materialUri).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  await expect(page.getByText("Bedelaarsgildepenning", { exact: true })).toBeVisible();
+});
+
 test("filters volgen het gekozen objecttype", async ({ page }) => {
   await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
   await page.getByRole("button", { name: "Doorzoek RCE" }).click();

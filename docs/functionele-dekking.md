@@ -15,6 +15,7 @@ zelfstandig doorzoekbare objecten, gekoppelde gegevens en alleen tellingen.
 | Archeologisch terrein | Vrij zoeken op Archis-monumentnummer, naam, plaats, omschrijving en waardering | Geen zelfstandig vlak: voor deze klasse bevat de publieke CHO-graph geen `heeftGeometrie/geo:asWKT` | Archis-monumentnummer, CHO-nummer, plaats, omschrijving en waardering |
 | Vondstlocatie | Vrij zoeken op vondstmeldingsnummer, waarnemingsnummer, locatienaam, plaats, omschrijving en verwervingswijze | Geen kaartpunt: de RCE publiceert hiervoor geen coördinaten | Archis-nummers, plaats, omschrijving, verwervingswijze en maximaal 25 complexen, vondstgroepen en grondspoorgroepen per onderdeel |
 | Grondspoor | Vrij zoeken op CHO-nummer, omschrijving, woonplaats en gekoppeld RN2-type | Geen kaartpunt: in de publieke CHO-dataset heeft geen van de 91.980 gecontroleerde records een directe `ceo:heeftGeometrie`-koppeling | Aantal grondsporen, omschrijving, type met conceptschema en bovenliggende vondstlocatie |
+| Vondst | Vrij zoeken op CHO- of Archis-vondstnummer, omschrijving, woonplaats, type, materiaal en toestand | Geen kaartpunt: de RCE publiceert hiervoor geen coördinaten | Aantal, omschrijving, bovenliggende vondstlocatie en aanklikbare RN2-begrippen voor type, materiaal en toestand |
 | Archeologisch onderzoeksgebied | Vrij zoeken op woonplaats en onderzoeksomschrijving | Polygon of MultiPolygon | Onderzoeksgegevens en gekoppelde archeologische inhoud |
 
 Een Complex heeft in Doorzoeker geen kunstmatig berekende `union`-geometrie.
@@ -61,7 +62,7 @@ niet zelf een monument of een archeologisch waardevol terrein.
 | Archeologisch onderzoeksgebied | Zelfstandig doorzoekbaar object met eigen geometrie en detailweergave |
 | Archeologisch complex | Rechtstreeks gekoppelde eerste bevindingen en complexen onder de getoonde vondstlocaties worden binnen een onderzoeksgebied samengevat |
 | Vondstlocatie | Zelfstandig doorzoekbaar; daarnaast worden tot 25 aan een onderzoeksgebied gekoppelde vondstlocaties daar als context getoond |
-| Vondst | Geen zelfstandige resultatenlijst; Doorzoeker toont het totale aantal gekoppelde vondsten binnen het onderzoeksgebied |
+| Vondst | Zelfstandig doorzoekbaar; blijft daarnaast als lijst en telling zichtbaar binnen de gekoppelde vondstlocatie of het onderzoeksgebied |
 | Grondspoor | Zelfstandig doorzoekbaar; blijft daarnaast als lijst en telling zichtbaar binnen de gekoppelde vondstlocatie of het onderzoeksgebied |
 | Complex via vondstlocatie | Als totaal vermeld, naast rechtstreeks gekoppelde archeologische complexen |
 
@@ -143,7 +144,6 @@ eigen brondata; dat maakt CHT niet automatisch een algemene CHO-zoekindex.
   eigen `ceo:heeftGeometrie/geo:asWKT`. Doorzoeker verzint daarom geen vorm of
   coördinaat. Een gekoppeld Rijksmonument kan wel zijn eigen geometrie hebben,
   maar die is niet automatisch de geometrie van het terrein.
-- Vondsten zijn nog geen zelfstandig doorzoekbare collectie.
 - Er is nog geen ruimtelijke `ligt in`-relatie tussen Rijksmonumenten en
   Werelderfgoed of Gezichten; de bron bevat daarvoor geen directe relatie.
 - De afzonderlijke geometrie van een historische groenaanleg is nog geen
