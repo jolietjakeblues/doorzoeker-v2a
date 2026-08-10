@@ -257,10 +257,18 @@ waardering.
 
 **`ceo:datum` op de begin-/einddatering-proxy is een gewone `xsd:date`-
 literal** (bv. "1850-01-01") - geen concept-opzoeking nodig voor de
-datering zelf. De `heeftBetrouwbaarheid`/`heeftIndicatieNauwkeurigheid`-
-concepten ("onbekend"/"globaal") zijn losse precisie-indicatoren op
-hetzelfde Datering-object, geen deel van de datumketen zelf - dit werd
-in een eerste (te snelle) query per ongeluk door elkaar gehaald door
+datering zelf. **Let op (2026-08-10, tijdens de "op deze dag"-verkenning
+voor `010-op-deze-dag.md`): deze dag/maand is vrijwel altijd "01-01"** -
+alle 21.292 gecontroleerde `heeftBeginDatering`-waarden hadden exact die
+maand-dag. Dit is een jaarnauwkeurige precisie-conventie, geen echte
+bouwdatum - gebruik dit veld dus nooit voor iets dat op de exacte dag/maand
+vertrouwt (bv. een "op deze dag"-widget); `ceo:datumInschrijvingInMonumentenregister`
+(al gebruikt als `registrationDate`) heeft wél een echte, gespreide
+maand-dag-verdeling en is daarvoor de juiste bron. De
+`heeftBetrouwbaarheid`/`heeftIndicatieNauwkeurigheid`-concepten
+("onbekend"/"globaal") zijn losse precisie-indicatoren op hetzelfde
+Datering-object, geen deel van de datumketen zelf - dit werd in een
+eerste (te snelle) query per ongeluk door elkaar gehaald door
 `?dateringNode ?p ?o` te vlak te bevragen; opsplitsen naar de losse
 properties gaf de juiste, ontrafelde structuur.
 
