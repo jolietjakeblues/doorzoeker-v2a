@@ -12,6 +12,8 @@ import {
   buildGebeurtenisConceptQuery,
   buildGebeurtenissenQuery,
   buildGroenaanlegQuery,
+  buildGrondsporenDetailsQuery,
+  buildGrondsporenDiscoveryQueries,
   buildImageQuery,
   buildMonumentAardConceptQuery,
   buildMspIndicatieQuery,
@@ -46,6 +48,8 @@ import {
   parseGebeurtenissenResults,
   parseGezichtResults,
   parseGroenaanlegResults,
+  parseGrondsporenDiscoveryResults,
+  parseGrondsporenResults,
   parseImageResults,
   parseMspIndicatieResults,
   parseOnderzoeksgebiedAggregatenResults,
@@ -340,6 +344,33 @@ async function searchVondstlocaties(term: string, signal?: AbortSignal): Promise
   });
 }
 
+async function searchGrondsporen(term: string, signal?: AbortSignal): Promise<RceMonument[]> {
+  const queries = buildGrondsporenDiscoveryQueries(term);
+  const settled = await Promise.allSettled(queries.map(({ bron, query }) =>
+    fetchSparql(query, signal).then((document) => parseGrondsporenDiscoveryResults(document, bron, term)),
+  ));
+  if (signal?.aborted) throw signal.reason;
+  const branches = settled.flatMap((result, index) => {
+    if (result.status === "fulfilled") return [result.value];
+    console.warn(JSON.stringify({ event: "search.grondsporen.branch.unavailable", source: queries[index].bron, message: result.reason instanceof Error ? result.reason.message : "unknown" }));
+    return [];
+  });
+  if (!branches.length) throw settled.find((result) => result.status === "rejected")?.reason ?? new Error("Geen grondspoorzoekbron bereikbaar");
+  const discovery = mergeDiscoveryMatches(branches).slice(0, 25);
+  if (!discovery.length) return [];
+  const details = await fetchSparql(buildGrondsporenDetailsQuery(discovery.map((match) => match.monumentNumber)), signal);
+  const records = parseGrondsporenResults(details);
+  const resolved = await resolveConcepts(records.flatMap((item) => item.archaeologicalTypeConceptUri ? [item.archaeologicalTypeConceptUri] : []), signal);
+  const byNumber = new Map(records.map((item) => {
+    const concept = item.archaeologicalTypeConceptUri ? resolved.get(item.archaeologicalTypeConceptUri) : undefined;
+    return [item.choNumber, { ...item, archaeologicalType: concept?.label ?? item.archaeologicalType, archaeologicalTypeSchemes: concept?.schemes }];
+  }));
+  return discovery.flatMap((match) => {
+    const item = byNumber.get(match.monumentNumber);
+    return item ? [{ ...item, ...match, monumentNumber: item.monumentNumber }] : [];
+  });
+}
+
 async function searchByText(term: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
   const discoveryQueries = buildRceDiscoveryQueries(term);
   const discoverySettled = await timed("search.discovery", () => Promise.allSettled(
@@ -358,7 +389,7 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1): Promi
     throw firstFailure?.reason ?? new Error("Geen zoekbron bereikbaar");
   }
 
-  const [werelderfgoed, gezichten, complexen, onderzoeksgebieden, archeologischeTerreinen, vondstlocaties] = await Promise.all([
+  const [werelderfgoed, gezichten, complexen, onderzoeksgebieden, archeologischeTerreinen, vondstlocaties, grondsporen] = await Promise.all([
     page === 1
       ? optionalSearch("search.werelderfgoed", () => fetchSparql(buildWerelderfgoedQuery(term), signal).then(parseWerelderfgoedResults), [], signal)
       : Promise.resolve<RceMonument[]>([]),
@@ -377,8 +408,11 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1): Promi
     page === 1
       ? optionalSearch("search.vondstlocaties", () => searchVondstlocaties(term, signal), [], signal)
       : Promise.resolve<RceMonument[]>([]),
+    page === 1
+      ? optionalSearch("search.grondsporen", () => searchGrondsporen(term, signal), [], signal)
+      : Promise.resolve<RceMonument[]>([]),
   ]);
-  const extras = [...werelderfgoed, ...gezichten, ...complexen, ...onderzoeksgebieden, ...archeologischeTerreinen, ...vondstlocaties];
+  const extras = [...werelderfgoed, ...gezichten, ...complexen, ...onderzoeksgebieden, ...archeologischeTerreinen, ...vondstlocaties, ...grondsporen];
   const start = Math.max(0, page - 1) * 25;
   const discovery = mergeDiscoveryMatches(branchResults).slice(start, start + 25);
   if (!discovery.length) return extras;
@@ -413,12 +447,13 @@ export async function browseRceObjects(kind: "werelderfgoed" | "gezicht" | "comp
 export async function searchRceMonuments(query: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
   const trimmed = query.trim();
   if (/^\d{4,6}$/.test(trimmed)) {
-    const [rijksmonumenten, terreinen, vondstlocaties] = await Promise.all([
+    const [rijksmonumenten, terreinen, vondstlocaties, grondsporen] = await Promise.all([
       searchByNumber(trimmed, signal),
       optionalSearch("search.archeologische-terreinen", () => searchArcheologischeTerreinen(trimmed, signal), [], signal),
       optionalSearch("search.vondstlocaties", () => searchVondstlocaties(trimmed, signal), [], signal),
+      optionalSearch("search.grondsporen", () => searchGrondsporen(trimmed, signal), [], signal),
     ]);
-    return [...rijksmonumenten, ...terreinen, ...vondstlocaties];
+    return [...rijksmonumenten, ...terreinen, ...vondstlocaties, ...grondsporen];
   }
   if (!/^\d{4}\s?[A-Za-z]{2}$/.test(trimmed)) return searchByText(trimmed, signal, page);
   const params = new URLSearchParams({ page: "1", pageSize: "100", postcode: trimmed.replace(/\s/g, "").toUpperCase() });

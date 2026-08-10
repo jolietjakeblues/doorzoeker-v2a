@@ -151,6 +151,25 @@ test("een vondstlocatie toont vondsten met hun RN2-bron", async ({ page }) => {
   await expect(page.getByText(/aardewerk \(Archeologisch Informatie Systeem\).*fragment \(Cultuurhistorische Object Informatie\)/)).toBeVisible();
 });
 
+test("een grondspoor toont aantal, RN2-bron en bijbehorende vondstlocatie", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({ json: { results: [{
+    choNumber: "10000135", monumentNumber: "10000135", registrationDate: "2015-06-05", street: "", houseNumber: "", postalCode: "",
+    sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/grondsporen/10000135", name: "Karrespoor", place: "Brunssum", municipality: "Brunssum",
+    description: "Karrespoor", monumentNature: "grondsporen", archaeologicalTraceCount: 1, archaeologicalType: "onbekend",
+    archaeologicalTypeConceptUri: "https://data.cultureelerfgoed.nl/term/id/rn/2/type",
+    archaeologicalTypeSchemes: [{ uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/ais", label: "Archeologisch Informatie Systeem" }],
+    parentObjectUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/vondstlocatie/6175362", parentObjectLabel: "Bijbehorende vondstlocatie",
+    matchSource: "omschrijving (grondspoor)", matchedText: "Karrespoor", matchScore: 20,
+  }], page: 1, hasMore: false } }));
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Karrespoor");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Details van Karrespoor" }).click();
+  await expect(page.getByText("Archeologisch grondspoor", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("onbekend (Archeologisch Informatie Systeem)", { exact: true })).toBeVisible();
+  await expect(page.getByText("Bijbehorende vondstlocatie", { exact: true })).toBeVisible();
+});
+
 test("filters volgen het gekozen objecttype", async ({ page }) => {
   await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
   await page.getByRole("button", { name: "Doorzoek RCE" }).click();

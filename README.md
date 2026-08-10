@@ -17,6 +17,7 @@ Deze repository is een schone herbouw van Doorzoeker. Er is geen code uit
 - Complexen van gebouwde Rijksmonumenten;
 - archeologische terreinen;
 - archeologische vondstlocaties;
+- archeologische grondsporen;
 - archeologische onderzoeksgebieden.
 
 Archeologie bestaat uit meer dan onderzoeksgebieden en monumenten. Bij
@@ -33,6 +34,11 @@ grondspoorgroepen. De bijbehorende RN2-concepten bewaren hun URI en alle
 gevonden conceptschema's. Binnen onderzoeksgebieden toont de detailweergave
 archeologische complexen, maximaal 25 gekoppelde vondstlocaties en totalen
 voor vondsten, grondsporen en complexen die via vondstlocaties zijn gekoppeld.
+Grondsporen zijn daarnaast zelfstandig vindbaar op CHO-nummer, omschrijving,
+woonplaats en type. Het detail toont het aantal, de bovenliggende vondstlocatie
+en de bron van het typebegrip binnen Referentienetwerk 2. De publieke
+CHO-dataset levert voor deze records momenteel geen geometriekoppeling; daarom
+verschijnen ze niet op een verzonnen kaartpositie.
 Een archeologisch complex is daarbij een
 inhoudelijke duiding, zoals een nederzetting of grafveld; het is niet hetzelfde
 als een Complex van gebouwde Rijksmonumenten.
@@ -102,7 +108,7 @@ validatie, time-outs, mapping, caching en foutafhandeling.
 
 ## Nog niet gebouwd
 
-- zelfstandig zoeken en bladeren door afzonderlijke vondsten en grondsporen;
+- zelfstandig zoeken en bladeren door afzonderlijke vondsten;
 - ruimtelijke `ligt in`-relaties tussen Rijksmonumenten en
   Werelderfgoed/Gezichten;
 - de geometrie van historische groenaanleg als aparte kaartlaag;

@@ -94,6 +94,12 @@ export type RceMonument = {
   archaeologicalValuationConceptUri?: string;
   archaeologicalAcquisition?: string;
   archaeologicalAcquisitionConceptUri?: string;
+  archaeologicalTraceCount?: number;
+  archaeologicalType?: string;
+  archaeologicalTypeConceptUri?: string;
+  archaeologicalTypeSchemes?: { uri: string; label: string }[];
+  parentObjectUrl?: string;
+  parentObjectLabel?: string;
 };
 
 export type MonumentImage = { url: string; title?: string; license?: string; sourceUrl?: string };
@@ -1504,6 +1510,113 @@ export function parseVondstlocatieResults(document: unknown): RceMonument[] {
       municipality: woonplaats,
       archaeologicalAcquisition: binding.verwervingLabel?.value,
       archaeologicalAcquisitionConceptUri: binding.verwervingConcept?.value,
+    };
+  });
+}
+
+const GRONDSPOREN_SOURCES: { bron: string; rang: number; pattern: string }[] = [
+  { bron: "CHO-nummer (grondspoor)", rang: 1, pattern: "BIND(?choi AS ?match)" },
+  { bron: "omschrijving (grondspoor)", rang: 2, pattern: "?grondspoor ceo:heeftOmschrijving/ceo:omschrijving ?match ." },
+  { bron: "woonplaats (grondspoor)", rang: 3, pattern: "?grondspoor ceo:ligtInObject/ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?match ." },
+  { bron: "type grondspoor", rang: 4, pattern: "?grondspoor ceo:heeftType/ceo:heeftTypeNaam ?typeConcept . ?typeConcept skos:prefLabel ?match ." },
+];
+
+export function buildGrondsporenDiscoveryQueries(term: string): { bron: string; query: string }[] {
+  const needle = escapeSparqlString(term.trim());
+  return GRONDSPOREN_SOURCES.map(({ bron, pattern }) => ({
+    bron,
+    query: `PREFIX ceo: <${CEO}>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT DISTINCT ?choi ?match WHERE {
+ GRAPH <${INSTANCES_GRAPH}> {
+  ?grondspoor a ceo:Grondsporen ; ceo:cultuurhistorischObjectnummer ?choi .
+  ${pattern}
+  ${bron.startsWith("CHO-") && /^\d+$/.test(term.trim())
+    ? `FILTER(STR(?match) = "${needle}")`
+    : `FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))`}
+ }
+}
+LIMIT 100`,
+  }));
+}
+
+export function parseGrondsporenDiscoveryResults(document: unknown, bron: string, term: string): DiscoveryMatch[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  const rang = GRONDSPOREN_SOURCES.find((source) => source.bron === bron)?.rang ?? 99;
+  const needle = term.trim().toLocaleLowerCase("nl");
+  return bindings.flatMap((binding) => {
+    const monumentNumber = binding.choi?.value ?? "";
+    const matchedText = binding.match?.value ?? "";
+    if (!monumentNumber) return [];
+    const lowerMatch = matchedText.toLocaleLowerCase("nl");
+    const matchtype = lowerMatch === needle ? 0 : lowerMatch.startsWith(needle) ? 1 : 2;
+    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: rang * 10 + matchtype }];
+  });
+}
+
+export function buildGrondsporenDetailsQuery(choNumbers: string[]) {
+  const values = choNumbers.map((number) => `"${escapeSparqlString(number)}"`).join(" ");
+  return `PREFIX ceo: <${CEO}>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT ?grondspoor ?choi
+ (SAMPLE(STR(?aantalValue)) AS ?aantal)
+ (SAMPLE(STR(?omschrijvingValue)) AS ?omschrijving)
+ (SAMPLE(?typeConceptValue) AS ?typeConcept)
+ (SAMPLE(STR(?typeLabelValue)) AS ?typeLabel)
+ (SAMPLE(?vondstlocatieValue) AS ?vondstlocatie)
+ (SAMPLE(STR(?vondstlocatieNaamValue)) AS ?vondstlocatieNaam)
+ (SAMPLE(STR(?woonplaatsValue)) AS ?woonplaats)
+ (SAMPLE(STR(?registratiedatumValue)) AS ?registratiedatum)
+WHERE {
+ GRAPH <${INSTANCES_GRAPH}> {
+  ?grondspoor a ceo:Grondsporen ; ceo:cultuurhistorischObjectnummer ?choi .
+  VALUES ?choi { ${values} }
+  OPTIONAL { ?grondspoor ceo:aantalGrondsporen ?aantalValue . }
+  OPTIONAL { ?grondspoor ceo:heeftOmschrijving/ceo:omschrijving ?omschrijvingValue . }
+  OPTIONAL { ?grondspoor ceo:heeftType/ceo:heeftTypeNaam ?typeConceptValue . ?typeConceptValue skos:prefLabel ?typeLabelValue . }
+  OPTIONAL {
+   ?grondspoor ceo:ligtInObject ?vondstlocatieValue .
+   OPTIONAL { ?vondstlocatieValue ceo:heeftLocatieAanduiding/ceo:locatienaam ?vondstlocatieNaamValue . }
+   OPTIONAL { ?vondstlocatieValue ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?woonplaatsValue . }
+  }
+  OPTIONAL { ?grondspoor ceo:registratiedatum ?registratiedatumValue . }
+ }
+}
+GROUP BY ?grondspoor ?choi
+LIMIT 100`;
+}
+
+export function parseGrondsporenResults(document: unknown): RceMonument[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.map((binding) => {
+    const choNumber = binding.choi?.value ?? "";
+    const typeLabel = binding.typeLabel?.value;
+    const description = binding.omschrijving?.value || "Archeologisch grondspoor.";
+    const parentName = binding.vondstlocatieNaam?.value;
+    return {
+      choNumber,
+      monumentNumber: choNumber,
+      registrationDate: binding.registratiedatum?.value ?? "",
+      street: "",
+      houseNumber: "",
+      postalCode: "",
+      sourceUrl: binding.grondspoor?.value ?? "",
+      name: description.length <= 100 && description !== "Archeologisch grondspoor."
+        ? description
+        : typeLabel && typeLabel.toLocaleLowerCase("nl") !== "onbekend"
+          ? typeLabel
+          : undefined,
+      monumentNature: "grondsporen",
+      description,
+      place: binding.woonplaats?.value,
+      municipality: binding.woonplaats?.value,
+      archaeologicalTraceCount: Number(binding.aantal?.value ?? "0"),
+      archaeologicalType: typeLabel,
+      archaeologicalTypeConceptUri: binding.typeConcept?.value,
+      parentObjectUrl: binding.vondstlocatie?.value,
+      parentObjectLabel: parentName && parentName !== "-" ? parentName : "Bijbehorende vondstlocatie",
     };
   });
 }

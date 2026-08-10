@@ -9,6 +9,8 @@ maximaal 25 vondstlocaties en totalen van vondstlocaties, vondsten,
 grondsporen en complexen via vondstlocaties. `ArcheologischTerrein` heeft
 daarnaast een zelfstandige zoekingang; expliciet aan Rijksmonumenten gekoppelde
 terreinen blijven daar ook als verrijking zichtbaar.
+Grondsporen zijn inmiddels eveneens zelfstandig doorzoekbaar op CHO-nummer,
+omschrijving, woonplaats en het gekoppelde type uit Referentienetwerk 2.
 
 Zie [`../functionele-dekking.md`](../functionele-dekking.md) voor het precieze
 onderscheid tussen zelfstandig object, gekoppelde lijst en telling.
@@ -45,9 +47,13 @@ van de volledige publieke CHO-graph leverde geen enkel `ArcheologischTerrein`
 met een eigen `heeftGeometrie/geo:asWKT` op. De zelfstandige resultaten tonen
 dus wel hun plaatsaanduiding, maar geen verzonnen terreinvlak.
 
-Dit past bij de publicatieregel van de RCE: grondsporen en archeologische
-onderzoeksgebieden worden wel met coördinaten gepubliceerd; vondsten,
-vondstlocaties, archeologische complexen en archeologische terreinen niet.
+De algemene RCE-publicatieregel noemt coördinaten voor grondsporen en
+archeologische onderzoeksgebieden. In de publieke CHO Linked Data-dataset is
+op 10 augustus 2026 echter voor geen van de 91.980 grondspoorrecords een
+directe `ceo:heeftGeometrie`-koppeling aanwezig, ook niet in een andere named
+graph. Doorzoeker toont daarom alleen geometrie die de gebruikte bron werkelijk
+levert. Vondsten, vondstlocaties, archeologische complexen en archeologische
+terreinen krijgen evenmin een verzonnen kaartpositie.
 De zelfstandige zoekingang voor vondstlocaties is daarom een tekstuele
 resultatenlaag en geen puntenlaag op de kaart. Zoeken kan op beide historische
 Archis-nummers, locatienaam, woonplaats, omschrijving en verwervingswijze.

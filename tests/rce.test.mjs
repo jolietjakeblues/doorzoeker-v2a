@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
+import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -975,6 +975,29 @@ test("falls back to the full candidate list when none has a foto", () => {
   const candidates = [{ monumentNumber: "zonder-foto-1", heeftFoto: false }, { monumentNumber: "zonder-foto-2", heeftFoto: false }];
   const chosen = pickOpDezeDagCandidate(candidates, 1);
   assert.ok(["zonder-foto-1", "zonder-foto-2"].includes(chosen));
+});
+
+test("builds bounded ground-trace searches with exact CHO numbers", () => {
+  const queries = buildGrondsporenDiscoveryQueries("10000135");
+  assert.equal(queries.length, 4);
+  assert.match(queries[0].query, /a ceo:Grondsporen/);
+  assert.match(queries[0].query, /FILTER\(STR\(\?match\) = "10000135"\)/);
+  assert.match(queries[1].query, /heeftOmschrijving\/ceo:omschrijving/);
+  assert.match(queries[2].query, /ligtInObject\/ceo:heeftBasisregistratieRelatie/);
+  assert.match(queries[3].query, /heeftTypeNaam/);
+});
+
+test("parses a ground trace as a standalone CHO object without invented geometry", () => {
+  const discovery = parseGrondsporenDiscoveryResults({ results: { bindings: [{ choi: { value: "10000135" }, match: { value: "Karrespoor" } }] } }, "omschrijving (grondspoor)", "karrespoor");
+  assert.equal(discovery[0].monumentNumber, "10000135");
+  const query = buildGrondsporenDetailsQuery(["10000135"]);
+  assert.match(query, /a ceo:Grondsporen/);
+  assert.doesNotMatch(query, /heeftGeometrie/);
+  const [record] = parseGrondsporenResults({ results: { bindings: [{ grondspoor: { value: "grondspoor:10000135" }, choi: { value: "10000135" }, aantal: { value: "1" }, omschrijving: { value: "Karrespoor" }, typeConcept: { value: "rn:grondspoor" }, typeLabel: { value: "onbekend" }, vondstlocatie: { value: "vondstlocatie:1" }, woonplaats: { value: "Brunssum" } }] } });
+  assert.equal(record.name, "Karrespoor");
+  assert.equal(record.archaeologicalTraceCount, 1);
+  assert.equal(record.place, "Brunssum");
+  assert.equal(record.wkt, undefined);
 });
 
 test("returns undefined when there are no op-deze-dag candidates at all", () => {

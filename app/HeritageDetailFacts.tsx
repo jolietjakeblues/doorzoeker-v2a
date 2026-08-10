@@ -74,6 +74,29 @@ export function HeritageDetailFacts({
             <dd>{item.archaeologicalAcquisition}</dd>
           </div>
         ) : null}
+        {item.objectType === "Grondspoor" && item.archaeologicalType ? (
+          <div>
+            <dt>Type grondspoor</dt>
+            <dd>
+              {item.archaeologicalType}
+              {item.archaeologicalTypeSchemes?.length
+                ? ` (${item.archaeologicalTypeSchemes.map((scheme) => scheme.label).join(", ")})`
+                : ""}
+            </dd>
+          </div>
+        ) : null}
+        {item.objectType === "Grondspoor" && item.archaeologicalTraceCount ? (
+          <div>
+            <dt>Aantal grondsporen</dt>
+            <dd>{item.archaeologicalTraceCount}</dd>
+          </div>
+        ) : null}
+        {item.objectType === "Grondspoor" && item.parentObjectUrl ? (
+          <div>
+            <dt>Vondstlocatie</dt>
+            <dd><a href={item.parentObjectUrl} target="_blank" rel="noreferrer">{item.parentObjectLabel}</a></dd>
+          </div>
+        ) : null}
       </>
     );
   }

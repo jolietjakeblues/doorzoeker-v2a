@@ -60,6 +60,10 @@ test("uses an RM prefix only for a Rijksmonument", () => {
     primaryIdentifier({ ...base, objectType: "Vondstlocatie", monumentNumber: "102482" }),
     { label: "Archis", value: "102482" },
   );
+  assert.deepEqual(
+    primaryIdentifier({ ...base, objectType: "Grondspoor", monumentNumber: "10000135" }),
+    { label: "CHO", value: "10000135" },
+  );
 });
 
 test("restores an exact concept search and generic selected object from the URL", () => {
