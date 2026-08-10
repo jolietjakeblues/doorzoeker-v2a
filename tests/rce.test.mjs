@@ -738,6 +738,13 @@ test("queries the ABR-thesaurus rechtstreeks voor archeologische vondsttermen", 
   assert.match(query, /CONTAINS\(LCASE\(STR\(\?label\)\), "aardewerk"\)/);
 });
 
+test("looks up a built complex by complexnummer or CHO-nummer", () => {
+  const query = buildComplexenQuery("512036");
+  assert.match(query, /STR\(\?complexnummer\) = "512036"/);
+  assert.match(query, /STR\(\?choi\) = "512036"/);
+  assert.match(query, /CONTAINS\(LCASE\(STR\(\?naamValue\)\), "512036"\)/);
+});
+
 test("discovers zelfstandige archeologische terreinen via Archis-nummer, naam, plaats, omschrijving en waardering", () => {
   const queries = buildArcheologischTerreinDiscoveryQueries("Nijmegen");
   assert.deepEqual(queries.map((query) => query.bron), [
