@@ -38,11 +38,14 @@ Het label is presentatie. De URI is identiteit.
 
 ## Aanleiding
 
-Doorzoeker gebruikt CHT, ABR en Referentienetwerk 2 als thesaurusbronnen voor
-tekstsuggesties. RN2 is daarnaast rechtstreeks met de objectdata verweven via
-concept-URI's. Een gekozen suggestie bewaart inmiddels concept-URI,
-thesaurus-URI en thesaurusnaam in de URL; voor velden met een gecontroleerde
-exacte route wordt ook op die identiteit gezocht.
+De algemene CHO-zoekbalk gebruikt vier schema's uit Referentienetwerk 2 voor
+woordsuggesties: Archeologisch Informatie Systeem, Cultuurhistorische Object
+Informatie, Kennisregistratie en Monumenten Registratie Systeem. CHT hoort bij
+Bibliotheek en Beeldbank; het losse ABR wordt intern niet gebruikt. RN2 is
+rechtstreeks met de objectdata verweven via concept-URI's. Een gekozen
+suggestie bewaart concept-URI, thesaurus-URI en thesaurusnaam in de URL, maar
+blijft in de algemene zoekbalk een tekstzoekopdracht. Alleen gecontroleerde
+veldroutes zoeken exact op identiteit.
 
 Gevolg: concept-URI's die al in de RCE-data aanwezig zijn worden niet
 benut, classificaties worden gereduceerd tot strings, het verschil tussen
@@ -100,9 +103,9 @@ identiteit gezocht kan worden in plaats van op toevallige labelgelijkenis.
 
 ## Waarom niet meteen breed uitrollen
 
-- CHT-, ABR- en RN2-termsuggesties blijven bestaan voor vrije tekstinvoer.
-  De preciezere laag wordt gebruikt voor velden die al een gecontroleerde
-  concept-URI-route hebben.
+- RN2-woordsuggesties blijven bestaan voor vrije tekstinvoer, beperkt tot de
+  vier CHO-schema's. De preciezere laag wordt gebruikt voor velden die al een
+  gecontroleerde concept-URI-route hebben.
 - Niet elk veld is al gecontroleerd op welke URI-namespace het gebruikt
   (zie "Openstaande vragen" hieronder) - vooraf aannemen dat het
   Referentienetwerk is, is precies de fout die dit plan wil vermijden.

@@ -108,7 +108,7 @@ export function SearchHero({
                   onClick={() => commitSuggestion(suggestion)}
                 >
                   {suggestion.label}
-                  <small>{suggestion.sourceName}</small>
+                  <small>{suggestion.sourceName} · zoekt op tekst</small>
                 </button>
               </li>
             ))}

@@ -24,9 +24,13 @@ niet wordt onderbroken.
 - Een gekozen thesaurusterm behoudt zijn canonieke URI en bron in de gedeelde
   URL, ook wanneer de zoekactie zelf als gewone tekstzoekopdracht wordt
   uitgevoerd.
-- De zoekbalk bevraagt CHT, ABR én Referentienetwerk 2 als thesaurusbronnen.
-  Bij RN2 blijft ook het concrete `skos:inScheme` bewaard en zichtbaar; RN2 is
-  tegelijk de identiteitslaag waarmee delen van de objectdata zijn gekoppeld.
+- De algemene CHO-zoekbalk haalt woordsuggesties alleen uit de vier relevante
+  RN2-schema's: Archeologisch Informatie Systeem, Cultuurhistorische Object
+  Informatie, Kennisregistratie en Monumenten Registratie Systeem. CHT hoort
+  bij Bibliotheek en Beeldbank; los ABR wordt niet gebruikt voor CHO-data.
+- Een gekozen suggestie blijft een tekstzoekopdracht. De interface zegt dat
+  er expliciet bij, zodat een thesaurusterm niet wordt aangezien voor een
+  volledige conceptzoekopdracht.
 - Browser-terug en -vooruit herstellen eerdere zoekopdrachten. Kleine
   wijzigingen binnen een zoekopdracht, zoals filteren of de kaart verschuiven,
   blijven binnen dezelfde geschiedenisstap.

@@ -1288,19 +1288,23 @@ export function parseOnderzoeksgebiedAggregatenResults(document: unknown): Onder
 // maar zelf ook een thesaurus die met de objectdata is verweven.
 export type TermSuggestion = { uri: string; label: string; sourceUri: string; sourceName: string };
 
+const CHO_REFERENTIENETWERK_SCHEMES = [
+  "https://data.cultureelerfgoed.nl/term/id/rn/2/a4a7933c-e096-4bcf-a921-4f70a78749fe", // Archeologisch Informatie Systeem
+  "https://data.cultureelerfgoed.nl/term/id/rn/2/bf88ef8b-eba4-46a7-9740-d58e983e4990", // Cultuurhistorische Object Informatie
+  "https://data.cultureelerfgoed.nl/term/id/rn/2/364d5132-a090-4b2c-8cbe-e167f1243f3f", // Kennisregistratie
+  "https://data.cultureelerfgoed.nl/term/id/rn/2/3f786c78-e111-4545-be64-f79f495f73f5", // Monumenten Registratie Systeem
+] as const;
+
 export function buildReferentienetwerkTermSuggestQuery(term: string, limit: number) {
   const needle = escapeSparqlString(term.trim().toLocaleLowerCase("nl"));
   return `PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX dct: <http://purl.org/dc/terms/>
 SELECT ?concept ?label ?scheme ?schemeLabel WHERE {
-  ?concept a skos:Concept ; skos:prefLabel ?label .
+  VALUES ?scheme { ${CHO_REFERENTIENETWERK_SCHEMES.map((uri) => `<${uri}>`).join(" ")} }
+  ?concept a skos:Concept ; skos:prefLabel ?label ; skos:inScheme ?scheme .
   FILTER(LANG(?label) = "nl")
-  FILTER(STRSTARTS(STR(?concept), "https://data.cultureelerfgoed.nl/term/id/rn/2/"))
   FILTER(CONTAINS(LCASE(STR(?label)), "${needle}"))
-  OPTIONAL {
-    ?concept skos:inScheme ?scheme .
-    OPTIONAL { ?scheme dct:title ?schemeLabel . FILTER(LANG(?schemeLabel) = "" || LANG(?schemeLabel) = "nl") }
-  }
+  OPTIONAL { ?scheme dct:title ?schemeLabel . FILTER(LANG(?schemeLabel) = "" || LANG(?schemeLabel) = "nl") }
 }
 LIMIT ${limit}`;
 }

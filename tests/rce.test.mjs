@@ -715,10 +715,13 @@ test("queries the ABR-thesaurus rechtstreeks voor archeologische vondsttermen", 
 
 test("queries Referentienetwerk 2 als eigen thesaurusbron", () => {
   const query = buildReferentienetwerkTermSuggestQuery("Parochiekerk", 8);
-  assert.match(query, /a skos:Concept ; skos:prefLabel \?label/);
-  assert.match(query, /STRSTARTS\(STR\(\?concept\), "https:\/\/data\.cultureelerfgoed\.nl\/term\/id\/rn\/2\/"\)/);
+  assert.match(query, /\?concept a skos:Concept ; skos:prefLabel \?label ; skos:inScheme \?scheme/);
+  assert.match(query, /VALUES \?scheme/);
+  assert.match(query, /a4a7933c-e096-4bcf-a921-4f70a78749fe/);
+  assert.match(query, /bf88ef8b-eba4-46a7-9740-d58e983e4990/);
+  assert.match(query, /364d5132-a090-4b2c-8cbe-e167f1243f3f/);
+  assert.match(query, /3f786c78-e111-4545-be64-f79f495f73f5/);
   assert.match(query, /CONTAINS\(LCASE\(STR\(\?label\)\), "parochiekerk"\)/);
-  assert.match(query, /\?concept skos:inScheme \?scheme/);
 });
 
 test("preserves RN2 concept- en thesaurusidentiteit in termsuggesties", () => {

@@ -1,24 +1,16 @@
-import { buildAbrTermSuggestQuery, buildChtTermSuggestQuery, buildReferentienetwerkTermSuggestQuery, parseAbrTermSuggestResults, parseChtTermSuggestResults, parseReferentienetwerkTermSuggestResults, type TermSuggestion } from "../rce.ts";
+import { buildReferentienetwerkTermSuggestQuery, parseReferentienetwerkTermSuggestResults, type TermSuggestion } from "../rce.ts";
 import { fetchSparql } from "./sparql-client.ts";
 import { REFERENTIENETWERK_ENDPOINT } from "./referentienetwerk-adapter.ts";
 
 export type { TermSuggestion };
 
-// De drie RCE-thesaurusbronnen worden naast elkaar bevraagd. Eerst op
-// labelkwaliteit ordenen voorkomt dat een exacte RN2-treffer buiten beeld
-// valt door een handvol bredere CHT- of ABR-treffers.
+// De algemene zoekbalk doorzoekt CHO-data. Daarom komen de woordsuggesties
+// alleen uit de vier RN2-schema's die met die data zijn verweven. CHT hoort
+// bij bibliotheek/beeldbank; het losse ABR wordt intern niet gebruikt.
 export async function suggestTerms(query: string, signal?: AbortSignal, limit = 8): Promise<TermSuggestion[]> {
-  const [chtDocument, rnDocument, abrDocument] = await Promise.all([
-    fetchSparql(buildChtTermSuggestQuery(query, limit), signal),
-    fetchSparql(buildReferentienetwerkTermSuggestQuery(query, limit), signal, REFERENTIENETWERK_ENDPOINT),
-    fetchSparql(buildAbrTermSuggestQuery(query, limit), signal),
-  ]);
+  const rnDocument = await fetchSparql(buildReferentienetwerkTermSuggestQuery(query, limit), signal, REFERENTIENETWERK_ENDPOINT);
   const needle = query.trim().toLocaleLowerCase("nl");
-  const suggestions = [
-    ...parseChtTermSuggestResults(chtDocument),
-    ...parseReferentienetwerkTermSuggestResults(rnDocument),
-    ...parseAbrTermSuggestResults(abrDocument),
-  ];
+  const suggestions = parseReferentienetwerkTermSuggestResults(rnDocument);
   return [...new Map(suggestions.map((suggestion) => [suggestion.uri, suggestion])).values()]
     .sort((left, right) => {
       const rank = (label: string) => {
