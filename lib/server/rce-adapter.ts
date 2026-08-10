@@ -620,15 +620,18 @@ export async function browseRceObjects(kind: "rijksmonument" | "archeologischter
 export async function searchRceMonuments(query: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
   const trimmed = query.trim();
   if (/^\d{4,6}$/.test(trimmed)) {
-    const [rijksmonumenten, terreinen, vondstlocaties, grondsporen, vondsten, archeologischeComplexen] = await Promise.all([
+    const [rijksmonumenten, complexen, terreinen, vondstlocaties, grondsporen, vondsten, archeologischeComplexen] = await Promise.all([
       searchByNumber(trimmed, signal),
+      optionalSearch("search.complexen", () => fetchSparql(buildComplexenQuery(trimmed), signal)
+        .then(parseComplexenResults)
+        .then((items) => items.map((item) => ({ ...item, matchSource: "complexnummer", matchedText: trimmed, matchScore: 0 }))), [], signal),
       optionalSearch("search.archeologische-terreinen", () => searchArcheologischeTerreinen(trimmed, signal), [], signal),
       optionalSearch("search.vondstlocaties", () => searchVondstlocaties(trimmed, signal), [], signal),
       optionalSearch("search.grondsporen", () => searchGrondsporen(trimmed, signal), [], signal),
       optionalSearch("search.vondsten", () => searchVondsten(trimmed, signal), [], signal),
       optionalSearch("search.archeologische-complexen", () => searchArcheologischeComplexen(trimmed, signal), [], signal),
     ]);
-    return [...rijksmonumenten, ...terreinen, ...vondstlocaties, ...grondsporen, ...vondsten, ...archeologischeComplexen];
+    return [...rijksmonumenten, ...complexen, ...terreinen, ...vondstlocaties, ...grondsporen, ...vondsten, ...archeologischeComplexen];
   }
   if (!/^\d{4}\s?[A-Za-z]{2}$/.test(trimmed)) return searchByText(trimmed, signal, page);
   const params = new URLSearchParams({ page: "1", pageSize: "100", postcode: trimmed.replace(/\s/g, "").toUpperCase() });
