@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { fetchComplexMembers, fetchOnderzoeksgebiedVerrijking } from "@/lib/rce-client";
-import type { ComplexMember, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie } from "@/lib/rce";
+import { fetchComplexMembers, fetchOnderzoeksgebiedVerrijking, fetchVondstlocatieInhoud } from "@/lib/rce-client";
+import type { ComplexMember, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, VondstlocatieInhoud } from "@/lib/rce";
 import type { Item } from "@/lib/heritage-view-model";
 
 // Complexleden en de archeologische verrijking van een Onderzoeksgebied zijn
@@ -11,6 +11,7 @@ import type { Item } from "@/lib/heritage-view-model";
 export function useSelectedDetailEnrichment(selected: Item | null) {
   const [complexMembers, setComplexMembers] = useState<{ complexUri: string; members: ComplexMember[] } | null>(null);
   const [onderzoeksgebiedVerrijking, setOnderzoeksgebiedVerrijking] = useState<{ gebiedUri: string; complexen: OnderzoeksgebiedComplex[]; vondstlocaties: OnderzoeksgebiedVondstlocatie[] } & OnderzoeksgebiedAggregaten | null>(null);
+  const [vondstlocatieInhoud, setVondstlocatieInhoud] = useState<({ locatieUri: string } & VondstlocatieInhoud) | null>(null);
 
   useEffect(() => {
     if (selected?.objectType !== "Complex" || !selected.linkedDataUrl) return;
@@ -32,5 +33,15 @@ export function useSelectedDetailEnrichment(selected: Item | null) {
     return () => controller.abort();
   }, [selected]);
 
-  return { complexMembers, onderzoeksgebiedVerrijking };
+  useEffect(() => {
+    if (selected?.objectType !== "Vondstlocatie" || !selected.linkedDataUrl) return;
+    const locatieUri = selected.linkedDataUrl;
+    const controller = new AbortController();
+    fetchVondstlocatieInhoud(locatieUri, controller.signal)
+      .then((data) => { if (!controller.signal.aborted) setVondstlocatieInhoud({ locatieUri, ...data }); })
+      .catch(() => { if (!controller.signal.aborted) setVondstlocatieInhoud({ locatieUri, complexen: [], vondsten: [], grondsporen: [], complexenTotaal: 0, vondstenTotaal: 0, grondsporenTotaal: 0 }); });
+    return () => controller.abort();
+  }, [selected]);
+
+  return { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud };
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildReferentienetwerkTermSuggestQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
+import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -759,6 +759,57 @@ test("parses discovery en details van een zelfstandig archeologisch terrein", ()
   assert.equal(terrein.place, "Nijmegen");
   assert.equal(terrein.archaeologicalValuation, "terrein van hoge archeologische waarde");
   assert.equal(terrein.wkt, undefined);
+});
+
+test("discovers vondstlocaties via beide Archis-nummers, naam, plaats, omschrijving en verwerving", () => {
+  const queries = buildVondstlocatieDiscoveryQueries("102482");
+  assert.deepEqual(queries.map((query) => query.bron), [
+    "Archis-vondstmeldingsnummer",
+    "Archis-waarnemingsnummer",
+    "locatienaam",
+    "woonplaats (vondstlocatie)",
+    "omschrijving (vondstlocatie)",
+    "verwervingswijze",
+  ]);
+  assert.match(queries[0].query, /FILTER\(STR\(\?match\) = "102482"\)/);
+  assert.match(queries[1].query, /archis2Waarnemingsnummer/);
+  assert.match(queries[5].query, /heeftVerwerving\/skos:prefLabel/);
+});
+
+test("parses een zelfstandige vondstlocatie zonder coördinaten te verzinnen", () => {
+  const matches = parseVondstlocatieDiscoveryResults({ results: { bindings: [{ choi: { value: "6109334" }, match: { value: "102482" } }] } }, "Archis-vondstmeldingsnummer", "102482");
+  assert.equal(matches[0].matchScore, 10);
+  assert.match(buildVondstlocatieDetailsQuery(["6109334"]), /VALUES \?choi \{ "6109334" \}/);
+  const [locatie] = parseVondstlocatieResults({ results: { bindings: [{
+    locatie: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/vondstlocatie/6109334" },
+    choi: { value: "6109334" }, vondstmelding: { value: "102482" }, waarneming: { value: "102482" },
+    locatienaam: { value: "Padstuk-Dres" }, woonplaats: { value: "Opmeer" },
+    verwervingConcept: { value: "https://data.cultureelerfgoed.nl/term/id/rn/2/e06a84fa-62e8-42ff-8f38-0ddfe9485a15" },
+    verwervingLabel: { value: "archeologisch: boring" },
+  }] } });
+  assert.equal(locatie.monumentNature, "vondstlocatie");
+  assert.equal(locatie.monumentNumber, "102482");
+  assert.equal(locatie.archaeologicalAcquisition, "archeologisch: boring");
+  assert.equal(locatie.wkt, undefined);
+});
+
+test("parses begrensde vondstlocatie-inhoud met concept-URI's en aparte totalen", () => {
+  const locatieUri = "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/vondstlocatie/6109334";
+  const query = buildVondstlocatieInhoudQuery(locatieUri);
+  assert.match(query, /VALUES \?klasse \{ ceo:ArcheologischComplex ceo:Vondsten ceo:Grondsporen \}/);
+  assert.match(query, /LIMIT 500/);
+  assert.match(buildVondstlocatieInhoudTellingQuery(locatieUri), /COUNT\(DISTINCT \?vondst\)/);
+  const inhoud = parseVondstlocatieInhoudResults({ results: { bindings: [
+    { object: { value: "v:1" }, klasse: { value: `${CEO}Vondsten` }, choi: { value: "1" }, archisVondstnummer: { value: "5888" }, aantal: { value: "2" }, conceptSoort: { value: "type" }, concept: { value: "rn:type" }, conceptLabel: { value: "aardewerk" } },
+    { object: { value: "v:1" }, klasse: { value: `${CEO}Vondsten` }, choi: { value: "1" }, aantal: { value: "2" }, conceptSoort: { value: "materiaal" }, concept: { value: "rn:materiaal" }, conceptLabel: { value: "keramiek" } },
+    { object: { value: "c:1" }, klasse: { value: `${CEO}ArcheologischComplex` }, choi: { value: "2" }, conceptSoort: { value: "type" }, concept: { value: "rn:complex" }, conceptLabel: { value: "nederzetting" } },
+    { object: { value: "g:1" }, klasse: { value: `${CEO}Grondsporen` }, choi: { value: "3" }, aantal: { value: "6" } },
+  ] } });
+  assert.equal(inhoud.vondsten[0].types[0].uri, "rn:type");
+  assert.equal(inhoud.vondsten[0].materialen[0].label, "keramiek");
+  assert.equal(inhoud.complexen[0].type.label, "nederzetting");
+  assert.equal(inhoud.grondsporen[0].aantal, 6);
+  assert.deepEqual(parseVondstlocatieInhoudTelling({ results: { bindings: [{ complexenTotaal: { value: "1" }, vondstenTotaal: { value: "2" }, grondsporenTotaal: { value: "3" } }] } }), { complexenTotaal: 1, vondstenTotaal: 2, grondsporenTotaal: 3 });
 });
 
 test("queries Referentienetwerk 2 als eigen thesaurusbron", () => {

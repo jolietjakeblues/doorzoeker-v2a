@@ -81,7 +81,7 @@ export default function Home() {
     commitSuggestion,
     handleQueryKeyDown,
   } = useTermSuggestions(query, active, selectTermSuggestion);
-  const { complexMembers, onderzoeksgebiedVerrijking } =
+  const { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud } =
     useSelectedDetailEnrichment(selected);
   const opDezeDag = useOpDezeDag();
   useBodyScrollLock(Boolean(selected));
@@ -205,7 +205,7 @@ export default function Home() {
               <summary>Wat betekent dit?</summary>
               <p>
                 Rijksmonument, Werelderfgoed, Gezicht, Complex, Archeologisch
-                terrein en Onderzoeksgebied zijn losse soorten object, geen varianten
+                terrein, Vondstlocatie en Onderzoeksgebied zijn losse soorten object, geen varianten
                 van hetzelfde. Werelderfgoed en Gezicht zijn gebieden waar de
                 RCE verantwoordelijk voor is en die rijksmonumenten kunnen
                 bevatten. Een Complex is zelf geen monument, maar een samenhang
@@ -220,6 +220,7 @@ export default function Home() {
               "Gezicht",
               "Complex",
               "Archeologisch terrein",
+              "Vondstlocatie",
               "Onderzoeksgebied",
             ].map((option) => (
               <label key={option}>
@@ -1057,6 +1058,71 @@ export default function Home() {
                   </p>
                 </div>
               ) : null}
+              {selected.objectType === "Vondstlocatie" &&
+              vondstlocatieInhoud &&
+              vondstlocatieInhoud.locatieUri === selected.linkedDataUrl ? (
+                <div className="map-object-list">
+                  <h3>Wat hier is aangetroffen</h3>
+                  <p>
+                    {countLabel(vondstlocatieInhoud.complexenTotaal, "archeologisch complex", "archeologische complexen")}, {countLabel(vondstlocatieInhoud.vondstenTotaal, "vondstgroep", "vondstgroepen")} en {countLabel(vondstlocatieInhoud.grondsporenTotaal, "grondspoorgroep", "grondspoorgroepen")}.
+                  </p>
+                  {vondstlocatieInhoud.complexen.length ? (
+                    <>
+                      <h4>Archeologische complexen</h4>
+                      <ul>
+                        {vondstlocatieInhoud.complexen.map((complex) => (
+                          <li key={complex.uri}>
+                            <a href={complex.uri} target="_blank" rel="noreferrer">
+                              {complex.type?.label || `Archeologisch complex ${complex.choNumber}`}
+                            </a>
+                            {complex.type?.schemes?.length ? <small>{complex.type.schemes.map((scheme) => scheme.label).join(" · ")}</small> : null}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : null}
+                  {vondstlocatieInhoud.vondsten.length ? (
+                    <>
+                      <h4>Vondsten</h4>
+                      <ul>
+                        {vondstlocatieInhoud.vondsten.map((vondst) => {
+                          const begrippen = [...vondst.types, ...vondst.materialen, ...vondst.stijlen, ...(vondst.toestand ? [vondst.toestand] : [])];
+                          return (
+                            <li key={vondst.uri}>
+                              <a href={vondst.uri} target="_blank" rel="noreferrer">
+                                {vondst.archisVondstnummer ? `Archis-vondst ${vondst.archisVondstnummer}` : `Vondst ${vondst.choNumber}`}
+                              </a>
+                              {vondst.aantal ? ` — ${countLabel(vondst.aantal, "exemplaar", "exemplaren")}` : ""}
+                              {begrippen.length ? (
+                                <small> — {begrippen.map((concept) => `${concept.label}${concept.schemes?.length ? ` (${concept.schemes.map((scheme) => scheme.label).join(", ")})` : ""}`).join(" · ")}</small>
+                              ) : null}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </>
+                  ) : null}
+                  {vondstlocatieInhoud.grondsporen.length ? (
+                    <>
+                      <h4>Grondsporen</h4>
+                      <ul>
+                        {vondstlocatieInhoud.grondsporen.map((spoor) => (
+                          <li key={spoor.uri}>
+                            <a href={spoor.uri} target="_blank" rel="noreferrer">
+                              {spoor.type?.label || `Grondsporen ${spoor.choNumber}`}
+                            </a>
+                            {spoor.aantal ? ` — ${countLabel(spoor.aantal, "spoor", "sporen")}` : ""}
+                            {spoor.type?.schemes?.length ? <small>{spoor.type.schemes.map((scheme) => scheme.label).join(" · ")}</small> : null}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : null}
+                  {vondstlocatieInhoud.complexenTotaal > vondstlocatieInhoud.complexen.length || vondstlocatieInhoud.vondstenTotaal > vondstlocatieInhoud.vondsten.length || vondstlocatieInhoud.grondsporenTotaal > vondstlocatieInhoud.grondsporen.length ? (
+                    <p><small>Per onderdeel worden maximaal 25 records getoond.</small></p>
+                  ) : null}
+                </div>
+              ) : null}
               {selected.literature?.length ? (
                 <div className="map-object-list">
                   <h3>Literatuur</h3>
@@ -1169,6 +1235,7 @@ export default function Home() {
                       ? "Bekijk in het Archis-archief"
                       : selected.objectType === "Complex" ||
                           selected.objectType === "Archeologisch terrein" ||
+                          selected.objectType === "Vondstlocatie" ||
                           selected.objectType === "Onderzoeksgebied"
                         ? "Bekijk in de RCE Linked Data"
                         : "Bekijk in het Monumentenregister"}{" "}

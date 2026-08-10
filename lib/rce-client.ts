@@ -1,4 +1,4 @@
-import type { ComplexMember, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, RceMonument } from "@/lib/rce";
+import type { ComplexMember, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, RceMonument, VondstlocatieInhoud } from "@/lib/rce";
 
 export type SearchResponse = { results: RceMonument[]; page?: number; pageSize?: number; hasMore?: boolean };
 type ComplexMembersResponse = { members: ComplexMember[] };
@@ -81,6 +81,12 @@ export async function fetchOnderzoeksgebiedVerrijking(gebiedUri: string, signal?
   });
   if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
   return await response.json() as OnderzoeksgebiedVerrijkingResponse;
+}
+
+export async function fetchVondstlocatieInhoud(locatieUri: string, signal?: AbortSignal) {
+  const response = await fetch(`/api/rce/vondstlocatie-inhoud?locatie=${encodeURIComponent(locatieUri)}`, { headers: { Accept: "application/json" }, signal });
+  if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
+  return await response.json() as VondstlocatieInhoud;
 }
 
 // Eén keer per pagina-load opgehaald (idle-startpaneel), niet onderdeel

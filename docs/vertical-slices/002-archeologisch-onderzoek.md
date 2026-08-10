@@ -48,8 +48,17 @@ dus wel hun plaatsaanduiding, maar geen verzonnen terreinvlak.
 Dit past bij de publicatieregel van de RCE: grondsporen en archeologische
 onderzoeksgebieden worden wel met coördinaten gepubliceerd; vondsten,
 vondstlocaties, archeologische complexen en archeologische terreinen niet.
-Een eventuele zelfstandige zoekingang voor vondstlocaties wordt daarom een
-tekstuele resultatenlaag en geen puntenlaag op de kaart.
+De zelfstandige zoekingang voor vondstlocaties is daarom een tekstuele
+resultatenlaag en geen puntenlaag op de kaart. Zoeken kan op beide historische
+Archis-nummers, locatienaam, woonplaats, omschrijving en verwervingswijze.
+Bij openen worden maximaal 25 archeologische complexen, vondstgroepen en
+grondspoorgroepen per onderdeel geladen, naast ongelimiteerde totalen.
+
+De inhoudelijke concepten worden niet als platte labels teruggegeven. Type,
+materiaal, stijl/cultuur en toestand bewaren hun RN2-URI plus alle gevonden
+`skos:inScheme`-relaties. Daardoor blijft bijvoorbeeld zichtbaar dat
+`aardewerk` uit Archeologisch Informatie Systeem komt en `fragment` uit
+Cultuurhistorische Object Informatie.
 
 **Belangrijke afbakening:** dit is een andere databron dan de RCE Archis
 "Zoeken & Vinden"-portal (ingelogd, quota van 300 meldingen/export, verbod

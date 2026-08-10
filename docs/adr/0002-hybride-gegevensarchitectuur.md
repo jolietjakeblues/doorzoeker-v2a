@@ -50,6 +50,8 @@ velden mogen een exacte conceptzoekroute gebruiken.
 - `GET /api/rce/complex-members`: leden en geometrieën van een Complex;
 - `GET /api/rce/onderzoeksgebied-verrijking`: archeologische complexen,
   vondstlocaties en aggregaten;
+- `GET /api/rce/vondstlocatie-inhoud`: begrensde vondsten, grondsporen en
+  archeologische complexen met RN2-herkomst;
 - `GET /api/rce/op-deze-dag`: dagelijkse Rijksmonumentselectie;
 - `GET /api/terms/suggest`: RN2-woordsuggesties voor de CHO-zoekbalk.
 

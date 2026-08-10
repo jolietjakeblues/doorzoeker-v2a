@@ -119,7 +119,7 @@ export async function GET(request: Request) {
         : await searchRceMonuments(query, request.signal, page);
     const isPagedTextSearch = !browse && !conceptParam && !/^\d{4,6}$/.test(query) && !/^\d{4}\s?[A-Za-z]{2}$/.test(query);
     const pageSize = 25;
-    const collectionNatures = new Set(["werelderfgoed", "gezicht", "complex", "archeologischonderzoeksgebied", "archeologischterrein"]);
+    const collectionNatures = new Set(["werelderfgoed", "gezicht", "complex", "archeologischonderzoeksgebied", "archeologischterrein", "vondstlocatie"]);
     const pagedResultCount = results.filter((result) => !collectionNatures.has(result.monumentNature ?? "")).length;
     const body = JSON.stringify({
       results,

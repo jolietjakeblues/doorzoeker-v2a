@@ -93,6 +93,9 @@ async function mockRce(page: Page) {
       },
     }),
   );
+  await page.route("**/api/rce/vondstlocatie-inhoud**", (route) =>
+    route.fulfill({ json: { complexen: [], vondsten: [], grondsporen: [], complexenTotaal: 0, vondstenTotaal: 0, grondsporenTotaal: 0 } }),
+  );
   await page.route("**/api/rce/search**", (route) =>
     route.fulfill({
       json: { results: records, page: 1, hasMore: false },
@@ -124,6 +127,28 @@ test("zoeken toont verschillende erfgoedtypen", async ({ page }) => {
   await expect(
     page.getByText("Archeologisch onderzoeksgebied", { exact: true }).first(),
   ).toBeVisible();
+});
+
+test("een vondstlocatie toont vondsten met hun RN2-bron", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({ json: { results: [{
+    choNumber: "6109334", monumentNumber: "102482", registrationDate: "2016-09-30", street: "", houseNumber: "", postalCode: "",
+    sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/vondstlocatie/6109334", name: "Padstuk-Dres", place: "Opmeer", municipality: "Opmeer",
+    description: "Archeologische vondstlocatie.", monumentNature: "vondstlocatie", archaeologicalAcquisition: "archeologisch: boring",
+    matchSource: "Archis-vondstmeldingsnummer", matchedText: "102482", matchScore: 10,
+  }], page: 1, hasMore: false } }));
+  await page.unroute("**/api/rce/vondstlocatie-inhoud**");
+  await page.route("**/api/rce/vondstlocatie-inhoud**", (route) => route.fulfill({ json: {
+    complexen: [], grondsporen: [], complexenTotaal: 0, grondsporenTotaal: 0, vondstenTotaal: 1,
+    vondsten: [{ uri: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/vondsten/2199539", choNumber: "2199539", archisVondstnummer: "5888", aantal: 1,
+      types: [{ uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/type", label: "aardewerk", schemes: [{ uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/ais", label: "Archeologisch Informatie Systeem" }] }],
+      materialen: [], stijlen: [], toestand: { uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/toestand", label: "fragment", schemes: [{ uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/choi", label: "Cultuurhistorische Object Informatie" }] } }],
+  } }));
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("102482");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Details van Padstuk-Dres" }).click();
+  await expect(page.getByText("Archis-vondst 5888", { exact: true })).toBeVisible();
+  await expect(page.getByText(/aardewerk \(Archeologisch Informatie Systeem\).*fragment \(Cultuurhistorische Object Informatie\)/)).toBeVisible();
 });
 
 test("filters volgen het gekozen objecttype", async ({ page }) => {

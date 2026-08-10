@@ -68,6 +68,12 @@ export function HeritageDetailFacts({
             <dd>{item.archaeologicalValuation}</dd>
           </div>
         ) : null}
+        {item.objectType === "Vondstlocatie" && item.archaeologicalAcquisition ? (
+          <div>
+            <dt>Verwervingswijze</dt>
+            <dd>{item.archaeologicalAcquisition}</dd>
+          </div>
+        ) : null}
       </>
     );
   }

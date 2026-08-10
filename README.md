@@ -16,6 +16,7 @@ Deze repository is een schone herbouw van Doorzoeker. Er is geen code uit
   `Gezichten`;
 - Complexen van gebouwde Rijksmonumenten;
 - archeologische terreinen;
+- archeologische vondstlocaties;
 - archeologische onderzoeksgebieden.
 
 Archeologie bestaat uit meer dan onderzoeksgebieden en monumenten. Bij
@@ -25,10 +26,14 @@ Andere archeologische terreinen hebben geen Rijksmonumentrelatie en zijn nu
 als zelfstandige Archis-objecten doorzoekbaar op nummer, naam, plaats,
 omschrijving en waardering. De publieke CHO-graph publiceert voor deze klasse
 geen eigen WKT-geometrie; daarom belooft Doorzoeker daar geen terreinvlak.
-Binnen onderzoeksgebieden toont de
-detailweergave archeologische complexen, maximaal 25 gekoppelde
-vondstlocaties en totalen voor vondsten, grondsporen en complexen die via
-vondstlocaties zijn gekoppeld. Een archeologisch complex is daarbij een
+Vondstlocaties zijn zelfstandig doorzoekbaar op hun Archis-nummers,
+locatienaam, plaats, omschrijving en verwervingswijze. Hun detailweergave
+toont begrensde lijsten van archeologische complexen, vondstgroepen en
+grondspoorgroepen. De bijbehorende RN2-concepten bewaren hun URI en alle
+gevonden conceptschema's. Binnen onderzoeksgebieden toont de detailweergave
+archeologische complexen, maximaal 25 gekoppelde vondstlocaties en totalen
+voor vondsten, grondsporen en complexen die via vondstlocaties zijn gekoppeld.
+Een archeologisch complex is daarbij een
 inhoudelijke duiding, zoals een nederzetting of grafveld; het is niet hetzelfde
 als een Complex van gebouwde Rijksmonumenten.
 
@@ -97,8 +102,6 @@ validatie, time-outs, mapping, caching en foutafhandeling.
 
 ## Nog niet gebouwd
 
-- zelfstandig zoeken in vondstlocaties die niet aan een onderzoeksgebied zijn
-  gekoppeld;
 - zelfstandig zoeken en bladeren door afzonderlijke vondsten en grondsporen;
 - ruimtelijke `ligt in`-relaties tussen Rijksmonumenten en
   Werelderfgoed/Gezichten;

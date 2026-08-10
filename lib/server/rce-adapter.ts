@@ -27,6 +27,10 @@ import {
   buildRceParcelQuery,
   buildRceParcelsQuery,
   buildWerelderfgoedQuery,
+  buildVondstlocatieDetailsQuery,
+  buildVondstlocatieDiscoveryQueries,
+  buildVondstlocatieInhoudQuery,
+  buildVondstlocatieInhoudTellingQuery,
   mergeDiscoveryMatches,
   parseArcheologischOnderzoekDiscoveryResults,
   parseArcheologischOnderzoekResults,
@@ -52,12 +56,17 @@ import {
   parseRceMonuments,
   parseSparqlResults,
   parseWerelderfgoedResults,
+  parseVondstlocatieDiscoveryResults,
+  parseVondstlocatieInhoudResults,
+  parseVondstlocatieInhoudTelling,
+  parseVondstlocatieResults,
   pickOpDezeDagCandidate,
   type ArcheologischTerrein,
   type ComplexMember,
   type RceMonument,
 } from "../rce.ts";
 import { fetchLiteratuur } from "./bibliotheek-adapter.ts";
+import { resolveConcepts } from "./referentienetwerk-adapter.ts";
 import { fetchSparql, requestSignal, timed } from "./sparql-client.ts";
 
 const REST_ENDPOINT = "https://api.linkeddata.cultureelerfgoed.nl/queries/rce/rest-api-rijksmonumenten/run";
@@ -264,6 +273,27 @@ async function optionalSearch<T>(event: string, work: () => Promise<T>, fallback
   }
 }
 
+export async function fetchVondstlocatieInhoud(locatieUri: string, signal?: AbortSignal) {
+  const [inhoudDocument, tellingDocument] = await Promise.all([
+    fetchSparql(buildVondstlocatieInhoudQuery(locatieUri), signal),
+    fetchSparql(buildVondstlocatieInhoudTellingQuery(locatieUri), signal),
+  ]);
+  const inhoud = parseVondstlocatieInhoudResults(inhoudDocument);
+  const conceptUris = [
+    ...inhoud.complexen.flatMap((item) => item.type ? [item.type.uri] : []),
+    ...inhoud.vondsten.flatMap((item) => [...item.types, ...item.materialen, ...item.stijlen, ...(item.toestand ? [item.toestand] : [])].map((concept) => concept.uri)),
+    ...inhoud.grondsporen.flatMap((item) => item.type ? [item.type.uri] : []),
+  ];
+  const resolved = await resolveConcepts(conceptUris, signal);
+  const enrichConcept = <T extends { uri: string; label: string }>(concept: T): T & { schemeUri?: string; schemeLabel?: string } => ({ ...concept, ...resolved.get(concept.uri) });
+  return {
+    complexen: inhoud.complexen.map((item) => ({ ...item, type: item.type ? enrichConcept(item.type) : undefined })),
+    vondsten: inhoud.vondsten.map((item) => ({ ...item, types: item.types.map(enrichConcept), materialen: item.materialen.map(enrichConcept), stijlen: item.stijlen.map(enrichConcept), toestand: item.toestand ? enrichConcept(item.toestand) : undefined })),
+    grondsporen: inhoud.grondsporen.map((item) => ({ ...item, type: item.type ? enrichConcept(item.type) : undefined })),
+    ...parseVondstlocatieInhoudTelling(tellingDocument),
+  };
+}
+
 async function searchArcheologischeTerreinen(term: string, signal?: AbortSignal): Promise<RceMonument[]> {
   const queries = buildArcheologischTerreinDiscoveryQueries(term);
   const settled = await Promise.allSettled(
@@ -288,6 +318,28 @@ async function searchArcheologischeTerreinen(term: string, signal?: AbortSignal)
   });
 }
 
+async function searchVondstlocaties(term: string, signal?: AbortSignal): Promise<RceMonument[]> {
+  const queries = buildVondstlocatieDiscoveryQueries(term);
+  const settled = await Promise.allSettled(queries.map(({ bron, query }) =>
+    fetchSparql(query, signal).then((document) => parseVondstlocatieDiscoveryResults(document, bron, term)),
+  ));
+  if (signal?.aborted) throw signal.reason;
+  const branches = settled.flatMap((result, index) => {
+    if (result.status === "fulfilled") return [result.value];
+    console.warn(JSON.stringify({ event: "search.vondstlocaties.branch.unavailable", source: queries[index].bron, message: result.reason instanceof Error ? result.reason.message : "unknown" }));
+    return [];
+  });
+  if (!branches.length) throw settled.find((result) => result.status === "rejected")?.reason ?? new Error("Geen vondstlocatiezoekbron bereikbaar");
+  const discovery = mergeDiscoveryMatches(branches).slice(0, 25);
+  if (!discovery.length) return [];
+  const details = await fetchSparql(buildVondstlocatieDetailsQuery(discovery.map((match) => match.monumentNumber)), signal);
+  const byNumber = new Map(parseVondstlocatieResults(details).map((item) => [item.choNumber, item]));
+  return discovery.flatMap((match) => {
+    const item = byNumber.get(match.monumentNumber);
+    return item ? [{ ...item, ...match, monumentNumber: item.monumentNumber }] : [];
+  });
+}
+
 async function searchByText(term: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
   const discoveryQueries = buildRceDiscoveryQueries(term);
   const discoverySettled = await timed("search.discovery", () => Promise.allSettled(
@@ -306,7 +358,7 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1): Promi
     throw firstFailure?.reason ?? new Error("Geen zoekbron bereikbaar");
   }
 
-  const [werelderfgoed, gezichten, complexen, onderzoeksgebieden, archeologischeTerreinen] = await Promise.all([
+  const [werelderfgoed, gezichten, complexen, onderzoeksgebieden, archeologischeTerreinen, vondstlocaties] = await Promise.all([
     page === 1
       ? optionalSearch("search.werelderfgoed", () => fetchSparql(buildWerelderfgoedQuery(term), signal).then(parseWerelderfgoedResults), [], signal)
       : Promise.resolve<RceMonument[]>([]),
@@ -322,8 +374,11 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1): Promi
     page === 1
       ? optionalSearch("search.archeologische-terreinen", () => searchArcheologischeTerreinen(term, signal), [], signal)
       : Promise.resolve<RceMonument[]>([]),
+    page === 1
+      ? optionalSearch("search.vondstlocaties", () => searchVondstlocaties(term, signal), [], signal)
+      : Promise.resolve<RceMonument[]>([]),
   ]);
-  const extras = [...werelderfgoed, ...gezichten, ...complexen, ...onderzoeksgebieden, ...archeologischeTerreinen];
+  const extras = [...werelderfgoed, ...gezichten, ...complexen, ...onderzoeksgebieden, ...archeologischeTerreinen, ...vondstlocaties];
   const start = Math.max(0, page - 1) * 25;
   const discovery = mergeDiscoveryMatches(branchResults).slice(start, start + 25);
   if (!discovery.length) return extras;
@@ -358,11 +413,12 @@ export async function browseRceObjects(kind: "werelderfgoed" | "gezicht" | "comp
 export async function searchRceMonuments(query: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
   const trimmed = query.trim();
   if (/^\d{4,6}$/.test(trimmed)) {
-    const [rijksmonumenten, terreinen] = await Promise.all([
+    const [rijksmonumenten, terreinen, vondstlocaties] = await Promise.all([
       searchByNumber(trimmed, signal),
       optionalSearch("search.archeologische-terreinen", () => searchArcheologischeTerreinen(trimmed, signal), [], signal),
+      optionalSearch("search.vondstlocaties", () => searchVondstlocaties(trimmed, signal), [], signal),
     ]);
-    return [...rijksmonumenten, ...terreinen];
+    return [...rijksmonumenten, ...terreinen, ...vondstlocaties];
   }
   if (!/^\d{4}\s?[A-Za-z]{2}$/.test(trimmed)) return searchByText(trimmed, signal, page);
   const params = new URLSearchParams({ page: "1", pageSize: "100", postcode: trimmed.replace(/\s/g, "").toUpperCase() });
