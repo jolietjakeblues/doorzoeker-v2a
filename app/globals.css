@@ -335,6 +335,15 @@ header p a {
   font-size: 12px;
   line-height: 1.5;
 }
+.keyword-list { display: grid; gap: .4rem; }
+.keyword-list button { align-items: baseline; background: transparent; border: 0; border-bottom: 1px solid #d7dfe4; color: #153f64; cursor: pointer; display: grid; font: inherit; grid-template-columns: minmax(0, 1fr) auto; padding: .45rem 0; text-align: left; }
+.keyword-list button span { font-weight: 650; }
+.keyword-list button small { color: #5d6a72; grid-column: 1; }
+.keyword-list button em { font-style: normal; grid-column: 2; grid-row: 1 / span 2; }
+.keyword-list button:hover span { text-decoration: underline; }
+.results-help, .detail-guide { color: #52636d; font-size: .92rem; }
+.results-help { margin: 0 0 1rem; }
+.detail-guide { margin: 0 0 1.2rem; }
 .work aside small,
 .results small,
 .detail-copy > small {
@@ -703,6 +712,12 @@ h2 {
   background: #fafafa;
   color: var(--rce-blue);
   font-size: 22px;
+}
+.open span { display: none; }
+.open b { font-size: 1.35rem; }
+@media (min-width: 900px) {
+  .open { gap: .45rem; padding-inline: .85rem; width: auto; }
+  .open span { display: inline; white-space: nowrap; }
 }
 .open:hover {
   background: var(--rce-blue);

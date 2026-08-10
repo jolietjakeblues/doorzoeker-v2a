@@ -132,9 +132,10 @@ export function HeritageResultCard({
         className="open"
         type="button"
         onClick={() => onOpen(item)}
-        aria-label={`Details van ${item.title}`}
+        aria-label={`Bekijk gegevens van ${item.title}`}
       >
-        →
+        <span>Bekijk gegevens</span>
+        <b aria-hidden="true">→</b>
       </button>
     </article>
   );
