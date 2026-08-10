@@ -1336,6 +1336,32 @@ const ARCHEOLOGISCH_TERREIN_SOURCES: { bron: string; rang: number; pattern: stri
   { bron: "waardering (archeologisch terrein)", rang: 5, pattern: "?terrein ceo:heeftArcheologischeWaardering/skos:prefLabel ?match ." },
 ];
 
+export type ArchaeologyBrowseKind = "archeologischterrein" | "onderzoeksgebied";
+
+// Collecties worden alleen op hun stabiele CHO-nummer gepagineerd. De
+// bestaande detailquery haalt daarna voor precies deze 25 nummers de
+// inhoudelijke velden op; zo hoeft een zware detailquery nooit de volledige
+// archeologische collectie te sorteren.
+export function buildArchaeologyBrowseQuery(kind: ArchaeologyBrowseKind, page: number) {
+  const className = kind === "archeologischterrein" ? "ArcheologischTerrein" : "ArcheologischOnderzoeksgebied";
+  const offset = Math.max(0, page - 1) * 25;
+  return `PREFIX ceo: <${CEO}>
+SELECT DISTINCT ?choi WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?object a ceo:${className} ; ceo:cultuurhistorischObjectnummer ?choi .
+  }
+}
+ORDER BY ?choi
+LIMIT 25
+OFFSET ${offset}`;
+}
+
+export function parseArchaeologyBrowseNumbers(document: unknown) {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.map((binding) => binding.choi?.value ?? "").filter(Boolean);
+}
+
 export function buildArcheologischTerreinDiscoveryQueries(term: string): { bron: string; query: string }[] {
   const needle = escapeSparqlString(term.trim());
   return ARCHEOLOGISCH_TERREIN_SOURCES.map(({ bron, pattern }) => ({

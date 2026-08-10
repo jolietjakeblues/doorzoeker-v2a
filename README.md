@@ -102,9 +102,10 @@ Filters, pagina, kaartpositie, gekozen object en bekende conceptidentiteit
 worden in de URL bewaard. Browser-terug en -vooruit herstellen eerdere
 zoekopdrachten.
 
-De knop `Rijksmonumenten` onder `Bekijk alles` haalt steeds 25 objecten op.
-Met `Laad 25 volgende resultaten` kan de gebruiker verder bladeren zonder het
-hele register in één keer bij de RCE op te vragen.
+De knoppen `Rijksmonumenten`, `Archeologische terreinen` en
+`Onderzoeksgebieden` onder `Bekijk alles` halen steeds 25 objecten op. Met
+`Laad 25 volgende resultaten` kan de gebruiker verder bladeren zonder een
+hele grote collectie in één keer bij de RCE op te vragen.
 
 ## Gegevensvoorzieningen
 

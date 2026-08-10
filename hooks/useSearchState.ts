@@ -363,6 +363,10 @@ export function useSearchState() {
     setActive(
       kind === "rijksmonument"
         ? "Rijksmonumenten"
+        : kind === "archeologischterrein"
+          ? "Archeologische terreinen"
+          : kind === "onderzoeksgebied"
+            ? "Onderzoeksgebieden"
         : kind === "werelderfgoed"
         ? "Werelderfgoed"
         : kind === "gezicht"
@@ -379,6 +383,10 @@ export function useSearchState() {
     setObjectType(
       kind === "rijksmonument"
         ? "Rijksmonument"
+        : kind === "archeologischterrein"
+          ? "Archeologisch terrein"
+          : kind === "onderzoeksgebied"
+            ? "Onderzoeksgebied"
         : kind === "werelderfgoed"
         ? "Werelderfgoed"
         : kind === "gezicht"

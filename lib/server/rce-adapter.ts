@@ -1,5 +1,6 @@
 import {
   buildActorConceptQuery,
+  buildArchaeologyBrowseQuery,
   buildArcheologischeWaarderingConceptQuery,
   buildArcheologischOnderzoekDetailsQuery,
   buildArcheologischOnderzoekDiscoveryQueries,
@@ -42,6 +43,7 @@ import {
   mergeDiscoveryMatches,
   parseArcheologischOnderzoekDiscoveryResults,
   parseArcheologischOnderzoekResults,
+  parseArchaeologyBrowseNumbers,
   parseArcheologischeComplexDiscoveryResults,
   parseArcheologischeComplexResults,
   parseArcheologischTerreinDiscoveryResults,
@@ -539,7 +541,7 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1): Promi
 // tekstzoekopdracht: het slaat de Rijksmonument-discovery en de naam-FILTER
 // helemaal over en geeft gewoon de volledige collectie terug (18, 472
 // respectievelijk ~4.200 items).
-export async function browseRceObjects(kind: "rijksmonument" | "werelderfgoed" | "gezicht" | "complex", signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
+export async function browseRceObjects(kind: "rijksmonument" | "archeologischterrein" | "onderzoeksgebied" | "werelderfgoed" | "gezicht" | "complex", signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
   if (kind === "rijksmonument") {
     const params = new URLSearchParams({ page: String(page), pageSize: "25" });
     const response = await fetch(`${REST_ENDPOINT}?${params}`, {
@@ -548,6 +550,18 @@ export async function browseRceObjects(kind: "rijksmonument" | "werelderfgoed" |
     });
     if (!response.ok) throw new Error(`RCE-service antwoordde met ${response.status}`);
     return enrichMonuments(parseRceMonuments(await response.json()), signal);
+  }
+  if (kind === "archeologischterrein" || kind === "onderzoeksgebied") {
+    const numbers = parseArchaeologyBrowseNumbers(
+      await fetchSparql(buildArchaeologyBrowseQuery(kind, page), signal),
+    );
+    if (!numbers.length) return [];
+    if (kind === "archeologischterrein") {
+      return fetchSparql(buildArcheologischTerreinDetailsQuery(numbers), signal)
+        .then(parseStandaloneArcheologischTerreinResults);
+    }
+    return fetchSparql(buildArcheologischOnderzoekDetailsQuery(numbers), signal)
+      .then(parseArcheologischOnderzoekResults);
   }
   if (kind === "werelderfgoed") return fetchSparql(buildWerelderfgoedQuery(""), signal).then(parseWerelderfgoedResults);
   if (kind === "gezicht") return fetchSparql(buildGezichtQuery(""), signal).then(parseGezichtResults);

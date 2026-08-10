@@ -156,6 +156,41 @@ test("de startpagina biedt een brede reeks directe zoekvoorbeelden", async ({ pa
   await expect(
     collecties.getByRole("button", { name: "Gebouwde complexen" }),
   ).toBeVisible();
+  await expect(collecties.getByRole("button", { name: "Archeologische terreinen" })).toBeVisible();
+  await expect(collecties.getByRole("button", { name: "Onderzoeksgebieden" })).toBeVisible();
+});
+
+test("archeologische terreinen en onderzoeksgebieden zijn als collectie te openen", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const kind = new URL(route.request().url()).searchParams.get("browse");
+    return route.fulfill({
+      json: {
+        results: [{
+          ...records[2],
+          choNumber: kind === "archeologischterrein" ? "terrein-1" : "onderzoek-1",
+          monumentNumber: kind === "archeologischterrein" ? "12345" : "67890",
+          monumentNature: kind === "archeologischterrein" ? "archeologischterrein" : "archeologischonderzoeksgebied",
+          description: kind === "archeologischterrein" ? "Een archeologisch terrein." : "Een onderzoeksgebied.",
+        }],
+        page: 1,
+        hasMore: false,
+      },
+    });
+  });
+
+  await page.getByRole("button", { name: "Archeologische terreinen", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "1 resultaat voor “Archeologische terreinen”" })).toBeVisible();
+  await expect(page.getByText("Archeologisch terrein", { exact: true }).first()).toBeVisible();
+
+  const startDataReady = page.waitForResponse((response) =>
+    response.url().includes("/api/rce/op-deze-dag"),
+  );
+  await page.goto("/");
+  await startDataReady;
+  await page.getByRole("button", { name: "Onderzoeksgebieden", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "1 resultaat voor “Onderzoeksgebieden”" })).toBeVisible();
+  await expect(page.getByText("Archeologisch onderzoeksgebied", { exact: true }).first()).toBeVisible();
 });
 
 test("Rijksmonumenten zijn per 25 te doorbladeren", async ({ page }) => {

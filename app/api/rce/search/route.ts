@@ -78,7 +78,7 @@ export async function GET(request: Request) {
     const browseParam = url.searchParams.get("browse");
     // "Browsen" (alle Werelderfgoed, Gezichten of Complexen tonen) is geen
     // tekstzoekopdracht: q mag hier leeg zijn.
-    const browse = browseParam === "rijksmonument" || browseParam === "werelderfgoed" || browseParam === "gezicht" || browseParam === "complex" ? browseParam : undefined;
+    const browse = browseParam === "rijksmonument" || browseParam === "archeologischterrein" || browseParam === "onderzoeksgebied" || browseParam === "werelderfgoed" || browseParam === "gezicht" || browseParam === "complex" ? browseParam : undefined;
     // Conceptzoekopdracht: exacte match op een concept-URI uit het
     // Referentienetwerk in plaats van tekstzoeken. `veld` bepaalt via welk
     // eigenschap gezocht wordt - de aanroeper (UI) weet dit al op basis van
@@ -120,7 +120,7 @@ export async function GET(request: Request) {
         ? await searchByConceptField(veld, conceptParam, request.signal)
         : await searchRceMonuments(query, request.signal, page);
     const isPagedTextSearch = !browse && !conceptParam && !/^\d{4,6}$/.test(query) && !/^\d{4}\s?[A-Za-z]{2}$/.test(query);
-    const isPagedBrowse = browse === "rijksmonument";
+    const isPagedBrowse = browse === "rijksmonument" || browse === "archeologischterrein" || browse === "onderzoeksgebied";
     const pageSize = 25;
     const collectionNatures = new Set(["werelderfgoed", "gezicht", "complex", "archeologischonderzoeksgebied", "archeologischterrein", "vondstlocatie", "grondsporen", "vondsten", "archeologischcomplex"]);
     const pagedResultCount = results.filter((result) => !collectionNatures.has(result.monumentNature ?? "")).length;
