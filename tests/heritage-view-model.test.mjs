@@ -48,6 +48,14 @@ test("uses an RM prefix only for a Rijksmonument", () => {
     }),
     { label: "Onderzoeksgebied", value: "1234" },
   );
+  assert.deepEqual(
+    primaryIdentifier({
+      ...base,
+      objectType: "Archeologisch terrein",
+      monumentNumber: "3958",
+    }),
+    { label: "Archis", value: "3958" },
+  );
 });
 
 test("restores an exact concept search and generic selected object from the URL", () => {

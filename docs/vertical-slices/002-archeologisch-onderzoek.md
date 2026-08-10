@@ -6,30 +6,50 @@ Gebouwd en getest (2026-08-10). ArcheologischOnderzoeksgebied is als
 zelfstandige zoekbranch aangesloten op woonplaats en onderzoeksomschrijving.
 De detailweergave toont rechtstreeks gekoppelde archeologische complexen,
 maximaal 25 vondstlocaties en totalen van vondstlocaties, vondsten,
-grondsporen en complexen via vondstlocaties. ArcheologischTerrein blijft
-daarnaast als gekoppelde verrijking bij een Rijksmonument bestaan.
+grondsporen en complexen via vondstlocaties. `ArcheologischTerrein` heeft
+daarnaast een zelfstandige zoekingang; expliciet aan Rijksmonumenten gekoppelde
+terreinen blijven daar ook als verrijking zichtbaar.
 
 Zie [`../functionele-dekking.md`](../functionele-dekking.md) voor het precieze
 onderscheid tussen zelfstandig object, gekoppelde lijst en telling.
 
 ## Aanleiding
 
-Doorzoeker toonde archeologie aanvankelijk uitsluitend via `ArcheologischTerrein`,
-gekoppeld aan een Rijksmonument (`ligtInObject`). Onderzoek in de live data
-laat zien dat dit de allerkleinste, wettelijk beschermde punt van de ijsberg
-is:
+Doorzoeker toonde archeologie aanvankelijk uitsluitend via een
+`ArcheologischTerrein` dat aan een Rijksmonument is gekoppeld
+(`ligtInObject`). Dat is niet het gegevensmodel van heel Archis, maar alleen
+de doorsnede tussen gewaardeerde terreinen en wettelijk beschermde
+Rijksmonumenten. Onderzoek in de live data laat zien hoeveel daarbuiten valt:
 
 | Klasse | Instanties | Gekoppeld aan Rijksmonument? |
 |---|---|---|
 | ArcheologischOnderzoeksgebied | 112.277 | Nee |
-| Vondstlocatie | 111.577 | Nee (ligt in Onderzoeksgebied) |
+| Vondstlocatie | 111.577 | Soms; 40.064 liggen in een Onderzoeksgebied |
 | Grondsporen | 91.974 | Nee (ligt in Vondstlocatie) |
 | Vondsten | 445.298 | Nee (ligt in Vondstlocatie) |
-| ArcheologischComplex | 360.330 | Soms (ligt in Vondstlocatie óf Onderzoeksgebied) |
+| ArcheologischComplex | 360.330 | Ligt meestal in een Vondstlocatie en soms rechtstreeks in een Onderzoeksgebied of ArcheologischTerrein |
 | ArcheologischTerrein | 13.025 | Slechts 1.812 (13,9%) heeft een `ligtInObject → Rijksmonument`, exact geverifieerd (zie hieronder) |
 
-De bulk van het Nederlandse archeologische onderzoek (~700.000 objecten)
-staat dus volledig los van enig monument en is nu onzichtbaar in Doorzoeker.
+Het merendeel van deze Archis-objecten is dus niet aan een Rijksmonument
+gekoppeld. Ze staan niet per se los: onderzoeksgebieden, vondstlocaties,
+vondsten, grondsporen en archeologische complexen vormen onderling juist een
+hiërarchie. Een `ArcheologischComplex` is daarbij een archeologische duiding
+(zoals een nederzetting of grafveld), niet het equivalent van het gebouwde
+`Complex` dat een verzameling Rijksmonumenten bijeenhoudt.
+
+Een `ArcheologischTerrein` moet evenmin als synoniem voor Rijksmonument worden
+gelezen. Het is een gewaardeerd terrein uit de archeologische gegevenslaag.
+Een deel is wettelijk beschermd en gekoppeld aan een Rijksmonument; veel
+terreinen zijn dat niet. De GUI toont daarom beide rollen apart. Live controle
+van de volledige publieke CHO-graph leverde geen enkel `ArcheologischTerrein`
+met een eigen `heeftGeometrie/geo:asWKT` op. De zelfstandige resultaten tonen
+dus wel hun plaatsaanduiding, maar geen verzonnen terreinvlak.
+
+Dit past bij de publicatieregel van de RCE: grondsporen en archeologische
+onderzoeksgebieden worden wel met coördinaten gepubliceerd; vondsten,
+vondstlocaties, archeologische complexen en archeologische terreinen niet.
+Een eventuele zelfstandige zoekingang voor vondstlocaties wordt daarom een
+tekstuele resultatenlaag en geen puntenlaag op de kaart.
 
 **Belangrijke afbakening:** dit is een andere databron dan de RCE Archis
 "Zoeken & Vinden"-portal (ingelogd, quota van 300 meldingen/export, verbod

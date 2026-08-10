@@ -90,6 +90,8 @@ export type RceMonument = {
   msp?: boolean;
   literature?: LiteratureRef[];
   gebeurtenissen?: Gebeurtenis[];
+  archaeologicalValuation?: string;
+  archaeologicalValuationConceptUri?: string;
 };
 
 export type MonumentImage = { url: string; title?: string; license?: string; sourceUrl?: string };
@@ -1309,6 +1311,100 @@ SELECT ?concept ?label ?scheme ?schemeLabel WHERE {
   OPTIONAL { ?scheme dct:title ?schemeLabel . FILTER(LANG(?schemeLabel) = "" || LANG(?schemeLabel) = "nl") }
 }
 LIMIT ${limit}`;
+}
+
+const ARCHEOLOGISCH_TERREIN_SOURCES: { bron: string; rang: number; pattern: string }[] = [
+  { bron: "Archis-monumentnummer", rang: 1, pattern: "?terrein ceo:archis2Monumentnummer ?match ." },
+  { bron: "naam (archeologisch terrein)", rang: 2, pattern: "?terrein ceo:heeftNaam/ceo:naam ?match ." },
+  { bron: "woonplaats (archeologisch terrein)", rang: 3, pattern: "?terrein ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?match ." },
+  { bron: "omschrijving (archeologisch terrein)", rang: 4, pattern: "?terrein ceo:heeftOmschrijving/ceo:omschrijving ?match ." },
+  { bron: "waardering (archeologisch terrein)", rang: 5, pattern: "?terrein ceo:heeftArcheologischeWaardering/skos:prefLabel ?match ." },
+];
+
+export function buildArcheologischTerreinDiscoveryQueries(term: string): { bron: string; query: string }[] {
+  const needle = escapeSparqlString(term.trim());
+  return ARCHEOLOGISCH_TERREIN_SOURCES.map(({ bron, pattern }) => ({
+    bron,
+    query: `PREFIX ceo: <${CEO}>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT DISTINCT ?choi ?match WHERE {
+ GRAPH <${INSTANCES_GRAPH}> {
+  ?terrein a ceo:ArcheologischTerrein ; ceo:cultuurhistorischObjectnummer ?choi .
+  ${pattern}
+  ${bron === "Archis-monumentnummer" && /^\d+$/.test(term.trim())
+    ? `FILTER(STR(?match) = "${needle}")`
+    : `FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))`}
+ }
+}
+LIMIT 100`,
+  }));
+}
+
+export function parseArcheologischTerreinDiscoveryResults(document: unknown, bron: string, term: string): DiscoveryMatch[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  const rang = ARCHEOLOGISCH_TERREIN_SOURCES.find((source) => source.bron === bron)?.rang ?? 99;
+  const needle = term.trim().toLocaleLowerCase("nl");
+  return bindings.flatMap((binding) => {
+    const monumentNumber = binding.choi?.value ?? "";
+    const matchedText = binding.match?.value ?? "";
+    if (!monumentNumber) return [];
+    const lowerMatch = matchedText.toLocaleLowerCase("nl");
+    const matchtype = lowerMatch === needle ? 0 : lowerMatch.startsWith(needle) ? 1 : 2;
+    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: rang * 10 + matchtype }];
+  });
+}
+
+export function buildArcheologischTerreinDetailsQuery(choNumbers: string[]) {
+  const valuesClause = choNumbers.map((number) => `"${escapeSparqlString(number)}"`).join(" ");
+  return `PREFIX ceo: <${CEO}>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT ?terrein ?choi
+  (SAMPLE(STR(?archisValue)) AS ?archisNummer)
+  (SAMPLE(STR(?naamValue)) AS ?naam)
+  (SAMPLE(STR(?omschrijvingValue)) AS ?omschrijving)
+  (SAMPLE(STR(?woonplaatsValue)) AS ?woonplaats)
+  (SAMPLE(STR(?waarderingLabelValue)) AS ?waarderingLabel)
+  (SAMPLE(?waarderingConceptValue) AS ?waarderingConcept)
+  (SAMPLE(STR(?registratiedatumValue)) AS ?registratiedatum)
+WHERE {
+ GRAPH <${INSTANCES_GRAPH}> {
+  ?terrein a ceo:ArcheologischTerrein ; ceo:cultuurhistorischObjectnummer ?choi .
+  VALUES ?choi { ${valuesClause} }
+  OPTIONAL { ?terrein ceo:archis2Monumentnummer ?archisValue . }
+  OPTIONAL { ?terrein ceo:heeftNaam/ceo:naam ?naamValue . }
+  OPTIONAL { ?terrein ceo:heeftOmschrijving/ceo:omschrijving ?omschrijvingValue . }
+  OPTIONAL { ?terrein ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?woonplaatsValue . }
+  OPTIONAL { ?terrein ceo:heeftArcheologischeWaardering ?waarderingConceptValue . ?waarderingConceptValue skos:prefLabel ?waarderingLabelValue . }
+  OPTIONAL { ?terrein ceo:registratiedatum ?registratiedatumValue . }
+ }
+}
+GROUP BY ?terrein ?choi
+LIMIT 100`;
+}
+
+export function parseStandaloneArcheologischTerreinResults(document: unknown): RceMonument[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.map((binding) => {
+    const woonplaats = binding.woonplaats?.value;
+    return {
+      choNumber: binding.choi?.value ?? "",
+      monumentNumber: binding.archisNummer?.value || binding.choi?.value || "",
+      registrationDate: binding.registratiedatum?.value ?? "",
+      street: "",
+      houseNumber: "",
+      postalCode: "",
+      sourceUrl: binding.terrein?.value ?? "",
+      name: binding.naam?.value,
+      monumentNature: "archeologischterrein",
+      description: binding.omschrijving?.value || "Archeologisch terrein.",
+      place: woonplaats,
+      municipality: woonplaats,
+      archaeologicalValuation: binding.waarderingLabel?.value,
+      archaeologicalValuationConceptUri: binding.waarderingConcept?.value,
+    };
+  });
 }
 
 export function parseReferentienetwerkTermSuggestResults(document: unknown): TermSuggestion[] {

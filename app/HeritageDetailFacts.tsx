@@ -62,6 +62,12 @@ export function HeritageDetailFacts({
             </dd>
           </div>
         ) : null}
+        {item.objectType === "Archeologisch terrein" && item.archaeologicalValuation ? (
+          <div>
+            <dt>Archeologische waardering</dt>
+            <dd>{item.archaeologicalValuation}</dd>
+          </div>
+        ) : null}
       </>
     );
   }

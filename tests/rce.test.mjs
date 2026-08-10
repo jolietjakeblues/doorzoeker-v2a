@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildReferentienetwerkTermSuggestQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
+import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildReferentienetwerkTermSuggestQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -713,6 +713,52 @@ test("queries the ABR-thesaurus rechtstreeks voor archeologische vondsttermen", 
   const query = buildAbrTermSuggestQuery("aardewerk", 8);
   assert.match(query, /GRAPH <https:\/\/data\.cultureelerfgoed\.nl\/term\/id\/abr\/thesaurus>/);
   assert.match(query, /CONTAINS\(LCASE\(STR\(\?label\)\), "aardewerk"\)/);
+});
+
+test("discovers zelfstandige archeologische terreinen via Archis-nummer, naam, plaats, omschrijving en waardering", () => {
+  const queries = buildArcheologischTerreinDiscoveryQueries("Nijmegen");
+  assert.deepEqual(queries.map((query) => query.bron), [
+    "Archis-monumentnummer",
+    "naam (archeologisch terrein)",
+    "woonplaats (archeologisch terrein)",
+    "omschrijving (archeologisch terrein)",
+    "waardering (archeologisch terrein)",
+  ]);
+  for (const { query } of queries) {
+    assert.match(query, /a ceo:ArcheologischTerrein/);
+    assert.match(query, /cultuurhistorischObjectnummer \?choi/);
+  }
+});
+
+test("parses discovery en details van een zelfstandig archeologisch terrein", () => {
+  const matches = parseArcheologischTerreinDiscoveryResults(
+    { results: { bindings: [{ choi: { value: "9001" }, match: { value: "12345" } }] } },
+    "Archis-monumentnummer",
+    "12345",
+  );
+  assert.deepEqual(matches, [{ monumentNumber: "9001", matchSource: "Archis-monumentnummer", matchedText: "12345", matchScore: 10 }]);
+
+  const query = buildArcheologischTerreinDetailsQuery(["9001"]);
+  assert.match(query, /VALUES \?choi \{ "9001" \}/);
+  assert.match(query, /heeftArcheologischeWaardering/);
+  assert.doesNotMatch(query, /heeftGeometrie/);
+  assert.match(buildArcheologischTerreinDiscoveryQueries("3958")[0].query, /FILTER\(STR\(\?match\) = "3958"\)/);
+
+  const [terrein] = parseStandaloneArcheologischTerreinResults({ results: { bindings: [{
+    terrein: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischterrein/9001" },
+    choi: { value: "9001" },
+    archisNummer: { value: "12345" },
+    naam: { value: "Romeins grafveld" },
+    omschrijving: { value: "Terrein met resten uit de Romeinse tijd." },
+    woonplaats: { value: "Nijmegen" },
+    waarderingLabel: { value: "terrein van hoge archeologische waarde" },
+    waarderingConcept: { value: "https://data.cultureelerfgoed.nl/term/id/rn/2/waarde" },
+  }] } });
+  assert.equal(terrein.monumentNature, "archeologischterrein");
+  assert.equal(terrein.monumentNumber, "12345");
+  assert.equal(terrein.place, "Nijmegen");
+  assert.equal(terrein.archaeologicalValuation, "terrein van hoge archeologische waarde");
+  assert.equal(terrein.wkt, undefined);
 });
 
 test("queries Referentienetwerk 2 als eigen thesaurusbron", () => {

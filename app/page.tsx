@@ -204,8 +204,8 @@ export default function Home() {
             <details className="hint">
               <summary>Wat betekent dit?</summary>
               <p>
-                Rijksmonument, Werelderfgoed, Gezicht, Complex en
-                Onderzoeksgebied zijn vijf losse soorten object, geen varianten
+                Rijksmonument, Werelderfgoed, Gezicht, Complex, Archeologisch
+                terrein en Onderzoeksgebied zijn losse soorten object, geen varianten
                 van hetzelfde. Werelderfgoed en Gezicht zijn gebieden waar de
                 RCE verantwoordelijk voor is en die rijksmonumenten kunnen
                 bevatten. Een Complex is zelf geen monument, maar een samenhang
@@ -219,6 +219,7 @@ export default function Home() {
               "Werelderfgoed",
               "Gezicht",
               "Complex",
+              "Archeologisch terrein",
               "Onderzoeksgebied",
             ].map((option) => (
               <label key={option}>
@@ -426,8 +427,10 @@ export default function Home() {
                 <p>
                   De status verschilt per soort object. Een Rijksmonument heeft
                   de status &ldquo;rijksmonument&rdquo;, Werelderfgoed en
-                  Gezicht hebben hun eigen status, en een Complex of
-                  Onderzoeksgebied is zelf geen aangewezen monument.
+                  Gezicht hebben hun eigen status. Een archeologisch terrein
+                  heeft een archeologische waardering; dat is niet automatisch
+                  een wettelijke bescherming. Een Complex of Onderzoeksgebied
+                  is zelf geen aangewezen monument.
                 </p>
               </details>
               {contextStatuses.map((label) => (
@@ -1165,6 +1168,7 @@ export default function Home() {
                     : selected.objectType === "Gezicht"
                       ? "Bekijk in het Archis-archief"
                       : selected.objectType === "Complex" ||
+                          selected.objectType === "Archeologisch terrein" ||
                           selected.objectType === "Onderzoeksgebied"
                         ? "Bekijk in de RCE Linked Data"
                         : "Bekijk in het Monumentenregister"}{" "}

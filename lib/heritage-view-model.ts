@@ -32,6 +32,7 @@ export type Item = {
     | "Werelderfgoed"
     | "Gezicht"
     | "Complex"
+    | "Archeologisch terrein"
     | "Onderzoeksgebied";
   monumentAard?: "Gebouwd" | "Archeologisch";
   period: string;
@@ -61,6 +62,8 @@ export type Item = {
   monumentAardConcept?: { uri: string; label: string };
   literature?: LiteratureRef[];
   gebeurtenissen?: Gebeurtenis[];
+  archaeologicalValuation?: string;
+  archaeologicalValuationConceptUri?: string;
 };
 
 export const EMPTY_ITEMS: Item[] = [];
@@ -124,6 +127,8 @@ export function typeBadge(item: {
     return { letter: "C", modifier: "complex" };
   if (item.objectType === "Onderzoeksgebied")
     return { letter: "O", modifier: "dig" };
+  if (item.objectType === "Archeologisch terrein")
+    return { letter: "T", modifier: "sand" };
   if (item.monumentAard === "Archeologisch")
     return { letter: "A", modifier: "sand" };
   return { letter: "M", modifier: "" };
@@ -140,6 +145,7 @@ export function statusLabel(objectType: Item["objectType"]) {
   if (objectType === "Complex") return "Complex van rijksmonumenten";
   if (objectType === "Onderzoeksgebied")
     return "Archeologisch onderzoeksgebied";
+  if (objectType === "Archeologisch terrein") return "Archeologisch terrein";
   return "Rijksmonument";
 }
 
@@ -152,6 +158,8 @@ export function primaryIdentifier(
     return { label: "Werelderfgoed", value };
   if (item.objectType === "Gezicht") return { label: "Gezicht", value };
   if (item.objectType === "Complex") return { label: "Complex", value };
+  if (item.objectType === "Archeologisch terrein")
+    return { label: "Archis", value };
   return { label: "Onderzoeksgebied", value };
 }
 
@@ -171,6 +179,7 @@ export function toItem(record: RceMonument): Item {
   const isComplex = record.monumentNature === "complex";
   const isOnderzoeksgebied =
     record.monumentNature === "archeologischonderzoeksgebied";
+  const isArcheologischTerrein = record.monumentNature === "archeologischterrein";
   const hasOwnOfficialUrl = isWerelderfgoed || isGezicht;
   const objectType: Item["objectType"] = isWerelderfgoed
     ? "Werelderfgoed"
@@ -180,7 +189,9 @@ export function toItem(record: RceMonument): Item {
         ? "Complex"
         : isOnderzoeksgebied
           ? "Onderzoeksgebied"
-          : "Rijksmonument";
+          : isArcheologischTerrein
+            ? "Archeologisch terrein"
+            : "Rijksmonument";
   const monumentAard: Item["monumentAard"] =
     objectType === "Rijksmonument"
       ? record.monumentNature?.toLocaleLowerCase("nl").includes("archeologisch")
@@ -198,6 +209,8 @@ export function toItem(record: RceMonument): Item {
         ? `Complex ${record.monumentNumber}`
         : isOnderzoeksgebied
           ? `Onderzoeksgebied ${record.monumentNumber}`
+          : isArcheologischTerrein
+            ? `Archeologisch terrein ${record.monumentNumber}`
           : `Rijksmonument ${record.monumentNumber}`),
     kind: functionName || "Functie niet opgenomen",
     address:
@@ -222,7 +235,7 @@ export function toItem(record: RceMonument): Item {
     official: true,
     sourceUrl: hasOwnOfficialUrl
       ? (record.officialUrl ?? record.sourceUrl)
-      : isComplex || isOnderzoeksgebied
+      : isComplex || isOnderzoeksgebied || isArcheologischTerrein
         ? record.sourceUrl
         : record.monumentNumber
           ? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(record.monumentNumber)}`
@@ -238,6 +251,8 @@ export function toItem(record: RceMonument): Item {
     msp: record.msp,
     literature: record.literature,
     gebeurtenissen: record.gebeurtenissen,
+    archaeologicalValuation: record.archaeologicalValuation,
+    archaeologicalValuationConceptUri: record.archaeologicalValuationConceptUri,
     matchSource: record.matchSource,
     matchedText,
     matchScore: record.matchScore,
@@ -309,6 +324,7 @@ export function parseUrlState(search: string) {
       objectType === "Werelderfgoed" ||
       objectType === "Gezicht" ||
       objectType === "Complex" ||
+      objectType === "Archeologisch terrein" ||
       objectType === "Onderzoeksgebied"
         ? objectType
         : "Alle",

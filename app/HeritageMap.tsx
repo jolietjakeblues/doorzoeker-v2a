@@ -17,6 +17,7 @@ type MapItem = {
     | "Werelderfgoed"
     | "Gezicht"
     | "Complex"
+    | "Archeologisch terrein"
     | "Onderzoeksgebied";
   monumentAard?: "Gebouwd" | "Archeologisch";
   lat: number;
@@ -33,6 +34,7 @@ function markerColor(item: Pick<MapItem, "objectType" | "monumentAard">) {
   if (item.objectType === "Gezicht") return "#176b3a";
   if (item.objectType === "Complex") return "#5b4b8a";
   if (item.objectType === "Onderzoeksgebied") return "#6b4226";
+  if (item.objectType === "Archeologisch terrein") return "#a15c00";
   if (item.monumentAard === "Archeologisch") return "#ffb612";
   return "#154273";
 }
@@ -59,6 +61,7 @@ function isAreaType(
     item.forceArea ||
     item.objectType === "Werelderfgoed" ||
     item.objectType === "Gezicht" ||
+    item.objectType === "Archeologisch terrein" ||
     item.objectType === "Onderzoeksgebied" ||
     item.monumentAard === "Archeologisch"
   );

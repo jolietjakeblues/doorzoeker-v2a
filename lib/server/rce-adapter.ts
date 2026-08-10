@@ -3,6 +3,8 @@ import {
   buildArcheologischeWaarderingConceptQuery,
   buildArcheologischOnderzoekDetailsQuery,
   buildArcheologischOnderzoekDiscoveryQueries,
+  buildArcheologischTerreinDetailsQuery,
+  buildArcheologischTerreinDiscoveryQueries,
   buildArcheologischTerreinQuery,
   buildComplexenQuery,
   buildComplexMembersQuery,
@@ -28,7 +30,9 @@ import {
   mergeDiscoveryMatches,
   parseArcheologischOnderzoekDiscoveryResults,
   parseArcheologischOnderzoekResults,
+  parseArcheologischTerreinDiscoveryResults,
   parseArcheologischTerreinResults,
+  parseStandaloneArcheologischTerreinResults,
   parseComplexenResults,
   parseComplexMembersResults,
   parseComplexResults,
@@ -260,6 +264,30 @@ async function optionalSearch<T>(event: string, work: () => Promise<T>, fallback
   }
 }
 
+async function searchArcheologischeTerreinen(term: string, signal?: AbortSignal): Promise<RceMonument[]> {
+  const queries = buildArcheologischTerreinDiscoveryQueries(term);
+  const settled = await Promise.allSettled(
+    queries.map(({ bron, query }) =>
+      fetchSparql(query, signal).then((document) => parseArcheologischTerreinDiscoveryResults(document, bron, term)),
+    ),
+  );
+  if (signal?.aborted) throw signal.reason;
+  const branchResults = settled.flatMap((result, index) => {
+    if (result.status === "fulfilled") return [result.value];
+    console.warn(JSON.stringify({ event: "search.archeologische-terreinen.branch.unavailable", source: queries[index].bron, message: result.reason instanceof Error ? result.reason.message : "unknown" }));
+    return [];
+  });
+  if (!branchResults.length) throw settled.find((result) => result.status === "rejected")?.reason ?? new Error("Geen terreinzoekbron bereikbaar");
+  const discovery = mergeDiscoveryMatches(branchResults).slice(0, 25);
+  if (!discovery.length) return [];
+  const detailsDocument = await fetchSparql(buildArcheologischTerreinDetailsQuery(discovery.map((match) => match.monumentNumber)), signal);
+  const detailsByNumber = new Map(parseStandaloneArcheologischTerreinResults(detailsDocument).map((item) => [item.choNumber, item]));
+  return discovery.flatMap((match) => {
+    const item = detailsByNumber.get(match.monumentNumber);
+    return item ? [{ ...item, ...match, monumentNumber: item.monumentNumber }] : [];
+  });
+}
+
 async function searchByText(term: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
   const discoveryQueries = buildRceDiscoveryQueries(term);
   const discoverySettled = await timed("search.discovery", () => Promise.allSettled(
@@ -278,7 +306,7 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1): Promi
     throw firstFailure?.reason ?? new Error("Geen zoekbron bereikbaar");
   }
 
-  const [werelderfgoed, gezichten, complexen, onderzoeksgebieden] = await Promise.all([
+  const [werelderfgoed, gezichten, complexen, onderzoeksgebieden, archeologischeTerreinen] = await Promise.all([
     page === 1
       ? optionalSearch("search.werelderfgoed", () => fetchSparql(buildWerelderfgoedQuery(term), signal).then(parseWerelderfgoedResults), [], signal)
       : Promise.resolve<RceMonument[]>([]),
@@ -291,8 +319,11 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1): Promi
     page === 1
       ? optionalSearch("search.onderzoeksgebieden", () => searchArcheologischOnderzoek(term, signal), [], signal)
       : Promise.resolve<RceMonument[]>([]),
+    page === 1
+      ? optionalSearch("search.archeologische-terreinen", () => searchArcheologischeTerreinen(term, signal), [], signal)
+      : Promise.resolve<RceMonument[]>([]),
   ]);
-  const extras = [...werelderfgoed, ...gezichten, ...complexen, ...onderzoeksgebieden];
+  const extras = [...werelderfgoed, ...gezichten, ...complexen, ...onderzoeksgebieden, ...archeologischeTerreinen];
   const start = Math.max(0, page - 1) * 25;
   const discovery = mergeDiscoveryMatches(branchResults).slice(start, start + 25);
   if (!discovery.length) return extras;
@@ -326,7 +357,13 @@ export async function browseRceObjects(kind: "werelderfgoed" | "gezicht" | "comp
 
 export async function searchRceMonuments(query: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
   const trimmed = query.trim();
-  if (/^\d{4,6}$/.test(trimmed)) return searchByNumber(trimmed, signal);
+  if (/^\d{4,6}$/.test(trimmed)) {
+    const [rijksmonumenten, terreinen] = await Promise.all([
+      searchByNumber(trimmed, signal),
+      optionalSearch("search.archeologische-terreinen", () => searchArcheologischeTerreinen(trimmed, signal), [], signal),
+    ]);
+    return [...rijksmonumenten, ...terreinen];
+  }
   if (!/^\d{4}\s?[A-Za-z]{2}$/.test(trimmed)) return searchByText(trimmed, signal, page);
   const params = new URLSearchParams({ page: "1", pageSize: "100", postcode: trimmed.replace(/\s/g, "").toUpperCase() });
   const response = await fetch(`${REST_ENDPOINT}?${params}`, {

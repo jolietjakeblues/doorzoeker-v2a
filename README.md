@@ -15,14 +15,22 @@ Deze repository is een schone herbouw van Doorzoeker. Er is geen code uit
 - rijksbeschermde stads- en dorpsgezichten, in de interface kortweg
   `Gezichten`;
 - Complexen van gebouwde Rijksmonumenten;
+- archeologische terreinen;
 - archeologische onderzoeksgebieden.
 
-Archeologie bestaat uit meer dan onderzoeksgebieden. Bij Rijksmonumenten toont
-Doorzoeker gekoppelde archeologische terreinen met Archis-monumentnummer en
-waardering. Binnen onderzoeksgebieden toont de detailweergave archeologische
-complexen, maximaal 25 vondstlocaties en totalen voor vondsten, grondsporen en
-complexen die via vondstlocaties zijn gekoppeld. Vondsten en grondsporen zijn
-nog geen zelfstandige zoekresultaten.
+Archeologie bestaat uit meer dan onderzoeksgebieden en monumenten. Bij
+Rijksmonumenten toont Doorzoeker de archeologische terreinen die daar in de
+bron expliciet aan gekoppeld zijn, met Archis-monumentnummer en waardering.
+Andere archeologische terreinen hebben geen Rijksmonumentrelatie en zijn nu
+als zelfstandige Archis-objecten doorzoekbaar op nummer, naam, plaats,
+omschrijving en waardering. De publieke CHO-graph publiceert voor deze klasse
+geen eigen WKT-geometrie; daarom belooft Doorzoeker daar geen terreinvlak.
+Binnen onderzoeksgebieden toont de
+detailweergave archeologische complexen, maximaal 25 gekoppelde
+vondstlocaties en totalen voor vondsten, grondsporen en complexen die via
+vondstlocaties zijn gekoppeld. Een archeologisch complex is daarbij een
+inhoudelijke duiding, zoals een nederzetting of grafveld; het is niet hetzelfde
+als een Complex van gebouwde Rijksmonumenten.
 
 Zie [Functionele dekking](docs/functionele-dekking.md) voor het precieze
 onderscheid tussen zelfstandige objecten, gekoppelde lijsten en tellingen.
@@ -89,6 +97,8 @@ validatie, time-outs, mapping, caching en foutafhandeling.
 
 ## Nog niet gebouwd
 
+- zelfstandig zoeken in vondstlocaties die niet aan een onderzoeksgebied zijn
+  gekoppeld;
 - zelfstandig zoeken en bladeren door afzonderlijke vondsten en grondsporen;
 - ruimtelijke `ligt in`-relaties tussen Rijksmonumenten en
   Werelderfgoed/Gezichten;

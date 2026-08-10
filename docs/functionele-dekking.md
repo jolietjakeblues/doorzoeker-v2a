@@ -12,6 +12,7 @@ zelfstandig doorzoekbare objecten, gekoppelde gegevens en alleen tellingen.
 | Werelderfgoed | Volledige kleine collectie bekijken en op naam zoeken | Polygon of MultiPolygon | Eigen nummer, naam, geometrie en officiële bron |
 | Gezicht | Rijksbeschermde stads- en dorpsgezichten bekijken en op naam zoeken | Polygon of MultiPolygon | Gezichtsnummer, naam, geometrie en officiële bron |
 | Complex | Complexen van gebouwde Rijksmonumenten bekijken en op naam zoeken | In de resultaten als marker van het hoofdobject; in het detail worden de geometrieën van de afzonderlijke leden samen getoond | Hoofdobject, onderdelen en doorklikbare ledenlijst |
+| Archeologisch terrein | Vrij zoeken op Archis-monumentnummer, naam, plaats, omschrijving en waardering | Geen zelfstandig vlak: voor deze klasse bevat de publieke CHO-graph geen `heeftGeometrie/geo:asWKT` | Archis-monumentnummer, CHO-nummer, plaats, omschrijving en waardering |
 | Archeologisch onderzoeksgebied | Vrij zoeken op woonplaats en onderzoeksomschrijving | Polygon of MultiPolygon | Onderzoeksgegevens en gekoppelde archeologische inhoud |
 
 Een Complex heeft in Doorzoeker geen kunstmatig berekende `union`-geometrie.
@@ -21,16 +22,43 @@ complex bestaat en gaat er geen brongeometrie verloren.
 
 ## Archeologie
 
-Archeologie bestaat in de data uit verschillende klassen. Doorzoeker behandelt
-ze daarom niet alsof het één lijst met archeologische monumenten is.
+De archeologische gegevens komen uit Archis, maar vormen niet één lijst met
+monumenten. Archis registreert onderzoeken én wat tijdens of buiten zo'n
+onderzoek is aangetroffen. Daarnaast bevat het gewaardeerde archeologische
+terreinen. Alleen het wettelijk beschermde deel daarvan heeft ook de rol van
+archeologisch Rijksmonument.
+
+De hoofdlijnen van het gepubliceerde model zijn:
+
+```text
+Onderzoeksgebied
+├─ Vondstlocatie
+│  ├─ Vondsten
+│  ├─ Grondsporen
+│  └─ ArcheologischComplex
+└─ ArcheologischComplex (eerste bevinding)
+
+ArcheologischTerrein
+└─ ArcheologischComplex
+
+Rijksmonument
+└─ ArcheologischTerrein (alleen waar die relatie werkelijk is vastgelegd)
+```
+
+Een `ArcheologischComplex` is hier geen verzameling geometrieën zoals een
+`Complex` van gebouwde Rijksmonumenten. Het is een inhoudelijke interpretatie
+van een vindplaats of terrein, bijvoorbeeld een nederzetting of grafveld.
+`Vondsten` en `Grondsporen` zijn geregistreerde inhoud onder een
+vondstlocatie. Een onderzoeksgebied zegt waar onderzoek is uitgevoerd; het is
+niet zelf een monument of een archeologisch waardevol terrein.
 
 | Onderdeel | Huidige dekking |
 | --- | --- |
 | Archeologisch Rijksmonument | Zelfstandig Rijksmonument, filterbaar als archeologisch |
-| Archeologisch terrein | Gekoppelde verrijking bij een Rijksmonument via `ceo:ligtInObject`; Archis-monumentnummer en waardering worden getoond |
+| Archeologisch terrein | Zelfstandig zoekresultaat; daarnaast blijven terreinen met een expliciete `ceo:ligtInObject`-relatie als verrijking bij het Rijksmonument zichtbaar |
 | Archeologisch onderzoeksgebied | Zelfstandig doorzoekbaar object met eigen geometrie en detailweergave |
-| Archeologisch complex | Als gekoppelde lijst binnen een onderzoeksgebied; type en bron-URI worden getoond |
-| Vondstlocatie | Tot 25 gekoppelde vondstlocaties per onderzoeksgebied worden met naam of CHO-nummer en bron-URI getoond |
+| Archeologisch complex | Rechtstreeks gekoppelde eerste bevindingen en complexen onder de getoonde vondstlocaties worden binnen een onderzoeksgebied samengevat |
+| Vondstlocatie | Tot 25 aan het onderzoeksgebied gekoppelde vondstlocaties worden met naam of CHO-nummer en bron-URI getoond |
 | Vondst | Geen zelfstandige resultatenlijst; Doorzoeker toont het totale aantal gekoppelde vondsten binnen het onderzoeksgebied |
 | Grondspoor | Geen zelfstandige resultatenlijst; Doorzoeker toont het totale aantal gekoppelde grondsporen binnen het onderzoeksgebied |
 | Complex via vondstlocatie | Als totaal vermeld, naast rechtstreeks gekoppelde archeologische complexen |
@@ -38,6 +66,26 @@ ze daarom niet alsof het één lijst met archeologische monumenten is.
 De archeologische termen voor CHO-data komen uit het Archeologisch Informatie
 Systeem binnen Referentienetwerk 2. Het losse ABR-endpoint wordt niet gebruikt
 voor deze interne CHO-koppelingen.
+
+Dat geldt niet voor iedere eigenschap op dezelfde manier. De objecten zelf
+hebben een CHO-URI, bijvoorbeeld
+`cho-kennis/id/vondstlocatie/...`. Hun classificaties kunnen een concept-URI
+uit Referentienetwerk 2 hebben:
+
+| Gegeven | RN2-schema in de live data |
+| --- | --- |
+| Archeologisch complextype | Archeologisch Informatie Systeem |
+| Vondsttype | Archeologisch Informatie Systeem |
+| Materiaal van een vondst | Archeologisch Informatie Systeem |
+| Stijl en cultuur van een vondst | Archeologisch Informatie Systeem |
+| Verwervingswijze, bijvoorbeeld booronderzoek | Onder meer Archeologisch Informatie Systeem; een concept kan in meer dan één schema staan |
+| Toestand van een vondst, bijvoorbeeld fragment | Cultuurhistorische Object Informatie |
+| Archeologische waardering van een terrein | Cultuurhistorische Object Informatie |
+
+Een `rn/2`-URI is dus niet automatisch een AIS-term. Doorzoeker moet de
+`skos:inScheme`-relatie bewaren en tonen wanneer de herkomst van het begrip
+relevant is. `Grondsporen` heeft in CEO alleen het eigen aantalveld en levert
+in de gecontroleerde records geen vergelijkbare eigen AIS-classificatie op.
 
 ## Geometrie
 
@@ -52,6 +100,22 @@ Gebiedsobjecten worden als vlak getekend. Punten worden geclusterd wanneer ze
 op het huidige zoomniveau dicht bij elkaar liggen. Voor lijstweergave en het
 centreren van de kaart wordt waar nodig een representatief punt uit de
 geometrie afgeleid; dat vervangt de oorspronkelijke geometrie niet.
+
+De RCE publiceert niet voor ieder archeologisch object coördinaten. Doorzoeker
+houdt daarom de volgende grens aan:
+
+| Coördinaten gepubliceerd | Geen coördinaten gepubliceerd |
+| --- | --- |
+| Gebouwde Rijksmonumenten | Vondsten |
+| Archeologische Rijksmonumenten | Vondstlocaties |
+| Complexen van Rijksmonumenten | Archeologische complexen |
+| Grondsporen | Archeologische terreinen |
+| Archeologische onderzoeksgebieden | |
+
+`heeftGeometrie` in de ontologie betekent dus niet dat iedere klasse of ieder
+record een geometrie in de publieke data heeft. Doorzoeker maakt geen
+coördinaten op basis van een plaatsnaam en neemt ook niet de geometrie van een
+gekoppeld object over alsof die bij het bronobject zelf hoort.
 
 ## Begrippen en zoeken
 
@@ -72,6 +136,12 @@ eigen brondata; dat maakt CHT niet automatisch een algemene CHO-zoekindex.
 
 ## Bewuste grenzen
 
+- De publieke CHO-graph bevat nul `ArcheologischTerrein`-instanties met een
+  eigen `ceo:heeftGeometrie/geo:asWKT`. Doorzoeker verzint daarom geen vorm of
+  coördinaat. Een gekoppeld Rijksmonument kan wel zijn eigen geometrie hebben,
+  maar die is niet automatisch de geometrie van het terrein.
+- Vondstlocaties zonder gekoppeld onderzoeksgebied zijn nog niet bereikbaar,
+  ook al hebben ze in de bron vaak wel een eigen plaatsaanduiding.
 - Vondsten en grondsporen zijn nog geen zelfstandig doorzoekbare collecties.
 - Er is nog geen ruimtelijke `ligt in`-relatie tussen Rijksmonumenten en
   Werelderfgoed of Gezichten; de bron bevat daarvoor geen directe relatie.
