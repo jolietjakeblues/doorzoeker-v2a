@@ -112,7 +112,12 @@ export function HeritageMap({
   useEffect(() => {
     let cancelled = false;
     let map: Leaflet.Map | undefined;
-    setReady(false);
+    // Een nieuwe kaartopbouw begint na deze effect-run. De microtask houdt de
+    // laadstatus gelijk aan dat moment, zonder tijdens het effect zelf een
+    // tweede render af te dwingen.
+    queueMicrotask(() => {
+      if (!cancelled) setReady(false);
+    });
 
     import("leaflet").then((L) => {
       if (cancelled || !element.current) return;
