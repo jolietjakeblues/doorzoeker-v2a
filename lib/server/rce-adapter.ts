@@ -541,7 +541,7 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1): Promi
 // tekstzoekopdracht: het slaat de Rijksmonument-discovery en de naam-FILTER
 // helemaal over en geeft gewoon de volledige collectie terug (18, 472
 // respectievelijk ~4.200 items).
-export async function browseRceObjects(kind: "rijksmonument" | "archeologischterrein" | "onderzoeksgebied" | "vondstlocatie" | "archeologischcomplex" | "werelderfgoed" | "gezicht" | "complex", signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
+export async function browseRceObjects(kind: "rijksmonument" | "archeologischterrein" | "onderzoeksgebied" | "vondstlocatie" | "archeologischcomplex" | "vondsten" | "grondsporen" | "werelderfgoed" | "gezicht" | "complex", signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
   if (kind === "rijksmonument") {
     const params = new URLSearchParams({ page: String(page), pageSize: "25" });
     const response = await fetch(`${REST_ENDPOINT}?${params}`, {
@@ -551,7 +551,7 @@ export async function browseRceObjects(kind: "rijksmonument" | "archeologischter
     if (!response.ok) throw new Error(`RCE-service antwoordde met ${response.status}`);
     return enrichMonuments(parseRceMonuments(await response.json()), signal);
   }
-  if (kind === "archeologischterrein" || kind === "onderzoeksgebied" || kind === "vondstlocatie" || kind === "archeologischcomplex") {
+  if (kind === "archeologischterrein" || kind === "onderzoeksgebied" || kind === "vondstlocatie" || kind === "archeologischcomplex" || kind === "vondsten" || kind === "grondsporen") {
     const numbers = parseArchaeologyBrowseNumbers(
       await fetchSparql(buildArchaeologyBrowseQuery(kind, page), signal),
     );
@@ -567,6 +567,31 @@ export async function browseRceObjects(kind: "rijksmonument" | "archeologischter
     if (kind === "vondstlocatie") {
       return fetchSparql(buildVondstlocatieDetailsQuery(numbers), signal)
         .then(parseVondstlocatieResults);
+    }
+    if (kind === "vondsten") {
+      return enrichVondstenConcepts(
+        parseVondstenResults(await fetchSparql(buildVondstenDetailsQuery(numbers), signal)),
+        signal,
+      );
+    }
+    if (kind === "grondsporen") {
+      const records = parseGrondsporenResults(
+        await fetchSparql(buildGrondsporenDetailsQuery(numbers), signal),
+      );
+      const resolved = await resolveConcepts(
+        records.flatMap((item) => item.archaeologicalTypeConceptUri ? [item.archaeologicalTypeConceptUri] : []),
+        signal,
+      );
+      return records.map((item) => {
+        const concept = item.archaeologicalTypeConceptUri
+          ? resolved.get(item.archaeologicalTypeConceptUri)
+          : undefined;
+        return {
+          ...item,
+          archaeologicalType: concept?.label ?? item.archaeologicalType,
+          archaeologicalTypeSchemes: concept?.schemes,
+        };
+      });
     }
     const records = parseArcheologischeComplexResults(
       await fetchSparql(buildArcheologischeComplexDetailsQuery(numbers), signal),

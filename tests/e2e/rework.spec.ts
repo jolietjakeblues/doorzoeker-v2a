@@ -160,6 +160,39 @@ test("de startpagina biedt een brede reeks directe zoekvoorbeelden", async ({ pa
   await expect(collecties.getByRole("button", { name: "Onderzoeksgebieden" })).toBeVisible();
   await expect(collecties.getByRole("button", { name: "Vondstlocaties" })).toBeVisible();
   await expect(collecties.getByRole("button", { name: "Archeologische complexen" })).toBeVisible();
+  await expect(collecties.getByRole("button", { name: "Vondsten" })).toBeVisible();
+  await expect(collecties.getByRole("button", { name: "Grondsporen" })).toBeVisible();
+});
+
+test("vondsten en grondsporen zijn als collectie te openen", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const kind = new URL(route.request().url()).searchParams.get("browse");
+    return route.fulfill({ json: {
+      results: [{
+        ...records[2],
+        choNumber: kind === "vondsten" ? "vondst-1" : "spoor-1",
+        monumentNumber: kind === "vondsten" ? "33333" : "44444",
+        monumentNature: kind === "vondsten" ? "vondsten" : "grondsporen",
+        description: kind === "vondsten" ? "Een vondstgroep." : "Een grondspoorgroep.",
+        archaeologicalFindCount: kind === "vondsten" ? 2 : undefined,
+        archaeologicalTraceCount: kind === "grondsporen" ? 3 : undefined,
+      }],
+      page: 1,
+      hasMore: false,
+    } });
+  });
+
+  await page.getByRole("button", { name: "Vondsten", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "1 resultaat voor “Vondsten”" })).toBeVisible();
+  await expect(page.getByText("Archeologische vondst", { exact: true }).first()).toBeVisible();
+
+  const startDataReady = page.waitForResponse((response) => response.url().includes("/api/rce/op-deze-dag"));
+  await page.goto("/");
+  await startDataReady;
+  await page.getByRole("button", { name: "Grondsporen", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "1 resultaat voor “Grondsporen”" })).toBeVisible();
+  await expect(page.getByText("Archeologisch grondspoor", { exact: true }).first()).toBeVisible();
 });
 
 test("vondstlocaties en archeologische complexen zijn als collectie te openen", async ({ page }) => {

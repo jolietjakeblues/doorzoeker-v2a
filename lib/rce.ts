@@ -1340,7 +1340,9 @@ export type ArchaeologyBrowseKind =
   | "archeologischterrein"
   | "onderzoeksgebied"
   | "vondstlocatie"
-  | "archeologischcomplex";
+  | "archeologischcomplex"
+  | "vondsten"
+  | "grondsporen";
 
 // Collecties worden alleen op hun stabiele CHO-nummer gepagineerd. De
 // bestaande detailquery haalt daarna voor precies deze 25 nummers de
@@ -1352,6 +1354,8 @@ export function buildArchaeologyBrowseQuery(kind: ArchaeologyBrowseKind, page: n
     onderzoeksgebied: "ArcheologischOnderzoeksgebied",
     vondstlocatie: "Vondstlocatie",
     archeologischcomplex: "ArcheologischComplex",
+    vondsten: "Vondsten",
+    grondsporen: "Grondsporen",
   }[kind];
   const offset = Math.max(0, page - 1) * 25;
   return `PREFIX ceo: <${CEO}>
