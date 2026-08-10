@@ -157,6 +157,22 @@ test("de startpagina biedt een brede reeks directe zoekvoorbeelden", async ({ pa
   ).toBeVisible();
 });
 
+test("zoeken toont een rustige laadstaat op de plaats van de resultaten", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.fulfill({ json: { results: records, page: 1, hasMore: false } });
+  });
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("moutmolen");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+
+  await expect(page.getByRole("status").filter({ hasText: "We zoeken in de RCE-bronnen" })).toBeVisible();
+  await expect(page.locator(".skeleton-card")).toHaveCount(3);
+  await expect(page.locator(".search-combobox form")).toHaveAttribute("aria-busy", "true");
+  await expect(page.getByRole("heading", { name: /3 resultaten/ })).toBeVisible();
+});
+
 test("een vondstlocatie toont vondsten met hun RN2-bron", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", (route) => route.fulfill({ json: { results: [{
