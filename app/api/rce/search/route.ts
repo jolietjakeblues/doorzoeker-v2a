@@ -117,7 +117,16 @@ export async function GET(request: Request) {
       : conceptParam
         ? await searchByConceptField(veld, conceptParam, request.signal)
         : await searchRceMonuments(query, request.signal, page);
-    const body = JSON.stringify({ results });
+    const isPagedTextSearch = !browse && !conceptParam && !/^\d{4,6}$/.test(query) && !/^\d{4}\s?[A-Za-z]{2}$/.test(query);
+    const pageSize = 25;
+    const collectionNatures = new Set(["werelderfgoed", "gezicht", "complex", "archeologischonderzoeksgebied"]);
+    const pagedResultCount = results.filter((result) => !collectionNatures.has(result.monumentNature ?? "")).length;
+    const body = JSON.stringify({
+      results,
+      page: isPagedTextSearch ? page : 1,
+      pageSize,
+      hasMore: isPagedTextSearch && pagedResultCount >= pageSize,
+    });
     const response = new Response(body, {
       headers: {
         "Content-Type": "application/json",

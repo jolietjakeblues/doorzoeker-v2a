@@ -1,4 +1,4 @@
-import { provinceName, type ArcheologischTerrein, type ComplexMembership, type Gebeurtenis, type Groenaanleg, type LiteratureRef, type MonumentImage, type RceMonument, type RceParcel } from "@/lib/rce";
+import { provinceName, type ArcheologischTerrein, type ComplexMembership, type Gebeurtenis, type Groenaanleg, type LiteratureRef, type MonumentImage, type RceMonument, type RceParcel } from "./rce.ts";
 
 // Rijksmonument, Werelderfgoed, Gezicht en Complex zijn geen smaken van
 // hetzelfde ding: het zijn verschillende soorten cultuurhistorisch object.
@@ -30,7 +30,9 @@ export type Item = {
 };
 
 export const EMPTY_ITEMS: Item[] = [];
-export const EMPTY_URL_STATE = { query: "", objectType: "Alle", monumentAard: "Alle", province: "Alle", municipality: "Alle", functionFilter: "Alle", matchSourceFilter: "Alle", excludedStatuses: [] as string[], onlyGroenaanleg: false, onlyMsp: false, view: "list" as const, selectedId: "" };
+export type ConceptField = "monumentaard" | "waardering" | "gebeurtenis" | "actor";
+
+export const EMPTY_URL_STATE = { query: "", conceptUri: "", conceptField: undefined as ConceptField | undefined, objectType: "Alle", monumentAard: "Alle", province: "Alle", municipality: "Alle", functionFilter: "Alle", matchSourceFilter: "Alle", excludedStatuses: [] as string[], onlyGroenaanleg: false, onlyMsp: false, view: "list" as const, selectedId: "", page: 1 };
 export const MONUMENT_REGISTER_BASE_URL = "https://monumentenregister.cultureelerfgoed.nl/monumenten/";
 
 export function displayFunctionName(value: string) {
@@ -67,6 +69,15 @@ export function statusLabel(objectType: Item["objectType"]) {
   if (objectType === "Complex") return "Complex van rijksmonumenten";
   if (objectType === "Onderzoeksgebied") return "Archeologisch onderzoeksgebied";
   return "Rijksmonument";
+}
+
+export function primaryIdentifier(item: Pick<Item, "objectType" | "monumentNumber" | "objectNumber">) {
+  const value = item.monumentNumber || item.objectNumber;
+  if (item.objectType === "Rijksmonument") return { label: "RM", value };
+  if (item.objectType === "Werelderfgoed") return { label: "Werelderfgoed", value };
+  if (item.objectType === "Gezicht") return { label: "Gezicht", value };
+  if (item.objectType === "Complex") return { label: "Complex", value };
+  return { label: "Onderzoeksgebied", value };
 }
 
 export function toItem(record: RceMonument): Item {
@@ -107,15 +118,19 @@ export function toItem(record: RceMonument): Item {
   };
 }
 
-export function readUrlState() {
-  if (typeof window === "undefined") return EMPTY_URL_STATE;
-  const params = new URLSearchParams(window.location.search);
+export function parseUrlState(search: string) {
+  const params = new URLSearchParams(search);
   const objectType = params.get("soort");
   const monumentAard = params.get("aard");
   const province = params.get("provincie");
   const municipality = params.get("gemeente");
+  const conceptField = params.get("veld");
+  const parsedConceptField: ConceptField | undefined = conceptField === "monumentaard" || conceptField === "waardering" || conceptField === "gebeurtenis" || conceptField === "actor" ? conceptField : undefined;
+  const page = Number(params.get("pagina") ?? "1");
   return {
     query: params.get("q") ?? "",
+    conceptUri: params.get("concept") ?? "",
+    conceptField: parsedConceptField,
     objectType: objectType === "Rijksmonument" || objectType === "Werelderfgoed" || objectType === "Gezicht" || objectType === "Complex" || objectType === "Onderzoeksgebied" ? objectType : "Alle",
     monumentAard: monumentAard === "Gebouwd" || monumentAard === "Archeologisch" ? monumentAard : "Alle",
     province: province || "Alle",
@@ -126,6 +141,11 @@ export function readUrlState() {
     onlyGroenaanleg: params.get("groenaanleg") === "1",
     onlyMsp: params.get("msp") === "1",
     view: params.get("view") === "map" ? "map" as const : "list" as const,
-    selectedId: params.get("rm") ?? "",
+    selectedId: params.get("object") ?? params.get("rm") ?? "",
+    page: Number.isInteger(page) && page > 0 && page <= 20 ? page : 1,
   };
+}
+
+export function readUrlState() {
+  return typeof window === "undefined" ? EMPTY_URL_STATE : parseUrlState(window.location.search);
 }

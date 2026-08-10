@@ -1,6 +1,6 @@
 import type { ComplexMember, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, RceMonument } from "@/lib/rce";
 
-type SearchResponse = { results: RceMonument[] };
+export type SearchResponse = { results: RceMonument[]; page?: number; pageSize?: number; hasMore?: boolean };
 type ComplexMembersResponse = { members: ComplexMember[] };
 type OnderzoeksgebiedVerrijkingResponse = OnderzoeksgebiedAggregaten & { complexen: OnderzoeksgebiedComplex[]; vondstlocaties: OnderzoeksgebiedVondstlocatie[] };
 type OpDezeDagResponse = { monument: RceMonument | null };
@@ -13,7 +13,7 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
   });
   if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
   const document = await response.json() as SearchResponse;
-  return document.results;
+  return { results: document.results, hasMore: document.hasMore ?? false, page: document.page ?? page };
 }
 
 // Exact zoeken op een concept-URI uit het Referentienetwerk in plaats van
