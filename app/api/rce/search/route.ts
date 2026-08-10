@@ -56,7 +56,16 @@ function cacheStore(): Cache | undefined {
 
 async function readCache(key: Request) {
   try {
-    return await cacheStore()?.match(key);
+    const cached = await cacheStore()?.match(key);
+    if (!cached) return undefined;
+    // Responses uit Cloudflare Cache API hebben immutable headers. Vinext
+    // voegt na de route nog eigen headers toe; geef het daarom een nieuwe
+    // Response met een vrij te wijzigen Headers-object.
+    return new Response(cached.body, {
+      status: cached.status,
+      statusText: cached.statusText,
+      headers: new Headers(cached.headers),
+    });
   } catch {
     return undefined;
   }

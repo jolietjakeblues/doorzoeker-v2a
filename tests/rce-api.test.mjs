@@ -203,6 +203,26 @@ test("attaches gekoppelde literatuur from the separate rce/bibliotheek dataset o
   }]);
 });
 
+test("copies a Cloudflare cache hit into a response with mutable headers", async (context) => {
+  const originalCaches = globalThis.caches;
+  context.after(() => {
+    if (originalCaches === undefined) delete globalThis.caches;
+    else globalThis.caches = originalCaches;
+  });
+  const cached = new Response(JSON.stringify({ results: [], page: 1, hasMore: false }), {
+    headers: { "Content-Type": "application/json", "X-Doorzoeker-Cache": "HIT" },
+  });
+  const immutableHeaders = new Headers(cached.headers);
+  immutableHeaders.set = () => { throw new TypeError("Can't modify immutable headers."); };
+  Object.defineProperty(cached, "headers", { value: immutableHeaders });
+  globalThis.caches = { default: { match() { return cached; }, put() {} } };
+
+  const response = await GET(new Request("https://doorzoeker.test/api/rce/search?q=cachetest", { headers: { "cf-connecting-ip": "cache-copy" } }));
+  assert.equal(response.status, 200);
+  assert.doesNotThrow(() => response.headers.set("X-Vinext-Test", "ok"));
+  assert.equal(response.headers.get("X-Vinext-Test"), "ok");
+});
+
 test("keeps name search working when another discovery branch is temporarily unavailable", async (context) => {
   const originalFetch = globalThis.fetch;
   const originalCaches = globalThis.caches;
