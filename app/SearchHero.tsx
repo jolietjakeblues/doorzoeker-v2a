@@ -60,7 +60,11 @@ export function SearchHero({
         op naam, nummer, plaats, functie of omschrijving.
       </p>
       <div className="search-combobox">
-        <form onSubmit={submitSearch}>
+        <form
+          onSubmit={submitSearch}
+          className={remoteState === "loading" ? "is-searching" : undefined}
+          aria-busy={remoteState === "loading"}
+        >
           <span aria-hidden="true">⌕</span>
           <label className="sr" htmlFor="q">
             Zoeken

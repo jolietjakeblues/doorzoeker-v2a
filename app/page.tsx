@@ -655,10 +655,31 @@ export default function Home() {
               </div>
             </>
           ) : remoteState === "loading" ? (
-            <div className="empty">
-              <b>…</b>
-              <h3>RCE Linked Data doorzoeken</h3>
-              <p>Een ogenblik; de officiële bron wordt geraadpleegd.</p>
+            <div className="search-loading" role="status" aria-live="polite">
+              <div className="graph-traversal" aria-hidden="true">
+                <span />
+                <i />
+                <span />
+                <i />
+                <span />
+                <i />
+                <span />
+              </div>
+              <h3>We zoeken in de RCE-bronnen</h3>
+              <p>De eerste resultaten verschijnen hier zodra ze binnen zijn.</p>
+              <div className="skeleton-cards" aria-hidden="true">
+                {[0, 1, 2].map((index) => (
+                  <div className="skeleton-card" key={index}>
+                    <span className="skeleton-tile" />
+                    <div>
+                      <span className="skeleton-line short" />
+                      <span className="skeleton-line title" />
+                      <span className="skeleton-line" />
+                      <span className="skeleton-line medium" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : results.length === 0 ? (
             <div className="empty">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type * as Leaflet from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { clusterMapPoints } from "@/lib/map-clustering";
@@ -99,6 +99,7 @@ export function HeritageMap({
   onViewportChange?: (viewport: MapViewport) => void;
 }) {
   const element = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
   const selectRef = useRef(onSelect);
   const viewportChangeRef = useRef(onViewportChange);
   const initialViewportRef = useRef(initialViewport);
@@ -111,6 +112,7 @@ export function HeritageMap({
   useEffect(() => {
     let cancelled = false;
     let map: Leaflet.Map | undefined;
+    setReady(false);
 
     import("leaflet").then((L) => {
       if (cancelled || !element.current) return;
@@ -293,6 +295,7 @@ export function HeritageMap({
         });
       }
       renderMarkers();
+      setReady(true);
       leafletMap.on("zoomend", renderMarkers);
       if (!compact) {
         leafletMap.on("moveend", () => {
@@ -313,10 +316,18 @@ export function HeritageMap({
   }, [compact, items]);
 
   return (
-    <div
-      className={`leaflet-map${compact ? " compact" : ""}`}
-      ref={element}
-      aria-label="Kaart met gevonden erfgoedobjecten"
-    />
+    <div className="map-shell" aria-busy={!ready}>
+      {!ready && (
+        <div className="map-loading" role="status">
+          <span aria-hidden="true" />
+          Kaart laden
+        </div>
+      )}
+      <div
+        className={`leaflet-map${compact ? " compact" : ""}`}
+        ref={element}
+        aria-label="Kaart met gevonden erfgoedobjecten"
+      />
+    </div>
   );
 }

@@ -198,6 +198,8 @@ header p a {
   margin: 0 auto;
 }
 .search-combobox form {
+  position: relative;
+  overflow: hidden;
   margin: 0;
   height: 62px;
   padding: 5px 6px 5px 20px;
@@ -207,6 +209,15 @@ header p a {
   background: #fff;
   border: 1px solid #9c9c9c;
   box-shadow: 0 4px 12px #00000022;
+}
+.search-combobox form.is-searching::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--rce-blue), transparent);
+  transform: translateX(-100%);
+  animation: search-scan 1.8s ease-in-out infinite;
 }
 .hero form > span {
   font-size: 26px;
@@ -731,6 +742,78 @@ h2 {
   font-weight: 700;
 }
 
+.search-loading {
+  padding: 42px 0 12px;
+  text-align: center;
+}
+.search-loading h3 {
+  margin: 15px 0 5px;
+  font-size: 20px;
+}
+.search-loading > p {
+  margin: 0 0 28px;
+  color: var(--muted);
+}
+.graph-traversal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.graph-traversal span {
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--rce-blue);
+  border-radius: 50%;
+  background: #fff;
+  animation: graph-node 2.1s ease-in-out infinite;
+}
+.graph-traversal span:nth-of-type(2) { animation-delay: 0.3s; }
+.graph-traversal span:nth-of-type(3) { animation-delay: 0.6s; }
+.graph-traversal span:nth-of-type(4) { animation-delay: 0.9s; }
+.graph-traversal i {
+  width: 34px;
+  height: 2px;
+  background: var(--panel-line);
+}
+.skeleton-cards {
+  display: grid;
+  gap: 14px;
+  text-align: left;
+}
+.skeleton-card {
+  min-height: 144px;
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 24px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+.skeleton-tile,
+.skeleton-line {
+  display: block;
+  background: linear-gradient(100deg, #e9edef 30%, #f7f8f8 48%, #e9edef 66%);
+  background-size: 220% 100%;
+  animation: skeleton-light 2s ease-in-out infinite;
+}
+.skeleton-tile { min-height: 110px; }
+.skeleton-line { width: 86%; height: 11px; margin: 10px 0; border-radius: 2px; }
+.skeleton-line.short { width: 28%; height: 8px; }
+.skeleton-line.title { width: 58%; height: 20px; }
+.skeleton-line.medium { width: 68%; }
+
+@keyframes search-scan {
+  50%, 100% { transform: translateX(100%); }
+}
+@keyframes graph-node {
+  0%, 60%, 100% { background: #fff; box-shadow: none; transform: scale(1); }
+  20% { background: var(--rce-yellow); box-shadow: 0 0 0 5px #ffb61233; transform: scale(1.12); }
+}
+@keyframes skeleton-light {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
 .more-results {
   display: grid;
   justify-items: center;
@@ -758,6 +841,45 @@ h2 {
 }
 
 /* Kaart */
+.map-shell {
+  position: relative;
+}
+.map-loading {
+  position: absolute;
+  z-index: 500;
+  inset: 50% auto auto 50%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--rce-blue);
+  font-size: 13px;
+  font-weight: 700;
+  transform: translate(-50%, -50%);
+}
+.map-loading span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50% 50% 50% 0;
+  background: var(--rce-blue);
+  transform: rotate(-45deg);
+  animation: map-marker-pulse 1.6s ease-in-out infinite;
+}
+@keyframes map-marker-pulse {
+  50% { opacity: 0.45; transform: rotate(-45deg) scale(1.28); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-combobox form.is-searching::after,
+  .graph-traversal span,
+  .skeleton-tile,
+  .skeleton-line,
+  .map-loading span {
+    animation: none;
+  }
+}
 .leaflet-map {
   height: 590px;
   width: 100%;
