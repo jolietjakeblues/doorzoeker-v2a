@@ -990,7 +990,9 @@ h2 {
 .backdrop {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  /* Leaflet gebruikt binnen de resultatenkaart z-indexen tot 800. Het hele
+     detailvenster moet daarboven liggen, niet alleen de kop of sluitknop. */
+  z-index: 2000;
   display: flex;
   justify-content: flex-end;
   background: #0b19147a;
