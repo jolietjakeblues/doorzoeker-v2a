@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFilteredResults } from "@/hooks/useFilteredResults";
 import {
   browseRceObjects,
@@ -15,6 +15,7 @@ import {
   toItem,
   type ConceptField,
   type Item,
+  type MapViewport,
 } from "@/lib/heritage-view-model";
 
 // Alle zoek-, filter-, resultaat- en URL-state van Doorzoeker leeft in één
@@ -63,6 +64,9 @@ export function useSearchState() {
   );
   const [onlyMsp, setOnlyMsp] = useState(EMPTY_URL_STATE.onlyMsp);
   const [view, setView] = useState<"list" | "map">(EMPTY_URL_STATE.view);
+  const [mapViewport, setMapViewport] = useState<MapViewport | undefined>(
+    EMPTY_URL_STATE.mapViewport,
+  );
   const [selected, setSelected] = useState<Item | null>(null);
   const [filters, setFilters] = useState(false);
   const [remoteResults, setRemoteResults] = useState<Item[] | null>(null);
@@ -94,6 +98,11 @@ export function useSearchState() {
     if (onlyGroenaanleg) params.set("groenaanleg", "1");
     if (onlyMsp) params.set("msp", "1");
     if (view === "map") params.set("view", "map");
+    if (view === "map" && mapViewport) {
+      params.set("lat", mapViewport.lat.toFixed(5));
+      params.set("lng", mapViewport.lng.toFixed(5));
+      params.set("zoom", String(mapViewport.zoom));
+    }
     if (resultPage > 1) params.set("pagina", String(resultPage));
     if (selected) params.set("object", selected.id);
     window.history.replaceState(
@@ -117,12 +126,13 @@ export function useSearchState() {
     resultPage,
     selected,
     view,
+    mapViewport,
   ]);
 
   const choose = useCallback((item: Item) => setSelected(item), []);
   const baseResults = remoteResults ?? EMPTY_ITEMS;
-  const { functions, provinces, municipalities, matchSources, results } =
-    useFilteredResults(baseResults, {
+  const activeFilters = useMemo(
+    () => ({
       functionFilter,
       objectType,
       monumentAard,
@@ -132,7 +142,21 @@ export function useSearchState() {
       excludedStatuses,
       onlyGroenaanleg,
       onlyMsp,
-    });
+    }),
+    [
+      excludedStatuses,
+      functionFilter,
+      matchSourceFilter,
+      monumentAard,
+      municipality,
+      objectType,
+      onlyGroenaanleg,
+      onlyMsp,
+      province,
+    ],
+  );
+  const { functions, provinces, municipalities, matchSources, results } =
+    useFilteredResults(baseResults, activeFilters);
   function toggleLegalStatus(label: string) {
     setExcludedStatuses((current) =>
       current.includes(label)
@@ -155,6 +179,7 @@ export function useSearchState() {
     setActiveConceptVeld(undefined);
     setSelected(null);
     setView("list");
+    setMapViewport(undefined);
     setObjectType("Alle");
     setMonumentAard("Alle");
     setProvince("Alle");
@@ -215,6 +240,7 @@ export function useSearchState() {
     setActiveConceptVeld(veld);
     setSelected(null);
     setView("list");
+    setMapViewport(undefined);
     setObjectType("Alle");
     setMonumentAard("Alle");
     setProvince("Alle");
@@ -273,6 +299,7 @@ export function useSearchState() {
     setActiveConceptVeld(undefined);
     setSelected(null);
     setView("list");
+    setMapViewport(undefined);
     setObjectType(
       kind === "werelderfgoed"
         ? "Werelderfgoed"
@@ -357,6 +384,7 @@ export function useSearchState() {
       setOnlyGroenaanleg(initial.onlyGroenaanleg);
       setOnlyMsp(initial.onlyMsp);
       setView(initial.view);
+      setMapViewport(initial.mapViewport);
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
@@ -377,6 +405,7 @@ export function useSearchState() {
     setOnlyGroenaanleg(false);
     setOnlyMsp(false);
     setSelected(null);
+    setMapViewport(undefined);
     setRemoteResults(null);
     setRemoteState("idle");
     setResultPage(1);
@@ -389,6 +418,8 @@ export function useSearchState() {
     active,
     view,
     setView,
+    mapViewport,
+    setMapViewport,
     objectType,
     setObjectType,
     monumentAard,

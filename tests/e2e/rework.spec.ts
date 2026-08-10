@@ -17,6 +17,8 @@ const records = [
     place: "Goirle",
     municipality: "Goirle",
     provinceCode: "NB",
+    lat: 51.52,
+    lng: 5.07,
     matchSource: "oorspronkelijke functie",
     matchedText: "Woonhuis",
     matchScore: 1,
@@ -36,6 +38,8 @@ const records = [
     municipality: "Goirle",
     provinceCode: "NB",
     complexMemberCount: 2,
+    lat: 51.53,
+    lng: 5.08,
   },
   {
     choNumber: "cho-3",
@@ -136,4 +140,50 @@ test("een complexdetail toont geen lege monumentvelden", async ({ page }) => {
   await expect(
     dialog.getByText("Inschrijving of datering", { exact: true }),
   ).toHaveCount(0);
+});
+
+test("de detaildialoog houdt focus vast en herstelt hem na Escape", async ({
+  page,
+}) => {
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  const opener = page.getByRole("button", {
+    name: "Details van Historisch boerderijcomplex",
+  });
+  await opener.click();
+
+  const dialog = page.getByRole("dialog");
+  const closeButton = dialog.getByRole("button", { name: "Details sluiten" });
+  await expect(closeButton).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(
+    dialog.getByRole("link", { name: /Bekijk in de RCE Linked Data/ }),
+  ).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(closeButton).toBeFocused();
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(opener).toBeFocused();
+});
+
+test("de kaartpositie blijft in de URL staan na herladen", async ({ page }) => {
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Kaartweergave" }).click();
+  await page.getByRole("button", { name: "Zoom in" }).click();
+
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("zoom"))
+    .not.toBeNull();
+  const sharedUrl = page.url();
+  const sharedState = new URL(sharedUrl).searchParams;
+  expect(sharedState.get("lat")).not.toBeNull();
+  expect(sharedState.get("lng")).not.toBeNull();
+
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Kaartweergave" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  expect(page.url()).toBe(sharedUrl);
 });

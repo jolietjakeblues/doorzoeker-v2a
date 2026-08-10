@@ -66,8 +66,9 @@ een geheel eigen, van het monumentenregister losstaande dataset (zie
 6. zoektoestand vastleggen in een deelbare URL;
 7. termen gebruiken voor suggesties en gecontroleerde zoekverfijning.
 
-Nog niet gebouwd: paginering boven de eerste 25 resultaten, en ruimtelijke
-"ligt in"-relaties tussen monumenten en gezichten/werelderfgoed.
+Tekstzoekopdrachten kunnen vervolgresulaten per 25 laden. Nog niet gebouwd zijn
+ruimtelijke "ligt in"-relaties tussen monumenten en
+gezichten/werelderfgoed.
 
 De functionele afbakening en acceptatiecriteria staan in
 [`docs/vertical-slices/001-rijksmonumenten.md`](docs/vertical-slices/001-rijksmonumenten.md).

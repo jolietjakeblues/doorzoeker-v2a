@@ -1,4 +1,14 @@
-import { provinceName, type ArcheologischTerrein, type ComplexMembership, type Gebeurtenis, type Groenaanleg, type LiteratureRef, type MonumentImage, type RceMonument, type RceParcel } from "./rce.ts";
+import {
+  provinceName,
+  type ArcheologischTerrein,
+  type ComplexMembership,
+  type Gebeurtenis,
+  type Groenaanleg,
+  type LiteratureRef,
+  type MonumentImage,
+  type RceMonument,
+  type RceParcel,
+} from "./rce.ts";
 
 // Rijksmonument, Werelderfgoed, Gezicht en Complex zijn geen smaken van
 // hetzelfde ding: het zijn verschillende soorten cultuurhistorisch object.
@@ -8,15 +18,39 @@ import { provinceName, type ArcheologischTerrein, type ComplexMembership, type G
 // drieën is zelf "een monumentaard" - monumentaard (gebouwd/archeologisch)
 // is dan ook alleen een eigenschap van een Rijksmonument.
 export type Item = {
-  id: string; objectNumber: string; title: string; kind: string; address: string;
-  postalCode: string; place: string; municipality: string; province: string;
-  objectType: "Rijksmonument" | "Werelderfgoed" | "Gezicht" | "Complex" | "Onderzoeksgebied";
+  id: string;
+  objectNumber: string;
+  title: string;
+  kind: string;
+  address: string;
+  postalCode: string;
+  place: string;
+  municipality: string;
+  province: string;
+  objectType:
+    | "Rijksmonument"
+    | "Werelderfgoed"
+    | "Gezicht"
+    | "Complex"
+    | "Onderzoeksgebied";
   monumentAard?: "Gebouwd" | "Archeologisch";
-  period: string; description: string;
-  lat: number; lng: number;
-  monumentNumber?: string; registrationDate?: string; official?: boolean; sourceUrl?: string; linkedDataUrl?: string; wkt?: string;
-  matchSource?: string; matchedText?: string; matchScore?: number; legalStatus?: string;
-  originalFunctionNames?: string[]; currentFunctionNames?: string[]; typeNames?: string[];
+  period: string;
+  description: string;
+  lat: number;
+  lng: number;
+  monumentNumber?: string;
+  registrationDate?: string;
+  official?: boolean;
+  sourceUrl?: string;
+  linkedDataUrl?: string;
+  wkt?: string;
+  matchSource?: string;
+  matchedText?: string;
+  matchScore?: number;
+  legalStatus?: string;
+  originalFunctionNames?: string[];
+  currentFunctionNames?: string[];
+  typeNames?: string[];
   parcels?: RceParcel[];
   archaeologicalSites?: ArcheologischTerrein[];
   complexes?: ComplexMembership[];
@@ -30,10 +64,33 @@ export type Item = {
 };
 
 export const EMPTY_ITEMS: Item[] = [];
-export type ConceptField = "monumentaard" | "waardering" | "gebeurtenis" | "actor";
+export type ConceptField =
+  | "monumentaard"
+  | "waardering"
+  | "gebeurtenis"
+  | "actor";
+export type MapViewport = { lat: number; lng: number; zoom: number };
 
-export const EMPTY_URL_STATE = { query: "", conceptUri: "", conceptField: undefined as ConceptField | undefined, objectType: "Alle", monumentAard: "Alle", province: "Alle", municipality: "Alle", functionFilter: "Alle", matchSourceFilter: "Alle", excludedStatuses: [] as string[], onlyGroenaanleg: false, onlyMsp: false, view: "list" as const, selectedId: "", page: 1 };
-export const MONUMENT_REGISTER_BASE_URL = "https://monumentenregister.cultureelerfgoed.nl/monumenten/";
+export const EMPTY_URL_STATE = {
+  query: "",
+  conceptUri: "",
+  conceptField: undefined as ConceptField | undefined,
+  objectType: "Alle",
+  monumentAard: "Alle",
+  province: "Alle",
+  municipality: "Alle",
+  functionFilter: "Alle",
+  matchSourceFilter: "Alle",
+  excludedStatuses: [] as string[],
+  onlyGroenaanleg: false,
+  onlyMsp: false,
+  view: "list" as const,
+  mapViewport: undefined as MapViewport | undefined,
+  selectedId: "",
+  page: 1,
+};
+export const MONUMENT_REGISTER_BASE_URL =
+  "https://monumentenregister.cultureelerfgoed.nl/monumenten/";
 
 export function displayFunctionName(value: string) {
   return value.replace(/\s*\([^()]*\)\s*$/, "").trim();
@@ -49,12 +106,19 @@ export function truncateAtWordBoundary(text: string, max: number) {
   return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd();
 }
 
-export function typeBadge(item: { objectType: Item["objectType"]; monumentAard?: Item["monumentAard"] }) {
-  if (item.objectType === "Werelderfgoed") return { letter: "W", modifier: "world" };
+export function typeBadge(item: {
+  objectType: Item["objectType"];
+  monumentAard?: Item["monumentAard"];
+}) {
+  if (item.objectType === "Werelderfgoed")
+    return { letter: "W", modifier: "world" };
   if (item.objectType === "Gezicht") return { letter: "G", modifier: "green" };
-  if (item.objectType === "Complex") return { letter: "C", modifier: "complex" };
-  if (item.objectType === "Onderzoeksgebied") return { letter: "O", modifier: "dig" };
-  if (item.monumentAard === "Archeologisch") return { letter: "A", modifier: "sand" };
+  if (item.objectType === "Complex")
+    return { letter: "C", modifier: "complex" };
+  if (item.objectType === "Onderzoeksgebied")
+    return { letter: "O", modifier: "dig" };
+  if (item.monumentAard === "Archeologisch")
+    return { letter: "A", modifier: "sand" };
   return { letter: "M", modifier: "" };
 }
 
@@ -67,54 +131,119 @@ export function statusLabel(objectType: Item["objectType"]) {
   if (objectType === "Werelderfgoed") return "Werelderfgoed";
   if (objectType === "Gezicht") return "Rijksbeschermd stads- of dorpsgezicht";
   if (objectType === "Complex") return "Complex van rijksmonumenten";
-  if (objectType === "Onderzoeksgebied") return "Archeologisch onderzoeksgebied";
+  if (objectType === "Onderzoeksgebied")
+    return "Archeologisch onderzoeksgebied";
   return "Rijksmonument";
 }
 
-export function primaryIdentifier(item: Pick<Item, "objectType" | "monumentNumber" | "objectNumber">) {
+export function primaryIdentifier(
+  item: Pick<Item, "objectType" | "monumentNumber" | "objectNumber">,
+) {
   const value = item.monumentNumber || item.objectNumber;
   if (item.objectType === "Rijksmonument") return { label: "RM", value };
-  if (item.objectType === "Werelderfgoed") return { label: "Werelderfgoed", value };
+  if (item.objectType === "Werelderfgoed")
+    return { label: "Werelderfgoed", value };
   if (item.objectType === "Gezicht") return { label: "Gezicht", value };
   if (item.objectType === "Complex") return { label: "Complex", value };
   return { label: "Onderzoeksgebied", value };
 }
 
 export function toItem(record: RceMonument): Item {
-  const functionName = record.functionName ? displayFunctionName(record.functionName) : "";
-  const originalFunctionNames = record.originalFunctionNames?.map(displayFunctionName).filter(Boolean);
-  const matchedText = record.matchSource === "oorspronkelijke functie" && record.matchedText
-    ? displayFunctionName(record.matchedText)
-    : record.matchedText;
+  const functionName = record.functionName
+    ? displayFunctionName(record.functionName)
+    : "";
+  const originalFunctionNames = record.originalFunctionNames
+    ?.map(displayFunctionName)
+    .filter(Boolean);
+  const matchedText =
+    record.matchSource === "oorspronkelijke functie" && record.matchedText
+      ? displayFunctionName(record.matchedText)
+      : record.matchedText;
   const isWerelderfgoed = record.monumentNature === "werelderfgoed";
   const isGezicht = record.monumentNature === "gezicht";
   const isComplex = record.monumentNature === "complex";
-  const isOnderzoeksgebied = record.monumentNature === "archeologischonderzoeksgebied";
+  const isOnderzoeksgebied =
+    record.monumentNature === "archeologischonderzoeksgebied";
   const hasOwnOfficialUrl = isWerelderfgoed || isGezicht;
-  const objectType: Item["objectType"] = isWerelderfgoed ? "Werelderfgoed" : isGezicht ? "Gezicht" : isComplex ? "Complex" : isOnderzoeksgebied ? "Onderzoeksgebied" : "Rijksmonument";
-  const monumentAard: Item["monumentAard"] = objectType === "Rijksmonument"
-    ? (record.monumentNature?.toLocaleLowerCase("nl").includes("archeologisch") ? "Archeologisch" : "Gebouwd")
-    : undefined;
+  const objectType: Item["objectType"] = isWerelderfgoed
+    ? "Werelderfgoed"
+    : isGezicht
+      ? "Gezicht"
+      : isComplex
+        ? "Complex"
+        : isOnderzoeksgebied
+          ? "Onderzoeksgebied"
+          : "Rijksmonument";
+  const monumentAard: Item["monumentAard"] =
+    objectType === "Rijksmonument"
+      ? record.monumentNature?.toLocaleLowerCase("nl").includes("archeologisch")
+        ? "Archeologisch"
+        : "Gebouwd"
+      : undefined;
   return {
-    id: record.choNumber, monumentNumber: record.monumentNumber, objectNumber: record.choNumber,
-    title: record.name || functionName || (isComplex ? `Complex ${record.monumentNumber}` : isOnderzoeksgebied ? `Onderzoeksgebied ${record.monumentNumber}` : `Rijksmonument ${record.monumentNumber}`),
+    id: record.choNumber,
+    monumentNumber: record.monumentNumber,
+    objectNumber: record.choNumber,
+    title:
+      record.name ||
+      functionName ||
+      (isComplex
+        ? `Complex ${record.monumentNumber}`
+        : isOnderzoeksgebied
+          ? `Onderzoeksgebied ${record.monumentNumber}`
+          : `Rijksmonument ${record.monumentNumber}`),
     kind: functionName || "Functie niet opgenomen",
-    address: record.fullAddress || [record.street, record.houseNumber].filter(Boolean).join(" ") || "Adres niet opgenomen",
-    postalCode: record.postalCode, place: record.place ?? "",
-    municipality: record.municipality ?? record.place ?? "", province: provinceName(record.provinceCode) ?? "",
-    objectType, monumentAard,
-    period: record.matchSource ? `Gevonden via ${record.matchSource}${matchedText ? `: ${matchedText.slice(0, 72)}${matchedText.length > 72 ? "…" : ""}` : ""}` : record.registrationDate ? `Ingeschreven ${record.registrationDate}` : "Datering niet opgenomen",
-    description: record.description || "Actueel record uit de Linked Data Voorziening van de Rijksdienst voor het Cultureel Erfgoed.",
-    registrationDate: record.registrationDate, official: true,
-    sourceUrl: hasOwnOfficialUrl ? (record.officialUrl ?? record.sourceUrl) : isComplex || isOnderzoeksgebied ? record.sourceUrl : record.monumentNumber ? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(record.monumentNumber)}` : record.sourceUrl,
-    linkedDataUrl: record.sourceUrl, wkt: record.wkt,
-    parcels: record.parcels, archaeologicalSites: record.archaeologicalSites, complexes: record.complexes, complexMemberCount: record.complexMemberCount, image: record.image, groenaanleg: record.groenaanleg, msp: record.msp, literature: record.literature, gebeurtenissen: record.gebeurtenissen, matchSource: record.matchSource, matchedText, matchScore: record.matchScore,
-    legalStatus: record.legalStatus, originalFunctionNames,
-    currentFunctionNames: record.currentFunctionNames, typeNames: record.typeNames,
-    lat: record.lat ?? 0, lng: record.lng ?? 0,
-    monumentAardConcept: record.monumentAardConceptUri && record.monumentNature
-      ? { uri: record.monumentAardConceptUri, label: record.monumentNature }
-      : undefined,
+    address:
+      record.fullAddress ||
+      [record.street, record.houseNumber].filter(Boolean).join(" ") ||
+      "Adres niet opgenomen",
+    postalCode: record.postalCode,
+    place: record.place ?? "",
+    municipality: record.municipality ?? record.place ?? "",
+    province: provinceName(record.provinceCode) ?? "",
+    objectType,
+    monumentAard,
+    period: record.matchSource
+      ? `Gevonden via ${record.matchSource}${matchedText ? `: ${matchedText.slice(0, 72)}${matchedText.length > 72 ? "…" : ""}` : ""}`
+      : record.registrationDate
+        ? `Ingeschreven ${record.registrationDate}`
+        : "Datering niet opgenomen",
+    description:
+      record.description ||
+      "Actueel record uit de Linked Data Voorziening van de Rijksdienst voor het Cultureel Erfgoed.",
+    registrationDate: record.registrationDate,
+    official: true,
+    sourceUrl: hasOwnOfficialUrl
+      ? (record.officialUrl ?? record.sourceUrl)
+      : isComplex || isOnderzoeksgebied
+        ? record.sourceUrl
+        : record.monumentNumber
+          ? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(record.monumentNumber)}`
+          : record.sourceUrl,
+    linkedDataUrl: record.sourceUrl,
+    wkt: record.wkt,
+    parcels: record.parcels,
+    archaeologicalSites: record.archaeologicalSites,
+    complexes: record.complexes,
+    complexMemberCount: record.complexMemberCount,
+    image: record.image,
+    groenaanleg: record.groenaanleg,
+    msp: record.msp,
+    literature: record.literature,
+    gebeurtenissen: record.gebeurtenissen,
+    matchSource: record.matchSource,
+    matchedText,
+    matchScore: record.matchScore,
+    legalStatus: record.legalStatus,
+    originalFunctionNames,
+    currentFunctionNames: record.currentFunctionNames,
+    typeNames: record.typeNames,
+    lat: record.lat ?? 0,
+    lng: record.lng ?? 0,
+    monumentAardConcept:
+      record.monumentAardConceptUri && record.monumentNature
+        ? { uri: record.monumentAardConceptUri, label: record.monumentNature }
+        : undefined,
   };
 }
 
@@ -125,27 +254,65 @@ export function parseUrlState(search: string) {
   const province = params.get("provincie");
   const municipality = params.get("gemeente");
   const conceptField = params.get("veld");
-  const parsedConceptField: ConceptField | undefined = conceptField === "monumentaard" || conceptField === "waardering" || conceptField === "gebeurtenis" || conceptField === "actor" ? conceptField : undefined;
+  const parsedConceptField: ConceptField | undefined =
+    conceptField === "monumentaard" ||
+    conceptField === "waardering" ||
+    conceptField === "gebeurtenis" ||
+    conceptField === "actor"
+      ? conceptField
+      : undefined;
   const page = Number(params.get("pagina") ?? "1");
+  const mapLat = Number(params.get("lat"));
+  const mapLng = Number(params.get("lng"));
+  const mapZoom = Number(params.get("zoom"));
+  const mapViewport =
+    params.has("lat") &&
+    params.has("lng") &&
+    params.has("zoom") &&
+    Number.isFinite(mapLat) &&
+    mapLat >= -90 &&
+    mapLat <= 90 &&
+    Number.isFinite(mapLng) &&
+    mapLng >= -180 &&
+    mapLng <= 180 &&
+    Number.isInteger(mapZoom) &&
+    mapZoom >= 1 &&
+    mapZoom <= 19
+      ? { lat: mapLat, lng: mapLng, zoom: mapZoom }
+      : undefined;
   return {
     query: params.get("q") ?? "",
     conceptUri: params.get("concept") ?? "",
     conceptField: parsedConceptField,
-    objectType: objectType === "Rijksmonument" || objectType === "Werelderfgoed" || objectType === "Gezicht" || objectType === "Complex" || objectType === "Onderzoeksgebied" ? objectType : "Alle",
-    monumentAard: monumentAard === "Gebouwd" || monumentAard === "Archeologisch" ? monumentAard : "Alle",
+    objectType:
+      objectType === "Rijksmonument" ||
+      objectType === "Werelderfgoed" ||
+      objectType === "Gezicht" ||
+      objectType === "Complex" ||
+      objectType === "Onderzoeksgebied"
+        ? objectType
+        : "Alle",
+    monumentAard:
+      monumentAard === "Gebouwd" || monumentAard === "Archeologisch"
+        ? monumentAard
+        : "Alle",
     province: province || "Alle",
     municipality: municipality || "Alle",
     functionFilter: params.get("functie") ?? "Alle",
     matchSourceFilter: params.get("bron") ?? "Alle",
-    excludedStatuses: params.get("uitgesloten")?.split(",").filter(Boolean) ?? [],
+    excludedStatuses:
+      params.get("uitgesloten")?.split(",").filter(Boolean) ?? [],
     onlyGroenaanleg: params.get("groenaanleg") === "1",
     onlyMsp: params.get("msp") === "1",
-    view: params.get("view") === "map" ? "map" as const : "list" as const,
+    view: params.get("view") === "map" ? ("map" as const) : ("list" as const),
+    mapViewport,
     selectedId: params.get("object") ?? params.get("rm") ?? "",
     page: Number.isInteger(page) && page > 0 && page <= 20 ? page : 1,
   };
 }
 
 export function readUrlState() {
-  return typeof window === "undefined" ? EMPTY_URL_STATE : parseUrlState(window.location.search);
+  return typeof window === "undefined"
+    ? EMPTY_URL_STATE
+    : parseUrlState(window.location.search);
 }

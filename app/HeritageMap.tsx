@@ -5,12 +5,23 @@ import type * as Leaflet from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { clusterMapPoints } from "@/lib/map-clustering";
 import { parseWktGeometry } from "@/lib/rce";
+import type { MapViewport } from "@/lib/heritage-view-model";
 
 type MapItem = {
-  id: string; title: string; address: string; place: string;
-  objectType: "Rijksmonument" | "Werelderfgoed" | "Gezicht" | "Complex" | "Onderzoeksgebied";
+  id: string;
+  title: string;
+  address: string;
+  place: string;
+  objectType:
+    | "Rijksmonument"
+    | "Werelderfgoed"
+    | "Gezicht"
+    | "Complex"
+    | "Onderzoeksgebied";
   monumentAard?: "Gebouwd" | "Archeologisch";
-  lat: number; lng: number; wkt?: string;
+  lat: number;
+  lng: number;
+  wkt?: string;
   // Voor complexleden op de detailkaart van hun eigen complex (zie isAreaType
   // hieronder): elk lid is op zichzelf een gewoon Rijksmonument, dat zonder
   // deze vlag als punt zou renderen.
@@ -41,8 +52,16 @@ function markerColor(item: Pick<MapItem, "objectType" | "monumentAard">) {
 // opgehaald - en toont de app in plaats daarvan elk lid als zijn eigen
 // polygon (via `forceArea`, zie app/page.tsx), zodat je kunt zien hoe de
 // afzonderlijke gebouwen van het complex ten opzichte van elkaar liggen.
-function isAreaType(item: Pick<MapItem, "objectType" | "monumentAard" | "forceArea">) {
-  return item.forceArea || item.objectType === "Werelderfgoed" || item.objectType === "Gezicht" || item.objectType === "Onderzoeksgebied" || item.monumentAard === "Archeologisch";
+function isAreaType(
+  item: Pick<MapItem, "objectType" | "monumentAard" | "forceArea">,
+) {
+  return (
+    item.forceArea ||
+    item.objectType === "Werelderfgoed" ||
+    item.objectType === "Gezicht" ||
+    item.objectType === "Onderzoeksgebied" ||
+    item.monumentAard === "Archeologisch"
+  );
 }
 
 function tooltip(titleText: string, detail: string) {
@@ -55,8 +74,28 @@ function tooltip(titleText: string, detail: string) {
   return content;
 }
 
-export function HeritageMap({ items, onSelect, compact }: { items: MapItem[]; onSelect: (item: MapItem) => void; compact?: boolean }) {
+export function HeritageMap({
+  items,
+  onSelect,
+  compact,
+  initialViewport,
+  onViewportChange,
+}: {
+  items: MapItem[];
+  onSelect: (item: MapItem) => void;
+  compact?: boolean;
+  initialViewport?: MapViewport;
+  onViewportChange?: (viewport: MapViewport) => void;
+}) {
   const element = useRef<HTMLDivElement>(null);
+  const selectRef = useRef(onSelect);
+  const viewportChangeRef = useRef(onViewportChange);
+  const initialViewportRef = useRef(initialViewport);
+
+  useEffect(() => {
+    selectRef.current = onSelect;
+    viewportChangeRef.current = onViewportChange;
+  }, [onSelect, onViewportChange]);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,9 +105,19 @@ export function HeritageMap({ items, onSelect, compact }: { items: MapItem[]; on
       if (cancelled || !element.current) return;
       // Compact maps zitten ingebed in een scrollbaar detailpaneel; scrollwheel-zoom
       // zou daar de paneelscroll kapen zodra de muis over de kaart komt.
-      const leafletMap = L.map(element.current, { zoomControl: !compact, scrollWheelZoom: !compact }).setView([52.09, 5.08], 11);
+      const leafletMap = L.map(element.current, {
+        zoomControl: !compact,
+        scrollWheelZoom: !compact,
+      }).setView([52.09, 5.08], 11);
       map = leafletMap;
-      L.tileLayer("https://service.pdok.nl/kadaster/brt-achtergrondkaart/wmts/v2_0?service=WMTS&request=GetTile&version=1.0.0&layer=grijs&style=default&tilematrixset=EPSG:3857&format=image/png&tilematrix={z}&tilerow={y}&tilecol={x}", { maxZoom: 19, attribution: 'Kaart: <a href="https://www.pdok.nl/">PDOK</a> · BRT Kadaster' }).addTo(leafletMap);
+      L.tileLayer(
+        "https://service.pdok.nl/kadaster/brt-achtergrondkaart/wmts/v2_0?service=WMTS&request=GetTile&version=1.0.0&layer=grijs&style=default&tilematrixset=EPSG:3857&format=image/png&tilematrix={z}&tilerow={y}&tilecol={x}",
+        {
+          maxZoom: 19,
+          attribution:
+            'Kaart: <a href="https://www.pdok.nl/">PDOK</a> · BRT Kadaster',
+        },
+      ).addTo(leafletMap);
       const shapeLayer = L.layerGroup().addTo(leafletMap);
       const markerLayer = L.layerGroup().addTo(leafletMap);
 
@@ -79,18 +128,36 @@ export function HeritageMap({ items, onSelect, compact }: { items: MapItem[]; on
       const pointItems: MapItem[] = [];
       let shapeBounds: Leaflet.LatLngBounds | undefined;
       for (const item of items) {
-        const geometry = isAreaType(item) && item.wkt ? parseWktGeometry(item.wkt) : undefined;
+        const geometry =
+          isAreaType(item) && item.wkt ? parseWktGeometry(item.wkt) : undefined;
         if (!geometry || geometry.kind === "point") {
           pointItems.push(item);
           continue;
         }
-        const polygons = geometry.kind === "polygon" ? [geometry.rings] : geometry.polygons;
-        const latLngs = polygons.map((rings) => rings.map((ring) => ring.map(([lng, lat]): [number, number] => [lat, lng])));
+        const polygons =
+          geometry.kind === "polygon" ? [geometry.rings] : geometry.polygons;
+        const latLngs = polygons.map((rings) =>
+          rings.map((ring) =>
+            ring.map(([lng, lat]): [number, number] => [lat, lng]),
+          ),
+        );
         const color = markerColor(item);
-        const polygon = L.polygon(latLngs, { color, weight: 2, fillColor: color, fillOpacity: 0.3 }).addTo(shapeLayer);
-        polygon.bindTooltip(tooltip(item.title, [item.address, item.place].filter(Boolean).join(", ")));
-        polygon.on("click", () => onSelect(item));
-        shapeBounds = shapeBounds ? shapeBounds.extend(polygon.getBounds()) : polygon.getBounds();
+        const polygon = L.polygon(latLngs, {
+          color,
+          weight: 2,
+          fillColor: color,
+          fillOpacity: 0.3,
+        }).addTo(shapeLayer);
+        polygon.bindTooltip(
+          tooltip(
+            item.title,
+            [item.address, item.place].filter(Boolean).join(", "),
+          ),
+        );
+        polygon.on("click", () => selectRef.current(item));
+        shapeBounds = shapeBounds
+          ? shapeBounds.extend(polygon.getBounds())
+          : polygon.getBounds();
       }
 
       // Een compacte kaart toont altijd een klein, doelbewust samengesteld
@@ -105,57 +172,140 @@ export function HeritageMap({ items, onSelect, compact }: { items: MapItem[]; on
         markerLayer.clearLayers();
         if (compact) {
           for (const item of pointItems) {
-            const marker = L.circleMarker([item.lat, item.lng], { radius: 9, color: "#fff", weight: 3, fillColor: markerColor(item), fillOpacity: 1 }).addTo(markerLayer);
-            marker.bindTooltip(tooltip(item.title, [item.address, item.place].filter(Boolean).join(", ")));
-            marker.on("click", () => onSelect(item));
+            const marker = L.circleMarker([item.lat, item.lng], {
+              radius: 9,
+              color: "#fff",
+              weight: 3,
+              fillColor: markerColor(item),
+              fillOpacity: 1,
+            }).addTo(markerLayer);
+            marker.bindTooltip(
+              tooltip(
+                item.title,
+                [item.address, item.place].filter(Boolean).join(", "),
+              ),
+            );
+            marker.on("click", () => selectRef.current(item));
           }
           return;
         }
         const projected = pointItems.map((item) => {
-          const point = leafletMap.project(L.latLng(item.lat, item.lng), leafletMap.getZoom());
+          const point = leafletMap.project(
+            L.latLng(item.lat, item.lng),
+            leafletMap.getZoom(),
+          );
           return { item, x: point.x, y: point.y };
         });
 
         for (const cluster of clusterMapPoints(projected, 48)) {
           if (cluster.items.length === 1) {
             const item = cluster.items[0];
-            const marker = L.circleMarker([item.lat, item.lng], { radius: 9, color: "#fff", weight: 3, fillColor: markerColor(item), fillOpacity: 1 }).addTo(markerLayer);
-            marker.bindTooltip(tooltip(item.title, [item.address, item.place].filter(Boolean).join(", ")));
-            marker.on("click", () => onSelect(item));
+            const marker = L.circleMarker([item.lat, item.lng], {
+              radius: 9,
+              color: "#fff",
+              weight: 3,
+              fillColor: markerColor(item),
+              fillOpacity: 1,
+            }).addTo(markerLayer);
+            marker.bindTooltip(
+              tooltip(
+                item.title,
+                [item.address, item.place].filter(Boolean).join(", "),
+              ),
+            );
+            marker.on("click", () => selectRef.current(item));
             continue;
           }
 
           const center = L.latLng(
-            cluster.items.reduce((sum, item) => sum + item.lat, 0) / cluster.items.length,
-            cluster.items.reduce((sum, item) => sum + item.lng, 0) / cluster.items.length,
+            cluster.items.reduce((sum, item) => sum + item.lat, 0) /
+              cluster.items.length,
+            cluster.items.reduce((sum, item) => sum + item.lng, 0) /
+              cluster.items.length,
           );
           const badge = document.createElement("span");
           badge.className = "heritage-cluster";
           badge.textContent = String(cluster.items.length);
           badge.setAttribute("role", "button");
-          badge.setAttribute("aria-label", `${cluster.items.length} erfgoedobjecten; klik om in te zoomen`);
-          const marker = L.marker(center, { icon: L.divIcon({ html: badge, className: "heritage-cluster-wrapper", iconSize: [46, 46], iconAnchor: [23, 23] }) }).addTo(markerLayer);
-          marker.bindTooltip(tooltip(`${cluster.items.length} erfgoedobjecten`, "Klik om de groep te bekijken"));
+          badge.setAttribute(
+            "aria-label",
+            `${cluster.items.length} erfgoedobjecten; klik om in te zoomen`,
+          );
+          const marker = L.marker(center, {
+            icon: L.divIcon({
+              html: badge,
+              className: "heritage-cluster-wrapper",
+              iconSize: [46, 46],
+              iconAnchor: [23, 23],
+            }),
+          }).addTo(markerLayer);
+          marker.bindTooltip(
+            tooltip(
+              `${cluster.items.length} erfgoedobjecten`,
+              "Klik om de groep te bekijken",
+            ),
+          );
           marker.on("click", () => {
-            const clusterBounds = L.latLngBounds(cluster.items.map((item) => L.latLng(item.lat, item.lng)));
-            if (clusterBounds.getNorthEast().equals(clusterBounds.getSouthWest())) leafletMap.setZoomAround(center, Math.min(leafletMap.getZoom() + 2, 19));
-            else leafletMap.fitBounds(clusterBounds, { padding: [55, 55], maxZoom: 17 });
+            const clusterBounds = L.latLngBounds(
+              cluster.items.map((item) => L.latLng(item.lat, item.lng)),
+            );
+            if (
+              clusterBounds.getNorthEast().equals(clusterBounds.getSouthWest())
+            )
+              leafletMap.setZoomAround(
+                center,
+                Math.min(leafletMap.getZoom() + 2, 19),
+              );
+            else
+              leafletMap.fitBounds(clusterBounds, {
+                padding: [55, 55],
+                maxZoom: 17,
+              });
           });
         }
       };
 
-      const pointBounds = pointItems.length ? L.latLngBounds(pointItems.map((item) => L.latLng(item.lat, item.lng))) : undefined;
-      const combinedBounds = shapeBounds && pointBounds ? shapeBounds.extend(pointBounds) : shapeBounds ?? pointBounds;
-      if (combinedBounds?.isValid()) leafletMap.fitBounds(combinedBounds, { padding: [45, 45], maxZoom: 14 });
+      const pointBounds = pointItems.length
+        ? L.latLngBounds(pointItems.map((item) => L.latLng(item.lat, item.lng)))
+        : undefined;
+      const combinedBounds =
+        shapeBounds && pointBounds
+          ? shapeBounds.extend(pointBounds)
+          : (shapeBounds ?? pointBounds);
+      if (!compact && initialViewportRef.current) {
+        const { lat, lng, zoom } = initialViewportRef.current;
+        leafletMap.setView([lat, lng], zoom);
+      } else if (combinedBounds?.isValid()) {
+        leafletMap.fitBounds(combinedBounds, {
+          padding: [45, 45],
+          maxZoom: 14,
+        });
+      }
       renderMarkers();
       leafletMap.on("zoomend", renderMarkers);
+      if (!compact) {
+        leafletMap.on("moveend", () => {
+          const center = leafletMap.getCenter();
+          viewportChangeRef.current?.({
+            lat: center.lat,
+            lng: center.lng,
+            zoom: leafletMap.getZoom(),
+          });
+        });
+      }
     });
 
     return () => {
       cancelled = true;
       map?.remove();
     };
-  }, [compact, items, onSelect]);
+  }, [compact, items]);
 
-  return <div className={`leaflet-map${compact ? " compact" : ""}`} ref={element} aria-label="Kaart met gevonden erfgoedobjecten" />;
+  return (
+    <div
+      className={`leaflet-map${compact ? " compact" : ""}`}
+      ref={element}
+      aria-label="Kaart met gevonden erfgoedobjecten"
+    />
+  );
 }

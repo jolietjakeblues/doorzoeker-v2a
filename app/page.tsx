@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { HeritageMap } from "./HeritageMap";
 import { SiteHeader } from "./SiteHeader";
 import { SearchHero } from "./SearchHero";
@@ -16,6 +17,7 @@ import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { useSelectedDetailEnrichment } from "@/hooks/useSelectedDetailEnrichment";
 import { useSearchState } from "@/hooks/useSearchState";
 import { useOpDezeDag } from "@/hooks/useOpDezeDag";
+import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 function countLabel(count: number, singular: string, plural: string) {
   return `${count} ${count === 1 ? singular : plural}`;
@@ -28,6 +30,8 @@ export default function Home() {
     active,
     view,
     setView,
+    mapViewport,
+    setMapViewport,
     objectType,
     setObjectType,
     monumentAard,
@@ -78,6 +82,9 @@ export default function Home() {
     useSelectedDetailEnrichment(selected);
   const opDezeDag = useOpDezeDag();
   useBodyScrollLock(Boolean(selected));
+  const detailDialogRef = useDialogFocus(Boolean(selected), () =>
+    setSelected(null),
+  );
   const objectTypeResults =
     objectType === "Alle"
       ? baseResults
@@ -140,6 +147,10 @@ export default function Home() {
         ]
       : [];
   const selectedIdentifier = selected ? primaryIdentifier(selected) : null;
+  const mapItems = useMemo(
+    () => results.filter((item) => item.lat && item.lng),
+    [results],
+  );
   const selectedIdentifierRepeatsTitle = Boolean(
     selected &&
       selectedIdentifier &&
@@ -182,6 +193,9 @@ export default function Home() {
               ×
             </button>
           </div>
+          <p className="filter-scope">
+            De aantallen hieronder gaan over de resultaten die nu zijn geladen.
+          </p>
           <fieldset>
             <legend>Soort object</legend>
             <details className="hint">
@@ -667,7 +681,9 @@ export default function Home() {
           ) : (
             <div className="map-view">
               <HeritageMap
-                items={results.filter((item) => item.lat && item.lng)}
+                items={mapItems}
+                initialViewport={mapViewport}
+                onViewportChange={setMapViewport}
                 onSelect={(mapItem) => {
                   const item = results.find(
                     (candidate) => candidate.id === mapItem.id,
@@ -678,15 +694,13 @@ export default function Home() {
               <div className="map-object-list">
                 <h3>Objecten op deze kaart</h3>
                 <ul>
-                  {results
-                    .filter((item) => item.lat && item.lng)
-                    .map((item) => (
-                      <li key={item.id}>
-                        <button type="button" onClick={() => choose(item)}>
-                          {item.title}
-                        </button>
-                      </li>
-                    ))}
+                  {mapItems.map((item) => (
+                    <li key={item.id}>
+                      <button type="button" onClick={() => choose(item)}>
+                        {item.title}
+                      </button>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -716,6 +730,7 @@ export default function Home() {
           }}
         >
           <aside
+            ref={detailDialogRef}
             className="detail"
             role="dialog"
             aria-modal="true"

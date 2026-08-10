@@ -318,6 +318,12 @@ header p a {
   background: none;
   font-size: 26px;
 }
+.filter-scope {
+  margin: -8px 0 18px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
 .work aside small,
 .results small,
 .detail-copy > small {

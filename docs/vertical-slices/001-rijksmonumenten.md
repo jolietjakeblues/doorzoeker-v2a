@@ -34,8 +34,7 @@ browser tot RCE Linked Data.
 - browsen van de volledige collectie Werelderfgoed, Gezichten of Complexen,
   los van een zoekterm (alle drie zijn klein genoeg om in hun geheel te
   tonen);
-- paginering (nog niet opgehoogd boven de eerste 25 resultaten per
-  tekstzoekopdracht);
+- paginering per 25 resultaten voor tekstzoekopdrachten;
 - duidelijke lege, laad- en fouttoestanden.
 
 ### Filters
@@ -151,4 +150,3 @@ De spike moet vaststellen:
 
 De slice draait lokaal, heeft geautomatiseerde tests voor de kerncontracten en
 kan met actuele RCE-data van zoekopdracht tot detailpagina worden gedemonstreerd.
-
