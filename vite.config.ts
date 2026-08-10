@@ -2,6 +2,7 @@ import vinext from "vinext";
 import { defineConfig } from "vite";
 
 const localBindingConfig = {
+  name: "doorzoeker-v2a",
   main: "./worker/index.ts",
   compatibility_flags: ["nodejs_compat"],
 };
