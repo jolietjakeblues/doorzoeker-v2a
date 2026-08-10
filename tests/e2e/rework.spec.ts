@@ -405,6 +405,10 @@ test("een complexdetail toont geen lege monumentvelden", async ({ page }) => {
     .getByRole("button", { name: "Details van Historisch boerderijcomplex" })
     .click();
   const dialog = page.getByRole("dialog");
+  const detailLayer = await page.locator(".backdrop").evaluate((element) =>
+    Number.parseInt(getComputedStyle(element).zIndex, 10),
+  );
+  expect(detailLayer).toBeGreaterThan(800);
   await expect(dialog).toContainText("Complex van rijksmonumenten");
   await expect(
     dialog.getByText("2 rijksmonumenten", { exact: true }),
