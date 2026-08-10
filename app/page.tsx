@@ -60,6 +60,8 @@ export default function Home() {
     hasMore,
     loadingMore,
     baseResults,
+    groenaanlegCount,
+    mspCount,
     results,
     activeConceptUri,
     activeConceptVeld,
@@ -448,8 +450,7 @@ export default function Home() {
             </fieldset>
           )}
           {includesRijksmonumenten &&
-            (objectTypeResults.some((item) => item.groenaanleg) ||
-              objectTypeResults.some((item) => item.msp)) && (
+            (groenaanlegCount > 0 || mspCount > 0) && (
               <fieldset>
                 <legend>Kenmerken</legend>
                 <details className="hint">
@@ -461,7 +462,7 @@ export default function Home() {
                     ongeveer 1997 en 2002, gericht op gebouwen uit 1850-1940.
                   </p>
                 </details>
-                {objectTypeResults.some((item) => item.groenaanleg) && (
+                {groenaanlegCount > 0 && (
                   <label>
                     <input
                       type="checkbox"
@@ -472,14 +473,11 @@ export default function Home() {
                     />
                     <span>Historische aanleg (groenaanleg)</span>
                     <em>
-                      {
-                        objectTypeResults.filter((item) => item.groenaanleg)
-                          .length
-                      }
+                      {groenaanlegCount}
                     </em>
                   </label>
                 )}
-                {objectTypeResults.some((item) => item.msp) && (
+                {mspCount > 0 && (
                   <label>
                     <input
                       type="checkbox"
@@ -487,9 +485,7 @@ export default function Home() {
                       onChange={(event) => setOnlyMsp(event.target.checked)}
                     />
                     <span>Monumenten Selectie Project</span>
-                    <em>
-                      {objectTypeResults.filter((item) => item.msp).length}
-                    </em>
+                    <em>{mspCount}</em>
                   </label>
                 )}
               </fieldset>

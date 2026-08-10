@@ -6,13 +6,13 @@ niet wordt onderbroken.
 
 ## Open
 
-- **Groenaanleg blijft actief na een vervolgzoekactie met nul treffers.**
-  Reproductie: open rijksmonument `517912`, kies de architect, kies daarna
-  `Goirle` en klik linksonder op `Groenaanleg`. De zoekopdracht levert nul
-  resultaten op, maar het filter blijft zichtbaar terwijl er niets meer te
-  selecteren is.
+Geen bekende fouten uit de huidige Rework-ronde.
 
 ## Afgerond en gecontroleerd
+
+- Groenaanleg en MSP worden geteld binnen de overige actieve filters. Een
+  keuze met nul passende resultaten verdwijnt; een inmiddels onmogelijke
+  actieve keuze wordt losgelaten.
 
 - De interface en resultaatkaarten behandelen Rijksmonumenten, complexen,
   gebieden en Werelderfgoed als verschillende erfgoedtypen.

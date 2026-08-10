@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { statusLabel, type Item } from "@/lib/heritage-view-model";
 
 type FilterState = {
@@ -14,6 +14,21 @@ type FilterState = {
 };
 
 export function useFilteredResults(baseResults: Item[], filters: FilterState) {
+  const matchesFilters = useCallback(
+    (item: Item, skip?: "groenaanleg" | "msp") =>
+      (filters.functionFilter === "Alle" ||
+        [item.kind, ...(item.originalFunctionNames ?? []), ...(item.currentFunctionNames ?? [])].includes(filters.functionFilter)) &&
+      (filters.objectType === "Alle" || item.objectType === filters.objectType) &&
+      (filters.monumentAard === "Alle" || item.monumentAard === filters.monumentAard) &&
+      (filters.province === "Alle" || item.province === filters.province) &&
+      (filters.municipality === "Alle" || item.municipality === filters.municipality) &&
+      (filters.matchSourceFilter === "Alle" || item.matchSource === filters.matchSourceFilter) &&
+      !filters.excludedStatuses.includes(statusLabel(item.objectType)) &&
+      (skip === "groenaanleg" || !filters.onlyGroenaanleg || Boolean(item.groenaanleg)) &&
+      (skip === "msp" || !filters.onlyMsp || item.msp === true),
+    [filters],
+  );
+
   const functions = useMemo(
     () =>
       [
@@ -63,30 +78,18 @@ export function useFilteredResults(baseResults: Item[], filters: FilterState) {
     [baseResults],
   );
   const results = useMemo(
-    () =>
-      baseResults.filter(
-        (item) =>
-          (filters.functionFilter === "Alle" ||
-            [
-              item.kind,
-              ...(item.originalFunctionNames ?? []),
-              ...(item.currentFunctionNames ?? []),
-            ].includes(filters.functionFilter)) &&
-          (filters.objectType === "Alle" ||
-            item.objectType === filters.objectType) &&
-          (filters.monumentAard === "Alle" ||
-            item.monumentAard === filters.monumentAard) &&
-          (filters.province === "Alle" || item.province === filters.province) &&
-          (filters.municipality === "Alle" ||
-            item.municipality === filters.municipality) &&
-          (filters.matchSourceFilter === "Alle" ||
-            item.matchSource === filters.matchSourceFilter) &&
-          !filters.excludedStatuses.includes(statusLabel(item.objectType)) &&
-          (!filters.onlyGroenaanleg || Boolean(item.groenaanleg)) &&
-          (!filters.onlyMsp || item.msp === true),
-      ),
-    [baseResults, filters],
+    () => baseResults.filter((item) => matchesFilters(item)),
+    [baseResults, matchesFilters],
   );
 
-  return { functions, provinces, municipalities, matchSources, results };
+  const groenaanlegCount = useMemo(
+    () => baseResults.filter((item) => matchesFilters(item, "groenaanleg") && item.groenaanleg).length,
+    [baseResults, matchesFilters],
+  );
+  const mspCount = useMemo(
+    () => baseResults.filter((item) => matchesFilters(item, "msp") && item.msp === true).length,
+    [baseResults, matchesFilters],
+  );
+
+  return { functions, provinces, municipalities, matchSources, results, groenaanlegCount, mspCount };
 }

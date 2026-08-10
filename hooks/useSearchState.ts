@@ -171,8 +171,22 @@ export function useSearchState() {
       province,
     ],
   );
-  const { functions, provinces, municipalities, matchSources, results } =
-    useFilteredResults(baseResults, activeFilters);
+  const {
+    functions,
+    provinces,
+    municipalities,
+    matchSources,
+    results,
+    groenaanlegCount,
+    mspCount,
+  } = useFilteredResults(baseResults, activeFilters);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (onlyGroenaanleg && groenaanlegCount === 0) setOnlyGroenaanleg(false);
+      if (onlyMsp && mspCount === 0) setOnlyMsp(false);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [groenaanlegCount, mspCount, onlyGroenaanleg, onlyMsp]);
   function toggleLegalStatus(label: string) {
     setExcludedStatuses((current) =>
       current.includes(label)
@@ -518,6 +532,8 @@ export function useSearchState() {
     provinces,
     municipalities,
     matchSources,
+    groenaanlegCount,
+    mspCount,
     results,
     activeConceptUri,
     activeConceptVeld,

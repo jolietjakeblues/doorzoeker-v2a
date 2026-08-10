@@ -279,3 +279,43 @@ test("een oude verbindingsfout verdwijnt zodra een nieuwe zoekterm wordt ingevoe
     page.getByText("De RCE Linked Data-service is momenteel niet bereikbaar."),
   ).toHaveCount(0);
 });
+
+test("groenaanleg verdwijnt wanneer de overige filters geen keuze meer overlaten", async ({
+  page,
+}) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) =>
+    route.fulfill({
+      json: {
+        page: 1,
+        hasMore: false,
+        results: [
+          { ...records[0], choNumber: "cho-goirle", monumentNumber: "1" },
+          {
+            ...records[0],
+            choNumber: "cho-utrecht",
+            monumentNumber: "2",
+            place: "Utrecht",
+            municipality: "Utrecht",
+            provinceCode: "UT",
+            groenaanleg: { typeAanleg: "Tuin" },
+          },
+        ],
+      },
+    }),
+  );
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("architect");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  const groenaanleg = page.getByRole("checkbox", {
+    name: /Historische aanleg \(groenaanleg\)/,
+  });
+  await expect(groenaanleg).toBeVisible();
+  await groenaanleg.check();
+  await page
+    .getByRole("combobox", { name: "Filter op gemeente of woonplaats" })
+    .selectOption("Goirle");
+
+  await expect(groenaanleg).toHaveCount(0);
+  await expect(page.getByText("Woonhuis van de architect")).toBeVisible();
+});
