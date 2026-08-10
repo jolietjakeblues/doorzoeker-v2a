@@ -27,3 +27,7 @@ jobs:
         run: npm run lint
       - name: Build and test
         run: npm test
+      - name: Install browser for interaction tests
+        run: npx playwright install --with-deps chromium
+      - name: Interaction tests
+        run: npm run test:e2e

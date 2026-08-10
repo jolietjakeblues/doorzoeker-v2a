@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useFilteredResults } from "@/hooks/useFilteredResults";
 import {
   browseRceObjects,
   searchByActorConcept,
@@ -11,7 +12,6 @@ import {
   EMPTY_ITEMS,
   EMPTY_URL_STATE,
   readUrlState,
-  statusLabel,
   toItem,
   type ConceptField,
   type Item,
@@ -121,85 +121,18 @@ export function useSearchState() {
 
   const choose = useCallback((item: Item) => setSelected(item), []);
   const baseResults = remoteResults ?? EMPTY_ITEMS;
-  const functions = useMemo(
-    () =>
-      [
-        ...new Set(
-          baseResults
-            .flatMap((item) => [
-              ...(item.originalFunctionNames ?? []),
-              ...(item.currentFunctionNames ?? []),
-              item.kind,
-            ])
-            .filter((kind) => kind !== "Functie niet opgenomen"),
-        ),
-      ].sort((a, b) => a.localeCompare(b, "nl")),
-    [baseResults],
-  );
-  const provinces = useMemo(
-    () =>
-      [
-        ...new Set(baseResults.map((item) => item.province).filter(Boolean)),
-      ].sort((a, b) => a.localeCompare(b, "nl")),
-    [baseResults],
-  );
-  // Gemeenten worden beperkt tot de gekozen provincie, zodat kiezen van een
-  // provincie de lijst eerst versmalt in plaats van los ernaast te staan.
-  const municipalities = useMemo(
-    () =>
-      [
-        ...new Set(
-          baseResults
-            .filter((item) => province === "Alle" || item.province === province)
-            .map((item) => item.municipality)
-            .filter(Boolean),
-        ),
-      ].sort((a, b) => a.localeCompare(b, "nl")),
-    [baseResults, province],
-  );
-  const matchSources = useMemo(
-    () => [
-      ...new Set(
-        baseResults
-          .map((item) => item.matchSource)
-          .filter((source): source is string => Boolean(source)),
-      ),
-    ],
-    [baseResults],
-  );
-  const results = useMemo(
-    () =>
-      baseResults.filter(
-        (item) =>
-          (functionFilter === "Alle" ||
-            [
-              item.kind,
-              ...(item.originalFunctionNames ?? []),
-              ...(item.currentFunctionNames ?? []),
-            ].includes(functionFilter)) &&
-          (objectType === "Alle" || item.objectType === objectType) &&
-          (monumentAard === "Alle" || item.monumentAard === monumentAard) &&
-          (province === "Alle" || item.province === province) &&
-          (municipality === "Alle" || item.municipality === municipality) &&
-          (matchSourceFilter === "Alle" ||
-            item.matchSource === matchSourceFilter) &&
-          !excludedStatuses.includes(statusLabel(item.objectType)) &&
-          (!onlyGroenaanleg || Boolean(item.groenaanleg)) &&
-          (!onlyMsp || item.msp === true),
-      ),
-    [
-      baseResults,
-      excludedStatuses,
+  const { functions, provinces, municipalities, matchSources, results } =
+    useFilteredResults(baseResults, {
       functionFilter,
-      matchSourceFilter,
-      monumentAard,
-      municipality,
       objectType,
+      monumentAard,
+      province,
+      municipality,
+      matchSourceFilter,
+      excludedStatuses,
       onlyGroenaanleg,
       onlyMsp,
-      province,
-    ],
-  );
+    });
   function toggleLegalStatus(label: string) {
     setExcludedStatuses((current) =>
       current.includes(label)
