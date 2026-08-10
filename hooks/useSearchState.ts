@@ -17,6 +17,11 @@ export function useSearchState() {
   // al tot 25 beperkt), dus deze state voorkomt dat loadMore de labeltekst
   // per ongeluk als tekstzoekopdracht hergebruikt.
   const [activeConceptUri, setActiveConceptUri] = useState<string | undefined>(undefined);
+  // Onthoudt via welk veld de actieve conceptzoekopdracht liep (bv. "actor")
+  // - alleen gebruikt voor de portfolio-koptekst bij een actor-klik (zie
+  // docs/vertical-slices/009-architect-portfolio.md), geen invloed op de
+  // zoeklogica zelf.
+  const [activeConceptVeld, setActiveConceptVeld] = useState<"monumentaard" | "waardering" | "gebeurtenis" | "actor" | undefined>(undefined);
   const [objectType, setObjectType] = useState(EMPTY_URL_STATE.objectType);
   const [monumentAard, setMonumentAard] = useState(EMPTY_URL_STATE.monumentAard);
   const [province, setProvince] = useState(EMPTY_URL_STATE.province);
@@ -86,7 +91,7 @@ export function useSearchState() {
     searchController.current = controller;
     const sequence = ++searchSequence.current;
     setQuery(term);
-    setActive(term); setActiveConceptUri(undefined); setSelected(null); setView("list");
+    setActive(term); setActiveConceptUri(undefined); setActiveConceptVeld(undefined); setSelected(null); setView("list");
     setObjectType("Alle");
     setMonumentAard("Alle");
     setProvince("Alle");
@@ -128,7 +133,7 @@ export function useSearchState() {
     searchController.current = controller;
     const sequence = ++searchSequence.current;
     setQuery(concept.label);
-    setActive(concept.label); setActiveConceptUri(concept.uri); setSelected(null); setView("list");
+    setActive(concept.label); setActiveConceptUri(concept.uri); setActiveConceptVeld(veld); setSelected(null); setView("list");
     setObjectType("Alle");
     setMonumentAard("Alle");
     setProvince("Alle");
@@ -170,6 +175,7 @@ export function useSearchState() {
     setQuery("");
     setActive(kind === "werelderfgoed" ? "Werelderfgoed" : kind === "gezicht" ? "Rijksbeschermde gezichten" : "Complexen");
     setActiveConceptUri(undefined);
+    setActiveConceptVeld(undefined);
     setSelected(null); setView("list");
     setObjectType(kind === "werelderfgoed" ? "Werelderfgoed" : kind === "gezicht" ? "Gezicht" : "Complex");
     setMonumentAard("Alle"); setProvince("Alle"); setMunicipality("Alle");
@@ -236,7 +242,7 @@ export function useSearchState() {
   useEffect(() => () => searchController.current?.abort(), []);
 
   function reset() {
-    setQuery(""); setActive(""); setActiveConceptUri(undefined); setObjectType("Alle"); setMonumentAard("Alle"); setProvince("Alle"); setMunicipality("Alle"); setFunctionFilter("Alle"); setMatchSourceFilter("Alle"); setExcludedStatuses([]); setOnlyGroenaanleg(false); setOnlyMsp(false); setSelected(null); setRemoteResults(null); setRemoteState("idle"); setResultPage(1); setHasMore(false);
+    setQuery(""); setActive(""); setActiveConceptUri(undefined); setActiveConceptVeld(undefined); setObjectType("Alle"); setMonumentAard("Alle"); setProvince("Alle"); setMunicipality("Alle"); setFunctionFilter("Alle"); setMatchSourceFilter("Alle"); setExcludedStatuses([]); setOnlyGroenaanleg(false); setOnlyMsp(false); setSelected(null); setRemoteResults(null); setRemoteState("idle"); setResultPage(1); setHasMore(false);
   }
 
   return {
@@ -248,6 +254,7 @@ export function useSearchState() {
     selected, setSelected, choose, filters, setFilters,
     remoteState, resultPage, hasMore, loadingMore,
     baseResults, functions, provinces, municipalities, matchSources, results,
+    activeConceptUri, activeConceptVeld,
     executeSearch, executeConceptSearch, browseType, loadMore, reset,
   };
 }

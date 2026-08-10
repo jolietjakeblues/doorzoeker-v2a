@@ -125,6 +125,8 @@ h2 { font-size: 24px; }
 .switch button:last-child { border: 0; }
 .switch .on { background: var(--rce-blue); color: #fff; }
 
+.op-deze-dag { margin-bottom: 32px; }
+
 /* Startscherm (nog geen zoekopdracht) */
 .work.start { display: block; min-height: 500px; }
 .work.start > aside, .work.start .toolbar { display: none; }
@@ -158,6 +160,8 @@ h2 { font-size: 24px; }
 .copy code { color: var(--muted); font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
 .copy h3 { margin: 7px 0 5px; font-size: 20px; }
 .copy p { max-width: 720px; margin: 10px 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
+.lees-meer { border: 0; padding: 0; background: none; color: var(--rce-blue); font-size: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; white-space: nowrap; }
+.lees-meer:hover { color: var(--rce-blue-hover); }
 .copy .address { margin: 0; color: var(--ink); }
 .copy > span { display: inline-block; margin-right: 6px; padding: 4px 8px; background: var(--panel); color: var(--ink); font-size: 12px; }
 .concept-link { border: 0; padding: 0; background: none; color: var(--rce-blue); font-size: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }

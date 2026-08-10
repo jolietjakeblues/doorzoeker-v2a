@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseParcelResults, parseRceMonuments, parseSparqlResults, parseWerelderfgoedResults, parseWktGeometry, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
+import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseSparqlResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -808,4 +808,50 @@ test("builds an exact-match query on an actor concept-URI, joining the actorenro
   assert.match(query, /ceo:heeftGebeurtenis\/ceo:heeftActorEnRol \?ar/);
   assert.match(query, new RegExp(`ceo:heeftJuridischeStatus <${RCE_SEMANTICS.activeLegalStatus}>`));
   assert.match(query, /LIMIT 100/);
+});
+
+test("builds a query on datumInschrijvingInMonumentenregister, not the unsuitable Gebeurtenis-datering", () => {
+  // Live geverifieerd (2026-08-10): heeftBeginDatering's dag/maand staat
+  // vrijwel altijd vast op "01-01" (jaarnauwkeurige precisie-conventie,
+  // geen echte datum) - datumInschrijvingInMonumentenregister heeft wel
+  // een echte, gespreide dag-verdeling. Zie docs/vertical-slices/010-op-deze-dag.md.
+  const query = buildOpDezeDagQuery("08-10");
+  assert.match(query, /ceo:datumInschrijvingInMonumentenregister \?ins/);
+  assert.match(query, /FILTER\(SUBSTR\(STR\(\?ins\), 6, 5\) = "08-10"\)/);
+  assert.match(query, /EXISTS \{ GRAPH <https:\/\/linkeddata\.cultureelerfgoed\.nl\/graph\/image-1> \{ \?image ceo:rijksmonumentnummer \?rmnr \} \}/);
+  assert.doesNotMatch(query, /heeftGebeurtenis/);
+});
+
+test("parses op-deze-dag candidates including whether each has a foto", () => {
+  const document = { results: { bindings: [
+    { rmnr: { value: "36046" }, heeftFoto: { value: "true" } },
+    { rmnr: { value: "45708" }, heeftFoto: { value: "false" } },
+  ] } };
+  assert.deepEqual(parseOpDezeDagCandidates(document), [
+    { monumentNumber: "36046", heeftFoto: true },
+    { monumentNumber: "45708", heeftFoto: false },
+  ]);
+  assert.deepEqual(parseOpDezeDagCandidates({ results: { bindings: [] } }), []);
+  assert.deepEqual(parseOpDezeDagCandidates({}), []);
+});
+
+test("picks a candidate with a foto over one without, deterministically for the same dayOfYear", () => {
+  const candidates = [
+    { monumentNumber: "zonder-foto-1", heeftFoto: false },
+    { monumentNumber: "met-foto-1", heeftFoto: true },
+    { monumentNumber: "met-foto-2", heeftFoto: true },
+  ];
+  const chosen = pickOpDezeDagCandidate(candidates, 222);
+  assert.ok(["met-foto-1", "met-foto-2"].includes(chosen));
+  assert.equal(pickOpDezeDagCandidate(candidates, 222), chosen);
+});
+
+test("falls back to the full candidate list when none has a foto", () => {
+  const candidates = [{ monumentNumber: "zonder-foto-1", heeftFoto: false }, { monumentNumber: "zonder-foto-2", heeftFoto: false }];
+  const chosen = pickOpDezeDagCandidate(candidates, 1);
+  assert.ok(["zonder-foto-1", "zonder-foto-2"].includes(chosen));
+});
+
+test("returns undefined when there are no op-deze-dag candidates at all", () => {
+  assert.equal(pickOpDezeDagCandidate([], 100), undefined);
 });

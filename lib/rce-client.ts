@@ -3,6 +3,7 @@ import type { ComplexMember, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex
 type SearchResponse = { results: RceMonument[] };
 type ComplexMembersResponse = { members: ComplexMember[] };
 type OnderzoeksgebiedVerrijkingResponse = OnderzoeksgebiedAggregaten & { complexen: OnderzoeksgebiedComplex[]; vondstlocaties: OnderzoeksgebiedVondstlocatie[] };
+type OpDezeDagResponse = { monument: RceMonument | null };
 
 export async function searchRceMonuments(query: string, signal?: AbortSignal, page = 1) {
   const params = new URLSearchParams({ q: query, page: String(page) });
@@ -80,4 +81,16 @@ export async function fetchOnderzoeksgebiedVerrijking(gebiedUri: string, signal?
   });
   if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
   return await response.json() as OnderzoeksgebiedVerrijkingResponse;
+}
+
+// Eén keer per pagina-load opgehaald (idle-startpaneel), niet onderdeel
+// van een zoekopdracht - zie docs/vertical-slices/010-op-deze-dag.md.
+export async function fetchOpDezeDag(signal?: AbortSignal) {
+  const response = await fetch("/api/rce/op-deze-dag", {
+    headers: { Accept: "application/json" },
+    signal,
+  });
+  if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
+  const document = await response.json() as OpDezeDagResponse;
+  return document.monument;
 }

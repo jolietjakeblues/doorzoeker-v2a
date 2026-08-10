@@ -1,12 +1,28 @@
 "use client";
 
-import { FormEvent } from "react";
+import { FormEvent, useState } from "react";
 import { HeritageMap } from "./HeritageMap";
-import { MONUMENT_REGISTER_BASE_URL, statusLabel, typeBadge } from "@/lib/heritage-view-model";
+import { MONUMENT_REGISTER_BASE_URL, statusLabel, truncateAtWordBoundary, typeBadge } from "@/lib/heritage-view-model";
 import { useTermSuggestions } from "@/hooks/useTermSuggestions";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { useSelectedDetailEnrichment } from "@/hooks/useSelectedDetailEnrichment";
 import { useSearchState } from "@/hooks/useSearchState";
+import { useOpDezeDag } from "@/hooks/useOpDezeDag";
+
+// Lange formele omschrijvingen (soms meerdere alinea's) maken één kaart in
+// de resultatenlijst onevenredig groot - zie
+// docs/vertical-slices/013-omschrijving-inkorten.md. Alleen de kaart kapt
+// af; het detailpaneel toont altijd de volledige tekst.
+const DESCRIPTION_EXCERPT_LENGTH = 300;
+
+function CardDescription({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = text.length > DESCRIPTION_EXCERPT_LENGTH;
+  if (!isLong || expanded) {
+    return <p>{text}{isLong && <> <button type="button" className="lees-meer" onClick={() => setExpanded(false)}>Lees minder</button></>}</p>;
+  }
+  return <p>{truncateAtWordBoundary(text, DESCRIPTION_EXCERPT_LENGTH)}… <button type="button" className="lees-meer" onClick={() => setExpanded(true)}>Lees meer</button></p>;
+}
 
 export default function Home() {
   const {
@@ -18,11 +34,19 @@ export default function Home() {
     selected, setSelected, choose, filters, setFilters,
     remoteState, hasMore, loadingMore,
     baseResults, functions, provinces, municipalities, matchSources, results,
+    activeConceptUri, activeConceptVeld,
     executeSearch, executeConceptSearch, browseType, loadMore, reset,
   } = useSearchState();
   const { suggestions, suggestionsOpen, setSuggestionsOpen, activeSuggestion, setActiveSuggestion, commitSuggestion, handleQueryKeyDown } = useTermSuggestions(query, active, setQuery);
   const { complexMembers, onderzoeksgebiedVerrijking } = useSelectedDetailEnrichment(selected);
+  const opDezeDag = useOpDezeDag();
   useBodyScrollLock(Boolean(selected));
+  // Architect-portfolio-koptekst (docs/vertical-slices/009-architect-portfolio.md):
+  // geen aparte route of extra SPARQL-aanroep, alleen een rol-afleiding uit
+  // de toch al meegestuurde gebeurtenissen-data van de huidige resultaten.
+  const actorRoles = activeConceptVeld === "actor" && activeConceptUri
+    ? [...new Set(results.flatMap((item) => item.gebeurtenissen?.flatMap((gebeurtenis) => gebeurtenis.actoren.filter((actor) => actor.actorConceptUri === activeConceptUri).map((actor) => actor.rol)) ?? []).filter((rol): rol is string => Boolean(rol)))]
+    : [];
 
   function submitSearch(event: FormEvent) {
     event.preventDefault();
@@ -63,8 +87,8 @@ export default function Home() {
         <button className="reset" type="button" onClick={reset}>Wis alle filters</button>
       </aside>
       <div className="results">
-        <div className="toolbar"><div><small>RIJKSMONUMENTEN</small><h2 aria-live="polite">{results.length} {results.length === 1 ? "resultaat" : "resultaten"}{active ? ` voor “${active}”` : ""}</h2></div><div><button className="mobile-filter" type="button" onClick={() => setFilters(true)}>☰ Filters</button><span className="switch" aria-label="Weergave"><button type="button" className={view === "list" ? "on" : ""} onClick={() => setView("list")} aria-label="Lijstweergave" aria-pressed={view === "list"}>☷</button><button type="button" className={view === "map" ? "on" : ""} onClick={() => setView("map")} aria-label="Kaartweergave" aria-pressed={view === "map"}>⌖</button></span></div></div>
-        {remoteState === "idle" ? <div className="start-panel"><small>ZO WERKT HET</small><h2>Wat deze zoekmachine doet</h2><p>Doorzoeker doorzoekt de actuele CHO-dataset van de Rijksdienst voor het Cultureel Erfgoed en laat bij elk resultaat het gegevensveld zien waarin de zoekterm is gevonden.</p><div><article><b>01</b><h3>Zoek breed</h3><p>Gebruik een nummer, plaats, functie, monumentaard of omschrijving.</p></article><article><b>02</b><h3>Matchbron per resultaat</h3><p>Elk resultaat vermeldt de matchbron en de geregistreerde waarde.</p></article><article><b>03</b><h3>Controleer de bron</h3><p>Bekijk functie, adres, geometrie, percelen en de canonieke RCE-link.</p></article></div></div> : remoteState === "loading" ? <div className="empty"><b>…</b><h3>RCE Linked Data doorzoeken</h3><p>Een ogenblik; de officiële bron wordt geraadpleegd.</p></div> : results.length === 0 ? <div className="empty"><b>0</b><h3>Geen monumenten gevonden</h3><p>Probeer een plaats, postcode, formele functie, monumentaard of monumentnummer.</p><button type="button" onClick={reset}>Nieuwe zoekopdracht</button></div> : view === "list" ? <div className="cards">{results.map((item) => { const badge = typeBadge(item); return <article key={item.id}><div className={`tile ${badge.modifier}${item.image ? " has-image" : ""}`.trim()} style={item.image ? { backgroundImage: `url(${item.image.url})` } : undefined}>{item.image ? <span className="tile-badge">{badge.letter}</span> : <><b>{badge.letter}</b><small>RCE register</small></>}</div><div className="copy"><small>{item.kind}<code>RM {item.monumentNumber ?? item.id}</code></small><h3>{item.title}</h3><p className="address">● {item.address}{item.postalCode || item.place ? `, ${item.postalCode} ${item.place}` : ""}</p><p>{item.description}</p><span>{item.objectType === "Rijksmonument" ? (item.monumentAardConcept ? <button type="button" className="concept-link" onClick={() => void executeConceptSearch(item.monumentAardConcept!)} title="Zoek alle rijksmonumenten met deze monumentaard">{item.monumentAard ?? "Rijksmonument"}</button> : (item.monumentAard ?? "Rijksmonument")) : item.objectType}</span><span>{item.period}</span></div><button className="open" type="button" onClick={() => setSelected(item)} aria-label={`Details van ${item.title}`}>→</button></article>; })}</div> : <div className="map-view"><HeritageMap items={results.filter((item) => item.lat && item.lng)} onSelect={(mapItem) => { const item = results.find((candidate) => candidate.id === mapItem.id); if (item) choose(item); }} /><div className="map-object-list"><h3>Objecten op deze kaart</h3><ul>{results.filter((item) => item.lat && item.lng).map((item) => <li key={item.id}><button type="button" onClick={() => choose(item)}>{item.title}</button></li>)}</ul></div></div>}
+        <div className="toolbar"><div><small>RIJKSMONUMENTEN</small><h2 aria-live="polite">{activeConceptVeld === "actor" ? <>{active}<small> — {results.length} rijksmonument{results.length === 1 ? "" : "en"}{actorRoles.length ? ` (${actorRoles.join(", ")})` : ""}</small></> : <>{results.length} {results.length === 1 ? "resultaat" : "resultaten"}{active ? ` voor “${active}”` : ""}</>}</h2></div><div><button className="mobile-filter" type="button" onClick={() => setFilters(true)}>☰ Filters</button><span className="switch" aria-label="Weergave"><button type="button" className={view === "list" ? "on" : ""} onClick={() => setView("list")} aria-label="Lijstweergave" aria-pressed={view === "list"}>☷</button><button type="button" className={view === "map" ? "on" : ""} onClick={() => setView("map")} aria-label="Kaartweergave" aria-pressed={view === "map"}>⌖</button></span></div></div>
+        {remoteState === "idle" ? <>{opDezeDag && <section className="op-deze-dag"><small>OP DEZE DAG INGESCHREVEN</small><div className="cards"><article><div className={`tile ${typeBadge(opDezeDag).modifier}${opDezeDag.image ? " has-image" : ""}`.trim()} style={opDezeDag.image ? { backgroundImage: `url(${opDezeDag.image.url})` } : undefined}>{opDezeDag.image ? <span className="tile-badge">{typeBadge(opDezeDag).letter}</span> : <><b>{typeBadge(opDezeDag).letter}</b><small>RCE register</small></>}</div><div className="copy"><small>{opDezeDag.kind}<code>RM {opDezeDag.monumentNumber ?? opDezeDag.id}</code></small><h3>{opDezeDag.title}</h3><p className="address">● {opDezeDag.address}{opDezeDag.postalCode || opDezeDag.place ? `, ${opDezeDag.postalCode} ${opDezeDag.place}` : ""}</p><CardDescription text={opDezeDag.description} /><span>{opDezeDag.registrationDate ? `Ingeschreven ${opDezeDag.registrationDate}` : opDezeDag.period}</span></div><button className="open" type="button" onClick={() => void executeSearch(opDezeDag.monumentNumber ?? opDezeDag.id)} aria-label={`Details van ${opDezeDag.title}`}>→</button></article></div></section>}<div className="start-panel"><small>ZO WERKT HET</small><h2>Wat deze zoekmachine doet</h2><p>Doorzoeker doorzoekt de actuele CHO-dataset van de Rijksdienst voor het Cultureel Erfgoed en laat bij elk resultaat het gegevensveld zien waarin de zoekterm is gevonden.</p><div><article><b>01</b><h3>Zoek breed</h3><p>Gebruik een nummer, plaats, functie, monumentaard of omschrijving.</p></article><article><b>02</b><h3>Matchbron per resultaat</h3><p>Elk resultaat vermeldt de matchbron en de geregistreerde waarde.</p></article><article><b>03</b><h3>Controleer de bron</h3><p>Bekijk functie, adres, geometrie, percelen en de canonieke RCE-link.</p></article></div></div></> : remoteState === "loading" ? <div className="empty"><b>…</b><h3>RCE Linked Data doorzoeken</h3><p>Een ogenblik; de officiële bron wordt geraadpleegd.</p></div> : results.length === 0 ? <div className="empty"><b>0</b><h3>Geen monumenten gevonden</h3><p>Probeer een plaats, postcode, formele functie, monumentaard of monumentnummer.</p><button type="button" onClick={reset}>Nieuwe zoekopdracht</button></div> : view === "list" ? <div className="cards">{results.map((item) => { const badge = typeBadge(item); return <article key={item.id}><div className={`tile ${badge.modifier}${item.image ? " has-image" : ""}`.trim()} style={item.image ? { backgroundImage: `url(${item.image.url})` } : undefined}>{item.image ? <span className="tile-badge">{badge.letter}</span> : <><b>{badge.letter}</b><small>RCE register</small></>}</div><div className="copy"><small>{item.kind}<code>RM {item.monumentNumber ?? item.id}</code></small><h3>{item.title}</h3><p className="address">● {item.address}{item.postalCode || item.place ? `, ${item.postalCode} ${item.place}` : ""}</p><CardDescription text={item.description} /><span>{item.objectType === "Rijksmonument" ? (item.monumentAardConcept ? <button type="button" className="concept-link" onClick={() => void executeConceptSearch(item.monumentAardConcept!)} title="Zoek alle rijksmonumenten met deze monumentaard">{item.monumentAard ?? "Rijksmonument"}</button> : (item.monumentAard ?? "Rijksmonument")) : item.objectType}</span><span>{item.period}</span></div><button className="open" type="button" onClick={() => setSelected(item)} aria-label={`Details van ${item.title}`}>→</button></article>; })}</div> : <div className="map-view"><HeritageMap items={results.filter((item) => item.lat && item.lng)} onSelect={(mapItem) => { const item = results.find((candidate) => candidate.id === mapItem.id); if (item) choose(item); }} /><div className="map-object-list"><h3>Objecten op deze kaart</h3><ul>{results.filter((item) => item.lat && item.lng).map((item) => <li key={item.id}><button type="button" onClick={() => choose(item)}>{item.title}</button></li>)}</ul></div></div>}
         {hasMore && remoteState === "success" && view === "list" && <div className="more-results"><button type="button" onClick={() => void loadMore()} disabled={loadingMore}>{loadingMore ? "Meer RCE-resultaten laden…" : "Laad 25 volgende resultaten"}</button><small>{baseResults.length} unieke monumenten geladen</small></div>}
       </div>
     </section>

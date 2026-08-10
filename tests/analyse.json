@@ -1,0 +1,96 @@
+{
+  "rapport": {
+    "titel": "Repository-analyse Doorzoeker V2",
+    "repository": "https://github.com/jolietjakeblues/doorzoeker_v2",
+    "datum": "2026-08-10",
+    "taal": "nl-NL",
+    "scope": "Architectuur, functionaliteit, onderhoudbaarheid, testbaarheid, toegankelijkheid en ontwikkelproces",
+    "samenvatting": "Doorzoeker V2 heeft een sterke data-architectuur, goede beveiligingsgrenzen en degelijke domeindocumentatie. De belangrijkste risico's zitten momenteel in onvolledige paginering, verlies van conceptsemantiek in deelbare URL's, frontendcomplexiteit en beperkte end-to-end testdekking.",
+    "beoordeling": {
+      "sterkste_kant": "De applicatie schermt RCE Linked Data af achter stabiele applicatie-API's en gebruikt canonieke URI's, validatie, caching, time-outs en genormaliseerde view-modellen.",
+      "grootste_risico": "Gedocumenteerd productgedrag en feitelijk gedrag lopen op enkele kernpunten uiteen, met name bij paginering en het herstellen van conceptzoekopdrachten vanuit een URL.",
+      "algemeen_oordeel": "Technisch kansrijk en inhoudelijk volwassen, maar toe aan een stabilisatie- en consolidatiefase voordat de functionaliteit verder wordt uitgebreid."
+    },
+    "positief": [
+      {
+        "id": "POS-001",
+        "categorie": "architectuur",
+        "titel": "Heldere applicatie-API tussen browser en databron",
+        "bevinding": "De browser communiceert met taakgerichte API-routes in plaats van rechtstreeks met RDF-, REST- of SPARQL-details.",
+        "impact": "De UI blijft beter geïsoleerd van wijzigingen in externe RCE-diensten en endpoint-specifieke datastructuren.",
+        "bron": "docs/adr/0002-hybride-gegevensarchitectuur.md"
+      },
+      {
+        "id": "POS-002",
+        "categorie": "security",
+        "titel": "Veilige begrenzing van SPARQL-gebruik",
+        "bevinding": "Willekeurige SPARQL van browsergebruikers wordt niet doorgestuurd en geïnterpoleerde concept- en resource-URI's worden beperkt tot bekende patronen of namespaces.",
+        "impact": "Dit verlaagt het risico op SPARQL-injectie en onbegrensde upstream-query's.",
+        "bron": "app/api/rce/search/route.ts en docs/adr/0002-hybride-gegevensarchitectuur.md"
+      },
+      {
+        "id": "POS-003",
+        "categorie": "betrouwbaarheid",
+        "titel": "Caching, time-outs en observability zijn meegenomen",
+        "bevinding": "De serverroutes gebruiken runtime-caching, een lokale fallbackcache, upstream-time-outs, Server-Timing en gestructureerde logging.",
+        "impact": "De afhankelijkheid van externe RCE-diensten is operationeel beter beheersbaar.",
+        "bron": "app/api/rce/search/route.ts"
+      },
+      {
+        "id": "POS-004",
+        "categorie": "frontend",
+        "titel": "Async zoekopdrachten worden tegen races beschermd",
+        "bevinding": "Nieuwe zoekopdrachten breken oude verzoeken af en een sequence-id voorkomt dat verouderde antwoorden de nieuwste state overschrijven.",
+        "impact": "Minder kans op flikkerende of incorrecte resultaten bij snel achter elkaar zoeken.",
+        "bron": "hooks/useSearchState.ts"
+      },
+      {
+        "id": "POS-005",
+        "categorie": "performance",
+        "titel": "Detailverrijking wordt lazy geladen",
+        "bevinding": "Complexleden en onderzoeksgebiedverrijking worden pas opgehaald wanneer een relevant detailrecord wordt geopend.",
+        "impact": "De gewone resultatenlijst blijft lichter en veroorzaakt minder kostbare databronaanroepen.",
+        "bron": "hooks/useSelectedDetailEnrichment.ts"
+      },
+      {
+        "id": "POS-006",
+        "categorie": "geo",
+        "titel": "Geometrieën worden inhoudelijk correct behandeld",
+        "bevinding": "Gebiedsobjecten kunnen als polygonen en multipolygonen worden weergegeven; puntresultaten krijgen zoomafhankelijke clustering.",
+        "impact": "De kaart representeert erfgoedgebieden beter dan een eenvoudige centroid- of markerbenadering.",
+        "bron": "app/HeritageMap.tsx"
+      },
+      {
+        "id": "POS-007",
+        "categorie": "testing",
+        "titel": "Nuttige contracttests voor de serverlaag",
+        "bevinding": "Tests dekken invoervalidatie, caching, mapping, conceptzoekopdrachten en bibliotheekverrijking met gemockte upstream-responses.",
+        "impact": "Belangrijke datacontracten en querydispatch zijn beschermd tegen regressies.",
+        "bron": "tests/rce-api.test.mjs en overige tests in tests/"
+      },
+      {
+        "id": "POS-008",
+        "categorie": "kwaliteit",
+        "titel": "Strikte TypeScript- en lintconfiguratie",
+        "bevinding": "TypeScript strict mode, ESLint, React Hooks-regels en jsx-a11y zijn opgenomen.",
+        "impact": "Veel fouten en toegankelijkheidsproblemen kunnen al tijdens ontwikkeling of CI worden gevonden.",
+        "bron": "tsconfig.json en eslint.config.mjs"
+      },
+      {
+        "id": "POS-009",
+        "categorie": "devops",
+        "titel": "Geautomatiseerde kwaliteitscontrole en deployment",
+        "bevinding": "Pushes naar main doorlopen dependency-installatie, typecheck, lint, tests, build en Cloudflare Workers-deployment.",
+        "impact": "De releaseketen is reproduceerbaar en bevat meerdere kwaliteitscontroles.",
+        "bron": ".github/workflows/deploy-workers.yml"
+      },
+      {
+        "id": "POS-010",
+        "categorie": "documentatie",
+        "titel": "Sterke domein- en architectuurdocumentatie",
+        "bevinding": "ADR's en verticale slices leggen doelen, afwegingen, gegevensbronnen, acceptatiecriteria en eerdere problemen inhoudelijk vast.",
+        "impact": "Nieuwe ontwikkelaars kunnen zowel technische keuzes als erfgoedsemantiek beter begrijpen.",
+        "bron": "README.md en docs/"
+      }
+    ],
+    "negatief": [

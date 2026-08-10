@@ -797,6 +797,49 @@ SELECT ?rmnr WHERE {
 LIMIT 100`;
 }
 
+// "Op deze dag"-widget (docs/vertical-slices/010-op-deze-dag.md). Live
+// geverifieerd: heeftBeginDatering/heeftEindDatering (Gebeurtenis) is
+// ONGESCHIKT voor dit doel (dag/maand staat vrijwel altijd vast op "01-01",
+// een jaarnauwkeurige precisie-conventie, geen echte datum).
+// datumInschrijvingInMonumentenregister (al gebruikt als registrationDate)
+// heeft wél een echte, gespreide dag-verdeling. EXISTS (in plaats van een
+// OPTIONAL-join) voorkomt dat een monument met meerdere foto's meerdere
+// keren in het resultaat verschijnt.
+export function buildOpDezeDagQuery(maandDag: string) {
+  return `PREFIX ceo: <${CEO}>
+SELECT ?rmnr (EXISTS { GRAPH <${IMAGE_GRAPH}> { ?image ceo:rijksmonumentnummer ?rmnr } } AS ?heeftFoto) WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?rm a ceo:Rijksmonument ; ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> ;
+        ceo:rijksmonumentnummer ?rmnr ;
+        ceo:datumInschrijvingInMonumentenregister ?ins .
+    FILTER(SUBSTR(STR(?ins), 6, 5) = "${escapeSparqlString(maandDag)}")
+  }
+}`;
+}
+
+export type OpDezeDagCandidate = { monumentNumber: string; heeftFoto: boolean };
+
+export function parseOpDezeDagCandidates(document: unknown): OpDezeDagCandidate[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.flatMap((binding) => binding.rmnr?.value ? [{ monumentNumber: binding.rmnr.value, heeftFoto: binding.heeftFoto?.value === "true" }] : []);
+}
+
+// Kiest deterministisch één kandidaat: dezelfde dag geeft elke bezoeker
+// hetzelfde monument (belangrijk voor caching), bij voorkeur één met een
+// foto uit de beeldbank (visueel aantrekkelijker dan alleen tekst) - live
+// geverifieerd dat zelfs op 29 februari (schrikkeldag) nog 31 van de 312
+// kandidaten een foto hebben, dus de met-foto-voorkeur valt zelden terug op
+// de volledige lijst. `dayOfYear` (1-366) laat hetzelfde kalenderjaar in
+// een volgend jaar een ander monument uit dezelfde dag-groep kiezen, in
+// plaats van elk jaar exact dezelfde.
+export function pickOpDezeDagCandidate(candidates: OpDezeDagCandidate[], dayOfYear: number): string | undefined {
+  if (!candidates.length) return undefined;
+  const withPhoto = candidates.filter((candidate) => candidate.heeftFoto);
+  const pool = withPhoto.length ? withPhoto : candidates;
+  return pool[dayOfYear % pool.length].monumentNumber;
+}
+
 // De leden van een complex zijn bewust NIET onderdeel van de gewone
 // zoekresultaten (dat zou de resultatenlijst overspoelen) - dit wordt pas
 // opgehaald zodra een gebruiker een complex daadwerkelijk opent. Elk lid

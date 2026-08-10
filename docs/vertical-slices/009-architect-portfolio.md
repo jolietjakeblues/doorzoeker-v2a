@@ -2,9 +2,19 @@
 
 ## Status
 
-Plan, nog niet gebouwd. Vervolg op taak #10/007: een actor-klik is nu al
-een exacte zoekopdracht, maar levert alleen de gewone resultatenlijst op -
-zonder dat de actor zelf ooit het onderwerp van de pagina wordt.
+Gebouwd en live geverifieerd (2026-08-10). `useSearchState` onthoudt nu
+`activeConceptVeld` naast `activeConceptUri`; `app/page.tsx` toont bij
+`veld === "actor"` een portfolio-koptekst in plaats van de generieke
+"N resultaten voor..."-tekst, met de rol(len) afgeleid uit de al
+aanwezige `gebeurtenissen`-data - geen nieuwe route, geen extra
+SPARQL-aanroep. Live geverifieerd: klikken op architect "Bedaux, Jos" bij
+rijksmonument 517912 toont de koptekst "Bedaux, Jos ; Noord-Brabant — 4
+rijksmonumenten (architect / bouwkundige / constructeur)". 115/115 tests,
+typecheck, lint groen.
+
+Vervolg op taak #10/007: een actor-klik is nu al een exacte
+zoekopdracht, maar leverde alleen de gewone resultatenlijst op - zonder
+dat de actor zelf ooit het onderwerp van de pagina werd.
 
 ## Aanleiding
 

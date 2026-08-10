@@ -37,6 +37,16 @@ export function displayFunctionName(value: string) {
   return value.replace(/\s*\([^()]*\)\s*$/, "").trim();
 }
 
+// Kapt af op een woordgrens (niet midden in een woord) - zie
+// docs/vertical-slices/013-omschrijving-inkorten.md. Alleen voor de
+// resultatenkaart; het detailpaneel toont altijd de volledige tekst.
+export function truncateAtWordBoundary(text: string, max: number) {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd();
+}
+
 export function typeBadge(item: { objectType: Item["objectType"]; monumentAard?: Item["monumentAard"] }) {
   if (item.objectType === "Werelderfgoed") return { letter: "W", modifier: "world" };
   if (item.objectType === "Gezicht") return { letter: "G", modifier: "green" };

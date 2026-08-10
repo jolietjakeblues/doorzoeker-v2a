@@ -16,6 +16,7 @@ import {
   buildOnderzoeksgebiedAggregatenQuery,
   buildOnderzoeksgebiedComplexenQuery,
   buildOnderzoeksgebiedVondstlocatiesQuery,
+  buildOpDezeDagQuery,
   buildRceDetailsQuery,
   buildRceDiscoveryQueries,
   buildRceFacetsQuery,
@@ -42,10 +43,12 @@ import {
   parseOnderzoeksgebiedAggregatenResults,
   parseOnderzoeksgebiedComplexenResults,
   parseOnderzoeksgebiedVondstlocatiesResults,
+  parseOpDezeDagCandidates,
   parseParcelResults,
   parseRceMonuments,
   parseSparqlResults,
   parseWerelderfgoedResults,
+  pickOpDezeDagCandidate,
   type ArcheologischTerrein,
   type ComplexMember,
   type RceMonument,
@@ -157,9 +160,9 @@ async function searchByNumber(monumentNumber: string, signal?: AbortSignal): Pro
 // buildMonumentAardConceptQuery/buildArcheologischeWaarderingConceptQuery),
 // dus delen ze vanaf hier dezelfde afhandeling: rijksmonumentnummers
 // opzoeken, dan de gewone detail/percelen/facetten-ophaalslag hergebruiken.
-async function searchByConceptMatchQuery(matchQuery: string, signal?: AbortSignal): Promise<RceMonument[]> {
-  const matchDocument = await fetchSparql(matchQuery, signal);
-  const numbers = parseConceptSearchMatches(matchDocument).slice(0, 25);
+// Ook hergebruikt door fetchOpDezeDag (één vast rijksmonumentnummer in
+// plaats van een matchquery-uitkomst).
+async function buildMonumentsFromNumbers(numbers: string[], signal?: AbortSignal): Promise<RceMonument[]> {
   if (!numbers.length) return [];
   const [detailsDocument, parcelsDocument, facetsDocument] = await Promise.all([
     fetchSparql(buildRceDetailsQuery(numbers), signal),
@@ -178,6 +181,12 @@ async function searchByConceptMatchQuery(matchQuery: string, signal?: AbortSigna
   return enrichMonuments(monuments, signal);
 }
 
+async function searchByConceptMatchQuery(matchQuery: string, signal?: AbortSignal): Promise<RceMonument[]> {
+  const matchDocument = await fetchSparql(matchQuery, signal);
+  const numbers = parseConceptSearchMatches(matchDocument).slice(0, 25);
+  return buildMonumentsFromNumbers(numbers, signal);
+}
+
 // `conceptUri` is door de aanroepende route al gevalideerd tegen een vaste
 // lijst bekende namespaces vóór dit aangeroepen wordt.
 export async function searchByMonumentAardConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
@@ -194,6 +203,23 @@ export async function searchByGebeurtenisConcept(conceptUri: string, signal?: Ab
 
 export async function searchByActorConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
   return searchByConceptMatchQuery(buildActorConceptQuery(conceptUri), signal);
+}
+
+// "Op deze dag" (docs/vertical-slices/010-op-deze-dag.md): één
+// Rijksmonument dat op de huidige kalenderdag is ingeschreven in het
+// Monumentenregister, bij voorkeur met een foto. `now` is optioneel
+// injecteerbaar voor tests - zonder argument wordt de echte serverklok
+// gebruikt.
+export async function fetchOpDezeDag(signal?: AbortSignal, now: Date = new Date()): Promise<RceMonument | undefined> {
+  const maandDag = `${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
+  const startOfYear = Date.UTC(now.getUTCFullYear(), 0, 1);
+  const dayOfYear = Math.floor((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - startOfYear) / 86_400_000) + 1;
+  const candidatesDocument = await fetchSparql(buildOpDezeDagQuery(maandDag), signal);
+  const candidates = parseOpDezeDagCandidates(candidatesDocument);
+  const chosen = pickOpDezeDagCandidate(candidates, dayOfYear);
+  if (!chosen) return undefined;
+  const [monument] = await buildMonumentsFromNumbers([chosen], signal);
+  return monument;
 }
 
 // Archeologisch onderzoeksgebied is geen kleine collectie zoals Werelderfgoed/
