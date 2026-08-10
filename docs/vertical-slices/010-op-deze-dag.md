@@ -9,10 +9,10 @@ Gebouwd en live geverifieerd (2026-08-10). `buildOpDezeDagQuery`/
 `GET /api/rce/op-deze-dag`, en een tegel boven het startpaneel
 (`hooks/useOpDezeDag.ts`). Live geverifieerd op 10 augustus: toont
 "Kaaspakhuis" (RM 517443, ingeschreven 2001-08-10) mét foto uit de
-beeldbank, doorklikbaar naar het volledige record. 115/115 tests,
-typecheck, lint groen.
+beeldbank, doorklikbaar naar het volledige record. Selectie, lege respons en
+upstream-uitval zijn met regressietests afgedekt.
 
-Opgesteld als out-of-the-box idee van de gebruiker, met een belangrijke
+Opgesteld als ontdekfunctie voor de startpagina, met een belangrijke
 correctie na live verificatie: de aanvankelijk voorgestelde databron
 (Gebeurtenis-datering) bleek ongeschikt, een andere - al langer
 gebruikte - datumbron bleek wel te werken. Bijgesteld naar één monument

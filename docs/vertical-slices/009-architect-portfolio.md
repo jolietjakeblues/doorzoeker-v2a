@@ -9,8 +9,8 @@ Gebouwd en live geverifieerd (2026-08-10). `useSearchState` onthoudt nu
 aanwezige `gebeurtenissen`-data - geen nieuwe route, geen extra
 SPARQL-aanroep. Live geverifieerd: klikken op architect "Bedaux, Jos" bij
 rijksmonument 517912 toont de koptekst "Bedaux, Jos ; Noord-Brabant — 4
-rijksmonumenten (architect / bouwkundige / constructeur)". 115/115 tests,
-typecheck, lint groen.
+rijksmonumenten (architect / bouwkundige / constructeur)". De actorroute en
+browsernavigatie vallen onder de vaste regressie- en browsercontrole.
 
 Vervolg op taak #10/007: een actor-klik is nu al een exacte
 zoekopdracht, maar leverde alleen de gewone resultatenlijst op - zonder

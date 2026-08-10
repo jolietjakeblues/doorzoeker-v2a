@@ -241,13 +241,11 @@ vervangen in deze eerste schijf).
   zelfde gedeelde `timed()`-helper als de andere adapters, nu verplaatst
   naar `sparql-client.ts`), dus de eerstvolgende keer dat deze route
   daadwerkelijk gebruikt wordt levert dat meteen een getal op.
-- Een conceptzoekopdracht wordt bewust niet in de URL vastgelegd (geen
-  `?concept=`-parameter in de adresbalk zoals de andere filters wel
-  krijgen via `useSearchState`'s URL-sync) en ondersteunt geen "Laad 25
-  volgende resultaten" (de server-kant capt nu op 25 van de eerste 100
-  matches). Beide zijn bewuste beperkingen van deze eerste schijf, geen
-  vergeten randgevallen - op te pakken zodra fase 2 (bredere
-  conceptnavigatie) aan de orde is.
+- Een conceptzoekopdracht legt concept-URI en veld vast in de URL. Herladen en
+  browser-terug/-vooruit herstellen daardoor dezelfde exacte zoekopdracht.
+  Conceptresultaten zijn nog wel begrensd en hebben geen knop voor een
+  volgende pagina; die beperking wordt in de interface niet als volledige
+  thesaurusdekking gepresenteerd.
 - `GET /api/rce/concept?uri=` (stap 4) is gebouwd en getest, maar wordt in
   deze schijf nog nergens vanuit de UI aangeroepen - dat komt pas in fase 2
   zodra scheme/broader daadwerkelijk getoond worden.

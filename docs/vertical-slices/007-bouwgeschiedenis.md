@@ -13,8 +13,8 @@ het detailpaneel. Live geverifieerd tegen rijksmonument 517912: toont
 klikbare actoren "Bedaux, Jos" en "Studentengilde, Brabantse" (beide
 architect). Klikken op "Bedaux, Jos" levert 4 andere rijksmonumenten op
 met exact diezelfde actor-concept-URI. `enrich.gebeurtenissen` antwoordde
-in 156-457ms, geen outlier naast de andere verrijkingen. 107/107 tests,
-typecheck, lint groen.
+in 156-457ms, geen outlier naast de andere verrijkingen. Querybouw, parsing
+en de exacte actor-/gebeurtenisroutes zijn met regressietests afgedekt.
 
 Onderweg is een eerste conclusie dat actor/rol niet klikbaar te maken
 zouden zijn achterhaald na een gerichte tip van de gebruiker om

@@ -7,9 +7,9 @@ moeten we ook wat help pagina's en context help toevoegen, voor als een
 user gaat zoeken." Alle zes hints uit dit document staan live: bij Soort
 object, Monumentaard, Gevonden via, Juridische status en Kenmerken als
 `<details className="hint">` direct na de `<legend>`, en bij CHO-nummer op
-de detailpagina als `<details className="hint-inline">`. Tekst gecheckt met
-de humanizer-skill zodat het niet als AI-marketingtekst klinkt. Live
-geverifieerd: alle vijf fieldset-hints aanwezig, openen/sluiten werkt, en
+de detailpagina als `<details className="hint-inline">`. De teksten leggen
+de RCE-begrippen kort en zonder reclametaal uit. Live geverifieerd: alle vijf
+fieldset-hints zijn aanwezig, openen en sluiten werkt, en
 `<summary>` is (zoals verwacht van native HTML) gewoon met het toetsenbord
 te focussen en te bedienen.
 

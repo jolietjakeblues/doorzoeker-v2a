@@ -2,8 +2,8 @@
 
 ## Status
 
-Plan, nog niet gebouwd. Out-of-the-box idee van de gebruiker: pure
-geografische nabijheid rond een geopend Rijksmonument, los van complex-
+Plan, nog niet gebouwd. Het voorstel gebruikt pure geografische nabijheid
+rond een geopend Rijksmonument, los van complex-
 lidmaatschap of enige andere formele relatie.
 
 ## Aanleiding

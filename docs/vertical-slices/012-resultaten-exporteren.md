@@ -2,8 +2,7 @@
 
 ## Status
 
-Plan, nog niet gebouwd. Out-of-the-box idee van de gebruiker: voor de
-daadwerkelijke gebruikersgroep (onderzoekers, lokale historici) is "neem
+Plan, nog niet gebouwd. Voor onderzoekers en lokale historici is "neem
 mijn gefilterde zoekresultaat mee" waarschijnlijk waardevoller dan nog een
 UI-feature - dit is een pure frontend-functie, geen nieuwe databron nodig.
 

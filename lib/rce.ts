@@ -26,7 +26,7 @@ export const RCE_SEMANTICS = Object.freeze({
   instancesGraph: INSTANCES_GRAPH,
   activeLegalStatus: RIJKSMONUMENT_STATUS,
   formalStatementRequiredFor: ["oorspronkelijke functie", "huidige functie", "formele omschrijving"],
-  ranking: ["oorspronkelijke functie", "huidige functie", "type", "monumentaard", "formele omschrijving", "woonplaats"],
+  ranking: ["oorspronkelijke functie", "huidige functie", "type", "monumentaard", "naam", "formele omschrijving", "volledig adres", "woonplaats"],
 });
 
 // BRK provinciecode -> volledige naam. CBS-provinciecodes, niet als SKOS-concept
@@ -124,7 +124,7 @@ export function escapeSparqlString(value: string) {
 }
 
 // Each discovery source runs as its own SPARQL query. A single query that UNIONs
-// all six sources together (with a shared FILTER/ORDER BY) makes Virtuoso build
+// all sources together (with a shared FILTER/ORDER BY) makes Virtuoso build
 // and sort one enormous intermediate result across a 58M-triple graph, which
 // reliably times out. Per-source queries are simple, fast (each source alone
 // resolves in well under a second), and let us do the scoring/merge/pagination
@@ -134,8 +134,10 @@ const DISCOVERY_SOURCES: { bron: string; rang: number; pattern: string }[] = [
   { bron: "huidige functie", rang: 2, pattern: "?cho ceo:heeftHuidigeFunctie ?functieNode .\n    ?functieNode ceo:formeelStandpunt true ; ceo:heeftFunctieNaam/skos:prefLabel ?match ." },
   { bron: "type", rang: 3, pattern: "?cho ceo:heeftType/ceo:heeftTypeNaam/skos:prefLabel ?match ." },
   { bron: "monumentaard", rang: 4, pattern: "?cho ceo:heeftMonumentAard/skos:prefLabel ?match ." },
-  { bron: "formele omschrijving", rang: 5, pattern: "?cho ceo:heeftOmschrijving ?omschrijvingNode .\n    ?omschrijvingNode ceo:omschrijving ?match ; ceo:formeelStandpunt true ." },
-  { bron: "woonplaats", rang: 6, pattern: "?cho ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?match ." },
+  { bron: "naam", rang: 5, pattern: "?cho ceo:heeftNaam/ceo:naam ?match ." },
+  { bron: "formele omschrijving", rang: 6, pattern: "?cho ceo:heeftOmschrijving ?omschrijvingNode .\n    ?omschrijvingNode ceo:omschrijving ?match ; ceo:formeelStandpunt true ." },
+  { bron: "volledig adres", rang: 7, pattern: "?cho ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:volledigAdres ?match ." },
+  { bron: "woonplaats", rang: 8, pattern: "?cho ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?match ." },
 ];
 
 export function buildRceDiscoveryQueries(term: string): { bron: string; query: string }[] {

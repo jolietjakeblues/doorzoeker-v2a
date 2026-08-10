@@ -250,22 +250,46 @@ async function searchArcheologischOnderzoek(term: string, signal?: AbortSignal):
 // handvol treffers per zoekterm. Die worden alleen op de eerste pagina
 // meegenomen, vóór de Rijksmonument-discoveryresultaten, zodat "laad meer"
 // op latere pagina's ze niet opnieuw ophaalt of dupliceert.
+async function optionalSearch<T>(event: string, work: () => Promise<T>, fallback: T, signal?: AbortSignal): Promise<T> {
+  try {
+    return await timed(event, work);
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    console.warn(JSON.stringify({ event: `${event}.unavailable`, message: error instanceof Error ? error.message : "unknown" }));
+    return fallback;
+  }
+}
+
 async function searchByText(term: string, signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
-  const [branchResults, werelderfgoed, gezichten, complexen, onderzoeksgebieden] = await Promise.all([
-    timed("search.discovery", () => Promise.all(
-      buildRceDiscoveryQueries(term).map(({ bron, query }) => fetchSparql(query, signal).then((document) => parseDiscoveryBranchResults(document, bron, term))),
-    )),
+  const discoveryQueries = buildRceDiscoveryQueries(term);
+  const discoverySettled = await timed("search.discovery", () => Promise.allSettled(
+    discoveryQueries.map(({ bron, query }) =>
+      fetchSparql(query, signal).then((document) => parseDiscoveryBranchResults(document, bron, term)),
+    ),
+  ));
+  if (signal?.aborted) throw signal.reason;
+  const branchResults = discoverySettled.flatMap((result, index) => {
+    if (result.status === "fulfilled") return [result.value];
+    console.warn(JSON.stringify({ event: "search.discovery.branch.unavailable", source: discoveryQueries[index].bron, message: result.reason instanceof Error ? result.reason.message : "unknown" }));
+    return [];
+  });
+  if (branchResults.length === 0) {
+    const firstFailure = discoverySettled.find((result) => result.status === "rejected");
+    throw firstFailure?.reason ?? new Error("Geen zoekbron bereikbaar");
+  }
+
+  const [werelderfgoed, gezichten, complexen, onderzoeksgebieden] = await Promise.all([
     page === 1
-      ? timed("search.werelderfgoed", () => fetchSparql(buildWerelderfgoedQuery(term), signal).then(parseWerelderfgoedResults))
+      ? optionalSearch("search.werelderfgoed", () => fetchSparql(buildWerelderfgoedQuery(term), signal).then(parseWerelderfgoedResults), [], signal)
       : Promise.resolve<RceMonument[]>([]),
     page === 1
-      ? timed("search.gezichten", () => fetchSparql(buildGezichtQuery(term), signal).then(parseGezichtResults))
+      ? optionalSearch("search.gezichten", () => fetchSparql(buildGezichtQuery(term), signal).then(parseGezichtResults), [], signal)
       : Promise.resolve<RceMonument[]>([]),
     page === 1
-      ? timed("search.complexen", () => fetchSparql(buildComplexenQuery(term), signal).then(parseComplexenResults))
+      ? optionalSearch("search.complexen", () => fetchSparql(buildComplexenQuery(term), signal).then(parseComplexenResults), [], signal)
       : Promise.resolve<RceMonument[]>([]),
     page === 1
-      ? timed("search.onderzoeksgebieden", () => searchArcheologischOnderzoek(term, signal))
+      ? optionalSearch("search.onderzoeksgebieden", () => searchArcheologischOnderzoek(term, signal), [], signal)
       : Promise.resolve<RceMonument[]>([]),
   ]);
   const extras = [...werelderfgoed, ...gezichten, ...complexen, ...onderzoeksgebieden];

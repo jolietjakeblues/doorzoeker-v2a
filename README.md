@@ -1,118 +1,130 @@
-# Doorzoeker V2
+# Doorzoeker: erfgoed digitaal
 
-Doorzoeker V2 is een moderne zoek- en ontdekapplicatie voor cultureel
-erfgoed. De applicatie combineert de RCE Linked Data-voorziening (inclusief
-het eigen Referentienetwerk voor gestandaardiseerde termen) en kan RCE-MCP
-inzetten voor semantische en AI-ondersteunde functies.
+Doorzoeker maakt de Linked Data van de Rijksdienst voor het Cultureel Erfgoed
+doorzoekbaar zonder alles terug te brengen tot Rijksmonumenten. De applicatie
+laat verschillende soorten erfgoed als verschillende objecten zien en houdt de
+bron-URI's bij de gegevens.
 
-Deze repository is een schone herbouw. Er wordt geen code uit de historische
+Deze repository is een schone herbouw van Doorzoeker. Er is geen code uit
 [Doorzoeker V1](https://github.com/jolietjakeblues/doorzoeker_v1) gekopieerd.
 
-## Productdoel
+## Wat je kunt doorzoeken
 
-Gebruikers moeten erfgoedinformatie kunnen vinden als zij precies weten wat ze
-zoeken én relevante informatie kunnen ontdekken wanneer zij de juiste term,
-classificatie of bron nog niet kennen.
+- Rijksmonumenten, gebouwd en archeologisch;
+- Werelderfgoed;
+- rijksbeschermde stads- en dorpsgezichten, in de interface kortweg
+  `Gezichten`;
+- Complexen van gebouwde Rijksmonumenten;
+- archeologische onderzoeksgebieden.
 
-De kern bestaat uit:
+Archeologie bestaat uit meer dan onderzoeksgebieden. Bij Rijksmonumenten toont
+Doorzoeker gekoppelde archeologische terreinen met Archis-monumentnummer en
+waardering. Binnen onderzoeksgebieden toont de detailweergave archeologische
+complexen, maximaal 25 vondstlocaties en totalen voor vondsten, grondsporen en
+complexen die via vondstlocaties zijn gekoppeld. Vondsten en grondsporen zijn
+nog geen zelfstandige zoekresultaten.
 
-- vrij zoeken en gerichte filters;
-- consistente presentatie van verschillende erfgoedobjecten;
-- kaart- en lijstweergave;
-- navigatie via gestandaardiseerde termen en semantische relaties;
-- stabiele URI's als identiteit en herleidbare bronvermelding;
-- deelbare zoekopdrachten en detailpagina's.
+Zie [Functionele dekking](docs/functionele-dekking.md) voor het precieze
+onderscheid tussen zelfstandige objecten, gekoppelde lijsten en tellingen.
+
+## Zoeken en begrippen
+
+De algemene zoekbalk zoekt in aangesloten CHO-velden, waaronder nummer,
+plaats, functie, type en omschrijving. Tekstzoekopdrachten kunnen volgende
+pagina's van 25 resultaten laden.
+
+Woordsuggesties komen uit vier schema's binnen Referentienetwerk 2:
+
+- Archeologisch Informatie Systeem;
+- Cultuurhistorische Object Informatie;
+- Kennisregistratie;
+- Monumenten Registratie Systeem.
+
+Een gekozen suggestie blijft een tekstzoekopdracht en wordt ook zo aangeduid.
+Exact zoeken op een concept-URI gebeurt alleen bij velden waarvoor Doorzoeker
+de relatie kent: monumentaard, archeologische waardering, gebeurtenistype en
+actor. Het losse ABR wordt niet gebruikt als interne CHO-begrippenlaag.
+Bibliotheek en Beeldbank gebruiken CHT in hun eigen brondata.
+
+## Kaart en geometrie
+
+De kaart ondersteunt `Point`, `Polygon` en `MultiPolygon`. Polygonen behouden
+hun afzonderlijke ringen en gaten; MultiPolygonen worden niet tot één punt
+platgeslagen. Punten worden op de kaart geclusterd.
+
+Een Complex staat op de gewone resultatenkaart als marker bij het hoofdobject.
+Na openen toont de compacte detailkaart de verzameling geometrieën van de
+opgehaalde leden. Er wordt geen nieuwe geometrische union berekend: de
+bronvormen van de onderdelen blijven afzonderlijk herkenbaar.
+
+## Details en verrijking
+
+Afhankelijk van het objecttype toont Doorzoeker onder meer:
+
+- register- en locatiegegevens;
+- oorspronkelijke en huidige functies;
+- kadastrale percelen;
+- een Beeldbankfoto met bron en rechten;
+- historische groenaanleg en MSP-indicatie;
+- complexverbanden en een doorklikbare ledenlijst;
+- literatuur uit de RCE-bibliotheek;
+- bouwgeschiedenis, gebeurtenissen en actoren;
+- archeologische terreinen, complexen, vondstlocaties en tellingen.
+
+Filters, pagina, kaartpositie, gekozen object en bekende conceptidentiteit
+worden in de URL bewaard. Browser-terug en -vooruit herstellen eerdere
+zoekopdrachten.
 
 ## Gegevensvoorzieningen
 
-- **RCE Linked Data:** gezaghebbende object-, register- en kennisdata via REST,
-  SPARQL en JSON-LD. Termsuggesties komen rechtstreeks uit RCE's eigen
-  Referentienetwerk (de CHT- en ABR-thesauri, via dezelfde SPARQL-dienst) - niet
-  via het externe Termennetwerk van Netwerk Digitaal Erfgoed, dat voor deze
-  RCE-specifieke app een overbodige én (bij onderzoek) daadwerkelijk kapotte
-  omweg bleek.
-- **RCE-MCP:** queryontwikkeling, semantische uitleg en optionele
-  AI-functionaliteit. MCP is niet de enige runtime-datalaag van de webapp.
+- `rce/cho`: objecten, relaties, geometrie en een deel van de verrijkingen;
+- `thesauri/referentienetwerk`: concepten en de vier gebruikte RN2-schema's;
+- `rce/bibliotheek`: gekoppelde publicaties;
+- RCE-MCP: hulpmiddel voor onderzoek en queryontwikkeling, geen verplichte
+  runtime-laag van de webapp.
 
-## Huidige functionaliteit
+De browser praat alleen met taakgerichte routes onder `/api`. Willekeurige
+SPARQL wordt niet vanuit de browser doorgestuurd. De serveradapters verzorgen
+validatie, time-outs, mapping, caching en foutafhandeling.
 
-De applicatie doorzoekt live RCE Linked Data en toont, naast rijksmonumenten,
-ook Werelderfgoed, rijksbeschermde stads- en dorpsgezichten, Complexen (van
-gebouwde rijksmonumenten) en archeologische Onderzoeksgebieden - dit laatste
-een geheel eigen, van het monumentenregister losstaande dataset (zie
-[`docs/vertical-slices/002-archeologisch-onderzoek.md`](docs/vertical-slices/002-archeologisch-onderzoek.md)):
+## Nog niet gebouwd
 
-1. zoeken op naam, adres, plaats, rijksmonumentnummer, woorden uit de
-   formele omschrijving, of - voor onderzoeksgebieden - woonplaats en de
-   vrije onderzoeksomschrijving;
-2. filteren op monumentaard, provincie, gemeente/woonplaats, oorspronkelijke
-   functie en matchbron; het monumentaard-label is bovendien klikbaar en
-   start een exacte zoekopdracht op de onderliggende Referentienetwerk-
-   concept-URI, niet op de labeltekst (zie
-   [`docs/vertical-slices/004-referentienetwerk-concepten.md`](docs/vertical-slices/004-referentienetwerk-concepten.md));
-3. resultaten tonen als lijst en op een kaart (met clustering; Werelderfgoed,
-   Gezichten, archeologische terreinen en Onderzoeksgebieden als echte
-   polygoon/multipolygoon, niet platgeslagen tot een punt);
-4. een detailpagina met kerngegevens, beschrijving, functie, status, locatie,
-   geometrie, kadastrale percelen en bron-URI's (Monumentenregister/UNESCO/
-   Archis én RCE Linked Data);
-5. verrijking met archeologische terreingegevens (Archis-monumentnummer,
-   waardering), complexverbanden (hoofdobject/onderdeel, met doorklikbare
-   ledenlijst per complex), een foto uit de RCE beeldbank (met licentie- en
-   bronvermelding), historische tuin-/parkaanleg (groenaanleg) en gekoppelde
-   literatuur uit de RCE-bibliotheekcatalogus (titel, auteur(s), jaartal en
-   een link naar de publieke catalogus; zie
-   [`docs/vertical-slices/005-bibliotheek-literatuur.md`](docs/vertical-slices/005-bibliotheek-literatuur.md));
-6. zoektoestand vastleggen in een deelbare URL;
-7. termen gebruiken voor suggesties en gecontroleerde zoekverfijning.
+- zelfstandig zoeken en bladeren door afzonderlijke vondsten en grondsporen;
+- ruimtelijke `ligt in`-relaties tussen Rijksmonumenten en
+  Werelderfgoed/Gezichten;
+- de geometrie van historische groenaanleg als aparte kaartlaag;
+- de functies uit verticale slices die uitdrukkelijk de status `Plan` hebben.
 
-Tekstzoekopdrachten kunnen vervolgresulaten per 25 laden. Nog niet gebouwd zijn
-ruimtelijke "ligt in"-relaties tussen monumenten en
-gezichten/werelderfgoed.
+## Documentatie
 
-De functionele afbakening en acceptatiecriteria staan in
-[`docs/vertical-slices/001-rijksmonumenten.md`](docs/vertical-slices/001-rijksmonumenten.md).
-
-## Architectuur
-
-Architectuurbesluiten worden als ADR's vastgelegd:
-
+- [Functionele dekking](docs/functionele-dekking.md)
 - [ADR-0001: schone herbouw](docs/adr/0001-schone-herbouw.md)
 - [ADR-0002: hybride gegevensarchitectuur](docs/adr/0002-hybride-gegevensarchitectuur.md)
-  (zie de "Implementatiestatus" daarin voor de huidige stand).
+- [Verkende RCE Linked Data-graphs](docs/reference/rce-linked-data-graphs.md)
+- [Verticale slices](docs/vertical-slices)
 
-De technische spike is afgerond: de applicatie draait op vinext (Next.js App
-Router-compatibele Vite-runtime) en Cloudflare Workers, met live RCE SPARQL-
-en REST-aanroepen achter een eigen `/api/rce/search`-contract.
+## Ontwikkelen
 
-## Repositorystructuur
-
-```text
-app/                   Applicatieroutes en presentatiecomponenten
-hooks/                 React-hooks voor zoek-/filterstate, termsuggesties en detailverrijking
-lib/                   Querybouw, parsing, het view-model en de serveradapters naar RCE
-worker/                Cloudflare Worker-entrypoint
-public/                Publiek geserveerde afbeeldingen en iconen
-tests/                 Geautomatiseerde tests
-docs/
-  adr/                 Architectuurbesluiten
-  reference/           Ontwerp- en huisstijlbronnen
-  vertical-slices/     End-to-end productdoorsneden
-.github/workflows/     CI en Cloudflare Workers-publicatie
+```sh
+npm install
+npm run dev
 ```
 
-## Status
+Controles:
 
-Live en in actief gebruik. Zie "Huidige functionaliteit" hierboven voor wat
-werkt en wat nog ontbreekt.
+```sh
+npm run typecheck
+npm run lint
+npm test
+npm run test:e2e
+```
 
-## Cloudflare Workers
+## Publiceren
 
-Een push naar `main` bouwt en deployt de applicatie automatisch naar
-Cloudflare Workers via GitHub Actions
-([`.github/workflows/deploy-workers.yml`](.github/workflows/deploy-workers.yml)).
-Dit vereist de repository-secrets `CLOUDFLARE_API_TOKEN` en
-`CLOUDFLARE_ACCOUNT_ID`. Handmatig bouwen en deployen kan met:
+De applicatie wordt gebouwd met vinext en draait op Cloudflare Workers. Een
+push naar `main` kan via `.github/workflows/deploy-workers.yml` publiceren,
+mits `CLOUDFLARE_API_TOKEN` en `CLOUDFLARE_ACCOUNT_ID` als repository-secrets
+zijn ingesteld. Handmatig bouwen en publiceren kan met:
 
 ```sh
 npm run deploy

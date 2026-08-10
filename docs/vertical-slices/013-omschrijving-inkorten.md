@@ -3,19 +3,15 @@
 ## Status
 
 Gebouwd en live geverifieerd (2026-08-10). `truncateAtWordBoundary` in
-`lib/heritage-view-model.ts`, een nieuwe `CardDescription`-component in
-`app/page.tsx` toegepast op zowel de gewone resultatenkaarten als de
+`lib/heritage-view-model.ts`, een `CardDescription`-component in
+`app/HeritageResultCard.tsx` toegepast op zowel de gewone resultatenkaarten als de
 "Op deze dag"-tegel (010) - het detailpaneel (`selected.description`)
 blijft ongewijzigd de volledige tekst tonen. Live geverifieerd op
 rijksmonument 517443 (Kaaspakhuis, 4.600 tekens omschrijving): toont
 ingekort tot 309 tekens (afgekapt op een woordgrens) met "… Lees meer",
-en na klikken de volledige tekst met een "Lees minder"-knop. Geen
-dedicated unit test: `heritage-view-model.ts` gebruikt het `@/`-path-alias
-(via `lib/rce.ts`) dat buiten de Next.js/vinext-bundler niet oplosbaar is
-in de kale Node-testrunner - geen van de andere functies in dat bestand
-heeft om diezelfde reden een losse unit test; de bestaande
-`renders Doorzoeker`-smoketest (die de hele pagina via de echte build
-rendert) oefent de functie wel uit. 115/115 tests, typecheck, lint groen.
+en na klikken de volledige tekst met een "Lees minder"-knop. De volledige
+detailtekst blijft onaangetast. De productiebuild en server-render-smoketest
+dekken de aansluiting van de component af.
 
 Kleine UX-correctie, gesignaleerd door de gebruiker: sommige
 `omschrijving`-teksten zijn erg lang, wat de resultatenlijst (niet het
@@ -23,7 +19,7 @@ detailpaneel) onoverzichtelijk maakte.
 
 ## Aanleiding
 
-`app/page.tsx` toont `item.description` nu ongewijzigd en zonder
+De oorspronkelijke `app/page.tsx`-weergave toonde `item.description` ongewijzigd en zonder
 afkapping in elke resultatenkaart (`<p>{item.description}</p>`, geen
 `overflow`/`line-clamp` in de CSS). Een lange, formele omschrijving
 (sommige RCE-omschrijvingen zijn meerdere alinea's lang - zie bv. het

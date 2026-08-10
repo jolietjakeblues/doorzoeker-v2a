@@ -2,25 +2,19 @@
 
 ## Status
 
-In uitvoering (2026-08-08). Vastgelegd na onderzoek in de CEO-ontologie naar
-aanleiding van de vraag "hoe zit archeologie hier eigenlijk in" en de RCE-
-specificatie "Downloaden & datagebruik - Zoeken & Vinden" (Archis-portal).
+Gebouwd en getest (2026-08-10). ArcheologischOnderzoeksgebied is als
+zelfstandige zoekbranch aangesloten op woonplaats en onderzoeksomschrijving.
+De detailweergave toont rechtstreeks gekoppelde archeologische complexen,
+maximaal 25 vondstlocaties en totalen van vondstlocaties, vondsten,
+grondsporen en complexen via vondstlocaties. ArcheologischTerrein blijft
+daarnaast als gekoppelde verrijking bij een Rijksmonument bestaan.
 
-**Update 2026-08-08 - de voorgestelde aanpak hieronder is deels achterhaald.**
-Verder onderzoek in de live data laat zien dat `ArcheologischOnderzoeksgebied`
-wél een vrij-tekstveld heeft (`ceo:heeftOmschrijving/ceo:omschrijving`, een
-prozaomschrijving van de onderzoeksaanleiding), naast `woonplaatsnaam` via
-`ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie` (géén gemeente/
-provincie - die relatie loopt via `heeftBRKRelatie`, die dit type niet heeft).
-Een `CONTAINS`-filter op beide velden over de volle 112K-graaf is empirisch
-getest en presteert prima (geen Virtuoso-timeout, zelfs op algemene termen).
-Dat betekent dat dit gewoon als twee extra discovery-branches in de
-bestaande vrije-tekstzoekbalk kan meedraaien - zie "Herziene aanpak"
-onderaan dit document in plaats van punt 1 en 5 hieronder.
+Zie [`../functionele-dekking.md`](../functionele-dekking.md) voor het precieze
+onderscheid tussen zelfstandig object, gekoppelde lijst en telling.
 
 ## Aanleiding
 
-Doorzoeker toont archeologie nu uitsluitend via `ArcheologischTerrein`,
+Doorzoeker toonde archeologie aanvankelijk uitsluitend via `ArcheologischTerrein`,
 gekoppeld aan een Rijksmonument (`ligtInObject`). Onderzoek in de live data
 laat zien dat dit de allerkleinste, wettelijk beschermde punt van de ijsberg
 is:

@@ -4,12 +4,15 @@
 
 Geïmplementeerd en live, met een grotere scope dan hieronder oorspronkelijk
 gepland: naast Rijksmonumenten (gebouwd/archeologisch) zijn ook Werelderfgoed,
-rijksbeschermde Gezichten en Complexen (van gebouwde rijksmonumenten)
-doorzoekbaar en toonbaar geworden, plus archeologische terreinverrijking, een
+rijksbeschermde Gezichten, Complexen (van gebouwde Rijksmonumenten) en
+archeologische Onderzoeksgebieden doorzoekbaar en toonbaar geworden, plus
+archeologische terreinverrijking, archeologische complexen, vondstlocaties en
+aggregaten binnen Onderzoeksgebieden, een
 doorklikbare complex-ledenlijst, een foto uit de RCE beeldbank en historische
 tuin-/parkaanleg (groenaanleg) op de detailpagina. Dit document is bijgewerkt
 om dat te weerspiegelen; de oorspronkelijke "niet in scope"-uitsluiting van
-werelderfgoed/gezichten is vervallen.
+werelderfgoed/gezichten is vervallen. De actuele dekking per objectklasse en
+geometrievorm staat in [`../functionele-dekking.md`](../functionele-dekking.md).
 
 ## Doel
 

@@ -218,9 +218,9 @@ test("queries formal original and current functions as separate facets", () => {
   assert.match(query, /ceo:heeftType\/ceo:heeftTypeNaam\/skos:prefLabel/);
 });
 
-test("discovers functions, types and descriptions as separate fast queries per source", () => {
+test("discovers names, addresses, functions, types and descriptions as separate fast queries per source", () => {
   const queries = buildRceDiscoveryQueries('woonhuis "K"');
-  assert.deepEqual(queries.map((q) => q.bron), ["oorspronkelijke functie", "huidige functie", "type", "monumentaard", "formele omschrijving", "woonplaats"]);
+  assert.deepEqual(queries.map((q) => q.bron), ["oorspronkelijke functie", "huidige functie", "type", "monumentaard", "naam", "formele omschrijving", "volledig adres", "woonplaats"]);
   for (const { query } of queries) {
     assert.match(query, /graph\/instanties-rce/);
     assert.match(query, /ceo:heeftJuridischeStatus/);
@@ -236,6 +236,8 @@ test("discovers functions, types and descriptions as separate fast queries per s
   assert.match(oorspronkelijkeFunctie, /\?functieNode ceo:formeelStandpunt true/);
   const omschrijving = queries.find((q) => q.bron === "formele omschrijving").query;
   assert.match(omschrijving, /ceo:formeelStandpunt true/);
+  assert.match(queries.find((q) => q.bron === "naam").query, /ceo:heeftNaam\/ceo:naam \?match/);
+  assert.match(queries.find((q) => q.bron === "volledig adres").query, /ceo:heeftBAGRelatie\/ceo:volledigAdres \?match/);
 });
 
 test("merges discovery branches, dedupes by best score, and sorts for page-style slicing", () => {
@@ -523,7 +525,7 @@ test("parses complex members and marks the hoofdobject", () => {
   ]);
 });
 
-test("parses each complex member's own geometrie, so a complex can be drawn as the union of its members' polygonen", () => {
+test("parses each complex member's own geometrie, so the detail map can draw the members' polygonen together", () => {
   // Dit is de kern van taak #7: een complex is een samenraapsel van
   // zelfstandige monumenten, dus "de vorm van het complex" moet uit de
   // eigen geometrie van elk lid komen, niet uit één gemiddelde of alleen

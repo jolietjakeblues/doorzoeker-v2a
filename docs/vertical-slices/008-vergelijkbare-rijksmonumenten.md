@@ -2,8 +2,8 @@
 
 ## Status
 
-Plan, nog niet gebouwd. Out-of-the-box idee van de gebruiker naar
-aanleiding van taak #10 en 007: monumentaard, waardering, gebeurtenistype
+Plan, nog niet gebouwd. Het idee ontstond naar aanleiding van de bestaande
+conceptnavigatie: monumentaard, waardering, gebeurtenistype
 en actor zijn nu allemaal losse, klikbare concept-URI's - maar nooit
 gecombineerd. Dit plan combineert ze tot een aanbeveling.
 

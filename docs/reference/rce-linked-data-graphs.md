@@ -73,7 +73,7 @@ Project (circa 1997-2002)"), analoog aan de bestaande groenaanleg-verrijking
 en het bijbehorende filter. `buildMspIndicatieQuery`/`parseMspIndicatieResults`
 in `lib/rce.ts`.
 
-## `thesauri/referentienetwerk` - apart SPARQL-dataset, gedeeltelijke ABR-spiegel
+## `thesauri/referentienetwerk` — Referentienetwerk 2
 
 `https://api.linkeddata.cultureelerfgoed.nl/datasets/thesauri/referentienetwerk/sparql`
 is, net als `rce/bibliotheek`, een volledig los dataset (niet bereikbaar via
@@ -94,19 +94,14 @@ volledig aparte dataset. Concept `abr/00155b8e-07ca-4534-848b-a719e780de07`
 concept (`cht/296c96ac-...`) bestaat *niet* onder `rn/2/`, dus dit is
 specifiek een ABR-spiegel, geen CHT-spiegel.
 
-**Niet toegevoegd als derde termsuggestiebron** (bewuste keuze, geen
-openstaande vraag): het grootste deel overlapt al met de reeds geïntegreerde
-ABR-thesaurus (dubbele suggesties zonder meerwaarde), en de dataset bevat
-naast echte vocabulairetermen ook actor-/collectiereferenties die geen
-zoektermen zijn (bv. "Blokdijk, M. ; Noord-Brabant", "Post Wiersema, E. ;
-Groningen II" - vermoedelijk namen van vondstmelders/onderzoekers per
-provincie). Toevoegen zou de suggestiekwaliteit verlagen, niet verhogen.
-
-**Wel potentieel bruikbaar als latere, aparte verrijking**: de niet-ABR
-specialistische subsets (taxonomie, geomorfologie, Deventer-classificatie)
-zijn nergens anders in Doorzoeker beschikbaar en zouden relevant kunnen zijn
-voor de archeologiedomeinen (Vondsten/Grondsporen/Onderzoeksgebied) - nog
-niet verder uitgezocht, geen concreet plan.
+**Gericht geïntegreerd als suggestiebron.** De algemene CHO-zoekbalk bevraagt
+niet heel RN2, maar uitsluitend Archeologisch Informatie Systeem,
+Cultuurhistorische Object Informatie, Kennisregistratie en Monumenten
+Registratie Systeem. Het losse ABR wordt niet gebruikt: voor archeologische
+CHO-koppelingen gebruikt de RCE het Archeologisch Informatie Systeem binnen
+RN2. ABR- en RN2-URI's kunnen dezelfde UUID hebben, maar zijn daarmee niet
+dezelfde URI. Een gekozen suggestie blijft een tekstzoekopdracht; alleen
+gecontroleerde velden zoeken exact op de RN2-concept-URI.
 
 ## `rce/bibliotheek` — apart SPARQL-dataset (taak #6, verkend 2026-08-09)
 

@@ -202,3 +202,39 @@ test("attaches gekoppelde literatuur from the separate rce/bibliotheek dataset o
     authors: ["Ambachtsheer, H.F."], sourceUrl: "https://catalogus.cultureelerfgoed.nl/Details/fullCatalogue/1131",
   }]);
 });
+
+test("keeps name search working when another discovery branch is temporarily unavailable", async (context) => {
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalCaches === undefined) delete globalThis.caches;
+    else globalThis.caches = originalCaches;
+  });
+  globalThis.caches = { default: { match() { return undefined; }, put() {} } };
+  globalThis.fetch = async (input) => {
+    const url = decodeURIComponent(String(input));
+    if (url.startsWith(BIBLIOTHEEK_SPARQL)) return Response.json({ results: { bindings: [] } });
+    if (url.includes("SELECT DISTINCT ?rmnr ?match")) {
+      if (url.includes("heeftOmschrijving")) return new Response("tijdelijk niet bereikbaar", { status: 503 });
+      if (url.includes("heeftNaam/ceo:naam")) {
+        return Response.json({ results: { bindings: [{ rmnr: { value: "517443" }, match: { value: "Kaaspakhuis" } }] } });
+      }
+      return Response.json({ results: { bindings: [] } });
+    }
+    if (url.includes("a ceo:Werelderfgoed") || url.includes("a ceo:Gezicht") || url.includes("a ceo:Complex") || url.includes("a ceo:ArcheologischOnderzoeksgebied")) {
+      return Response.json({ results: { bindings: [] } });
+    }
+    if (url.includes("perceelnummer") || url.includes("GROUP_CONCAT")) return Response.json({ results: { bindings: [] } });
+    if (url.includes("SELECT ?cho ?choi ?rmnr")) {
+      return Response.json({ results: { bindings: [{ cho: { value: "rm:517443" }, choi: { value: "cho-517443" }, rmnr: { value: "517443" }, naam: { value: "Kaaspakhuis" } }] } });
+    }
+    return Response.json({ results: { bindings: [] } });
+  };
+
+  const response = await GET(new Request("https://doorzoeker.test/api/rce/search?q=Kaaspakhuis&page=1", { headers: { "cf-connecting-ip": "test-name-fail-soft" } }));
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.equal(document.results[0].name, "Kaaspakhuis");
+  assert.equal(document.results[0].matchSource, "naam");
+});
