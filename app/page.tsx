@@ -4,8 +4,10 @@ import { useMemo } from "react";
 import { HeritageMap } from "./HeritageMap";
 import { SiteHeader } from "./SiteHeader";
 import { SearchHero } from "./SearchHero";
-import { CardDescription, HeritageResultCard } from "./HeritageResultCard";
+import { HeritageResultCard } from "./HeritageResultCard";
 import { HeritageDetailFacts } from "./HeritageDetailFacts";
+import { ResultsToolbar } from "./ResultsToolbar";
+import { StartContent } from "./StartContent";
 import {
   MONUMENT_REGISTER_BASE_URL,
   primaryIdentifier,
@@ -508,158 +510,22 @@ export default function Home() {
           </button>
         </aside>
         <div className="results">
-          <div className="toolbar">
-            <div>
-              <small>RESULTATEN</small>
-              <h2 aria-live="polite">
-                {activeConceptVeld === "actor" ? (
-                  <>
-                    {active}
-                    <small>
-                      {" "}
-                      — {results.length} erfgoedobject
-                      {results.length === 1 ? "" : "en"}
-                      {actorRoles.length ? ` (${actorRoles.join(", ")})` : ""}
-                    </small>
-                  </>
-                ) : (
-                  <>
-                    {results.length}{" "}
-                    {results.length === 1 ? "resultaat" : "resultaten"}
-                    {active ? ` voor “${active}”` : ""}
-                  </>
-                )}
-              </h2>
-            </div>
-            <div>
-              <button
-                className="mobile-filter"
-                type="button"
-                onClick={() => setFilters(true)}
-              >
-                ☰ Filters
-              </button>
-              <span className="switch" aria-label="Weergave">
-                <button
-                  type="button"
-                  className={view === "list" ? "on" : ""}
-                  onClick={() => setView("list")}
-                  aria-label="Lijstweergave"
-                  aria-pressed={view === "list"}
-                >
-                  ☷
-                </button>
-                <button
-                  type="button"
-                  className={view === "map" ? "on" : ""}
-                  onClick={() => setView("map")}
-                  aria-label="Kaartweergave"
-                  aria-pressed={view === "map"}
-                >
-                  ⌖
-                </button>
-              </span>
-            </div>
-          </div>
+          <ResultsToolbar
+            active={active}
+            actorSearch={activeConceptVeld === "actor"}
+            actorRoles={actorRoles}
+            resultCount={results.length}
+            view={view}
+            onOpenFilters={() => setFilters(true)}
+            onViewChange={setView}
+          />
+
           {remoteState === "idle" ? (
-            <>
-              {opDezeDag && (
-                <section className="op-deze-dag">
-                  <small>OP DEZE DAG INGESCHREVEN</small>
-                  <div className="cards">
-                    <article>
-                      <div
-                        className={`tile ${typeBadge(opDezeDag).modifier}${opDezeDag.image ? " has-image" : ""}`.trim()}
-                        style={
-                          opDezeDag.image
-                            ? { backgroundImage: `url(${opDezeDag.image.url})` }
-                            : undefined
-                        }
-                      >
-                        {opDezeDag.image ? (
-                          <span className="tile-badge">
-                            {typeBadge(opDezeDag).letter}
-                          </span>
-                        ) : (
-                          <>
-                            <b>{typeBadge(opDezeDag).letter}</b>
-                            <small>RCE register</small>
-                          </>
-                        )}
-                      </div>
-                      <div className="copy">
-                        <small>
-                          {opDezeDag.kind}
-                          <code>
-                            RM {opDezeDag.monumentNumber ?? opDezeDag.id}
-                          </code>
-                        </small>
-                        <h3>{opDezeDag.title}</h3>
-                        <p className="address">
-                          ● {opDezeDag.address}
-                          {opDezeDag.postalCode || opDezeDag.place
-                            ? `, ${opDezeDag.postalCode} ${opDezeDag.place}`
-                            : ""}
-                        </p>
-                        <CardDescription text={opDezeDag.description} />
-                        <span>
-                          {opDezeDag.registrationDate
-                            ? `Ingeschreven ${opDezeDag.registrationDate}`
-                            : opDezeDag.period}
-                        </span>
-                      </div>
-                      <button
-                        className="open"
-                        type="button"
-                        onClick={() =>
-                          void executeSearch(
-                            opDezeDag.monumentNumber ?? opDezeDag.id,
-                          )
-                        }
-                        aria-label={`Details van ${opDezeDag.title}`}
-                      >
-                        →
-                      </button>
-                    </article>
-                  </div>
-                </section>
-              )}
-              <div className="start-panel">
-                <small>ZO WERKT HET</small>
-                <h2>Wat deze zoekmachine doet</h2>
-                <p>
-                  Doorzoeker doorzoekt de actuele CHO-dataset van de Rijksdienst
-                  voor het Cultureel Erfgoed en laat bij elk resultaat het
-                  gegevensveld zien waarin de zoekterm is gevonden.
-                </p>
-                <div>
-                  <article>
-                    <b>01</b>
-                    <h3>Zoek breed</h3>
-                    <p>
-                      Gebruik een nummer, plaats, functie, monumentaard of
-                      omschrijving.
-                    </p>
-                  </article>
-                  <article>
-                    <b>02</b>
-                    <h3>Matchbron per resultaat</h3>
-                    <p>
-                      Elk resultaat vermeldt de matchbron en de geregistreerde
-                      waarde.
-                    </p>
-                  </article>
-                  <article>
-                    <b>03</b>
-                    <h3>Controleer de bron</h3>
-                    <p>
-                      Bekijk functie, adres, geometrie, percelen en de canonieke
-                      RCE-link.
-                    </p>
-                  </article>
-                </div>
-              </div>
-            </>
+            <StartContent
+              item={opDezeDag}
+              onSearch={(searchQuery) => void executeSearch(searchQuery)}
+            />
+
           ) : remoteState === "loading" ? (
             <div className="search-loading" role="status" aria-live="polite">
               <div className="graph-traversal" aria-hidden="true">
