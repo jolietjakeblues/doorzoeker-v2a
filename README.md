@@ -183,3 +183,10 @@ zijn ingesteld. Handmatig bouwen en publiceren kan met:
 ```sh
 npm run deploy
 ```
+
+## Licentie
+
+De broncode van deze repository valt onder de [MIT-licentie](LICENSE). Dit
+geldt alleen voor de broncode: de RCE Linked Data die de applicatie bevraagt
+valt onder het eigen hergebruiksbeleid van de RCE/Kadaster, zie
+[Beheerbesluiten](docs/beheerbesluiten.md).

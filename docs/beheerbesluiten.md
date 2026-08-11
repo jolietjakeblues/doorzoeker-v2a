@@ -2,7 +2,8 @@
 
 Datum: 11 augustus 2026.
 
-Status: besluitvoorstel. Er zijn geen dependencies of licentiebestanden gewijzigd.
+Status: besluitvoorstel voor dependencies. De licentiekeuze is inmiddels
+gemaakt, zie hieronder.
 
 ## TypeScript 7, PR 6
 
@@ -34,16 +35,18 @@ oorzaak van configuratie- en pluginproblemen zichtbaar.
 
 ## Licentie
 
-Er is nu geen `LICENSE`-bestand.
+**Besluit (11 augustus 2026): MIT, rechthebbende `jolietjakeblues`.** Er is
+een `LICENSE`-bestand toegevoegd met deze keuze. Overwogen alternatieven:
 
 | Keuze | Geschikt wanneer | Belangrijk gevolg |
 | --- | --- | --- |
-| MIT | Ruim hergebruik gewenst is | Eenvoudige permissieve licentie zonder expliciete patentclausule |
+| MIT (gekozen) | Ruim hergebruik gewenst is | Eenvoudige permissieve licentie zonder expliciete patentclausule |
 | Apache-2.0 | Ruim hergebruik en expliciete patentvoorwaarden gewenst zijn | Meer tekst en voorwaarden dan MIT |
 | Geen openbare licentie | Hergebruik nog niet is toegestaan | Publieke broncode is niet automatisch vrij herbruikbaar |
 
-Voorstel: leg eerst het publicatiedoel en rechthebberschap vast. Voeg pas daarna
-een licentie toe.
+De MIT-licentie dekt uitsluitend de broncode van deze repository. De RCE
+Linked Data die de applicatie bevraagt valt onder het eigen hergebruiksbeleid
+van de RCE/Kadaster en wordt door dit besluit niet geraakt.
 
 ## Testaantallen in documentatie
 
