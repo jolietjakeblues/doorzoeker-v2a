@@ -7,6 +7,8 @@ in `lib/rce/sparql.ts`. Alle archeologische query's, parsers en relatietypes
 staan in `lib/rce/archaeology.ts`. Rijksmonumenten, werelderfgoed, gezichten,
 gebouwde complexen en BRK-percelen staan in `lib/rce/monuments.ts`. De
 publieke exports blijven via `lib/rce.ts` beschikbaar.
+Gedeelde resultaattypes staan in `lib/rce/types.ts`. Foto's, groenaanleg, MSP,
+gebeurtenissen en "Op deze dag" staan in `lib/rce/enrichment.ts`.
 URL-opbouw, history en `popstate` staan in `hooks/useSearchUrlState.ts`.
 
 ## Doel
@@ -60,6 +62,7 @@ te worden verspreid als props en callbacks voldoende zijn.
 3. Verplaats thesaurus- en conceptfuncties. Afgerond.
 4. Verplaats archeologie. Afgerond.
 5. Verplaats gebouwd erfgoed. Afgerond.
+5a. Verplaats gedeelde types en verrijkingen. Afgerond.
 6. Splits presentatiedelen uit `page.tsx`. Afgerond: `ResultsToolbar`,
    `StartContent`, `SearchResults`, `SearchFilters`, `HeritageDetailDialog` en
    de typespecifieke `HeritageRelationSections` zijn verplaatst.
