@@ -5,6 +5,7 @@ export type BrowseKind = "rijksmonument" | "archeologischterrein" | "onderzoeksg
 type ComplexMembersResponse = { members: ComplexMember[] };
 type OnderzoeksgebiedVerrijkingResponse = OnderzoeksgebiedAggregaten & { complexen: OnderzoeksgebiedComplex[]; vondstlocaties: OnderzoeksgebiedVondstlocatie[] };
 type OpDezeDagResponse = { monument: RceMonument | null };
+type VerrasMeResponse = { monument: RceMonument | null };
 
 export async function searchRceMonuments(query: string, signal?: AbortSignal, page = 1) {
   const requestScope = async (scope: string) => {
@@ -131,5 +132,17 @@ export async function fetchOpDezeDag(signal?: AbortSignal) {
   });
   if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
   const document = await response.json() as OpDezeDagResponse;
+  return document.monument;
+}
+
+// Op klik aangeroepen (geen idle-load, geen cache) - zie
+// docs/vertical-slices/014-verras-me.md.
+export async function fetchVerrasMe(signal?: AbortSignal) {
+  const response = await fetch("/api/rce/verras-me", {
+    headers: { Accept: "application/json" },
+    signal,
+  });
+  if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
+  const document = await response.json() as VerrasMeResponse;
   return document.monument;
 }

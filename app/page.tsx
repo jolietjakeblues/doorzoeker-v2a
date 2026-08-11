@@ -14,6 +14,7 @@ import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { useSelectedDetailEnrichment } from "@/hooks/useSelectedDetailEnrichment";
 import { useSearchState } from "@/hooks/useSearchState";
 import { useOpDezeDag } from "@/hooks/useOpDezeDag";
+import { useVerrasMe } from "@/hooks/useVerrasMe";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 export default function Home() {
@@ -83,6 +84,7 @@ export default function Home() {
   const { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud } =
     useSelectedDetailEnrichment(selected);
   const opDezeDag = useOpDezeDag();
+  const verrasMe = useVerrasMe();
   useBodyScrollLock(Boolean(selected));
   const detailDialogRef = useDialogFocus(Boolean(selected), () =>
     setSelected(null),
@@ -229,6 +231,9 @@ export default function Home() {
               <StartContent
                 item={opDezeDag}
                 onSearch={(searchQuery) => void executeSearch(searchQuery)}
+                verrasMeItem={verrasMe.item}
+                verrasMeLoading={verrasMe.loading}
+                onVerrasMe={verrasMe.trigger}
               />
             }
             onReset={reset}

@@ -80,6 +80,7 @@ import {
   parseVondstenDiscoveryResults,
   parseVondstenResults,
   pickOpDezeDagCandidate,
+  pickRandomCandidate,
   type ArcheologischTerrein,
   type ComplexMember,
   type RceMonument,
@@ -257,6 +258,31 @@ export async function fetchOpDezeDag(signal?: AbortSignal, now: Date = new Date(
     const candidatesDocument = await fetchSparql(buildOpDezeDagQuery(maandDag), signal);
     const candidates = parseOpDezeDagCandidates(candidatesDocument);
     const chosen = pickOpDezeDagCandidate(candidates, dayOfYear);
+    if (!chosen) continue;
+    const [monument] = await buildMonumentsFromNumbers([chosen], signal);
+    if (monument?.image?.url) return monument;
+  }
+
+  return undefined;
+}
+
+const VERRAS_ME_ATTEMPTS = 7;
+
+// "Verras me" (docs/vertical-slices/014-verras-me.md): op klik, geen
+// idle-load. Hergebruikt buildOpDezeDagQuery met een willekeurige maand-dag
+// in plaats van vandaag, en pickRandomCandidate in plaats van de
+// dagelijks-deterministische keuze - zo blijft de query dezelfde als "Op
+// deze dag" (gebouwd Rijksmonument met afbeelding), maar is de uitkomst per
+// aanroep anders. Niet elke maand-dag heeft kandidaten; zoals bij "Op deze
+// dag" wordt daarom een paar keer een andere maand-dag geprobeerd.
+export async function fetchVerrasMe(signal?: AbortSignal): Promise<RceMonument | undefined> {
+  for (let attempt = 0; attempt < VERRAS_ME_ATTEMPTS; attempt += 1) {
+    const month = 1 + Math.floor(Math.random() * 12);
+    const day = 1 + Math.floor(Math.random() * 28);
+    const maandDag = `${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const candidatesDocument = await fetchSparql(buildOpDezeDagQuery(maandDag), signal);
+    const candidates = parseOpDezeDagCandidates(candidatesDocument);
+    const chosen = pickRandomCandidate(candidates);
     if (!chosen) continue;
     const [monument] = await buildMonumentsFromNumbers([chosen], signal);
     if (monument?.image?.url) return monument;

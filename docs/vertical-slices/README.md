@@ -1,7 +1,8 @@
 # Status verticale slices
 
 Gecontroleerd op 11 augustus 2026 tegen de statussecties van de afzonderlijke
-documenten en de huidige testset.
+documenten en de huidige testset. Slice 014 is er na deze laatste controle
+nog bijgekomen.
 
 | Slice | Onderwerp | Status |
 | --- | --- | --- |
@@ -18,6 +19,7 @@ documenten en de huidige testset.
 | 011 | In de buurt | Plan, niet gebouwd |
 | 012 | Resultaten exporteren | Plan, niet gebouwd |
 | 013 | Lange omschrijvingen inkorten | Gebouwd en live geverifieerd |
+| 014 | "Verras me"-knop | Gebouwd, unit- en contracttests groen |
 
 ## Aandachtspunten
 

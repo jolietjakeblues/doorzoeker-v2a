@@ -234,3 +234,14 @@ export function pickOpDezeDagCandidate(candidates: OpDezeDagCandidate[], dayOfYe
     .sort((a, b) => a.localeCompare(b, "nl", { numeric: true }));
   return pool[dayOfYear % pool.length];
 }
+
+// "Verras me" (docs/vertical-slices/014-verras-me.md): hergebruikt dezelfde
+// kandidatenquery als "Op deze dag", maar met een willekeurige maand-dag in
+// plaats van de huidige kalenderdag, en een willekeurige in plaats van
+// deterministische keuze uit de kandidatenpool - elke aanroep moet een ander
+// monument kunnen opleveren, niet hetzelfde per dag.
+export function pickRandomCandidate(candidates: OpDezeDagCandidate[]): string | undefined {
+  if (!candidates.length) return undefined;
+  const pool = [...new Set(candidates.map((candidate) => candidate.monumentNumber))];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
