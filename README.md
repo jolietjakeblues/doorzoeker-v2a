@@ -124,6 +124,24 @@ De browser praat alleen met taakgerichte routes onder `/api`. Willekeurige
 SPARQL wordt niet vanuit de browser doorgestuurd. De serveradapters verzorgen
 validatie, time-outs, mapping, caching en foutafhandeling.
 
+## Architectuur
+
+`app/page.tsx` orkestreert de zoekpagina. Presentatie staat in losse
+componenten voor startinhoud, filters, resultaten, toolbar en details. De
+hooks scheiden URL-herstel, request-lifecycle, filtering en detailverrijking.
+
+`lib/rce.ts` is de publieke exportlaag. De RCE-logica is per domein verdeeld:
+
+- `lib/rce/monuments.ts`: gebouwd erfgoed en percelen;
+- `lib/rce/archaeology.ts`: archeologische objecten en relaties;
+- `lib/rce/terms.ts` en `lib/rce/concepts.ts`: thesauri en exacte conceptzoeking;
+- `lib/rce/enrichment.ts`: beeld, groenaanleg, MSP, gebeurtenissen en Op deze dag;
+- `lib/rce/types.ts`, `geometry.ts` en `sparql.ts`: gedeelde basis.
+
+Zie [Consolidatieplan](docs/consolidatieplan.md) voor de gemaakte grenzen en
+[Beheerbesluiten](docs/beheerbesluiten.md) voor de uitgestelde major-updates
+en de licentiekeuze.
+
 ## Nog niet gebouwd
 
 - ruimtelijke `ligt in`-relaties tussen Rijksmonumenten en

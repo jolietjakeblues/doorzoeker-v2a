@@ -14,7 +14,7 @@ Voor latere beoordeling:
 
 1. Gebruik een eigen testbranch.
 2. Werk alleen TypeScript en direct noodzakelijke compatibiliteitsdependencies bij.
-3. Draai typecheck, lint, build, 141 unit- en contracttests en 20 Playwright-tests.
+3. Draai typecheck, lint, build en de volledige unit-, contract- en Playwright-testsets.
 4. Controleer gewijzigde compilerdefaults en verwijderde opties.
 5. Voeg geen productwijzigingen aan dezelfde branch toe.
 
