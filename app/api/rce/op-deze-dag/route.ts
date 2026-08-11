@@ -2,26 +2,59 @@ import { fetchOpDezeDag } from "../../../../lib/server/rce-adapter.ts";
 
 export const runtime = "edge";
 
-// Het resultaat verandert maar één keer per kalenderdag (zelfde monument
-// voor iedereen die dag, zie fetchOpDezeDag) - een langere cache dan de
-// gewone zoekroutes is hier dus veilig en scheelt onnodige SPARQL-belasting.
-const CACHE_SECONDS = 21_600;
+const EMPTY_CACHE_SECONDS = 300;
+
+export function secondsUntilNextUtcDay(now = new Date()) {
+  const nextUtcDay = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() + 1,
+  );
+
+  return Math.max(1, Math.ceil((nextUtcDay - now.getTime()) / 1000));
+}
+
+function cacheControlForResult(now = new Date()) {
+  const sharedSeconds = secondsUntilNextUtcDay(now);
+  return `public, max-age=${Math.min(3600, sharedSeconds)}, s-maxage=${sharedSeconds}`;
+}
+
+function cacheControlForEmptyResult(now = new Date()) {
+  const sharedSeconds = Math.min(EMPTY_CACHE_SECONDS, secondsUntilNextUtcDay(now));
+  return `public, max-age=${Math.min(60, sharedSeconds)}, s-maxage=${sharedSeconds}`;
+}
 
 export async function GET(request: Request) {
   const startedAt = Date.now();
 
   try {
     const monument = await fetchOpDezeDag(request.signal);
-    if (!monument) return Response.json({ monument: null });
+    if (!monument) {
+      return Response.json({ monument: null }, {
+        headers: {
+          "Cache-Control": cacheControlForEmptyResult(),
+          "Server-Timing": `rce;dur=${Date.now() - startedAt}`,
+        },
+      });
+    }
 
     return Response.json({ monument }, {
       headers: {
-        "Cache-Control": `public, max-age=3600, s-maxage=${CACHE_SECONDS}`,
+        "Cache-Control": cacheControlForResult(),
         "Server-Timing": `rce;dur=${Date.now() - startedAt}`,
       },
     });
   } catch (error) {
     console.error(JSON.stringify({ event: "rce.op-deze-dag.error", durationMs: Date.now() - startedAt, message: error instanceof Error ? error.message : "unknown" }));
-    return Response.json({ error: "De RCE Linked Data-service is momenteel niet bereikbaar." }, { status: 502 });
+    return Response.json(
+      { error: "De RCE Linked Data-service is momenteel niet bereikbaar." },
+      {
+        status: 502,
+        headers: {
+          "Cache-Control": "no-store",
+          "Server-Timing": `rce;dur=${Date.now() - startedAt}`,
+        },
+      },
+    );
   }
 }

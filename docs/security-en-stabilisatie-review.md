@@ -2,7 +2,7 @@
 
 Datum: 11 augustus 2026.
 
-Status: inventarisatie. Er zijn geen routewijzigingen uitgevoerd.
+Status: inventarisatie, met ST-01 en ST-02 opgelost op 11 augustus 2026.
 
 ## Publieke routes
 
@@ -13,8 +13,8 @@ Status: inventarisatie. Er zijn geen routewijzigingen uitgevoerd.
 | `/api/rce/complex-members` | Exact CHO-complex-URI-patroon | 300 seconden gedeeld | Geen | 400 en 502 met logging | Invoer veilig begrensd |
 | `/api/rce/onderzoeksgebied-verrijking` | Exact CHO-onderzoeksgebied-URI-patroon | 300 seconden gedeeld | Geen | 400 en 502 met logging | Invoer veilig begrensd |
 | `/api/rce/vondstlocatie-inhoud` | Exact CHO-vondstlocatie-URI-patroon | 300 seconden gedeeld | Geen | 400 en 502 met logging | Invoer veilig begrensd |
-| `/api/rce/op-deze-dag` | Geen gebruikersinvoer | Vast 21600 seconden gedeeld | Geen | 502 met logging | TTL kan over UTC-middernacht lopen; lege respons heeft geen expliciete cachepolicy |
-| `/api/terms/suggest` | Minimaal 2 en maximaal 80 tekens | Lokale map, 300 seconden; succes-MISS heeft gedeelde cacheheaders | Geen | Valt open terug naar lege suggesties | Hits en uitval hebben geen consistente `Cache-Control`; lokale map is per isolate |
+| `/api/rce/op-deze-dag` | Geen gebruikersinvoer | Succes tot volgende UTC-dag; leeg maximaal 300 seconden | Geen | 502 met logging en `no-store` | Kalenderdagveilig; succes, leegte en uitval hebben expliciet cachegedrag |
+| `/api/terms/suggest` | Minimaal 2 en maximaal 80 tekens | Lokale map en gedeelde succescache, 300 seconden | Geen | Valt open terug naar lege suggesties met `no-store` | Hits en misses delen dezelfde cachepolicy; lokale map is per isolate |
 
 ## Securitybevindingen
 
@@ -45,17 +45,18 @@ gaan bevatten wanneer observability later wordt uitgebreid.
 
 ## Stabilisatiebevindingen
 
-### ST-01: “Op deze dag” is niet kalenderdagveilig gecachet
+### ST-01: “Op deze dag” is kalenderdagveilig gecachet, opgelost
 
-Een vaste gedeelde TTL van zes uur kan na UTC-middernacht tijdelijk het record
-van de vorige dag leveren. Bereken later de TTL tot de gekozen daggrens of
-varieer de cachekey per datum.
+De route berekent de gedeelde TTL tot de volgende UTC-middernacht. Een
+succesvol resultaat kan daardoor niet na de gekozen daggrens in de gedeelde
+cache blijven staan.
 
-### ST-02: lege en foutresponsen hebben niet overal bewust cachegedrag
+### ST-02: lege en foutresponsen hebben bewust cachegedrag, opgelost
 
-De lege “Op deze dag”-respons en uitval van termsuggesties krijgen geen
-expliciete cachepolicy. Leg per route vast of leegte en tijdelijke uitval wel
-of niet gedeeld gecachet mogen worden.
+De lege “Op deze dag”-respons krijgt een gedeelde TTL van maximaal vijf
+minuten, begrensd door de UTC-daggrens. Upstreamfouten en niet-zoekbare invoer
+krijgen `no-store`. Hits en misses van termsuggesties gebruiken dezelfde
+gedeelde succespolicy van vijf minuten.
 
 ### ST-03: lokale caches ruimen niet periodiek op
 
@@ -72,7 +73,7 @@ inhoudelijke TTL houden.
 ## Voorstel voor latere uitvoering
 
 1. Leg per route kosten, gewenste limiter en cachepolicy vast.
-2. Maak “Op deze dag” kalenderdagveilig en test de daggrens.
-3. Geef lege en tijdelijke foutresponsen bewuste headers.
-4. Voeg tests toe voor limietreset, cachehit, cachemiss en verlopen entries.
+2. Ruim verlopen lokale cachewaarden gericht op.
+3. Voeg tests toe voor verlopen entries.
+4. Voeg tests toe voor de limietreset.
 5. Beslis daarna pas of een platformlimiter nodig is.

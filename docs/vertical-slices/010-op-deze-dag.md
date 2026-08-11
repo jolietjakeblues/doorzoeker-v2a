@@ -104,8 +104,10 @@ plaats van een tekstlijst, doorklikbaar naar het volledige record.
 - Besloten: sorteer unieke rijksmonumentnummers en kies met de dag van het
   jaar een vaste index. De bindingvolgorde van de SPARQL-dienst heeft daardoor
   geen invloed op de dagelijkse keuze.
-- Cache-duur: tot middernacht (lokale tijd van de server) of een vaste
-  24-uurs TTL? Klein verschil, niet kritiek.
+- Besloten: cache een succesvol resultaat tot de volgende UTC-middernacht.
+  Cache een leeg resultaat maximaal vijf minuten, begrensd door diezelfde
+  daggrens. Cache een upstreamfout niet. Zo kan geen record van de vorige
+  kalenderdag uit de gedeelde cache komen.
 
 ## Acceptatiecriteria
 

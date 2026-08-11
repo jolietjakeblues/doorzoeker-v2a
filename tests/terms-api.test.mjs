@@ -5,6 +5,7 @@ import { GET } from "../app/api/terms/suggest/route.ts";
 test("returns no suggestions for one character without an upstream call", async () => {
   const response = await GET(new Request("https://doorzoeker.test/api/terms/suggest?q=w"));
   assert.deepEqual(await response.json(), { suggestions: [], unavailable: false });
+  assert.equal(response.headers.get("cache-control"), "no-store");
 });
 
 test("uses only the four CHO-related schemes in Referentienetwerk 2 for suggestions", async (context) => {
@@ -32,6 +33,13 @@ test("uses only the four CHO-related schemes in Referentienetwerk 2 for suggesti
   assert.equal(calls.length, 2);
   assert.ok(calls.some((url) => url.includes("datasets/thesauri/referentienetwerk")));
   assert.ok(calls.some((url) => url.includes("datasets/rce/cho")));
+  assert.equal(response.headers.get("cache-control"), "public, max-age=60, s-maxage=300");
+  assert.equal(response.headers.get("x-doorzoeker-cache"), "MISS");
+
+  const cachedResponse = await GET(new Request("https://doorzoeker.test/api/terms/suggest?q=woon"));
+  assert.equal(cachedResponse.headers.get("cache-control"), "public, max-age=60, s-maxage=300");
+  assert.equal(cachedResponse.headers.get("x-doorzoeker-cache"), "HIT");
+  assert.equal(calls.length, 2);
 });
 
 test("keeps suggestions available as text search when the usage check fails", async (context) => {
@@ -58,4 +66,5 @@ test("fails open when the RCE SPARQL-dienst niet bereikbaar is", async (context)
   const response = await GET(new Request("https://doorzoeker.test/api/terms/suggest?q=kerk"));
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { suggestions: [], unavailable: true });
+  assert.equal(response.headers.get("cache-control"), "no-store");
 });

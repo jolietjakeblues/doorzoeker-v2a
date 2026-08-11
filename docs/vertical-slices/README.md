@@ -14,7 +14,7 @@ documenten en de huidige testset.
 | 007 | Bouwgeschiedenis | Gebouwd en live geverifieerd |
 | 008 | Vergelijkbare Rijksmonumenten | Plan, niet gebouwd |
 | 009 | Architectportfolio | Gebouwd en live geverifieerd |
-| 010 | Op deze dag | Gebouwd; cachegedrag bij UTC-daggrens staat als stabilisatiepunt open |
+| 010 | Op deze dag | Gebouwd; cache verloopt veilig bij de volgende UTC-daggrens |
 | 011 | In de buurt | Plan, niet gebouwd |
 | 012 | Resultaten exporteren | Plan, niet gebouwd |
 | 013 | Lange omschrijvingen inkorten | Gebouwd en live geverifieerd |
