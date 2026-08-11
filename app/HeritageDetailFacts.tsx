@@ -32,9 +32,11 @@ function Status({ item }: { item: Item }) {
 export function HeritageDetailFacts({
   item,
   onConceptSearch,
+  onObjectSearch,
 }: {
   item: Item;
   onConceptSearch: (concept: Concept, field?: ConceptField) => void;
+  onObjectSearch: (number: string) => void;
 }) {
   const common = (
     <>
@@ -91,10 +93,10 @@ export function HeritageDetailFacts({
             <dd>{item.archaeologicalTraceCount}</dd>
           </div>
         ) : null}
-        {item.objectType === "Grondspoor" && item.parentObjectUrl ? (
+        {item.objectType === "Grondspoor" && item.parentObjectNumber ? (
           <div>
             <dt>Vondstlocatie</dt>
-            <dd><a href={item.parentObjectUrl} target="_blank" rel="noreferrer">{item.parentObjectLabel}</a></dd>
+            <dd><button type="button" className="concept-link" onClick={() => onObjectSearch(item.parentObjectNumber!)}>{item.parentObjectLabel}</button></dd>
           </div>
         ) : null}
         {item.objectType === "Vondst" && item.archaeologicalFindCount ? (
@@ -109,8 +111,8 @@ export function HeritageDetailFacts({
         {item.objectType === "Vondst" && item.archaeologicalCondition ? (
           <div><dt>Toestand</dt><dd><button type="button" className="concept-link" onClick={() => onConceptSearch(item.archaeologicalCondition!, "toestand")} title={`Zoek alle vondsten met toestand ${item.archaeologicalCondition.label}`}>{item.archaeologicalCondition.label}</button>{item.archaeologicalCondition.schemes?.length ? ` (${item.archaeologicalCondition.schemes.map((scheme) => scheme.label).join(", ")})` : ""}</dd></div>
         ) : null}
-        {item.objectType === "Vondst" && item.parentObjectUrl ? (
-          <div><dt>Vondstlocatie</dt><dd><a href={item.parentObjectUrl} target="_blank" rel="noreferrer">{item.parentObjectLabel}</a></dd></div>
+        {item.objectType === "Vondst" && item.parentObjectNumber ? (
+          <div><dt>Vondstlocatie</dt><dd><button type="button" className="concept-link" onClick={() => onObjectSearch(item.parentObjectNumber!)}>{item.parentObjectLabel}</button></dd></div>
         ) : null}
         {item.objectType === "Archeologisch complex" && item.archaeologicalComplexType ? (
           <div><dt>Archeologisch complextype</dt><dd><button type="button" className="concept-link" onClick={() => onConceptSearch(item.archaeologicalComplexType!, "archeologischcomplextype")} title={`Zoek alle archeologische complexen van het type ${item.archaeologicalComplexType.label}`}>{item.archaeologicalComplexType.label}</button>{item.archaeologicalComplexType.schemes?.length ? ` (${item.archaeologicalComplexType.schemes.map((scheme) => scheme.label).join(", ")})` : ""}</dd></div>

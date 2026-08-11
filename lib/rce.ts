@@ -89,6 +89,7 @@ export type RceMonument = {
   archaeologicalTypeSchemes?: { uri: string; label: string }[];
   parentObjectUrl?: string;
   parentObjectLabel?: string;
+  parentObjectNumber?: string;
   archaeologicalFindCount?: number;
   archaeologicalFindTypes?: ArchaeologyConcept[];
   archaeologicalMaterials?: ArchaeologyConcept[];

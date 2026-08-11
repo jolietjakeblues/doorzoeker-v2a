@@ -102,6 +102,7 @@ export function useSearchState() {
     if (!urlStateHydrated.current) return;
     const params = new URLSearchParams();
     if (active) params.set("q", active);
+    if (activeBrowseKind) params.set("browse", activeBrowseKind);
     if (activeConceptUri) params.set("concept", activeConceptUri);
     if (activeConceptVeld) params.set("veld", activeConceptVeld);
     if (selectedTerm) {
@@ -134,6 +135,7 @@ export function useSearchState() {
     );
   }, [
     active,
+    activeBrowseKind,
     activeConceptUri,
     activeConceptVeld,
     selectedTerm,
@@ -474,7 +476,9 @@ export function useSearchState() {
   function restoreUrlState(initial: ReturnType<typeof readUrlState>) {
     restoringHistory.current = true;
     pendingSelectedId.current = initial.selectedId;
-    if (initial.conceptUri && initial.conceptField)
+    if (initial.browseKind)
+      void browseType(initial.browseKind);
+    else if (initial.conceptUri && initial.conceptField)
       void executeConceptSearch(
         { uri: initial.conceptUri, label: initial.query || "Gekozen begrip" },
         initial.conceptField,

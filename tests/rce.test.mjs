@@ -1039,11 +1039,13 @@ test("parses a ground trace as a standalone CHO object without invented geometry
   assert.equal(discovery[0].monumentNumber, "10000135");
   const query = buildGrondsporenDetailsQuery(["10000135"]);
   assert.match(query, /a ceo:Grondsporen/);
+  assert.match(query, /cultuurhistorischObjectnummer \?vondstlocatieChoiValue/);
   assert.doesNotMatch(query, /heeftGeometrie/);
-  const [record] = parseGrondsporenResults({ results: { bindings: [{ grondspoor: { value: "grondspoor:10000135" }, choi: { value: "10000135" }, aantal: { value: "1" }, omschrijving: { value: "Karrespoor" }, typeConcept: { value: "rn:grondspoor" }, typeLabel: { value: "onbekend" }, vondstlocatie: { value: "vondstlocatie:1" }, woonplaats: { value: "Brunssum" } }] } });
+  const [record] = parseGrondsporenResults({ results: { bindings: [{ grondspoor: { value: "grondspoor:10000135" }, choi: { value: "10000135" }, aantal: { value: "1" }, omschrijving: { value: "Karrespoor" }, typeConcept: { value: "rn:grondspoor" }, typeLabel: { value: "onbekend" }, vondstlocatie: { value: "vondstlocatie:1" }, vondstlocatieChoi: { value: "6175362" }, woonplaats: { value: "Brunssum" } }] } });
   assert.equal(record.name, "Karrespoor");
   assert.equal(record.archaeologicalTraceCount, 1);
   assert.equal(record.place, "Brunssum");
+  assert.equal(record.parentObjectNumber, "6175362");
   assert.equal(record.wkt, undefined);
 });
 
@@ -1061,8 +1063,10 @@ test("builds optimized standalone find searches and exact RN2 material searches"
 test("parses standalone finds with type, material, condition and parent location", () => {
   const discovery = parseVondstenDiscoveryResults({ results: { bindings: [{ choi: { value: "10015422" }, match: { value: "messing" } }] } }, "materiaal vondst", "messing");
   assert.equal(discovery[0].monumentNumber, "10015422");
-  assert.match(buildVondstenDetailsQuery(["10015422"]), /heeftMateriaal\/ceo:heeftMateriaalNaam/);
-  const base = { vondst: { value: "vondst:10015422" }, choi: { value: "10015422" }, aantal: { value: "1" }, omschrijving: { value: "Een messing riemtong" }, vondstlocatie: { value: "locatie:1" }, vondstlocatieNaam: { value: "Collse Watermolen" }, woonplaats: { value: "Eindhoven" } };
+  const query = buildVondstenDetailsQuery(["10015422"]);
+  assert.match(query, /heeftMateriaal\/ceo:heeftMateriaalNaam/);
+  assert.match(query, /cultuurhistorischObjectnummer \?vondstlocatieChoi/);
+  const base = { vondst: { value: "vondst:10015422" }, choi: { value: "10015422" }, aantal: { value: "1" }, omschrijving: { value: "Een messing riemtong" }, vondstlocatie: { value: "locatie:1" }, vondstlocatieChoi: { value: "6175445" }, vondstlocatieNaam: { value: "Collse Watermolen" }, woonplaats: { value: "Eindhoven" } };
   const [record] = parseVondstenResults({ results: { bindings: [
     { ...base, conceptSoort: { value: "type" }, concept: { value: "rn:type" }, conceptLabel: { value: "riemtong - langwerpig" } },
     { ...base, conceptSoort: { value: "materiaal" }, concept: { value: "rn:messing" }, conceptLabel: { value: "messing" } },
@@ -1072,6 +1076,7 @@ test("parses standalone finds with type, material, condition and parent location
   assert.equal(record.archaeologicalMaterials[0].label, "messing");
   assert.equal(record.archaeologicalCondition.label, "onbekend");
   assert.equal(record.parentObjectLabel, "Collse Watermolen");
+  assert.equal(record.parentObjectNumber, "6175445");
   assert.equal(record.wkt, undefined);
 });
 
