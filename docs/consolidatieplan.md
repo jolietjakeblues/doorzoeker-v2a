@@ -4,8 +4,9 @@ Status: in uitvoering. De pure geometriefuncties staan in
 `lib/rce/geometry.ts`. De thesaurusfuncties staan in `lib/rce/terms.ts` en de
 exacte conceptfuncties in `lib/rce/concepts.ts`. Gedeelde SPARQL-escaping staat
 in `lib/rce/sparql.ts`. Alle archeologische query's, parsers en relatietypes
-staan in `lib/rce/archaeology.ts`. De publieke exports blijven via `lib/rce.ts`
-beschikbaar.
+staan in `lib/rce/archaeology.ts`. Rijksmonumenten, werelderfgoed, gezichten,
+gebouwde complexen en BRK-percelen staan in `lib/rce/monuments.ts`. De
+publieke exports blijven via `lib/rce.ts` beschikbaar.
 
 ## Doel
 
@@ -57,7 +58,7 @@ te worden verspreid als props en callbacks voldoende zijn.
 2. Verplaats pure geometriefuncties zonder gedragswijziging. Afgerond.
 3. Verplaats thesaurus- en conceptfuncties. Afgerond.
 4. Verplaats archeologie. Afgerond.
-5. Verplaats gebouwd erfgoed.
+5. Verplaats gebouwd erfgoed. Afgerond.
 6. Splits presentatiedelen uit `page.tsx`.
 7. Splits hooks pas nadat componentgrenzen stabiel zijn.
 8. Draai na iedere stap typecheck, lint, unittests en Playwright.
