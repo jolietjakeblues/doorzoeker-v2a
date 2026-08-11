@@ -154,6 +154,7 @@ export function HeritageDetailDialog({
               onConceptSearch={(concept, field) =>
                 void executeConceptSearch(concept, field)
               }
+              onObjectSearch={(number) => void executeSearch(number)}
             />
             {selected.wkt && (
               <div>

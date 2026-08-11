@@ -77,6 +77,7 @@ export type Item = {
   archaeologicalTypeSchemes?: { uri: string; label: string }[];
   parentObjectUrl?: string;
   parentObjectLabel?: string;
+  parentObjectNumber?: string;
   archaeologicalFindCount?: number;
   archaeologicalFindTypes?: { uri: string; label: string; schemes?: { uri: string; label: string }[] }[];
   archaeologicalMaterials?: { uri: string; label: string; schemes?: { uri: string; label: string }[] }[];
@@ -140,6 +141,7 @@ export function linkedConcepts(item: Item): LinkedConcept[] {
   return concepts;
 }
 export type MapViewport = { lat: number; lng: number; zoom: number };
+export type BrowseKind = "rijksmonument" | "archeologischterrein" | "onderzoeksgebied" | "vondstlocatie" | "archeologischcomplex" | "vondsten" | "grondsporen" | "werelderfgoed" | "gezicht" | "complex";
 export type SelectedTermIdentity = {
   uri: string;
   label: string;
@@ -149,6 +151,7 @@ export type SelectedTermIdentity = {
 
 export const EMPTY_URL_STATE = {
   query: "",
+  browseKind: undefined as BrowseKind | undefined,
   conceptUri: "",
   conceptField: undefined as ConceptField | undefined,
   selectedTerm: undefined as SelectedTermIdentity | undefined,
@@ -360,6 +363,7 @@ export function toItem(record: RceMonument): Item {
     archaeologicalTypeSchemes: record.archaeologicalTypeSchemes,
     parentObjectUrl: record.parentObjectUrl,
     parentObjectLabel: record.parentObjectLabel,
+    parentObjectNumber: record.parentObjectNumber,
     archaeologicalFindCount: record.archaeologicalFindCount,
     archaeologicalFindTypes: record.archaeologicalFindTypes,
     archaeologicalMaterials: record.archaeologicalMaterials,
@@ -386,6 +390,20 @@ export function toItem(record: RceMonument): Item {
 
 export function parseUrlState(search: string) {
   const params = new URLSearchParams(search);
+  const browse = params.get("browse");
+  const parsedBrowseKind: BrowseKind | undefined =
+    browse === "rijksmonument" ||
+    browse === "archeologischterrein" ||
+    browse === "onderzoeksgebied" ||
+    browse === "vondstlocatie" ||
+    browse === "archeologischcomplex" ||
+    browse === "vondsten" ||
+    browse === "grondsporen" ||
+    browse === "werelderfgoed" ||
+    browse === "gezicht" ||
+    browse === "complex"
+      ? browse
+      : undefined;
   const objectType = params.get("soort");
   const monumentAard = params.get("aard");
   const province = params.get("provincie");
@@ -436,6 +454,7 @@ export function parseUrlState(search: string) {
       : undefined;
   return {
     query: params.get("q") ?? "",
+    browseKind: parsedBrowseKind,
     conceptUri: params.get("concept") ?? "",
     conceptField: parsedConceptField,
     selectedTerm,

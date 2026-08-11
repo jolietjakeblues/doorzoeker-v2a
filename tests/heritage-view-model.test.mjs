@@ -131,6 +131,15 @@ test("keeps old rm links working while new links use object", () => {
   assert.equal(parseUrlState("?rm=36046").selectedId, "36046");
 });
 
+test("restores a collection browse from the URL", () => {
+  const state = parseUrlState(
+    "?q=Rijksmonumenten&browse=rijksmonument&soort=Rijksmonument",
+  );
+  assert.equal(state.query, "Rijksmonumenten");
+  assert.equal(state.browseKind, "rijksmonument");
+  assert.equal(state.objectType, "Rijksmonument");
+});
+
 test("restores a valid map position and ignores invalid coordinates", () => {
   assert.deepEqual(
     parseUrlState("?view=map&lat=51.52001&lng=5.07002&zoom=13").mapViewport,

@@ -519,6 +519,7 @@ SELECT ?grondspoor ?choi
  (SAMPLE(?typeConceptValue) AS ?typeConcept)
  (SAMPLE(STR(?typeLabelValue)) AS ?typeLabel)
  (SAMPLE(?vondstlocatieValue) AS ?vondstlocatie)
+ (SAMPLE(STR(?vondstlocatieChoiValue)) AS ?vondstlocatieChoi)
  (SAMPLE(STR(?vondstlocatieNaamValue)) AS ?vondstlocatieNaam)
  (SAMPLE(STR(?woonplaatsValue)) AS ?woonplaats)
  (SAMPLE(STR(?registratiedatumValue)) AS ?registratiedatum)
@@ -531,6 +532,7 @@ WHERE {
   OPTIONAL { ?grondspoor ceo:heeftType/ceo:heeftTypeNaam ?typeConceptValue . ?typeConceptValue skos:prefLabel ?typeLabelValue . }
   OPTIONAL {
    ?grondspoor ceo:ligtInObject ?vondstlocatieValue .
+   OPTIONAL { ?vondstlocatieValue ceo:cultuurhistorischObjectnummer ?vondstlocatieChoiValue . }
    OPTIONAL { ?vondstlocatieValue ceo:heeftLocatieAanduiding/ceo:locatienaam ?vondstlocatieNaamValue . }
    OPTIONAL { ?vondstlocatieValue ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?woonplaatsValue . }
   }
@@ -571,6 +573,7 @@ export function parseGrondsporenResults(document: unknown): RceMonument[] {
       archaeologicalTypeConceptUri: binding.typeConcept?.value,
       parentObjectUrl: binding.vondstlocatie?.value,
       parentObjectLabel: parentName && parentName !== "-" ? parentName : "Bijbehorende vondstlocatie",
+      parentObjectNumber: binding.vondstlocatieChoi?.value,
     };
   });
 }
@@ -626,7 +629,7 @@ export function buildVondstenDetailsQuery(choNumbers: string[]) {
   const values = choNumbers.map((number) => `"${escapeSparqlString(number)}"`).join(" ");
   return `PREFIX ceo: <${CEO}>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-SELECT ?vondst ?choi ?archisVondstnummer ?aantal ?omschrijving ?registratiedatum ?vondstlocatie ?vondstlocatieNaam ?woonplaats ?conceptSoort ?concept ?conceptLabel WHERE {
+SELECT ?vondst ?choi ?archisVondstnummer ?aantal ?omschrijving ?registratiedatum ?vondstlocatie ?vondstlocatieChoi ?vondstlocatieNaam ?woonplaats ?conceptSoort ?concept ?conceptLabel WHERE {
  GRAPH <${INSTANCES_GRAPH}> {
   ?vondst a ceo:Vondsten ; ceo:cultuurhistorischObjectnummer ?choi .
   VALUES ?choi { ${values} }
@@ -636,6 +639,7 @@ SELECT ?vondst ?choi ?archisVondstnummer ?aantal ?omschrijving ?registratiedatum
   OPTIONAL { ?vondst ceo:registratiedatum ?registratiedatum . }
   OPTIONAL {
    ?vondst ceo:ligtInObject ?vondstlocatie .
+   OPTIONAL { ?vondstlocatie ceo:cultuurhistorischObjectnummer ?vondstlocatieChoi . }
    OPTIONAL { ?vondstlocatie ceo:heeftLocatieAanduiding/ceo:locatienaam ?vondstlocatieNaam . }
    OPTIONAL { ?vondstlocatie ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?woonplaats . }
   }
@@ -675,6 +679,7 @@ export function parseVondstenResults(document: unknown): RceMonument[] {
       archaeologicalFindTypes: [], archaeologicalMaterials: [], archaeologicalStyles: [],
       parentObjectUrl: binding.vondstlocatie?.value,
       parentObjectLabel: binding.vondstlocatieNaam?.value && binding.vondstlocatieNaam.value !== "-" ? binding.vondstlocatieNaam.value : "Bijbehorende vondstlocatie",
+      parentObjectNumber: binding.vondstlocatieChoi?.value,
     };
     const concept = binding.concept?.value && binding.conceptLabel?.value ? { uri: binding.concept.value, label: binding.conceptLabel.value } : undefined;
     if (concept && binding.conceptSoort?.value === "type") add(record.archaeologicalFindTypes!, concept);

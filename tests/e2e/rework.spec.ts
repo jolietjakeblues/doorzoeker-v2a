@@ -277,6 +277,8 @@ test("Rijksmonumenten zijn per 25 te doorbladeren", async ({ page }) => {
   });
 
   await page.getByRole("button", { name: "Rijksmonumenten", exact: true }).click();
+  await expect(page).toHaveURL(/browse=rijksmonument/);
+  await page.reload();
   await expect(page.getByRole("heading", { name: "25 resultaten voor “Rijksmonumenten”" })).toBeVisible();
   await page.getByRole("button", { name: "Laad 25 volgende resultaten" }).click();
   await expect(page.getByRole("heading", { name: "27 resultaten voor “Rijksmonumenten”" })).toBeVisible();
@@ -329,7 +331,7 @@ test("een grondspoor toont aantal, RN2-bron en bijbehorende vondstlocatie", asyn
     description: "Karrespoor", monumentNature: "grondsporen", archaeologicalTraceCount: 1, archaeologicalType: "onbekend",
     archaeologicalTypeConceptUri: "https://data.cultureelerfgoed.nl/term/id/rn/2/type",
     archaeologicalTypeSchemes: [{ uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/ais", label: "Archeologisch Informatie Systeem" }],
-    parentObjectUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/vondstlocatie/6175362", parentObjectLabel: "Bijbehorende vondstlocatie",
+    parentObjectUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/vondstlocatie/6175362", parentObjectLabel: "Bijbehorende vondstlocatie", parentObjectNumber: "6175362",
     matchSource: "omschrijving (grondspoor)", matchedText: "Karrespoor", matchScore: 20,
   }], page: 1, hasMore: false } }));
   await page.getByRole("combobox", { name: "Zoeken" }).fill("Karrespoor");
@@ -338,6 +340,8 @@ test("een grondspoor toont aantal, RN2-bron en bijbehorende vondstlocatie", asyn
   await expect(page.getByText("Archeologisch grondspoor", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("onbekend (Archeologisch Informatie Systeem)", { exact: true })).toBeVisible();
   await expect(page.getByText("Bijbehorende vondstlocatie", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Bijbehorende vondstlocatie", exact: true }).click();
+  await expect(page).toHaveURL(/q=6175362/);
 });
 
 test("materiaal van een vondst zoekt exact verder via de RN2-URI", async ({ page }) => {
