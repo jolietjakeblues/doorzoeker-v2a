@@ -992,38 +992,36 @@ test("builds a query on datumInschrijvingInMonumentenregister, not the unsuitabl
   const query = buildOpDezeDagQuery("08-10");
   assert.match(query, /ceo:datumInschrijvingInMonumentenregister \?ins/);
   assert.match(query, /FILTER\(SUBSTR\(STR\(\?ins\), 6, 5\) = "08-10"\)/);
-  assert.match(query, /EXISTS \{ GRAPH <https:\/\/linkeddata\.cultureelerfgoed\.nl\/graph\/image-1> \{ \?image ceo:rijksmonumentnummer \?rmnr \} \}/);
+  assert.match(query, /SELECT DISTINCT \?rmnr/);
+  assert.match(query, /ceo:heeftMonumentAard <https:\/\/data\.cultureelerfgoed\.nl\/term\/id\/rn\/2\/fc966a68-8863-4970-a83e-110f96006c21>/);
+  assert.match(query, /PREFIX foaf: <http:\/\/xmlns\.com\/foaf\/0\.1\/>/);
+  assert.match(query, /\?image ceo:rijksmonumentnummer \?rmnr ; foaf:depiction \?depiction \./);
   assert.doesNotMatch(query, /heeftGebeurtenis/);
 });
 
-test("parses op-deze-dag candidates including whether each has a foto", () => {
+test("parses only the built, pictured candidates returned by the constrained query", () => {
   const document = { results: { bindings: [
-    { rmnr: { value: "36046" }, heeftFoto: { value: "true" } },
-    { rmnr: { value: "45708" }, heeftFoto: { value: "false" } },
+    { rmnr: { value: "36046" } },
+    { rmnr: { value: "45708" } },
   ] } };
   assert.deepEqual(parseOpDezeDagCandidates(document), [
-    { monumentNumber: "36046", heeftFoto: true },
-    { monumentNumber: "45708", heeftFoto: false },
+    { monumentNumber: "36046" },
+    { monumentNumber: "45708" },
   ]);
   assert.deepEqual(parseOpDezeDagCandidates({ results: { bindings: [] } }), []);
   assert.deepEqual(parseOpDezeDagCandidates({}), []);
 });
 
-test("picks a candidate with a foto over one without, deterministically for the same dayOfYear", () => {
+test("picks a built candidate with an image deterministically", () => {
   const candidates = [
-    { monumentNumber: "zonder-foto-1", heeftFoto: false },
-    { monumentNumber: "met-foto-1", heeftFoto: true },
-    { monumentNumber: "met-foto-2", heeftFoto: true },
+    { monumentNumber: "20" },
+    { monumentNumber: "3" },
+    { monumentNumber: "20" },
   ];
   const chosen = pickOpDezeDagCandidate(candidates, 222);
-  assert.ok(["met-foto-1", "met-foto-2"].includes(chosen));
+  assert.ok(["3", "20"].includes(chosen));
   assert.equal(pickOpDezeDagCandidate(candidates, 222), chosen);
-});
-
-test("falls back to the full candidate list when none has a foto", () => {
-  const candidates = [{ monumentNumber: "zonder-foto-1", heeftFoto: false }, { monumentNumber: "zonder-foto-2", heeftFoto: false }];
-  const chosen = pickOpDezeDagCandidate(candidates, 1);
-  assert.ok(["zonder-foto-1", "zonder-foto-2"].includes(chosen));
+  assert.equal(pickOpDezeDagCandidate([...candidates].reverse(), 222), chosen);
 });
 
 test("builds bounded ground-trace searches with exact CHO numbers", () => {

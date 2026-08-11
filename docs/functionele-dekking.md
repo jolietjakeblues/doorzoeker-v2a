@@ -114,8 +114,8 @@ houdt daarom de volgende grens aan:
 | Gebouwde Rijksmonumenten | Vondsten |
 | Archeologische Rijksmonumenten | Vondstlocaties |
 | Complexen van Rijksmonumenten | Archeologische complexen |
-| Grondsporen | Archeologische terreinen |
-| Archeologische onderzoeksgebieden | |
+| Archeologische onderzoeksgebieden | Archeologische terreinen |
+| | Grondsporen |
 
 `heeftGeometrie` in de ontologie betekent dus niet dat iedere klasse of ieder
 record een geometrie in de publieke data heeft. Doorzoeker maakt geen
