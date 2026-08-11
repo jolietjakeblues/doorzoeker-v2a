@@ -1,6 +1,7 @@
 import { browseRceObjects, searchByActorConcept, searchByArcheologischeComplexTypeConcept, searchByArcheologischeWaarderingConcept, searchByFunctieConcept, searchByGebeurtenisConcept, searchByMonumentAardConcept, searchByVondstenConcept, searchRceMonuments } from "../../../../lib/server/rce-adapter.ts";
 import { CONCEPT_URI_PATTERN } from "../concept/route.ts";
 import { pruneExpiredEntries } from "../../../../lib/server/expiring-map.ts";
+import { consumeFixedWindow, type RateLimitEntry } from "../../../../lib/server/fixed-window-rate-limit.ts";
 
 type ConceptVeld = "functie" | "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype";
 
@@ -24,7 +25,7 @@ const RATE_LIMIT = 30;
 // locaties verspreiden, elk met hun eigen lege Map. Een gebruiker kan dus in
 // werkelijkheid ruimschoots boven RATE_LIMIT/minuut komen. Voor een echte
 // globale limiet is Cloudflare Rate Limiting of een Durable Object nodig.
-const requests = new Map<string, { count: number; resetAt: number }>();
+const requests = new Map<string, RateLimitEntry>();
 // Zelfde beperking: dit is een microcache per isolate, geen gedeelde cache.
 // caches.default (readCache/writeCache hieronder) is de laag die dat wél is
 // en blijft leidend; deze Map bespaart alleen een edge-cache-lookup binnen
@@ -36,15 +37,12 @@ function clientId(request: Request) {
 }
 
 function consumeRateLimit(id: string, now = Date.now()) {
-  if (requests.size > 5_000) requests.clear();
-  const current = requests.get(id);
-  if (!current || current.resetAt <= now) {
-    requests.set(id, { count: 1, resetAt: now + RATE_WINDOW_MS });
-    return true;
-  }
-  if (current.count >= RATE_LIMIT) return false;
-  current.count += 1;
-  return true;
+  return consumeFixedWindow(requests, id, {
+    limit: RATE_LIMIT,
+    maxEntries: 5_000,
+    now,
+    windowMs: RATE_WINDOW_MS,
+  });
 }
 
 function cacheStore(): Cache | undefined {

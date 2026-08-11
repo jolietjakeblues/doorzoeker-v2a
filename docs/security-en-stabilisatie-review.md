@@ -32,10 +32,10 @@ niet routebreed vastgelegd.
 
 ### S-03: de huidige limiter is per Worker-isolate
 
-De code documenteert deze beperking correct. De map wordt bij meer dan 5000
-identiteiten volledig gewist. Dit begrenst geheugen, maar creëert een moment
-waarop alle lokale limieten tegelijk verdwijnen. Voor globale afdwinging is
-platformondersteuning of gedeelde state nodig.
+De code documenteert deze beperking correct. Bij 5000 identiteiten ruimt de
+limiter eerst verlopen vensters op. Blijft de map vol, dan verdwijnt alleen de
+oudste client. Hierdoor vervallen niet langer alle lokale limieten tegelijk.
+Voor globale afdwinging blijft platformondersteuning of gedeelde state nodig.
 
 ### S-04: foutmeldingen lekken geen upstreamdetails naar de gebruiker
 
@@ -73,5 +73,4 @@ inhoudelijke TTL houden.
 ## Voorstel voor latere uitvoering
 
 1. Leg per route kosten, gewenste limiter en cachepolicy vast.
-2. Voeg tests toe voor de limietreset.
-3. Beslis daarna pas of een platformlimiter nodig is.
+2. Beslis of een platformlimiter nodig is.
