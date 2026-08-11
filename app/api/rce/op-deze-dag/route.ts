@@ -1,4 +1,5 @@
 import { fetchOpDezeDag } from "../../../../lib/server/rce-adapter.ts";
+import { NO_STORE, sharedCacheControl } from "../../../../lib/server/http-cache.ts";
 
 export const runtime = "edge";
 
@@ -16,12 +17,12 @@ export function secondsUntilNextUtcDay(now = new Date()) {
 
 function cacheControlForResult(now = new Date()) {
   const sharedSeconds = secondsUntilNextUtcDay(now);
-  return `public, max-age=${Math.min(3600, sharedSeconds)}, s-maxage=${sharedSeconds}`;
+  return sharedCacheControl({ browserSeconds: Math.min(3600, sharedSeconds), sharedSeconds });
 }
 
 function cacheControlForEmptyResult(now = new Date()) {
   const sharedSeconds = Math.min(EMPTY_CACHE_SECONDS, secondsUntilNextUtcDay(now));
-  return `public, max-age=${Math.min(60, sharedSeconds)}, s-maxage=${sharedSeconds}`;
+  return sharedCacheControl({ browserSeconds: Math.min(60, sharedSeconds), sharedSeconds });
 }
 
 export async function GET(request: Request) {
@@ -51,7 +52,7 @@ export async function GET(request: Request) {
       {
         status: 502,
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control": NO_STORE,
           "Server-Timing": `rce;dur=${Date.now() - startedAt}`,
         },
       },

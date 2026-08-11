@@ -1,10 +1,10 @@
 import { resolveConcept } from "../../../../lib/server/referentienetwerk-adapter.ts";
+import { CACHE_POLICY, sharedCacheControl } from "../../../../lib/server/http-cache.ts";
 
 export const runtime = "edge";
 
 // Concept-metadata (label, scheme, broader) verandert zelden - langere cache
 // dan de gewone zoekroutes is hier veilig.
-const CACHE_SECONDS = 3600;
 // Alleen bekende, publieke term-namespaces toestaan, geen willekeurige
 // gebruikersinput: de query interpoleert deze waarde direct in een SPARQL
 // <...>-node, dus een waarde met een ">" erin zou een injectie mogelijk
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
 
     return Response.json(concept, {
       headers: {
-        "Cache-Control": `public, max-age=300, s-maxage=${CACHE_SECONDS}`,
+        "Cache-Control": sharedCacheControl(CACHE_POLICY.conceptDetails),
         "Server-Timing": `rn;dur=${Date.now() - startedAt}`,
       },
     });

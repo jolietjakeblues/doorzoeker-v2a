@@ -2,7 +2,8 @@
 
 Datum: 11 augustus 2026.
 
-Status: inventarisatie, met ST-01 en ST-02 opgelost op 11 augustus 2026.
+Status: uitgevoerd. De stabilisatiepunten en het routebrede limiterbesluit zijn
+op 11 augustus 2026 vastgelegd.
 
 ## Publieke routes
 
@@ -24,18 +25,21 @@ Routes die URI's in SPARQL gebruiken accepteren alleen bekende namespaces en
 exacte CHO-patronen. De zoekroute gebruikt allowlists voor conceptvelden,
 browsecollecties en scopes. Dit beperkt injectierisico.
 
-### S-02: rate limiting beschermt alleen de zoekroute
+### S-02: limiterbeleid is per route vastgelegd
 
-Andere routes kunnen eveneens dure upstreamquery's uitvoeren. Het ontbreken
-van een limiter is niet automatisch een kwetsbaarheid, maar het beleid is nu
-niet routebreed vastgelegd.
+`docs/api-beleid.md` legt per route querykosten, cache en limiterbesluit vast.
+De overige routes krijgen nu geen limiter door hun exacte invoer, begrensde
+query's en gedeelde cache. Termsuggesties worden heroverwogen als metingen
+bronbelasting of misbruik tonen.
 
 ### S-03: de huidige limiter is per Worker-isolate
 
-De code documenteert deze beperking correct. De map wordt bij meer dan 5000
-identiteiten volledig gewist. Dit begrenst geheugen, maar creëert een moment
-waarop alle lokale limieten tegelijk verdwijnen. Voor globale afdwinging is
-platformondersteuning of gedeelde state nodig.
+De code documenteert deze beperking correct. Bij 5000 identiteiten ruimt de
+limiter eerst verlopen vensters op. Blijft de map vol, dan verdwijnt alleen de
+oudste client. Hierdoor vervallen niet langer alle lokale limieten tegelijk.
+De Cloudflare-binding is eveneens lokaal per Cloudflare-locatie. Zonder
+account- of API-sleutel ontbreekt bovendien een geschikte stabiele sleutel.
+Daarom is bewust besloten die binding nu niet toe te voegen.
 
 ### S-04: foutmeldingen lekken geen upstreamdetails naar de gebruiker
 
@@ -58,22 +62,22 @@ minuten, begrensd door de UTC-daggrens. Upstreamfouten en niet-zoekbare invoer
 krijgen `no-store`. Hits en misses van termsuggesties gebruiken dezelfde
 gedeelde succespolicy van vijf minuten.
 
-### ST-03: lokale caches ruimen niet periodiek op
+### ST-03: lokale caches ruimen verlopen waarden op, opgelost
 
-De zoekcache en termcache verwijderen het oudste ingevoegde item bij hun
-maximum. Verlopen waarden blijven tot een volgende lookup of overschrijding
-staan. De structuren zijn wel begrensd tot respectievelijk 500 en 250 entries.
+De zoekcache en termcache verwijderen bij een geldig verzoek eerst alle
+verlopen waarden. Daarna geldt nog steeds de vaste bovengrens van
+respectievelijk 500 en 250 entries.
 
-### ST-04: cachepolicy is verspreid over routes
+### ST-04: cachepolicy staat in één beleidsmodule, opgelost
 
-TTL's en headers staan lokaal in iedere route. Een gedeelde policytabel of
-kleine helper kan afwijkingen zichtbaarder maken, zolang routes hun eigen
-inhoudelijke TTL houden.
+De semantische policies voor zoekresultaten, relaties, conceptdetails en
+termsuggesties staan in `lib/server/http-cache.ts`. De dynamische daggrens van
+“Op deze dag” gebruikt dezelfde headerfunctie, maar berekent zijn eigen TTL.
+Routes houden zo hun inhoudelijke keuze zonder losse headerteksten en
+TTL-getallen te herhalen.
 
-## Voorstel voor latere uitvoering
+## Vervolg
 
-1. Leg per route kosten, gewenste limiter en cachepolicy vast.
-2. Ruim verlopen lokale cachewaarden gericht op.
-3. Voeg tests toe voor verlopen entries.
-4. Voeg tests toe voor de limietreset.
-5. Beslis daarna pas of een platformlimiter nodig is.
+De review bevat geen open stabilisatieactie meer. Heroverweeg limitering zodra
+observability misbruik of structurele bronbelasting aantoont, of wanneer een
+stabiele gebruikersidentiteit beschikbaar komt.

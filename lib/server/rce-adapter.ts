@@ -242,15 +242,25 @@ export async function searchByActorConcept(conceptUri: string, signal?: AbortSig
 // injecteerbaar voor tests - zonder argument wordt de echte serverklok
 // gebruikt.
 export async function fetchOpDezeDag(signal?: AbortSignal, now: Date = new Date()): Promise<RceMonument | undefined> {
-  const maandDag = `${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
+  const utcDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   const startOfYear = Date.UTC(now.getUTCFullYear(), 0, 1);
-  const dayOfYear = Math.floor((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - startOfYear) / 86_400_000) + 1;
-  const candidatesDocument = await fetchSparql(buildOpDezeDagQuery(maandDag), signal);
-  const candidates = parseOpDezeDagCandidates(candidatesDocument);
-  const chosen = pickOpDezeDagCandidate(candidates, dayOfYear);
-  if (!chosen) return undefined;
-  const [monument] = await buildMonumentsFromNumbers([chosen], signal);
-  return monument;
+  const dayOfYear = Math.floor((utcDay - startOfYear) / 86_400_000) + 1;
+
+  // Niet iedere kalenderdag heeft een gebouwd monument met beeld. Zoek dan
+  // maximaal een week terug, zodat de ontdekfunctie zichtbaar blijft zonder
+  // de inhoudelijke eis "gebouwd én met afbeelding" los te laten.
+  for (let daysBack = 0; daysBack <= 7; daysBack += 1) {
+    const candidateDay = new Date(utcDay - daysBack * 86_400_000);
+    const maandDag = `${String(candidateDay.getUTCMonth() + 1).padStart(2, "0")}-${String(candidateDay.getUTCDate()).padStart(2, "0")}`;
+    const candidatesDocument = await fetchSparql(buildOpDezeDagQuery(maandDag), signal);
+    const candidates = parseOpDezeDagCandidates(candidatesDocument);
+    const chosen = pickOpDezeDagCandidate(candidates, dayOfYear);
+    if (!chosen) continue;
+    const [monument] = await buildMonumentsFromNumbers([chosen], signal);
+    if (monument?.image?.url) return monument;
+  }
+
+  return undefined;
 }
 
 // Archeologisch onderzoeksgebied is geen kleine collectie zoals Werelderfgoed/

@@ -50,10 +50,11 @@ zoekbalk.
    Live geverifieerd dat dit haalbaar is: van de 312 kandidaten op 10
    augustus hebben er **37 ook een foto** in de beeldbank
    (`graph/image-1`, gejoined op rijksmonumentnummer). Zelfs op het
-   schaarsteget geval, 29 februari (alleen in schrikkeljaren), zijn er nog
+   schaarstegeval, 29 februari (alleen in schrikkeljaren), zijn er nog
    **31 kandidaten met foto**. Als de bron op een dag toch geen gebouwd
-   monument met foto levert, toont de widget niets. Hij valt niet terug op
-   een archeologisch monument of een monument zonder afbeelding.
+   monument met foto levert, zoekt de widget maximaal zeven kalenderdagen
+   terug naar de dichtstbijzijnde registratiedag die dat wel doet. Hij valt
+   niet terug op een archeologisch monument of een monument zonder afbeelding.
 
 ## Doel
 
