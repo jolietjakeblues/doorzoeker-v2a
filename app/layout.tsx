@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Doorzoeker — Erfgoed digitaal",
+  title: "Doorzoeker - Erfgoed digitaal",
   description: "Doorzoek actuele erfgoeddata van de Rijksdienst voor het Cultureel Erfgoed.",
 };
 
