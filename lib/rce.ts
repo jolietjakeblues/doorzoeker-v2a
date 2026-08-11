@@ -1,5 +1,29 @@
 import { wktToLatLng } from "./rce/geometry.ts";
 export { parseWktGeometry, type WktGeometry, type WktRing } from "./rce/geometry.ts";
+import { escapeSparqlString } from "./rce/sparql.ts";
+export { escapeSparqlString } from "./rce/sparql.ts";
+export {
+  buildAbrTermSuggestQuery,
+  buildChtTermSuggestQuery,
+  buildReferentienetwerkTermSuggestQuery,
+  buildTermUsageQuery,
+  parseAbrTermSuggestResults,
+  parseChtTermSuggestResults,
+  parseReferentienetwerkTermSuggestResults,
+  parseTermUsageResults,
+  type TermSuggestion,
+} from "./rce/terms.ts";
+export {
+  buildActorConceptQuery,
+  buildArcheologischeComplexConceptQuery,
+  buildArcheologischeWaarderingConceptQuery,
+  buildFunctieConceptQuery,
+  buildGebeurtenisConceptQuery,
+  buildMonumentAardConceptQuery,
+  buildVondstenConceptQuery,
+  parseConceptSearchMatches,
+  type VondstenConceptField,
+} from "./rce/concepts.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const RM_TYPE = `${CEO}Rijksmonument`;
@@ -14,14 +38,6 @@ const MSP_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/msp_indicatie";
 // zonder de "2") in plaats van de platte tekst-literal die INSTANCES_GRAPH
 // voor diezelfde properties geeft - zie docs/vertical-slices/007-bouwgeschiedenis.md.
 const ACTORENROL_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/actorenrol";
-const CHT_THESAURUS_GRAPH = "https://data.cultureelerfgoed.nl/term/id/cht/thesaurus";
-const ABR_THESAURUS_GRAPH = "https://data.cultureelerfgoed.nl/term/id/abr/thesaurus";
-// De twee hoofdtakken (skos:hasTopConcept) van de CHT waar Termennetwerk een
-// aparte "bron" van maakte ("materialen" en "stijlen en perioden") - empirisch
-// gevonden, niet gedocumenteerd als een aparte skos:ConceptScheme of
-// skos:Collection.
-const CHT_MATERIALEN_TOP = "https://data.cultureelerfgoed.nl/term/id/cht/aa872ce6-a74c-4f81-96ec-6ee0e717f92a";
-const CHT_STIJLEN_PERIODEN_TOP = "https://data.cultureelerfgoed.nl/term/id/cht/63cca950-f545-467a-9d70-db3a2b21bba3";
 const RIJKSMONUMENT_STATUS = "https://data.cultureelerfgoed.nl/term/id/rn/2/b2d9a59a-fe1e-4552-9a05-3c2acddff864";
 const GEBOUWD_MONUMENTAARD = "https://data.cultureelerfgoed.nl/term/id/rn/2/fc966a68-8863-4970-a83e-110f96006c21";
 const GEZICHT_STATUS = "https://data.cultureelerfgoed.nl/term/id/rn/2/fd968529-bf70-4afa-8564-7c6c2fcfcc54";
@@ -140,10 +156,6 @@ export type RceParcel = {
 type SparqlBinding = Record<string, { value?: string }>;
 
 export type DiscoveryMatch = { monumentNumber: string; matchSource: string; matchedText: string; matchScore: number };
-
-export function escapeSparqlString(value: string) {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/[\r\n]+/g, " ");
-}
 
 // Each discovery source runs as its own SPARQL query. A single query that UNIONs
 // all sources together (with a shared FILTER/ORDER BY) makes Virtuoso build
@@ -316,50 +328,6 @@ LIMIT 100`;
 
 export function buildRceNumberQuery(monumentNumber: string) {
   return buildRceDetailsQuery([monumentNumber]);
-}
-
-// Exacte conceptzoekopdracht: in plaats van een CONTAINS-tekstmatch op een
-// label, matcht dit rechtstreeks op de concept-URI waarmee het record zelf
-// is geclassificeerd (zie docs/vertical-slices/004-referentienetwerk-concepten.md).
-// De aanroeper valideert `conceptUri` vooraf tegen een vaste lijst bekende
-// namespaces - dezelfde regel als bij elke andere <...>-interpolatie in dit
-// bestand.
-export function buildMonumentAardConceptQuery(conceptUri: string) {
-  return `PREFIX ceo: <${CEO}>
-SELECT ?rmnr WHERE {
-  GRAPH <${INSTANCES_GRAPH}> {
-    ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ; ceo:heeftMonumentAard <${conceptUri}> ;
-         ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> .
-  }
-}
-LIMIT 100`;
-}
-
-// Fase 2 (2026-08-10): dezelfde exacte conceptzoekopdracht, nu voor de
-// archeologische waardering van een ArcheologischTerrein in plaats van de
-// monumentaard van het Rijksmonument zelf. Live geverifieerd dat
-// ceo:heeftArcheologischeWaardering naar dezelfde rn/2-namespace wijst als
-// heeftMonumentAard (zie 004-referentienetwerk-concepten.md,
-// "Openstaande vragen"). Het Rijksmonument wordt via ligtInObject
-// bereikt, niet rechtstreeks op het terrein zelf gezocht.
-export function buildArcheologischeWaarderingConceptQuery(conceptUri: string) {
-  return `PREFIX ceo: <${CEO}>
-SELECT ?rmnr WHERE {
-  GRAPH <${INSTANCES_GRAPH}> {
-    ?terrein a ceo:ArcheologischTerrein ; ceo:heeftArcheologischeWaardering <${conceptUri}> ; ceo:ligtInObject ?rm .
-    ?rm ceo:rijksmonumentnummer ?rmnr ; ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> .
-  }
-}
-LIMIT 100`;
-}
-
-// Gedeeld door beide conceptzoekopdrachten hierboven - beide queries leveren
-// uitsluitend een lijst ?rmnr-bindings op, ongeacht via welk veld ze zijn
-// gevonden.
-export function parseConceptSearchMatches(document: unknown): string[] {
-  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
-  if (!Array.isArray(bindings)) return [];
-  return bindings.flatMap((binding) => binding.rmnr?.value ? [binding.rmnr.value] : []);
 }
 
 export function buildRceFacetsQuery(monumentNumbers: string[]) {
@@ -701,38 +669,6 @@ export function parseGebeurtenissenResults(document: unknown): Map<string, Gebeu
     byMonument.set(rm, events.slice(0, MAX_PER_MONUMENT));
   }
   return byMonument;
-}
-
-// Exacte conceptzoekopdracht op het gebeurtenistype (bv. "vervaardiging",
-// "restauratie") - zelfde patroon als monumentaard/waardering.
-export function buildGebeurtenisConceptQuery(conceptUri: string) {
-  return `PREFIX ceo: <${CEO}>
-SELECT ?rmnr WHERE {
-  GRAPH <${INSTANCES_GRAPH}> {
-    ?rm a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ; ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> ;
-        ceo:heeftGebeurtenis ?g .
-    ?g ceo:heeftGebeurtenisNaam <${conceptUri}> .
-  }
-}
-LIMIT 100`;
-}
-
-// Exacte conceptzoekopdracht op de actor (architect/aannemer/...) - anders
-// dan de andere conceptzoekopdrachten moet deze over twee named graphs op
-// hetzelfde rce/cho-endpoint heen: de match zelf zit in de actorenrol-graph,
-// de weg terug naar het Rijksmonument in instanties-rce.
-export function buildActorConceptQuery(actorConceptUri: string) {
-  return `PREFIX ceo: <${CEO}>
-SELECT ?rmnr WHERE {
-  GRAPH <${ACTORENROL_GRAPH}> {
-    ?ar ceo:heeftActor <${actorConceptUri}> .
-  }
-  GRAPH <${INSTANCES_GRAPH}> {
-    ?rm a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ; ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> ;
-        ceo:heeftGebeurtenis/ceo:heeftActorEnRol ?ar .
-  }
-}
-LIMIT 100`;
 }
 
 // "Op deze dag"-widget (docs/vertical-slices/010-op-deze-dag.md). Live
@@ -1226,87 +1162,6 @@ export function parseOnderzoeksgebiedAggregatenResults(document: unknown): Onder
   };
 }
 
-// Termsuggesties komen rechtstreeks uit de thesauri van de RCE. CHT en ABR
-// staan als named graphs op rce/cho; Referentienetwerk 2 heeft een eigen
-// SPARQL-endpoint. RN2 is dus niet alleen een resolver voor concept-URI's,
-// maar zelf ook een thesaurus die met de objectdata is verweven.
-export type TermSuggestion = {
-  uri: string;
-  label: string;
-  sourceUri: string;
-  sourceName: string;
-  conceptField?: "functie" | "monumentaard" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype";
-  usageCount?: number;
-};
-
-export function buildTermUsageQuery(conceptUris: string[]) {
-  return `PREFIX ceo: <${CEO}>
-SELECT ?concept ?field (COUNT(DISTINCT ?object) AS ?count) WHERE {
-  VALUES ?concept { ${conceptUris.map((uri) => `<${uri}>`).join(" ")} }
-  GRAPH <${INSTANCES_GRAPH}> {
-    { ?object a ceo:Rijksmonument ; ceo:heeftMonumentAard ?concept . BIND("monumentaard" AS ?field) }
-    UNION { ?object a ceo:Rijksmonument ; ceo:heeftOorspronkelijkeFunctie/ceo:heeftFunctieNaam ?concept . BIND("functie" AS ?field) }
-    UNION { ?object a ceo:Rijksmonument ; ceo:heeftHuidigeFunctie/ceo:heeftFunctieNaam ?concept . BIND("functie" AS ?field) }
-    UNION { ?object a ceo:Vondsten ; ceo:heeftType/ceo:heeftTypeNaam ?concept . BIND("vondsttype" AS ?field) }
-    UNION { ?object a ceo:Vondsten ; ceo:heeftMateriaal/ceo:heeftMateriaalNaam ?concept . BIND("materiaal" AS ?field) }
-    UNION { ?object a ceo:Vondsten ; ceo:heeftToestand ?concept . BIND("toestand" AS ?field) }
-    UNION { ?object a ceo:ArcheologischComplex ; ceo:heeftType/ceo:heeftTypeNaam ?concept . BIND("archeologischcomplextype" AS ?field) }
-  }
-}
-GROUP BY ?concept ?field`;
-}
-
-export function buildFunctieConceptQuery(conceptUri: string) {
-  return `PREFIX ceo: <${CEO}>
-SELECT DISTINCT ?rmnr WHERE {
-  GRAPH <${INSTANCES_GRAPH}> {
-    ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ;
-         ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> .
-    { ?cho ceo:heeftOorspronkelijkeFunctie/ceo:heeftFunctieNaam <${conceptUri}> . }
-    UNION
-    { ?cho ceo:heeftHuidigeFunctie/ceo:heeftFunctieNaam <${conceptUri}> . }
-  }
-}
-LIMIT 100`;
-}
-
-export function parseTermUsageResults(document: unknown) {
-  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
-  if (!Array.isArray(bindings)) return new Map<string, { conceptField: NonNullable<TermSuggestion["conceptField"]>; usageCount: number }>();
-  const usage = new Map<string, { conceptField: NonNullable<TermSuggestion["conceptField"]>; usageCount: number }>();
-  for (const binding of bindings) {
-    const uri = binding.concept?.value;
-    const field = binding.field?.value;
-    const conceptField = field === "functie" || field === "monumentaard" || field === "vondsttype" || field === "materiaal" || field === "toestand" || field === "archeologischcomplextype" ? field : undefined;
-    const usageCount = Number(binding.count?.value ?? "0");
-    if (!uri || !conceptField || !usageCount) continue;
-    const current = usage.get(uri);
-    if (!current || usageCount > current.usageCount) usage.set(uri, { conceptField, usageCount });
-  }
-  return usage;
-}
-
-const CHO_REFERENTIENETWERK_SCHEMES = [
-  "https://data.cultureelerfgoed.nl/term/id/rn/2/a4a7933c-e096-4bcf-a921-4f70a78749fe", // Archeologisch Informatie Systeem
-  "https://data.cultureelerfgoed.nl/term/id/rn/2/bf88ef8b-eba4-46a7-9740-d58e983e4990", // Cultuurhistorische Object Informatie
-  "https://data.cultureelerfgoed.nl/term/id/rn/2/364d5132-a090-4b2c-8cbe-e167f1243f3f", // Kennisregistratie
-  "https://data.cultureelerfgoed.nl/term/id/rn/2/3f786c78-e111-4545-be64-f79f495f73f5", // Monumenten Registratie Systeem
-] as const;
-
-export function buildReferentienetwerkTermSuggestQuery(term: string, limit: number) {
-  const needle = escapeSparqlString(term.trim().toLocaleLowerCase("nl"));
-  return `PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-PREFIX dct: <http://purl.org/dc/terms/>
-SELECT ?concept ?label ?scheme ?schemeLabel WHERE {
-  VALUES ?scheme { ${CHO_REFERENTIENETWERK_SCHEMES.map((uri) => `<${uri}>`).join(" ")} }
-  ?concept a skos:Concept ; skos:prefLabel ?label ; skos:inScheme ?scheme .
-  FILTER(LANG(?label) = "nl")
-  FILTER(CONTAINS(LCASE(STR(?label)), "${needle}"))
-  OPTIONAL { ?scheme dct:title ?schemeLabel . FILTER(LANG(?schemeLabel) = "" || LANG(?schemeLabel) = "nl") }
-}
-LIMIT ${limit}`;
-}
-
 const ARCHEOLOGISCH_TERREIN_SOURCES: { bron: string; rang: number; pattern: string }[] = [
   { bron: "Archis-monumentnummer", rang: 1, pattern: "?terrein ceo:archis2Monumentnummer ?match ." },
   { bron: "naam (archeologisch terrein)", rang: 2, pattern: "?terrein ceo:heeftNaam/ceo:naam ?match ." },
@@ -1693,20 +1548,6 @@ export function parseVondstenDiscoveryResults(document: unknown, bron: string, t
   });
 }
 
-export type VondstenConceptField = "vondsttype" | "materiaal" | "toestand";
-
-export function buildVondstenConceptQuery(conceptUri: string, field: VondstenConceptField) {
-  const propertyPath = field === "vondsttype" ? "ceo:heeftType/ceo:heeftTypeNaam" : field === "materiaal" ? "ceo:heeftMateriaal/ceo:heeftMateriaalNaam" : "ceo:heeftToestand";
-  return `PREFIX ceo: <${CEO}>
-SELECT DISTINCT ?rmnr WHERE {
- GRAPH <${INSTANCES_GRAPH}> {
-  ?vondst a ceo:Vondsten ; ceo:cultuurhistorischObjectnummer ?choi ; ${propertyPath} <${conceptUri}> .
-  BIND(?choi AS ?rmnr)
- }
-}
-LIMIT 100`;
-}
-
 export function buildVondstenDetailsQuery(choNumbers: string[]) {
   const values = choNumbers.map((number) => `"${escapeSparqlString(number)}"`).join(" ");
   return `PREFIX ceo: <${CEO}>
@@ -1808,17 +1649,6 @@ export function parseArcheologischeComplexDiscoveryResults(document: unknown, br
     const lower = matchedText.toLocaleLowerCase("nl");
     return [{ monumentNumber, matchSource: bron, matchedText, matchScore: rang * 10 + (lower === needle ? 0 : lower.startsWith(needle) ? 1 : 2) }];
   });
-}
-
-export function buildArcheologischeComplexConceptQuery(conceptUri: string) {
-  return `PREFIX ceo: <${CEO}>
-SELECT DISTINCT ?rmnr WHERE {
- GRAPH <${INSTANCES_GRAPH}> {
-  ?complex a ceo:ArcheologischComplex ; ceo:cultuurhistorischObjectnummer ?choi ; ceo:heeftType/ceo:heeftTypeNaam <${conceptUri}> .
-  BIND(?choi AS ?rmnr)
- }
-}
-LIMIT 100`;
 }
 
 export function buildArcheologischeComplexDetailsQuery(choNumbers: string[]) {
@@ -1961,80 +1791,6 @@ export function parseVondstlocatieInhoudResults(document: unknown): Omit<Vondstl
 export function parseVondstlocatieInhoudTelling(document: unknown) {
   const binding = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings?.[0];
   return { complexenTotaal: Number(binding?.complexenTotaal?.value ?? "0"), vondstenTotaal: Number(binding?.vondstenTotaal?.value ?? "0"), grondsporenTotaal: Number(binding?.grondsporenTotaal?.value ?? "0") };
-}
-
-export function parseReferentienetwerkTermSuggestResults(document: unknown): TermSuggestion[] {
-  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
-  if (!Array.isArray(bindings)) return [];
-  return bindings.flatMap((binding) => {
-    const uri = binding.concept?.value;
-    const label = binding.label?.value;
-    if (!uri || !label) return [];
-    return [{
-      uri,
-      label,
-      sourceUri: binding.scheme?.value ?? "https://data.cultureelerfgoed.nl/term/id/rn/2",
-      sourceName: binding.schemeLabel?.value ?? "Referentienetwerk 2",
-    }];
-  });
-}
-
-export function buildChtTermSuggestQuery(term: string, limit: number) {
-  const needle = escapeSparqlString(term.trim().toLocaleLowerCase("nl"));
-  return `PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-SELECT ?concept ?label
-  (BOUND(?viaMaterialen) AS ?isMateriaal)
-  (BOUND(?viaStijlen) AS ?isStijlPeriode)
-WHERE {
-  GRAPH <${CHT_THESAURUS_GRAPH}> {
-    ?concept a skos:Concept ; skos:prefLabel ?label .
-    FILTER(LANG(?label) = "nl")
-    FILTER(CONTAINS(LCASE(STR(?label)), "${needle}"))
-    OPTIONAL { ?concept skos:broader* <${CHT_MATERIALEN_TOP}> . BIND(true AS ?viaMaterialen) }
-    OPTIONAL { ?concept skos:broader* <${CHT_STIJLEN_PERIODEN_TOP}> . BIND(true AS ?viaStijlen) }
-  }
-}
-LIMIT ${limit}`;
-}
-
-export function parseChtTermSuggestResults(document: unknown): TermSuggestion[] {
-  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
-  if (!Array.isArray(bindings)) return [];
-  return bindings.flatMap((binding) => {
-    const uri = binding.concept?.value;
-    const label = binding.label?.value;
-    if (!uri || !label) return [];
-    const sourceName = binding.isMateriaal?.value === "true"
-      ? "Cultuurhistorische Thesaurus - Materialen"
-      : binding.isStijlPeriode?.value === "true"
-        ? "Cultuurhistorische Thesaurus - Stijlen en periodes"
-        : "Cultuurhistorische Thesaurus";
-    return [{ uri, label, sourceUri: CHT_THESAURUS_GRAPH, sourceName }];
-  });
-}
-
-export function buildAbrTermSuggestQuery(term: string, limit: number) {
-  const needle = escapeSparqlString(term.trim().toLocaleLowerCase("nl"));
-  return `PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-SELECT ?concept ?label WHERE {
-  GRAPH <${ABR_THESAURUS_GRAPH}> {
-    ?concept a skos:Concept ; skos:prefLabel ?label .
-    FILTER(LANG(?label) = "nl")
-    FILTER(CONTAINS(LCASE(STR(?label)), "${needle}"))
-  }
-}
-LIMIT ${limit}`;
-}
-
-export function parseAbrTermSuggestResults(document: unknown): TermSuggestion[] {
-  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
-  if (!Array.isArray(bindings)) return [];
-  return bindings.flatMap((binding) => {
-    const uri = binding.concept?.value;
-    const label = binding.label?.value;
-    if (!uri || !label) return [];
-    return [{ uri, label, sourceUri: ABR_THESAURUS_GRAPH, sourceName: "Archeologisch Basisregister" }];
-  });
 }
 
 function values(node: JsonLdNode | undefined, property: string): JsonLdValue[] {
