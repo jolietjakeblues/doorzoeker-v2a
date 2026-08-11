@@ -58,7 +58,8 @@ te worden verspreid als props en callbacks voldoende zijn.
 3. Verplaats thesaurus- en conceptfuncties. Afgerond.
 4. Verplaats archeologie. Afgerond.
 5. Verplaats gebouwd erfgoed.
-6. Splits presentatiedelen uit `page.tsx`.
+6. Splits presentatiedelen uit `page.tsx`. In uitvoering: `ResultsToolbar` en
+   `StartContent` zijn verplaatst.
 7. Splits hooks pas nadat componentgrenzen stabiel zijn.
 8. Draai na iedere stap typecheck, lint, unittests en Playwright.
 
