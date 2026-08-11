@@ -4,9 +4,9 @@ import { useMemo } from "react";
 import { HeritageMap } from "./HeritageMap";
 import { SiteHeader } from "./SiteHeader";
 import { SearchHero } from "./SearchHero";
-import { HeritageResultCard } from "./HeritageResultCard";
 import { HeritageDetailFacts } from "./HeritageDetailFacts";
 import { ResultsToolbar } from "./ResultsToolbar";
+import { SearchResults } from "./SearchResults";
 import { StartContent } from "./StartContent";
 import {
   MONUMENT_REGISTER_BASE_URL,
@@ -520,108 +520,28 @@ export default function Home() {
             onViewChange={setView}
           />
 
-          {remoteState === "idle" ? (
-            <StartContent
-              item={opDezeDag}
-              onSearch={(searchQuery) => void executeSearch(searchQuery)}
-            />
-
-          ) : remoteState === "loading" ? (
-            <div className="search-loading" role="status" aria-live="polite">
-              <div className="graph-traversal" aria-hidden="true">
-                <span />
-                <i />
-                <span />
-                <i />
-                <span />
-                <i />
-                <span />
-              </div>
-              <h3>We zoeken in de RCE-bronnen</h3>
-              <p>De eerste resultaten verschijnen hier zodra ze binnen zijn.</p>
-              <div className="skeleton-cards" aria-hidden="true">
-                {[0, 1, 2].map((index) => (
-                  <div className="skeleton-card" key={index}>
-                    <span className="skeleton-tile" />
-                    <div>
-                      <span className="skeleton-line short" />
-                      <span className="skeleton-line title" />
-                      <span className="skeleton-line" />
-                      <span className="skeleton-line medium" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : results.length === 0 ? (
-            <div className="empty">
-              <b>0</b>
-              <h3>Geen erfgoedresultaten gevonden</h3>
-              <p>Probeer een naam, nummer, plaats, functie of verwante term.</p>
-              <button type="button" onClick={reset}>
-                Nieuwe zoekopdracht
-              </button>
-            </div>
-          ) : view === "list" ? (
-            <>
-              <p className="results-help">
-                Open een resultaat voor de kaart, relaties, brongegevens en
-                gekoppelde begrippen.
-              </p>
-              <div className="cards">
-              {results.map((item) => (
-                <HeritageResultCard
-                  key={item.id}
-                  item={item}
-                  onOpen={setSelected}
-                  onConceptSearch={(concept) =>
-                    void executeConceptSearch(concept)
-                  }
-                />
-              ))}
-              </div>
-            </>
-          ) : (
-            <div className="map-view">
-              <HeritageMap
-                items={mapItems}
-                initialViewport={mapViewport}
-                onViewportChange={setMapViewport}
-                onSelect={(mapItem) => {
-                  const item = results.find(
-                    (candidate) => candidate.id === mapItem.id,
-                  );
-                  if (item) choose(item);
-                }}
+          <SearchResults
+            remoteState={remoteState}
+            results={results}
+            mapItems={mapItems}
+            mapViewport={mapViewport}
+            view={view}
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            loadedCount={baseResults.length}
+            idleContent={
+              <StartContent
+                item={opDezeDag}
+                onSearch={(searchQuery) => void executeSearch(searchQuery)}
               />
-              <div className="map-object-list">
-                <h3>Objecten op deze kaart</h3>
-                <ul>
-                  {mapItems.map((item) => (
-                    <li key={item.id}>
-                      <button type="button" onClick={() => choose(item)}>
-                        {item.title}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-          {hasMore && remoteState === "success" && view === "list" && (
-            <div className="more-results">
-              <button
-                type="button"
-                onClick={() => void loadMore()}
-                disabled={loadingMore}
-              >
-                {loadingMore
-                  ? "Meer RCE-resultaten laden…"
-                  : "Laad 25 volgende resultaten"}
-              </button>
-              <small>{baseResults.length} unieke erfgoedobjecten geladen</small>
-            </div>
-          )}
+            }
+            onReset={reset}
+            onOpen={setSelected}
+            onChoose={choose}
+            onConceptSearch={(concept) => void executeConceptSearch(concept)}
+            onViewportChange={setMapViewport}
+            onLoadMore={() => void loadMore()}
+          />
         </div>
       </section>
       {selected && (
