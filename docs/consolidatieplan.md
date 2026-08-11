@@ -7,6 +7,7 @@ in `lib/rce/sparql.ts`. Alle archeologische query's, parsers en relatietypes
 staan in `lib/rce/archaeology.ts`. Rijksmonumenten, werelderfgoed, gezichten,
 gebouwde complexen en BRK-percelen staan in `lib/rce/monuments.ts`. De
 publieke exports blijven via `lib/rce.ts` beschikbaar.
+URL-opbouw, history en `popstate` staan in `hooks/useSearchUrlState.ts`.
 
 ## Doel
 
@@ -62,7 +63,8 @@ te worden verspreid als props en callbacks voldoende zijn.
 6. Splits presentatiedelen uit `page.tsx`. Afgerond: `ResultsToolbar`,
    `StartContent`, `SearchResults`, `SearchFilters`, `HeritageDetailDialog` en
    de typespecifieke `HeritageRelationSections` zijn verplaatst.
-7. Splits hooks pas nadat componentgrenzen stabiel zijn.
+7. Splits hooks pas nadat componentgrenzen stabiel zijn. In uitvoering:
+   `useSearchUrlState` is afgesplitst; request-lifecycle en filters volgen later.
 8. Draai na iedere stap typecheck, lint, unittests en Playwright.
 
 ## Niet doen
