@@ -30,6 +30,7 @@ import {
   buildRceDiscoveryQueries,
   buildRceFacetsQuery,
   buildRceNumberQuery,
+  buildRijksmonumentenBrowseQuery,
   buildGezichtQuery,
   buildRceParcelQuery,
   buildRceParcelsQuery,
@@ -69,6 +70,7 @@ import {
   parseOpDezeDagCandidates,
   parseParcelResults,
   parseRceMonuments,
+  parseRijksmonumentenBrowseNumbers,
   parseSparqlResults,
   parseWerelderfgoedResults,
   parseVondstlocatieDiscoveryResults,
@@ -561,13 +563,25 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1, scope:
 // respectievelijk ~4.200 items).
 export async function browseRceObjects(kind: "rijksmonument" | "archeologischterrein" | "onderzoeksgebied" | "vondstlocatie" | "archeologischcomplex" | "vondsten" | "grondsporen" | "werelderfgoed" | "gezicht" | "complex", signal?: AbortSignal, page = 1): Promise<RceMonument[]> {
   if (kind === "rijksmonument") {
-    const params = new URLSearchParams({ page: String(page), pageSize: "25" });
-    const response = await fetch(`${REST_ENDPOINT}?${params}`, {
-      headers: { Accept: "application/ld+json" },
-      signal: requestSignal(signal),
+    const numbers = parseRijksmonumentenBrowseNumbers(
+      await fetchSparql(buildRijksmonumentenBrowseQuery(page), signal),
+    );
+    if (!numbers.length) return [];
+    const [detailsDocument, parcelsDocument, facetsDocument] = await Promise.all([
+      fetchSparql(buildRceDetailsQuery(numbers), signal),
+      fetchSparql(buildRceParcelsQuery(numbers), signal),
+      fetchSparql(buildRceFacetsQuery(numbers), signal),
+    ]);
+    const facets = parseFacetResults(facetsDocument);
+    const parcelBindings = (parcelsDocument as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings ?? [];
+    const detailsByNumber = new Map(parseSparqlResults(detailsDocument).map((monument) => [monument.monumentNumber, monument]));
+    const monuments = numbers.flatMap((number) => {
+      const monument = detailsByNumber.get(number);
+      if (!monument) return [];
+      const parcels = parseParcelResults({ results: { bindings: parcelBindings.filter((binding) => binding.rmnr?.value === number) } });
+      return [{ ...monument, ...facets.get(number), parcels }];
     });
-    if (!response.ok) throw new Error(`RCE-service antwoordde met ${response.status}`);
-    return enrichMonuments(parseRceMonuments(await response.json()), signal);
+    return enrichMonuments(monuments, signal);
   }
   if (kind === "archeologischterrein" || kind === "onderzoeksgebied" || kind === "vondstlocatie" || kind === "archeologischcomplex" || kind === "vondsten" || kind === "grondsporen") {
     const numbers = parseArchaeologyBrowseNumbers(
