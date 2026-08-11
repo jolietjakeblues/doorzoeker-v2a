@@ -29,7 +29,8 @@ zoekfuncties aan te roepen - geen giswerk of dubbele round-trip. Klikbaar
 gemaakt in de "Archeologisch terrein"-detailrij. Live geverifieerd tegen
 rijksmonument 330373: klikken op "zeer hoge archeologische waarde
 beschermd" levert 25 andere archeologische rijksmonumenten op met exact
-diezelfde waardering-concept-URI. 97/97 tests, typecheck, lint groen.
+diezelfde waardering-concept-URI. De toenmalige testset, typecheck en lint
+slaagden bij implementatie.
 Gecommit en gepusht (`965942a`).
 
 ## Principe
