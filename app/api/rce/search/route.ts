@@ -1,5 +1,6 @@
 import { browseRceObjects, searchByActorConcept, searchByArcheologischeComplexTypeConcept, searchByArcheologischeWaarderingConcept, searchByFunctieConcept, searchByGebeurtenisConcept, searchByMonumentAardConcept, searchByVondstenConcept, searchRceMonuments } from "../../../../lib/server/rce-adapter.ts";
 import { CONCEPT_URI_PATTERN } from "../concept/route.ts";
+import { pruneExpiredEntries } from "../../../../lib/server/expiring-map.ts";
 
 type ConceptVeld = "functie" | "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype";
 
@@ -116,13 +117,14 @@ export async function GET(request: Request) {
       : conceptParam
         ? `${url.origin}/api/rce/search?concept=${encodeURIComponent(conceptParam)}&veld=${veld}`
         : `${url.origin}/api/rce/search?q=${encodeURIComponent(query.toLocaleLowerCase("nl"))}&page=${page}&scope=${scope}`);
+    const now = Date.now();
+    pruneExpiredEntries(responseCache, now);
     const memoryCached = responseCache.get(cacheKey.url);
-    if (memoryCached && memoryCached.expiresAt > Date.now()) {
+    if (memoryCached) {
       return new Response(memoryCached.body, {
         headers: { "Content-Type": "application/json", "Cache-Control": `public, max-age=60, s-maxage=${CACHE_SECONDS}`, "X-Doorzoeker-Cache": "HIT" },
       });
     }
-    if (memoryCached) responseCache.delete(cacheKey.url);
     const cached = await readCache(cacheKey);
     if (cached) return cached;
 
@@ -151,7 +153,7 @@ export async function GET(request: Request) {
       },
     });
     if (responseCache.size >= 500) responseCache.delete(responseCache.keys().next().value ?? "");
-    responseCache.set(cacheKey.url, { body, expiresAt: Date.now() + CACHE_SECONDS * 1000 });
+    responseCache.set(cacheKey.url, { body, expiresAt: now + CACHE_SECONDS * 1000 });
     const cachedResponse = response.clone();
     cachedResponse.headers.set("X-Doorzoeker-Cache", "HIT");
     await writeCache(cacheKey, cachedResponse);

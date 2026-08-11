@@ -58,11 +58,11 @@ minuten, begrensd door de UTC-daggrens. Upstreamfouten en niet-zoekbare invoer
 krijgen `no-store`. Hits en misses van termsuggesties gebruiken dezelfde
 gedeelde succespolicy van vijf minuten.
 
-### ST-03: lokale caches ruimen niet periodiek op
+### ST-03: lokale caches ruimen verlopen waarden op, opgelost
 
-De zoekcache en termcache verwijderen het oudste ingevoegde item bij hun
-maximum. Verlopen waarden blijven tot een volgende lookup of overschrijding
-staan. De structuren zijn wel begrensd tot respectievelijk 500 en 250 entries.
+De zoekcache en termcache verwijderen bij een geldig verzoek eerst alle
+verlopen waarden. Daarna geldt nog steeds de vaste bovengrens van
+respectievelijk 500 en 250 entries.
 
 ### ST-04: cachepolicy is verspreid over routes
 
@@ -73,7 +73,5 @@ inhoudelijke TTL houden.
 ## Voorstel voor latere uitvoering
 
 1. Leg per route kosten, gewenste limiter en cachepolicy vast.
-2. Ruim verlopen lokale cachewaarden gericht op.
-3. Voeg tests toe voor verlopen entries.
-4. Voeg tests toe voor de limietreset.
-5. Beslis daarna pas of een platformlimiter nodig is.
+2. Voeg tests toe voor de limietreset.
+3. Beslis daarna pas of een platformlimiter nodig is.
