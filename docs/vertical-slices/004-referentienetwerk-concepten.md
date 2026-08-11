@@ -45,6 +45,20 @@ URI. Een term die wel in RN2 staat maar niet aantoonbaar in zo'n veld voorkomt,
 blijft herkenbaar een tekstzoekopdracht. Daarmee helpt RN2 gericht, zonder een
 misplaatst gevoel van volledigheid te geven.
 
+**Fase 4 (functie-detailrij) gebouwd op 2026-08-11.** Live gebruik bracht een
+inconsistentie aan het licht: de "Functie"-rij in het detailpaneel toonde
+alleen platte tekst (`item.kind`), terwijl Monumentaard er sinds fase 1 al
+een klikbare `concept-link`-knop van maakte - ook al bestond
+`item.functionConcepts` al net zo lang (gebruikt door fase 3 en door
+verticale slice 008). Nieuwe pure functie `primaryFunctionConcept()` in
+`lib/heritage-view-model.ts` matcht het concept waarvan het label (na
+opschoning) overeenkomt met het getoonde `item.kind` - nodig omdat
+`item.kind` en `item.functionConcepts` uit twee verschillende query's komen
+en dus niet gegarandeerd dezelfde volgorde hebben. Live geverifieerd tegen
+rijksmonument 516158 (Nederlands-Hervormde Kerk, Kinderdijk): klikken op
+"Kerk" levert 25 resultaten op via `?concept=...&veld=functie`, niet via
+labeltekst.
+
 ## Aanleiding
 
 De algemene CHO-zoekbalk gebruikt vier schema's uit Referentienetwerk 2 voor

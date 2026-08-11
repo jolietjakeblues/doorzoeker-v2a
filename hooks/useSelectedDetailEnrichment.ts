@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
-import { fetchComplexMembers, fetchOnderzoeksgebiedVerrijking, fetchVondstlocatieInhoud } from "@/lib/rce-client";
+import { fetchComplexMembers, fetchOnderzoeksgebiedVerrijking, fetchVondstlocatieInhoud, searchByFunctieConcept } from "@/lib/rce-client";
 import type { ComplexMember, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, VondstlocatieInhoud } from "@/lib/rce";
-import type { Item } from "@/lib/heritage-view-model";
+import { pickVergelijkbareRijksmonumenten, toItem, type Item } from "@/lib/heritage-view-model";
 
-// Complexleden en de archeologische verrijking van een Onderzoeksgebied zijn
-// geen onderdeel van de gewone zoekresultaten (dat zou de resultatenlijst
+// Complexleden, de archeologische verrijking van een Onderzoeksgebied en
+// vergelijkbare rijksmonumenten (docs/vertical-slices/008) zijn geen
+// onderdeel van de gewone zoekresultaten (dat zou de resultatenlijst
 // overspoelen) - pas ophalen zodra een gebruiker zo'n record daadwerkelijk
-// opent. Beide hangen aan hetzelfde `selected`-record en horen daarom bij
-// elkaar in één hook, ook al zijn het twee losse lazy-lookups.
+// opent. Ze hangen alle drie aan hetzelfde `selected`-record en horen
+// daarom bij elkaar in één hook, ook al zijn het losse lazy-lookups.
 export function useSelectedDetailEnrichment(selected: Item | null) {
   const [complexMembers, setComplexMembers] = useState<{ complexUri: string; members: ComplexMember[] } | null>(null);
   const [onderzoeksgebiedVerrijking, setOnderzoeksgebiedVerrijking] = useState<{ gebiedUri: string; complexen: OnderzoeksgebiedComplex[]; vondstlocaties: OnderzoeksgebiedVondstlocatie[] } & OnderzoeksgebiedAggregaten | null>(null);
   const [vondstlocatieInhoud, setVondstlocatieInhoud] = useState<({ locatieUri: string } & VondstlocatieInhoud) | null>(null);
+  const [vergelijkbareRijksmonumenten, setVergelijkbareRijksmonumenten] = useState<{ conceptUri: string; conceptLabel: string; items: Item[] } | null>(null);
 
   useEffect(() => {
     if (selected?.objectType !== "Complex" || !selected.linkedDataUrl) return;
@@ -43,5 +45,20 @@ export function useSelectedDetailEnrichment(selected: Item | null) {
     return () => controller.abort();
   }, [selected]);
 
-  return { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud };
+  useEffect(() => {
+    const concept = selected?.objectType === "Rijksmonument" ? selected.functionConcepts?.[0] : undefined;
+    if (!concept || !selected?.monumentNumber) return;
+    const monumentNumber = selected.monumentNumber;
+    const controller = new AbortController();
+    searchByFunctieConcept(concept.uri, controller.signal)
+      .then((records) => {
+        if (controller.signal.aborted) return;
+        const items = pickVergelijkbareRijksmonumenten(records.map((record) => toItem(record)), monumentNumber);
+        setVergelijkbareRijksmonumenten({ conceptUri: concept.uri, conceptLabel: concept.label, items });
+      })
+      .catch(() => { if (!controller.signal.aborted) setVergelijkbareRijksmonumenten({ conceptUri: concept.uri, conceptLabel: concept.label, items: [] }); });
+    return () => controller.abort();
+  }, [selected]);
+
+  return { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten };
 }

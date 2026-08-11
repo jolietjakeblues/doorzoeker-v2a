@@ -140,6 +140,41 @@ export function linkedConcepts(item: Item): LinkedConcept[] {
     });
   return concepts;
 }
+
+// item.kind komt uit een andere query (de detailsquery, via toItem's eigen
+// precedentie) dan item.functionConcepts (de facettenquery) - beide kunnen
+// bij een monument met een afwijkende oorspronkelijke/huidige functie in een
+// andere volgorde binnenkomen. Matchen op label (na dezelfde
+// displayFunctionName-opschoning) voorkomt dat een klik op de zichtbare
+// functietekst een ander concept zoekt dan wat er staat; zonder match is het
+// eerste concept een redelijke terugval.
+export function primaryFunctionConcept(
+  item: Pick<Item, "kind" | "functionConcepts">,
+): { uri: string; label: string } | undefined {
+  return (
+    item.functionConcepts?.find(
+      (concept) => displayFunctionName(concept.label) === item.kind,
+    ) ?? item.functionConcepts?.[0]
+  );
+}
+
+const VERGELIJKBARE_RIJKSMONUMENTEN_LIMIT = 5;
+
+// "Vergelijkbare rijksmonumenten" (docs/vertical-slices/008), fase 1:
+// zelfde functie-concept-URI. De server-zoekopdracht kan het geopende
+// monument zelf meesturen (het matcht immers zijn eigen functie) en is
+// begrensd op 25, niet op de kleine 5 die de UI toont - dit filtert en
+// begrenst dat resultaat tot een presenteerbare lijst.
+export function pickVergelijkbareRijksmonumenten(
+  candidates: Item[],
+  excludeMonumentNumber: string | undefined,
+  limit: number = VERGELIJKBARE_RIJKSMONUMENTEN_LIMIT,
+): Item[] {
+  return candidates
+    .filter((candidate) => candidate.monumentNumber !== excludeMonumentNumber)
+    .slice(0, limit);
+}
+
 export type MapViewport = { lat: number; lng: number; zoom: number };
 export type BrowseKind = "rijksmonument" | "archeologischterrein" | "onderzoeksgebied" | "vondstlocatie" | "archeologischcomplex" | "vondsten" | "grondsporen" | "werelderfgoed" | "gezicht" | "complex";
 export type SelectedTermIdentity = {

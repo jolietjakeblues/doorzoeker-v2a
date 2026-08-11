@@ -1,4 +1,4 @@
-import { statusLabel, type ConceptField, type Item } from "@/lib/heritage-view-model";
+import { primaryFunctionConcept, statusLabel, type ConceptField, type Item } from "@/lib/heritage-view-model";
 
 type Concept = { uri: string; label: string };
 
@@ -125,6 +125,7 @@ export function HeritageDetailFacts({
   }
 
   const hasFunction = item.kind && item.kind !== "Functie niet opgenomen";
+  const functionConcept = primaryFunctionConcept(item);
   const dating =
     item.registrationDate ??
     (item.period !== "Datering niet opgenomen" ? item.period : "");
@@ -135,7 +136,20 @@ export function HeritageDetailFacts({
       {hasFunction ? (
         <div>
           <dt>Functie</dt>
-          <dd>{item.kind}</dd>
+          <dd>
+            {functionConcept ? (
+              <button
+                type="button"
+                className="concept-link"
+                onClick={() => onConceptSearch(functionConcept, "functie")}
+                title="Zoek alle rijksmonumenten met deze functie"
+              >
+                {item.kind}
+              </button>
+            ) : (
+              item.kind
+            )}
+          </dd>
         </div>
       ) : null}
       {item.monumentAardConcept ? (

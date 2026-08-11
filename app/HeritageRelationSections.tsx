@@ -19,10 +19,32 @@ export function HeritageRelationSections({
   enrichment,
   onSearch: executeSearch,
 }: HeritageRelationSectionsProps) {
-  const { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud } = enrichment;
+  const { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten } = enrichment;
   return (
     <>
-{selected.objectType === "Complex" &&
+{selected.objectType === "Rijksmonument" &&
+      vergelijkbareRijksmonumenten &&
+      vergelijkbareRijksmonumenten.conceptUri === selected.functionConcepts?.[0]?.uri &&
+      vergelijkbareRijksmonumenten.items.length ? (
+        <div className="map-object-list">
+          <h3>Vergelijkbare rijksmonumenten</h3>
+          <p><small>Zelfde functie: {vergelijkbareRijksmonumenten.conceptLabel}</small></p>
+          <ul>
+            {vergelijkbareRijksmonumenten.items.map((item) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  onClick={() => void executeSearch(item.monumentNumber ?? item.id)}
+                >
+                  {item.title}
+                </button>
+                {item.place ? ` — ${item.place}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {selected.objectType === "Complex" &&
       complexMembers &&
       complexMembers.complexUri === selected.linkedDataUrl &&
       complexMembers.members.length ? (
