@@ -1,6 +1,8 @@
 # Consolidatieplan
 
-Status: ontwerp, nog niet uitvoeren.
+Status: in uitvoering. De pure geometriefuncties zijn als eerste mechanische
+stap verplaatst naar `lib/rce/geometry.ts`; de publieke exports blijven via
+`lib/rce.ts` beschikbaar.
 
 ## Doel
 
@@ -49,7 +51,7 @@ te worden verspreid als props en callbacks voldoende zijn.
 ## Veilige volgorde voor een latere uitvoering
 
 1. Voeg karakterisatietests toe rond exports en URL-herstel.
-2. Verplaats pure geometriefuncties zonder gedragswijziging.
+2. Verplaats pure geometriefuncties zonder gedragswijziging. Afgerond.
 3. Verplaats thesaurus- en conceptfuncties.
 4. Splits archeologie en gebouwd erfgoed.
 5. Splits presentatiedelen uit `page.tsx`.
