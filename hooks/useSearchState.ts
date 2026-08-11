@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFilteredResults } from "@/hooks/useFilteredResults";
+import { useSearchRequest } from "@/hooks/useSearchRequest";
 import {
   useSearchUrlState,
   type SearchUrlState,
@@ -82,16 +83,20 @@ export function useSearchState() {
   );
   const [selected, setSelected] = useState<Item | null>(null);
   const [filters, setFilters] = useState(false);
-  const [remoteResults, setRemoteResults] = useState<Item[] | null>(null);
-  const [remoteState, setRemoteState] = useState<
-    "idle" | "loading" | "error" | "success"
-  >("idle");
-  const [resultPage, setResultPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const {
+    remoteResults,
+    setRemoteResults,
+    remoteState,
+    setRemoteState,
+    resultPage,
+    setResultPage,
+    hasMore,
+    setHasMore,
+    loadingMore,
+    setLoadingMore,
+    beginRequest,
+  } = useSearchRequest();
   const [activeBrowseKind, setActiveBrowseKind] = useState<BrowseKind | undefined>();
-  const searchController = useRef<AbortController | null>(null);
-  const searchSequence = useRef(0);
   const pendingSelectedId = useRef(EMPTY_URL_STATE.selectedId);
   const { beginHistoryEntry } = useSearchUrlState({
     snapshot: {
@@ -193,10 +198,7 @@ export function useSearchState() {
     termIdentity = selectedTerm?.label === term ? selectedTerm : undefined,
   ) {
     beginHistoryEntry();
-    searchController.current?.abort();
-    const controller = new AbortController();
-    searchController.current = controller;
-    const sequence = ++searchSequence.current;
+    const request = beginRequest();
     setQuery(term);
     setActive(term);
     setActiveConceptUri(undefined);
@@ -224,8 +226,8 @@ export function useSearchState() {
     }
     setRemoteState("loading");
     try {
-      const response = await searchRceMonuments(term, controller.signal);
-      if (sequence !== searchSequence.current) return;
+      const response = await searchRceMonuments(term, request.signal);
+      if (!request.isCurrent()) return;
       const items = response.results.map((record) => toItem(record));
       setRemoteResults(items);
       if (pendingSelectedId.current) {
@@ -241,7 +243,7 @@ export function useSearchState() {
       setHasMore(response.hasMore);
       setRemoteState("success");
     } catch {
-      if (controller.signal.aborted || sequence !== searchSequence.current)
+      if (request.isAborted() || !request.isCurrent())
         return;
       setRemoteResults([]);
       setRemoteState("error");
@@ -257,10 +259,7 @@ export function useSearchState() {
     veld: ConceptField = "monumentaard",
   ) {
     beginHistoryEntry();
-    searchController.current?.abort();
-    const controller = new AbortController();
-    searchController.current = controller;
-    const sequence = ++searchSequence.current;
+    const request = beginRequest();
     setQuery(concept.label);
     setActive(concept.label);
     setActiveConceptUri(concept.uri);
@@ -285,34 +284,34 @@ export function useSearchState() {
     try {
       const records =
         veld === "functie"
-          ? await searchByFunctieConcept(concept.uri, controller.signal)
+          ? await searchByFunctieConcept(concept.uri, request.signal)
           : veld === "waardering"
           ? await searchByArcheologischeWaarderingConcept(
               concept.uri,
-              controller.signal,
+              request.signal,
             )
           : veld === "gebeurtenis"
-            ? await searchByGebeurtenisConcept(concept.uri, controller.signal)
+            ? await searchByGebeurtenisConcept(concept.uri, request.signal)
             : veld === "actor"
-              ? await searchByActorConcept(concept.uri, controller.signal)
+              ? await searchByActorConcept(concept.uri, request.signal)
             : veld === "vondsttype"
-              ? await searchByVondstTypeConcept(concept.uri, controller.signal)
+              ? await searchByVondstTypeConcept(concept.uri, request.signal)
             : veld === "materiaal"
-              ? await searchByMateriaalConcept(concept.uri, controller.signal)
+              ? await searchByMateriaalConcept(concept.uri, request.signal)
             : veld === "toestand"
-              ? await searchByToestandConcept(concept.uri, controller.signal)
+              ? await searchByToestandConcept(concept.uri, request.signal)
             : veld === "archeologischcomplextype"
-              ? await searchByArcheologischComplexTypeConcept(concept.uri, controller.signal)
+              ? await searchByArcheologischComplexTypeConcept(concept.uri, request.signal)
               : await searchByMonumentAardConcept(
                   concept.uri,
-                  controller.signal,
+                  request.signal,
                 );
-      if (sequence !== searchSequence.current) return;
+      if (!request.isCurrent()) return;
       setRemoteResults(records.map((record) => toItem(record)));
       setHasMore(false);
       setRemoteState("success");
     } catch {
-      if (controller.signal.aborted || sequence !== searchSequence.current)
+      if (request.isAborted() || !request.isCurrent())
         return;
       setRemoteResults([]);
       setRemoteState("error");
@@ -323,10 +322,7 @@ export function useSearchState() {
   // collectie in plaats van op naam te matchen.
   async function browseType(kind: BrowseKind) {
     beginHistoryEntry();
-    searchController.current?.abort();
-    const controller = new AbortController();
-    searchController.current = controller;
-    const sequence = ++searchSequence.current;
+    const request = beginRequest();
     setQuery("");
     setActive(
       kind === "rijksmonument"
@@ -389,13 +385,13 @@ export function useSearchState() {
     setHasMore(false);
     setRemoteState("loading");
     try {
-      const response = await browseRceObjects(kind, controller.signal);
-      if (sequence !== searchSequence.current) return;
+      const response = await browseRceObjects(kind, request.signal);
+      if (!request.isCurrent()) return;
       setRemoteResults(response.results.map((record) => toItem(record)));
       setHasMore(response.hasMore);
       setRemoteState("success");
     } catch {
-      if (controller.signal.aborted || sequence !== searchSequence.current)
+      if (request.isAborted() || !request.isCurrent())
         return;
       setRemoteResults([]);
       setRemoteState("error");
@@ -460,8 +456,6 @@ export function useSearchState() {
     setView(initial.view);
     setMapViewport(initial.mapViewport);
   }
-  useEffect(() => () => searchController.current?.abort(), []);
-
   function reset() {
     setQuery("");
     setActive("");

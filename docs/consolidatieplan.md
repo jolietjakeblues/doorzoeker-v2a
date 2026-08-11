@@ -1,6 +1,6 @@
 # Consolidatieplan
 
-Status: in uitvoering. De pure geometriefuncties staan in
+Status: afgerond op 11 augustus 2026. De pure geometriefuncties staan in
 `lib/rce/geometry.ts`. De thesaurusfuncties staan in `lib/rce/terms.ts` en de
 exacte conceptfuncties in `lib/rce/concepts.ts`. Gedeelde SPARQL-escaping staat
 in `lib/rce/sparql.ts`. Alle archeologische query's, parsers en relatietypes
@@ -10,6 +10,9 @@ publieke exports blijven via `lib/rce.ts` beschikbaar.
 Gedeelde resultaattypes staan in `lib/rce/types.ts`. Foto's, groenaanleg, MSP,
 gebeurtenissen en "Op deze dag" staan in `lib/rce/enrichment.ts`.
 URL-opbouw, history en `popstate` staan in `hooks/useSearchUrlState.ts`.
+Request-lifecycle, abort en bescherming tegen verouderde antwoorden staan in
+`hooks/useSearchRequest.ts`. Filter- en facetafleiding staat in
+`hooks/useFilteredResults.ts`.
 
 ## Doel
 
@@ -52,7 +55,7 @@ te worden verspreid als props en callbacks voldoende zijn.
 
 - `useSearchUrlState`: lezen, schrijven en `popstate`;
 - `useSearchRequest`: abort, sequence-id en remote lifecycle;
-- `useSearchFilters`: lokale filtering en facetafleiding;
+- `useFilteredResults`: lokale filtering en facetafleiding;
 - `useSearchState`: dunne orkestratie van de drie delen.
 
 ## Veilige volgorde voor een latere uitvoering
@@ -66,8 +69,8 @@ te worden verspreid als props en callbacks voldoende zijn.
 6. Splits presentatiedelen uit `page.tsx`. Afgerond: `ResultsToolbar`,
    `StartContent`, `SearchResults`, `SearchFilters`, `HeritageDetailDialog` en
    de typespecifieke `HeritageRelationSections` zijn verplaatst.
-7. Splits hooks pas nadat componentgrenzen stabiel zijn. In uitvoering:
-   `useSearchUrlState` is afgesplitst; request-lifecycle en filters volgen later.
+7. Splits hooks pas nadat componentgrenzen stabiel zijn. Afgerond:
+   URL-state, request-lifecycle en lokale filtering zijn afgesplitst.
 8. Draai na iedere stap typecheck, lint, unittests en Playwright.
 
 ## Niet doen
