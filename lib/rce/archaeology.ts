@@ -1,4 +1,5 @@
-import type { DiscoveryMatch, RceMonument } from "../rce.ts";
+import type { DiscoveryMatch } from "./monuments.ts";
+import type { RceMonument } from "./types.ts";
 import { wktToLatLng } from "./geometry.ts";
 import { escapeSparqlString } from "./sparql.ts";
 

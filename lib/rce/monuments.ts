@@ -1,4 +1,4 @@
-import type { RceMonument } from "../rce.ts";
+import type { RceMonument } from "./types.ts";
 import { wktToLatLng } from "./geometry.ts";
 import { escapeSparqlString } from "./sparql.ts";
 
