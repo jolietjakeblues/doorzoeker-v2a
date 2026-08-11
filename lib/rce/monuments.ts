@@ -210,6 +210,28 @@ export function buildRceNumberQuery(monumentNumber: string) {
   return buildRceDetailsQuery([monumentNumber]);
 }
 
+export function buildRijksmonumentenBrowseQuery(page: number) {
+  const offset = Math.max(0, page - 1) * 25;
+  return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT DISTINCT ?rmnr WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?rm a ceo:Rijksmonument ;
+        ceo:rijksmonumentnummer ?rmnr ;
+        ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> .
+  }
+}
+ORDER BY xsd:integer(?rmnr)
+LIMIT 25
+OFFSET ${offset}`;
+}
+
+export function parseRijksmonumentenBrowseNumbers(document: unknown): string[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.flatMap((binding) => binding.rmnr?.value ? [binding.rmnr.value] : []);
+}
+
 export function buildRceFacetsQuery(monumentNumbers: string[]) {
   const values = monumentNumbers.map((number) => `"${escapeSparqlString(number)}"`).join(" ");
   return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
