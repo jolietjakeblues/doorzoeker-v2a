@@ -2,6 +2,7 @@ import { browseRceObjects, searchByActorConcept, searchByArcheologischeComplexTy
 import { CONCEPT_URI_PATTERN } from "../concept/route.ts";
 import { pruneExpiredEntries } from "../../../../lib/server/expiring-map.ts";
 import { consumeFixedWindow, type RateLimitEntry } from "../../../../lib/server/fixed-window-rate-limit.ts";
+import { CACHE_POLICY, sharedCacheControl } from "../../../../lib/server/http-cache.ts";
 
 type ConceptVeld = "functie" | "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype";
 
@@ -17,7 +18,6 @@ function searchByConceptField(veld: ConceptVeld, conceptUri: string, signal?: Ab
 
 export const runtime = "edge";
 
-const CACHE_SECONDS = 300;
 const RATE_WINDOW_MS = 60_000;
 const RATE_LIMIT = 30;
 // Best-effort per-isolate limiter. Dit is geen globale rate limit: Cloudflare
@@ -120,7 +120,7 @@ export async function GET(request: Request) {
     const memoryCached = responseCache.get(cacheKey.url);
     if (memoryCached) {
       return new Response(memoryCached.body, {
-        headers: { "Content-Type": "application/json", "Cache-Control": `public, max-age=60, s-maxage=${CACHE_SECONDS}`, "X-Doorzoeker-Cache": "HIT" },
+        headers: { "Content-Type": "application/json", "Cache-Control": sharedCacheControl(CACHE_POLICY.searchResults), "X-Doorzoeker-Cache": "HIT" },
       });
     }
     const cached = await readCache(cacheKey);
@@ -145,13 +145,13 @@ export async function GET(request: Request) {
     const response = new Response(body, {
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control": `public, max-age=60, s-maxage=${CACHE_SECONDS}`,
+        "Cache-Control": sharedCacheControl(CACHE_POLICY.searchResults),
         "Server-Timing": `rce;dur=${Date.now() - startedAt}`,
         "X-Doorzoeker-Cache": "MISS",
       },
     });
     if (responseCache.size >= 500) responseCache.delete(responseCache.keys().next().value ?? "");
-    responseCache.set(cacheKey.url, { body, expiresAt: now + CACHE_SECONDS * 1000 });
+    responseCache.set(cacheKey.url, { body, expiresAt: now + CACHE_POLICY.searchResults.sharedSeconds * 1000 });
     const cachedResponse = response.clone();
     cachedResponse.headers.set("X-Doorzoeker-Cache", "HIT");
     await writeCache(cacheKey, cachedResponse);

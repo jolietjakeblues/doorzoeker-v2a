@@ -1,8 +1,8 @@
 import { fetchComplexMembers } from "../../../../lib/server/rce-adapter.ts";
+import { CACHE_POLICY, sharedCacheControl } from "../../../../lib/server/http-cache.ts";
 
 export const runtime = "edge";
 
-const CACHE_SECONDS = 300;
 // Alleen een RCE CHO-complex-URI toestaan, geen willekeurige tekst: de query
 // interpoleert deze waarde direct in een SPARQL <...>-node, dus een waarde
 // met een ">" erin zou een injectie mogelijk maken.
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const members = await fetchComplexMembers(complex, request.signal);
     return Response.json({ members }, {
       headers: {
-        "Cache-Control": `public, max-age=60, s-maxage=${CACHE_SECONDS}`,
+        "Cache-Control": sharedCacheControl(CACHE_POLICY.relatedObjects),
         "Server-Timing": `rce;dur=${Date.now() - startedAt}`,
       },
     });

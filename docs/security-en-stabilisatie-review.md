@@ -64,11 +64,13 @@ De zoekcache en termcache verwijderen bij een geldig verzoek eerst alle
 verlopen waarden. Daarna geldt nog steeds de vaste bovengrens van
 respectievelijk 500 en 250 entries.
 
-### ST-04: cachepolicy is verspreid over routes
+### ST-04: cachepolicy staat in één beleidsmodule, opgelost
 
-TTL's en headers staan lokaal in iedere route. Een gedeelde policytabel of
-kleine helper kan afwijkingen zichtbaarder maken, zolang routes hun eigen
-inhoudelijke TTL houden.
+De semantische policies voor zoekresultaten, relaties, conceptdetails en
+termsuggesties staan in `lib/server/http-cache.ts`. De dynamische daggrens van
+“Op deze dag” gebruikt dezelfde headerfunctie, maar berekent zijn eigen TTL.
+Routes houden zo hun inhoudelijke keuze zonder losse headerteksten en
+TTL-getallen te herhalen.
 
 ## Voorstel voor latere uitvoering
 
