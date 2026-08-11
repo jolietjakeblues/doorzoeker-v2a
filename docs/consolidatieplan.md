@@ -60,7 +60,8 @@ te worden verspreid als props en callbacks voldoende zijn.
 4. Verplaats archeologie. Afgerond.
 5. Verplaats gebouwd erfgoed. Afgerond.
 6. Splits presentatiedelen uit `page.tsx`. In uitvoering: `ResultsToolbar`,
-   `StartContent`, `SearchResults` en `SearchFilters` zijn verplaatst.
+   `StartContent`, `SearchResults`, `SearchFilters` en `HeritageDetailDialog`
+   zijn verplaatst. De typespecifieke detailsecties volgen nog.
 7. Splits hooks pas nadat componentgrenzen stabiel zijn.
 8. Draai na iedere stap typecheck, lint, unittests en Playwright.
 
