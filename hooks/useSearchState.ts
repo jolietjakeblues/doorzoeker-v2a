@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFilteredResults } from "@/hooks/useFilteredResults";
 import {
+  useSearchUrlState,
+  type SearchUrlState,
+} from "@/hooks/useSearchUrlState";
+import {
   browseRceObjects,
   type BrowseKind,
   searchByActorConcept,
@@ -17,7 +21,6 @@ import {
 import {
   EMPTY_ITEMS,
   EMPTY_URL_STATE,
-  readUrlState,
   toItem,
   type ConceptField,
   type Item,
@@ -90,69 +93,29 @@ export function useSearchState() {
   const searchController = useRef<AbortController | null>(null);
   const searchSequence = useRef(0);
   const pendingSelectedId = useRef(EMPTY_URL_STATE.selectedId);
-  const urlStateHydrated = useRef(false);
-  const restoringHistory = useRef(false);
-
-  function beginHistoryEntry() {
-    if (!urlStateHydrated.current || restoringHistory.current) return;
-    window.history.pushState({}, "", window.location.href);
-  }
-
-  useEffect(() => {
-    if (!urlStateHydrated.current) return;
-    const params = new URLSearchParams();
-    if (active) params.set("q", active);
-    if (activeBrowseKind) params.set("browse", activeBrowseKind);
-    if (activeConceptUri) params.set("concept", activeConceptUri);
-    if (activeConceptVeld) params.set("veld", activeConceptVeld);
-    if (selectedTerm) {
-      params.set("begrip", selectedTerm.uri);
-      params.set("begripbron", selectedTerm.sourceUri);
-      params.set("begripbronnaam", selectedTerm.sourceName);
-    }
-    if (objectType !== "Alle") params.set("soort", objectType);
-    if (monumentAard !== "Alle") params.set("aard", monumentAard);
-    if (province !== "Alle") params.set("provincie", province);
-    if (municipality !== "Alle") params.set("gemeente", municipality);
-    if (functionFilter !== "Alle") params.set("functie", functionFilter);
-    if (matchSourceFilter !== "Alle") params.set("bron", matchSourceFilter);
-    if (excludedStatuses.length)
-      params.set("uitgesloten", excludedStatuses.join(","));
-    if (onlyGroenaanleg) params.set("groenaanleg", "1");
-    if (onlyMsp) params.set("msp", "1");
-    if (view === "map") params.set("view", "map");
-    if (view === "map" && mapViewport) {
-      params.set("lat", mapViewport.lat.toFixed(5));
-      params.set("lng", mapViewport.lng.toFixed(5));
-      params.set("zoom", String(mapViewport.zoom));
-    }
-    if (resultPage > 1) params.set("pagina", String(resultPage));
-    if (selected) params.set("object", selected.id);
-    window.history.replaceState(
-      {},
-      "",
-      params.size ? `?${params}` : window.location.pathname,
-    );
-  }, [
-    active,
-    activeBrowseKind,
-    activeConceptUri,
-    activeConceptVeld,
-    selectedTerm,
-    excludedStatuses,
-    functionFilter,
-    matchSourceFilter,
-    monumentAard,
-    municipality,
-    objectType,
-    onlyGroenaanleg,
-    onlyMsp,
-    province,
-    resultPage,
-    selected,
-    view,
-    mapViewport,
-  ]);
+  const { beginHistoryEntry } = useSearchUrlState({
+    snapshot: {
+      active,
+      activeBrowseKind,
+      activeConceptUri,
+      activeConceptVeld,
+      selectedTerm,
+      objectType,
+      monumentAard,
+      province,
+      municipality,
+      functionFilter,
+      matchSourceFilter,
+      excludedStatuses,
+      onlyGroenaanleg,
+      onlyMsp,
+      view,
+      mapViewport,
+      resultPage,
+      selectedId: selected?.id,
+    },
+    onRestore: restoreUrlState,
+  });
 
   const choose = useCallback((item: Item) => setSelected(item), []);
   const baseResults = remoteResults ?? EMPTY_ITEMS;
@@ -473,8 +436,7 @@ export function useSearchState() {
     }
   }
 
-  function restoreUrlState(initial: ReturnType<typeof readUrlState>) {
-    restoringHistory.current = true;
+  function restoreUrlState(initial: SearchUrlState) {
     pendingSelectedId.current = initial.selectedId;
     if (initial.browseKind)
       void browseType(initial.browseKind);
@@ -497,28 +459,7 @@ export function useSearchState() {
     setOnlyMsp(initial.onlyMsp);
     setView(initial.view);
     setMapViewport(initial.mapViewport);
-    restoringHistory.current = false;
   }
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      urlStateHydrated.current = true;
-      restoreUrlState(readUrlState());
-    }, 0);
-    return () => window.clearTimeout(timer);
-    // Deze hydratatie leest de URL bewust alleen bij de eerste mount. De
-    // zoekfuncties veranderen mee met state en mogen dit effect niet herstarten.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  useEffect(() => {
-    function handlePopState() {
-      restoreUrlState(readUrlState());
-    }
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-    // De listener blijft stabiel; hij leest bij ieder event de actuele URL.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   useEffect(() => () => searchController.current?.abort(), []);
 
   function reset() {
