@@ -16,7 +16,7 @@ Opgesteld als ontdekfunctie voor de startpagina, met een belangrijke
 correctie na live verificatie: de aanvankelijk voorgestelde databron
 (Gebeurtenis-datering) bleek ongeschikt, een andere - al langer
 gebruikte - datumbron bleek wel te werken. Bijgesteld naar één monument
-met voorkeur voor een foto (in plaats van een lijst van 3-5), op verzoek
+met een verplichte foto (in plaats van een lijst van 3-5), op verzoek
 van de gebruiker.
 
 ## Aanleiding
@@ -45,22 +45,22 @@ zoekbalk.
    Rijksmonumentengraaf beantwoordt snel (geen vertraging zoals bij de
    geometrische `geof:sfWithin`-queries) - stringvergelijking is
    goedkoop, geen aparte cap-strategie nodig voor de query zelf.
-5. **Bijgesteld (2026-08-10): één monument met een foto, geen lijst van
+5. **Bijgesteld (2026-08-11): één gebouwd monument met een foto, geen lijst van
    3-5.** Visueel leuker als kaart/tegel met afbeelding dan een tekstlijst.
    Live geverifieerd dat dit haalbaar is: van de 312 kandidaten op 10
    augustus hebben er **37 ook een foto** in de beeldbank
    (`graph/image-1`, gejoined op rijksmonumentnummer). Zelfs op het
    schaarsteget geval, 29 februari (alleen in schrikkeljaren), zijn er nog
-   **31 kandidaten met foto** - een dag zonder enige met-foto-kandidaat is
-   dus niet aannemelijk, maar de aanpak hieronder valt defensief terug op
-   een kandidaat zonder foto als dat toch ooit voorkomt.
+   **31 kandidaten met foto**. Als de bron op een dag toch geen gebouwd
+   monument met foto levert, toont de widget niets. Hij valt niet terug op
+   een archeologisch monument of een monument zonder afbeelding.
 
 ## Doel
 
 Op de startpagina (in de huidige "start-panel"/idle-weergave, vóór een
-zoekopdracht) één Rijksmonument tonen dat op de huidige kalenderdag
-(ongeacht jaar) is ingeschreven in het Monumentenregister, met voorkeur
-voor een monument met een foto uit de beeldbank - als kaart/tegel in
+zoekopdracht) één gebouwd Rijksmonument tonen dat op de huidige kalenderdag
+(ongeacht jaar) is ingeschreven in het Monumentenregister en een foto uit de
+beeldbank heeft, als kaart/tegel in
 plaats van een tekstlijst, doorklikbaar naar het volledige record.
 
 ## Voorgestelde aanpak
@@ -71,14 +71,14 @@ plaats van een tekstlijst, doorklikbaar naar het volledige record.
    berekend in de route, niet clientside - voorkomt tijdzoneverschil
    tussen server en browser). De query joint meteen met `graph/image-1`
    (zelfde vorm als de bestaande `buildImageQuery`) zodat kandidaten mét
-   foto apart herkenbaar zijn.
+   foto verplicht aanwezig is. De query beperkt ook op monumentaard
+   `onroerend gebouwd`.
 2. Nieuwe route `GET /api/rce/op-deze-dag`, met dezelfde
    cache/rate-limit-opzet als `/api/rce/search`, maar een langere
    `Cache-Control` (het resultaat verandert maar één keer per dag).
    Server-side kiest één kandidaat deterministisch (zie "Openstaande
-   vragen") - bij voorkeur uit de met-foto-kandidaten, alleen terugvallen
-   op de volledige kandidatenlijst als er toevallig geen enkele met foto
-   is. Zo ziet elke bezoeker op dezelfde dag hetzelfde monument
+   vragen") uit uitsluitend gebouwde kandidaten met foto. Zo ziet elke
+   bezoeker op dezelfde dag hetzelfde monument
    (belangrijk voor caching), niet iets anders per request.
 3. UI: één kaart/tegel in het bestaande `start-panel` (de sectie die nu
    al "ZO WERKT HET" toont wanneer er nog geen zoekopdracht is), met de
@@ -89,7 +89,7 @@ plaats van een tekstlijst, doorklikbaar naar het volledige record.
 
 ## Scope-afbakening
 
-- Alleen Rijksmonument (heeft als enige een
+- Alleen gebouwd Rijksmonument met gekoppelde beeldbankafbeelding (heeft als enige een
   `datumInschrijvingInMonumentenregister`-achtig veld dat al gebruikt
   wordt). Werelderfgoed/Gezicht hebben eigen inschrijvingsvelden
   (`jaarVanInschrijving` etc.) - niet meegenomen in deze eerste schijf.
@@ -99,22 +99,19 @@ plaats van een tekstlijst, doorklikbaar naar het volledige record.
   request-tijd-query volstaat gezien de lage kosten (stringvergelijking,
   geen geometrie).
 
-## Openstaande vragen
+## Besluiten en openstaande vragen
 
-- Hoe één stabiele, voor iedereen gelijke dagelijkse keuze maken uit soms
-  tientallen met-foto-kandidaten, zonder een aparte precompute-stap?
-  Voorstel: een deterministische sortering op bv.
-  `rijksmonumentnummer modulo dag van het jaar` - simpel, geen state
-  nodig, wel altijd hetzelfde monument op dezelfde dag.
+- Besloten: sorteer unieke rijksmonumentnummers en kies met de dag van het
+  jaar een vaste index. De bindingvolgorde van de SPARQL-dienst heeft daardoor
+  geen invloed op de dagelijkse keuze.
 - Cache-duur: tot middernacht (lokale tijd van de server) of een vaste
   24-uurs TTL? Klein verschil, niet kritiek.
 
 ## Acceptatiecriteria
 
 1. De startpagina (idle-weergave) toont één "Op deze dag
-   ingeschreven"-tegel met een Rijksmonument dat op de huidige
-   kalenderdag is ingeschreven, ongeacht jaar - met foto wanneer
-   beschikbaar.
+   ingeschreven"-tegel met een gebouwd Rijksmonument dat op de huidige
+   kalenderdag is ingeschreven, ongeacht jaar, en een afbeelding heeft.
 2. De tegel is doorklikbaar naar het volledige record.
 3. Dezelfde dag toont voor elke bezoeker hetzelfde monument (niet
    willekeurig per request).
@@ -123,5 +120,5 @@ plaats van een tekstlijst, doorklikbaar naar het volledige record.
 ## Klaar wanneer
 
 De startpagina toont de "Op deze dag"-tegel met één echt, doorklikbaar
-Rijksmonument met foto, gebaseerd op `datumInschrijvingInMonumentenregister`
+gebouwd Rijksmonument met foto, gebaseerd op `datumInschrijvingInMonumentenregister`
 (niet op de ongeschikte Gebeurtenis-datering).

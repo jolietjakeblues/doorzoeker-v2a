@@ -2,15 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { GET } from "../app/api/rce/op-deze-dag/route.ts";
 
-test("returns a monument with an image when a candidate has one", async (context) => {
+test("returns a built monument with an image from the constrained candidate query", async (context) => {
   const originalFetch = globalThis.fetch;
   context.after(() => { globalThis.fetch = originalFetch; });
   globalThis.fetch = async (input) => {
     const url = decodeURIComponent(String(input));
     if (url.includes("datumInschrijvingInMonumentenregister")) {
       return Response.json({ results: { bindings: [
-        { rmnr: { value: "18073" }, heeftFoto: { value: "false" } },
-        { rmnr: { value: "36046" }, heeftFoto: { value: "true" } },
+        { rmnr: { value: "36046" } },
       ] } });
     }
     if (url.includes("perceelnummer")) return Response.json({ results: { bindings: [] } });

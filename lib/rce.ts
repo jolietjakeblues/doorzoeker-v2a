@@ -20,6 +20,7 @@ const ABR_THESAURUS_GRAPH = "https://data.cultureelerfgoed.nl/term/id/abr/thesau
 const CHT_MATERIALEN_TOP = "https://data.cultureelerfgoed.nl/term/id/cht/aa872ce6-a74c-4f81-96ec-6ee0e717f92a";
 const CHT_STIJLEN_PERIODEN_TOP = "https://data.cultureelerfgoed.nl/term/id/cht/63cca950-f545-467a-9d70-db3a2b21bba3";
 const RIJKSMONUMENT_STATUS = "https://data.cultureelerfgoed.nl/term/id/rn/2/b2d9a59a-fe1e-4552-9a05-3c2acddff864";
+const GEBOUWD_MONUMENTAARD = "https://data.cultureelerfgoed.nl/term/id/rn/2/fc966a68-8863-4970-a83e-110f96006c21";
 const GEZICHT_STATUS = "https://data.cultureelerfgoed.nl/term/id/rn/2/fd968529-bf70-4afa-8564-7c6c2fcfcc54";
 
 export const RCE_SEMANTICS = Object.freeze({
@@ -834,42 +835,42 @@ LIMIT 100`;
 // ONGESCHIKT voor dit doel (dag/maand staat vrijwel altijd vast op "01-01",
 // een jaarnauwkeurige precisie-conventie, geen echte datum).
 // datumInschrijvingInMonumentenregister (al gebruikt als registrationDate)
-// heeft wél een echte, gespreide dag-verdeling. EXISTS (in plaats van een
-// OPTIONAL-join) voorkomt dat een monument met meerdere foto's meerdere
-// keren in het resultaat verschijnt.
+// heeft wél een echte, gespreide dag-verdeling. Alleen gebouwde
+// Rijksmonumenten met minstens één gekoppelde beeldbankafbeelding komen in
+// aanmerking. DISTINCT voorkomt dubbele kandidaten bij meerdere afbeeldingen.
 export function buildOpDezeDagQuery(maandDag: string) {
   return `PREFIX ceo: <${CEO}>
-SELECT ?rmnr (EXISTS { GRAPH <${IMAGE_GRAPH}> { ?image ceo:rijksmonumentnummer ?rmnr } } AS ?heeftFoto) WHERE {
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+SELECT DISTINCT ?rmnr WHERE {
   GRAPH <${INSTANCES_GRAPH}> {
     ?rm a ceo:Rijksmonument ; ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> ;
+        ceo:heeftMonumentAard <${GEBOUWD_MONUMENTAARD}> ;
         ceo:rijksmonumentnummer ?rmnr ;
         ceo:datumInschrijvingInMonumentenregister ?ins .
     FILTER(SUBSTR(STR(?ins), 6, 5) = "${escapeSparqlString(maandDag)}")
   }
+  GRAPH <${IMAGE_GRAPH}> {
+    ?image ceo:rijksmonumentnummer ?rmnr ; foaf:depiction ?depiction .
+  }
 }`;
 }
 
-export type OpDezeDagCandidate = { monumentNumber: string; heeftFoto: boolean };
+export type OpDezeDagCandidate = { monumentNumber: string };
 
 export function parseOpDezeDagCandidates(document: unknown): OpDezeDagCandidate[] {
   const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
   if (!Array.isArray(bindings)) return [];
-  return bindings.flatMap((binding) => binding.rmnr?.value ? [{ monumentNumber: binding.rmnr.value, heeftFoto: binding.heeftFoto?.value === "true" }] : []);
+  return bindings.flatMap((binding) => binding.rmnr?.value ? [{ monumentNumber: binding.rmnr.value }] : []);
 }
 
-// Kiest deterministisch één kandidaat: dezelfde dag geeft elke bezoeker
-// hetzelfde monument (belangrijk voor caching), bij voorkeur één met een
-// foto uit de beeldbank (visueel aantrekkelijker dan alleen tekst) - live
-// geverifieerd dat zelfs op 29 februari (schrikkeldag) nog 31 van de 312
-// kandidaten een foto hebben, dus de met-foto-voorkeur valt zelden terug op
-// de volledige lijst. `dayOfYear` (1-366) laat hetzelfde kalenderjaar in
-// een volgend jaar een ander monument uit dezelfde dag-groep kiezen, in
-// plaats van elk jaar exact dezelfde.
+// De query levert uitsluitend gebouwde Rijksmonumenten met afbeelding.
+// Sorteren en dedupliceren maakt de dagelijkse keuze onafhankelijk van de
+// bindingvolgorde van de SPARQL-dienst.
 export function pickOpDezeDagCandidate(candidates: OpDezeDagCandidate[], dayOfYear: number): string | undefined {
   if (!candidates.length) return undefined;
-  const withPhoto = candidates.filter((candidate) => candidate.heeftFoto);
-  const pool = withPhoto.length ? withPhoto : candidates;
-  return pool[dayOfYear % pool.length].monumentNumber;
+  const pool = [...new Set(candidates.map((candidate) => candidate.monumentNumber))]
+    .sort((a, b) => a.localeCompare(b, "nl", { numeric: true }));
+  return pool[dayOfYear % pool.length];
 }
 
 // De leden van een complex zijn bewust NIET onderdeel van de gewone

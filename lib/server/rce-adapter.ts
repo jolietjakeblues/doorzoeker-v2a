@@ -237,8 +237,8 @@ export async function searchByActorConcept(conceptUri: string, signal?: AbortSig
 }
 
 // "Op deze dag" (docs/vertical-slices/010-op-deze-dag.md): één
-// Rijksmonument dat op de huidige kalenderdag is ingeschreven in het
-// Monumentenregister, bij voorkeur met een foto. `now` is optioneel
+// gebouwd Rijksmonument dat op de huidige kalenderdag is ingeschreven in het
+// Monumentenregister en een gekoppelde afbeelding heeft. `now` is optioneel
 // injecteerbaar voor tests - zonder argument wordt de echte serverklok
 // gebruikt.
 export async function fetchOpDezeDag(signal?: AbortSignal, now: Date = new Date()): Promise<RceMonument | undefined> {
