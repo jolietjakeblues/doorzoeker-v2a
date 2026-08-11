@@ -1,8 +1,10 @@
 # Consolidatieplan
 
-Status: in uitvoering. De pure geometriefuncties zijn als eerste mechanische
-stap verplaatst naar `lib/rce/geometry.ts`; de publieke exports blijven via
-`lib/rce.ts` beschikbaar.
+Status: in uitvoering. De pure geometriefuncties staan in
+`lib/rce/geometry.ts`. De thesaurusfuncties staan in `lib/rce/terms.ts` en de
+exacte conceptfuncties in `lib/rce/concepts.ts`. Gedeelde SPARQL-escaping staat
+in `lib/rce/sparql.ts`. De publieke exports blijven via `lib/rce.ts`
+beschikbaar.
 
 ## Doel
 
@@ -52,7 +54,7 @@ te worden verspreid als props en callbacks voldoende zijn.
 
 1. Voeg karakterisatietests toe rond exports en URL-herstel.
 2. Verplaats pure geometriefuncties zonder gedragswijziging. Afgerond.
-3. Verplaats thesaurus- en conceptfuncties.
+3. Verplaats thesaurus- en conceptfuncties. Afgerond.
 4. Splits archeologie en gebouwd erfgoed.
 5. Splits presentatiedelen uit `page.tsx`.
 6. Splits hooks pas nadat componentgrenzen stabiel zijn.
