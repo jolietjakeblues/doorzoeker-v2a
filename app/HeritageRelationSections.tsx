@@ -77,14 +77,13 @@ export function HeritageRelationSections({
             <ul>
               {onderzoeksgebiedVerrijking.complexen.map((complex) => (
                 <li key={complex.complexUri}>
-                  <a
-                    href={complex.complexUri}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => void executeSearch(complex.choNumber)}
                   >
                     {complex.typeLabel ||
                       `Archeologisch complex ${complex.choNumber}`}
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -93,9 +92,12 @@ export function HeritageRelationSections({
             <ul>
               {onderzoeksgebiedVerrijking.vondstlocaties.map((vl) => (
                 <li key={vl.vlUri}>
-                  <a href={vl.vlUri} target="_blank" rel="noreferrer">
+                  <button
+                    type="button"
+                    onClick={() => void executeSearch(vl.choNumber)}
+                  >
                     {vl.locatienaam || `Vondstlocatie ${vl.choNumber}`}
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -121,9 +123,9 @@ export function HeritageRelationSections({
               <ul>
                 {vondstlocatieInhoud.complexen.map((complex) => (
                   <li key={complex.uri}>
-                    <a href={complex.uri} target="_blank" rel="noreferrer">
+                    <button type="button" onClick={() => void executeSearch(complex.choNumber)}>
                       {complex.type?.label || `Archeologisch complex ${complex.choNumber}`}
-                    </a>
+                    </button>
                     {complex.type?.schemes?.length ? <small>{complex.type.schemes.map((scheme) => scheme.label).join(" · ")}</small> : null}
                   </li>
                 ))}
@@ -138,9 +140,9 @@ export function HeritageRelationSections({
                   const begrippen = [...vondst.types, ...vondst.materialen, ...vondst.stijlen, ...(vondst.toestand ? [vondst.toestand] : [])];
                   return (
                     <li key={vondst.uri}>
-                      <a href={vondst.uri} target="_blank" rel="noreferrer">
+                      <button type="button" onClick={() => void executeSearch(vondst.choNumber)}>
                         {vondst.archisVondstnummer ? `Archis-vondst ${vondst.archisVondstnummer}` : `Vondst ${vondst.choNumber}`}
-                      </a>
+                      </button>
                       {vondst.aantal ? ` — ${countLabel(vondst.aantal, "exemplaar", "exemplaren")}` : ""}
                       {begrippen.length ? (
                         <small> — {begrippen.map((concept) => `${concept.label}${concept.schemes?.length ? ` (${concept.schemes.map((scheme) => scheme.label).join(", ")})` : ""}`).join(" · ")}</small>
@@ -157,9 +159,9 @@ export function HeritageRelationSections({
               <ul>
                 {vondstlocatieInhoud.grondsporen.map((spoor) => (
                   <li key={spoor.uri}>
-                    <a href={spoor.uri} target="_blank" rel="noreferrer">
+                    <button type="button" onClick={() => void executeSearch(spoor.choNumber)}>
                       {spoor.type?.label || `Grondsporen ${spoor.choNumber}`}
-                    </a>
+                    </button>
                     {spoor.aantal ? ` — ${countLabel(spoor.aantal, "spoor", "sporen")}` : ""}
                     {spoor.type?.schemes?.length ? <small>{spoor.type.schemes.map((scheme) => scheme.label).join(" · ")}</small> : null}
                   </li>

@@ -824,9 +824,10 @@ test("parses discovery en details van een zelfstandig archeologisch terrein", ()
   assert.equal(terrein.wkt, undefined);
 });
 
-test("discovers vondstlocaties via beide Archis-nummers, naam, plaats, omschrijving en verwerving", () => {
+test("discovers vondstlocaties via CHO-nummer, beide Archis-nummers, naam, plaats, omschrijving en verwerving", () => {
   const queries = buildVondstlocatieDiscoveryQueries("102482");
   assert.deepEqual(queries.map((query) => query.bron), [
+    "CHO-nummer (vondstlocatie)",
     "Archis-vondstmeldingsnummer",
     "Archis-waarnemingsnummer",
     "locatienaam",
@@ -834,14 +835,28 @@ test("discovers vondstlocaties via beide Archis-nummers, naam, plaats, omschrijv
     "omschrijving (vondstlocatie)",
     "verwervingswijze",
   ]);
+  assert.match(queries[0].query, /BIND\(\?choi AS \?match\)/);
   assert.match(queries[0].query, /FILTER\(STR\(\?match\) = "102482"\)/);
-  assert.match(queries[1].query, /archis2Waarnemingsnummer/);
-  assert.match(queries[5].query, /heeftVerwerving\/skos:prefLabel/);
+  assert.match(queries[1].query, /FILTER\(STR\(\?match\) = "102482"\)/);
+  assert.match(queries[2].query, /archis2Waarnemingsnummer/);
+  assert.match(queries[6].query, /heeftVerwerving\/skos:prefLabel/);
+});
+
+test("finds a vondstlocatie by its exact CHO-nummer", () => {
+  // Voorheen kon een Vondstlocatie alleen via Archis-nummers, naam,
+  // woonplaats, omschrijving of verwerving gevonden worden - niet via zijn
+  // eigen cultuurhistorischObjectnummer. Dat brak onder meer de bestaande
+  // "Vondstlocatie"-doorklik vanaf een Grondspoor/Vondst-detail
+  // (onObjectSearch(item.parentObjectNumber)) en de "vondstlocatie"-lijst
+  // onder een Onderzoeksgebied, die beide op dat CHO-nummer zoeken.
+  const document = { results: { bindings: [{ choi: { value: "10094086" }, match: { value: "10094086" } }] } };
+  const matches = parseVondstlocatieDiscoveryResults(document, "CHO-nummer (vondstlocatie)", "10094086");
+  assert.deepEqual(matches, [{ monumentNumber: "10094086", matchSource: "CHO-nummer (vondstlocatie)", matchedText: "10094086", matchScore: 10 }]);
 });
 
 test("parses een zelfstandige vondstlocatie zonder coördinaten te verzinnen", () => {
   const matches = parseVondstlocatieDiscoveryResults({ results: { bindings: [{ choi: { value: "6109334" }, match: { value: "102482" } }] } }, "Archis-vondstmeldingsnummer", "102482");
-  assert.equal(matches[0].matchScore, 10);
+  assert.equal(matches[0].matchScore, 20);
   assert.match(buildVondstlocatieDetailsQuery(["6109334"]), /VALUES \?choi \{ "6109334" \}/);
   const [locatie] = parseVondstlocatieResults({ results: { bindings: [{
     locatie: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/vondstlocatie/6109334" },
