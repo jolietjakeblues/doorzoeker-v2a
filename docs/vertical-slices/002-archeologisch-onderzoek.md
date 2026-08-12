@@ -4,6 +4,16 @@
 
 Gebouwd en getest (2026-08-10). ArcheologischOnderzoeksgebied is als
 zelfstandige zoekbranch aangesloten op woonplaats en onderzoeksomschrijving.
+
+**Bijgewerkt (2026-08-11): ook op eigen CHO-nummer vindbaar.** Een
+gebruiker die het cultuurhistorischObjectnummer van een onderzoeksgebied al
+kende (bijvoorbeeld uit de RCE Linked Data zelf) kon het daarmee niet
+terugvinden - Grondsporen, Vondsten en Archeologische complexen hadden een
+`CHO-nummer (...)`-zoekbron als hoogste rang, Onderzoeksgebied miste die als
+enige van de vier. Toegevoegd als nieuwe rang-1-bron in
+`ARCHEOLOGISCH_ONDERZOEK_SOURCES`, zelfde `BIND(?choi AS ?match)`-patroon.
+Live geverifieerd: onderzoeksgebied 10013982 (Heerlen) is nu op zijn eigen
+nummer te vinden.
 De detailweergave toont rechtstreeks gekoppelde archeologische complexen,
 maximaal 25 vondstlocaties en totalen van vondstlocaties, vondsten,
 grondsporen en complexen via vondstlocaties. `ArcheologischTerrein` heeft

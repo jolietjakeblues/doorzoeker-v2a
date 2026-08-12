@@ -52,8 +52,9 @@ export function parseArcheologischTerreinResults(document: unknown): Map<string,
 }
 
 const ARCHEOLOGISCH_ONDERZOEK_SOURCES: { bron: string; rang: number; pattern: string }[] = [
-  { bron: "woonplaats (onderzoeksgebied)", rang: 1, pattern: "?gebied ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?match ." },
-  { bron: "omschrijving (onderzoeksgebied)", rang: 2, pattern: "?gebied ceo:heeftOmschrijving/ceo:omschrijving ?match ." },
+  { bron: "CHO-nummer (onderzoeksgebied)", rang: 1, pattern: "BIND(?choi AS ?match)" },
+  { bron: "woonplaats (onderzoeksgebied)", rang: 2, pattern: "?gebied ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?match ." },
+  { bron: "omschrijving (onderzoeksgebied)", rang: 3, pattern: "?gebied ceo:heeftOmschrijving/ceo:omschrijving ?match ." },
 ];
 
 export function buildArcheologischOnderzoekDiscoveryQueries(term: string): { bron: string; query: string }[] {
