@@ -372,12 +372,13 @@ export function parseStandaloneArcheologischTerreinResults(document: unknown): R
 }
 
 const VONDSTLOCATIE_SOURCES: { bron: string; rang: number; pattern: string }[] = [
-  { bron: "Archis-vondstmeldingsnummer", rang: 1, pattern: "?locatie ceo:archis2Vondstmeldingsnummer ?match ." },
-  { bron: "Archis-waarnemingsnummer", rang: 2, pattern: "?locatie ceo:archis2Waarnemingsnummer ?match ." },
-  { bron: "locatienaam", rang: 3, pattern: "?locatie ceo:heeftLocatieAanduiding/ceo:locatienaam ?match ." },
-  { bron: "woonplaats (vondstlocatie)", rang: 4, pattern: "?locatie ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?match ." },
-  { bron: "omschrijving (vondstlocatie)", rang: 5, pattern: "?locatie ceo:heeftOmschrijving/ceo:omschrijving ?match ." },
-  { bron: "verwervingswijze", rang: 6, pattern: "?locatie ceo:heeftVerwerving/skos:prefLabel ?match ." },
+  { bron: "CHO-nummer (vondstlocatie)", rang: 1, pattern: "BIND(?choi AS ?match)" },
+  { bron: "Archis-vondstmeldingsnummer", rang: 2, pattern: "?locatie ceo:archis2Vondstmeldingsnummer ?match ." },
+  { bron: "Archis-waarnemingsnummer", rang: 3, pattern: "?locatie ceo:archis2Waarnemingsnummer ?match ." },
+  { bron: "locatienaam", rang: 4, pattern: "?locatie ceo:heeftLocatieAanduiding/ceo:locatienaam ?match ." },
+  { bron: "woonplaats (vondstlocatie)", rang: 5, pattern: "?locatie ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?match ." },
+  { bron: "omschrijving (vondstlocatie)", rang: 6, pattern: "?locatie ceo:heeftOmschrijving/ceo:omschrijving ?match ." },
+  { bron: "verwervingswijze", rang: 7, pattern: "?locatie ceo:heeftVerwerving/skos:prefLabel ?match ." },
 ];
 
 export function buildVondstlocatieDiscoveryQueries(term: string): { bron: string; query: string }[] {
@@ -390,7 +391,7 @@ SELECT DISTINCT ?choi ?match WHERE {
  GRAPH <${INSTANCES_GRAPH}> {
   ?locatie a ceo:Vondstlocatie ; ceo:cultuurhistorischObjectnummer ?choi .
   ${pattern}
-  ${bron.startsWith("Archis-") && /^\d+$/.test(term.trim())
+  ${(bron.startsWith("Archis-") || bron.startsWith("CHO-nummer")) && /^\d+$/.test(term.trim())
     ? `FILTER(STR(?match) = "${needle}")`
     : `FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))`}
  }
