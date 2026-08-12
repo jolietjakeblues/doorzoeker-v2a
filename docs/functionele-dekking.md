@@ -17,7 +17,7 @@ zelfstandig doorzoekbare objecten, gekoppelde gegevens en alleen tellingen.
 | Grondspoor | Vrij zoeken op CHO-nummer, omschrijving, woonplaats en gekoppeld RN2-type; daarnaast per 25 records te doorbladeren | Geen kaartpunt: in de publieke CHO-dataset heeft geen van de 91.980 gecontroleerde records een directe `ceo:heeftGeometrie`-koppeling | Aantal grondsporen, omschrijving, type met conceptschema en bovenliggende vondstlocatie |
 | Vondst | Vrij zoeken op CHO- of Archis-vondstnummer, omschrijving, woonplaats, type, materiaal en toestand; daarnaast per 25 records te doorbladeren | Geen kaartpunt: de RCE publiceert hiervoor geen coördinaten | Aantal, omschrijving, bovenliggende vondstlocatie en aanklikbare RN2-begrippen voor type, materiaal en toestand |
 | Archeologisch complex | Vrij zoeken op CHO-nummer, omschrijving, woonplaats en RN2-complextype; daarnaast per 25 records te doorbladeren | Geen kaartpunt: de RCE publiceert hiervoor geen coördinaten | Aanklikbaar complextype en alle gekoppelde vondstlocaties, archeologische terreinen of onderzoeksgebieden |
-| Archeologisch onderzoeksgebied | Vrij zoeken op woonplaats en onderzoeksomschrijving; daarnaast per 25 records te doorbladeren | Polygon of MultiPolygon | Onderzoeksgegevens en gekoppelde archeologische inhoud |
+| Archeologisch onderzoeksgebied | Vrij zoeken op CHO-nummer, woonplaats en onderzoeksomschrijving; daarnaast per 25 records te doorbladeren | Polygon of MultiPolygon | Onderzoeksgegevens en gekoppelde archeologische inhoud |
 
 Een Complex heeft in Doorzoeker geen kunstmatig berekende `union`-geometrie.
 De kaart tekent de beschikbare Point-, Polygon- en MultiPolygon-geometrieën
