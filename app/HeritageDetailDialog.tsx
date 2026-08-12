@@ -323,6 +323,7 @@ export function HeritageDetailDialog({
             selected={selected}
             enrichment={enrichment}
             onSearch={executeSearch}
+            onConceptSearch={executeConceptSearch}
           />
           {selected.literature?.length ? (
             <div className="map-object-list">

@@ -1,13 +1,15 @@
 import type { useSearchState } from "@/hooks/useSearchState";
 import type { useSelectedDetailEnrichment } from "@/hooks/useSelectedDetailEnrichment";
-import type { Item } from "@/lib/heritage-view-model";
+import type { ConceptField, Item } from "@/lib/heritage-view-model";
 
 type DetailEnrichment = ReturnType<typeof useSelectedDetailEnrichment>;
+type Concept = { uri: string; label: string };
 
 type HeritageRelationSectionsProps = {
   selected: Item;
   enrichment: DetailEnrichment;
   onSearch: ReturnType<typeof useSearchState>["executeSearch"];
+  onConceptSearch: (concept: Concept, field?: ConceptField) => void;
 };
 
 function countLabel(count: number, singular: string, plural: string) {
@@ -18,6 +20,7 @@ export function HeritageRelationSections({
   selected,
   enrichment,
   onSearch: executeSearch,
+  onConceptSearch,
 }: HeritageRelationSectionsProps) {
   const { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten } = enrichment;
   return (
@@ -137,7 +140,16 @@ export function HeritageRelationSections({
               <h4>Vondsten</h4>
               <ul>
                 {vondstlocatieInhoud.vondsten.map((vondst) => {
-                  const begrippen = [...vondst.types, ...vondst.materialen, ...vondst.stijlen, ...(vondst.toestand ? [vondst.toestand] : [])];
+                  // "stijl" heeft (nog) geen exacte conceptzoekroute in de
+                  // app (geen ConceptField, geen backend-ondersteuning) -
+                  // blijft daarom platte tekst, in tegenstelling tot type,
+                  // materiaal en toestand die dat al wel hebben.
+                  const begrippen: { concept: typeof vondst.types[number]; field?: ConceptField }[] = [
+                    ...vondst.types.map((concept) => ({ concept, field: "vondsttype" as const })),
+                    ...vondst.materialen.map((concept) => ({ concept, field: "materiaal" as const })),
+                    ...vondst.stijlen.map((concept) => ({ concept, field: undefined })),
+                    ...(vondst.toestand ? [{ concept: vondst.toestand, field: "toestand" as const }] : []),
+                  ];
                   return (
                     <li key={vondst.uri}>
                       <button type="button" onClick={() => void executeSearch(vondst.choNumber)}>
@@ -145,7 +157,22 @@ export function HeritageRelationSections({
                       </button>
                       {vondst.aantal ? ` — ${countLabel(vondst.aantal, "exemplaar", "exemplaren")}` : ""}
                       {begrippen.length ? (
-                        <small> — {begrippen.map((concept) => `${concept.label}${concept.schemes?.length ? ` (${concept.schemes.map((scheme) => scheme.label).join(", ")})` : ""}`).join(" · ")}</small>
+                        <small>
+                          {" — "}
+                          {begrippen.map((entry, index) => (
+                            <span key={`${entry.concept.uri}-${index}`}>
+                              {index ? " · " : ""}
+                              {entry.field ? (
+                                <button type="button" className="concept-link" onClick={() => onConceptSearch(entry.concept, entry.field)}>
+                                  {entry.concept.label}
+                                </button>
+                              ) : (
+                                entry.concept.label
+                              )}
+                              {entry.concept.schemes?.length ? ` (${entry.concept.schemes.map((scheme) => scheme.label).join(", ")})` : ""}
+                            </span>
+                          ))}
+                        </small>
                       ) : null}
                     </li>
                   );
