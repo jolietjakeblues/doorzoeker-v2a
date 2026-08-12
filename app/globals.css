@@ -979,6 +979,15 @@ h2 {
 .map-object-list button:focus-visible {
   background: var(--panel);
 }
+.map-object-list .concept-link {
+  display: inline;
+  width: auto;
+  padding: 0;
+}
+.map-object-list .concept-link:hover,
+.map-object-list .concept-link:focus-visible {
+  background: none;
+}
 .map-object-list li > a {
   display: block;
   padding: 10px 16px;

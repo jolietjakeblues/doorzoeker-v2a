@@ -56,7 +56,7 @@ export type RceMonument = {
   archaeologicalStyles?: ArchaeologyConcept[];
   archaeologicalCondition?: ArchaeologyConcept;
   archaeologicalComplexType?: ArchaeologyConcept;
-  archaeologicalContexts?: { uri: string; label: string; type: "Vondstlocatie" | "Archeologisch terrein" | "Onderzoeksgebied" }[];
+  archaeologicalContexts?: { uri: string; choNumber: string; label: string; type: "Vondstlocatie" | "Archeologisch terrein" | "Onderzoeksgebied" }[];
 };
 
 export type MonumentImage = { url: string; title?: string; license?: string; sourceUrl?: string };

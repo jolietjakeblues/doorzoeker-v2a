@@ -84,7 +84,7 @@ export type Item = {
   archaeologicalStyles?: { uri: string; label: string; schemes?: { uri: string; label: string }[] }[];
   archaeologicalCondition?: { uri: string; label: string; schemes?: { uri: string; label: string }[] };
   archaeologicalComplexType?: { uri: string; label: string; schemes?: { uri: string; label: string }[] };
-  archaeologicalContexts?: { uri: string; label: string; type: "Vondstlocatie" | "Archeologisch terrein" | "Onderzoeksgebied" }[];
+  archaeologicalContexts?: { uri: string; choNumber: string; label: string; type: "Vondstlocatie" | "Archeologisch terrein" | "Onderzoeksgebied" }[];
 };
 
 export const EMPTY_ITEMS: Item[] = [];

@@ -239,11 +239,12 @@ export function parseOnderzoeksgebiedAggregatenResults(document: unknown): Onder
 }
 
 const ARCHEOLOGISCH_TERREIN_SOURCES: { bron: string; rang: number; pattern: string }[] = [
-  { bron: "Archis-monumentnummer", rang: 1, pattern: "?terrein ceo:archis2Monumentnummer ?match ." },
-  { bron: "naam (archeologisch terrein)", rang: 2, pattern: "?terrein ceo:heeftNaam/ceo:naam ?match ." },
-  { bron: "woonplaats (archeologisch terrein)", rang: 3, pattern: "?terrein ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?match ." },
-  { bron: "omschrijving (archeologisch terrein)", rang: 4, pattern: "?terrein ceo:heeftOmschrijving/ceo:omschrijving ?match ." },
-  { bron: "waardering (archeologisch terrein)", rang: 5, pattern: "?terrein ceo:heeftArcheologischeWaardering/skos:prefLabel ?match ." },
+  { bron: "CHO-nummer (archeologisch terrein)", rang: 1, pattern: "BIND(?choi AS ?match)" },
+  { bron: "Archis-monumentnummer", rang: 2, pattern: "?terrein ceo:archis2Monumentnummer ?match ." },
+  { bron: "naam (archeologisch terrein)", rang: 3, pattern: "?terrein ceo:heeftNaam/ceo:naam ?match ." },
+  { bron: "woonplaats (archeologisch terrein)", rang: 4, pattern: "?terrein ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?match ." },
+  { bron: "omschrijving (archeologisch terrein)", rang: 5, pattern: "?terrein ceo:heeftOmschrijving/ceo:omschrijving ?match ." },
+  { bron: "waardering (archeologisch terrein)", rang: 6, pattern: "?terrein ceo:heeftArcheologischeWaardering/skos:prefLabel ?match ." },
 ];
 
 export type ArchaeologyBrowseKind =
@@ -295,7 +296,7 @@ SELECT DISTINCT ?choi ?match WHERE {
  GRAPH <${INSTANCES_GRAPH}> {
   ?terrein a ceo:ArcheologischTerrein ; ceo:cultuurhistorischObjectnummer ?choi .
   ${pattern}
-  ${bron === "Archis-monumentnummer" && /^\d+$/.test(term.trim())
+  ${(bron === "Archis-monumentnummer" || bron.startsWith("CHO-nummer")) && /^\d+$/.test(term.trim())
     ? `FILTER(STR(?match) = "${needle}")`
     : `FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))`}
  }
@@ -780,7 +781,8 @@ export function parseArcheologischeComplexResults(document: unknown): RceMonumen
     const parentClass = binding.parentClass?.value ?? "";
     if (parent && !record.archaeologicalContexts!.some((item) => item.uri === parent)) {
       const type = parentClass.endsWith("Vondstlocatie") ? "Vondstlocatie" : parentClass.endsWith("ArcheologischTerrein") ? "Archeologisch terrein" : "Onderzoeksgebied";
-      record.archaeologicalContexts!.push({ uri: parent, type, label: binding.parentNaam?.value && binding.parentNaam.value !== "-" ? binding.parentNaam.value : `${type} ${binding.parentChoi?.value ?? ""}`.trim() });
+      const parentChoNumber = binding.parentChoi?.value ?? "";
+      record.archaeologicalContexts!.push({ uri: parent, choNumber: parentChoNumber, type, label: binding.parentNaam?.value && binding.parentNaam.value !== "-" ? binding.parentNaam.value : `${type} ${parentChoNumber}`.trim() });
     }
     records.set(choNumber, record);
   }
