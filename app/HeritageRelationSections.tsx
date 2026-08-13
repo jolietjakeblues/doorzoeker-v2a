@@ -28,46 +28,62 @@ export function HeritageRelationSections({
 {selected.objectType === "Rijksmonument" &&
       vergelijkbareRijksmonumenten &&
       vergelijkbareRijksmonumenten.conceptUri === selected.functionConcepts?.[0]?.uri &&
-      vergelijkbareRijksmonumenten.items.length ? (
+      (vergelijkbareRijksmonumenten.items.length || vergelijkbareRijksmonumenten.error) ? (
         <div className="map-object-list">
           <h3>Vergelijkbare rijksmonumenten</h3>
-          <p><small>Zelfde functie: {vergelijkbareRijksmonumenten.conceptLabel}</small></p>
-          <ul>
-            {vergelijkbareRijksmonumenten.items.map((item) => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => void executeSearch(item.monumentNumber ?? item.id)}
-                >
-                  {item.title}
-                </button>
-                {item.place ? ` — ${item.place}` : ""}
-              </li>
-            ))}
-          </ul>
+          {vergelijkbareRijksmonumenten.error ? (
+            <p>
+              Vergelijkbare rijksmonumenten konden niet worden geladen.
+              Probeer het later opnieuw.
+            </p>
+          ) : (
+            <>
+              <p><small>Zelfde functie: {vergelijkbareRijksmonumenten.conceptLabel}</small></p>
+              <ul>
+                {vergelijkbareRijksmonumenten.items.map((item) => (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => void executeSearch(item.monumentNumber ?? item.id)}
+                    >
+                      {item.title}
+                    </button>
+                    {item.place ? ` — ${item.place}` : ""}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
       ) : null}
       {selected.objectType === "Complex" &&
       complexMembers &&
       complexMembers.complexUri === selected.linkedDataUrl &&
-      complexMembers.members.length ? (
+      (complexMembers.members.length || complexMembers.error) ? (
         <div className="map-object-list">
           <h3>Onderdelen van dit complex</h3>
-          <ul>
-            {complexMembers.members.map((member) => (
-              <li key={member.choUri}>
-                <button
-                  type="button"
-                  onClick={() =>
-                    void executeSearch(member.monumentNumber)
-                  }
-                >
-                  {member.name}
-                  {member.isHoofdobject ? " — hoofdobject" : ""}
-                </button>
-              </li>
-            ))}
-          </ul>
+          {complexMembers.error ? (
+            <p>
+              Onderdelen van dit complex konden niet worden geladen.
+              Probeer het later opnieuw.
+            </p>
+          ) : (
+            <ul>
+              {complexMembers.members.map((member) => (
+                <li key={member.choUri}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void executeSearch(member.monumentNumber)
+                    }
+                  >
+                    {member.name}
+                    {member.isHoofdobject ? " — hoofdobject" : ""}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       ) : null}
       {selected.objectType === "Onderzoeksgebied" &&
@@ -106,9 +122,11 @@ export function HeritageRelationSections({
             </ul>
           ) : null}
           <p>
-            {onderzoeksgebiedVerrijking.vondstlocatieTotaal
-              ? `${countLabel(onderzoeksgebiedVerrijking.vondstlocatieTotaal, "vondstlocatie", "vondstlocaties")}${onderzoeksgebiedVerrijking.vondstlocatieTotaal > onderzoeksgebiedVerrijking.vondstlocaties.length ? ` (eerste ${onderzoeksgebiedVerrijking.vondstlocaties.length} getoond)` : ""}, ${countLabel(onderzoeksgebiedVerrijking.grondsporenTotaal, "grondspoor", "grondsporen")}, ${countLabel(onderzoeksgebiedVerrijking.vondstenTotaal, "vondst", "vondsten")}${onderzoeksgebiedVerrijking.complexenViaVondstlocatieTotaal ? ` en ${countLabel(onderzoeksgebiedVerrijking.complexenViaVondstlocatieTotaal, "archeologisch complex", "archeologische complexen")}` : ""} binnen dit gebied.`
-              : "Geen gekoppeld archeologisch onderzoek gevonden voor dit gebied."}
+            {onderzoeksgebiedVerrijking.error
+              ? "Archeologisch onderzoek binnen dit gebied kon niet worden geladen. Probeer het later opnieuw."
+              : onderzoeksgebiedVerrijking.vondstlocatieTotaal
+                ? `${countLabel(onderzoeksgebiedVerrijking.vondstlocatieTotaal, "vondstlocatie", "vondstlocaties")}${onderzoeksgebiedVerrijking.vondstlocatieTotaal > onderzoeksgebiedVerrijking.vondstlocaties.length ? ` (eerste ${onderzoeksgebiedVerrijking.vondstlocaties.length} getoond)` : ""}, ${countLabel(onderzoeksgebiedVerrijking.grondsporenTotaal, "grondspoor", "grondsporen")}, ${countLabel(onderzoeksgebiedVerrijking.vondstenTotaal, "vondst", "vondsten")}${onderzoeksgebiedVerrijking.complexenViaVondstlocatieTotaal ? ` en ${countLabel(onderzoeksgebiedVerrijking.complexenViaVondstlocatieTotaal, "archeologisch complex", "archeologische complexen")}` : ""} binnen dit gebied.`
+                : "Geen gekoppeld archeologisch onderzoek gevonden voor dit gebied."}
           </p>
         </div>
       ) : null}
@@ -118,7 +136,9 @@ export function HeritageRelationSections({
         <div className="map-object-list">
           <h3>Wat hier is aangetroffen</h3>
           <p>
-            {countLabel(vondstlocatieInhoud.complexenTotaal, "archeologisch complex", "archeologische complexen")}, {countLabel(vondstlocatieInhoud.vondstenTotaal, "vondstgroep", "vondstgroepen")} en {countLabel(vondstlocatieInhoud.grondsporenTotaal, "grondspoorgroep", "grondspoorgroepen")}.
+            {vondstlocatieInhoud.error
+              ? "Wat hier is aangetroffen kon niet worden geladen. Probeer het later opnieuw."
+              : `${countLabel(vondstlocatieInhoud.complexenTotaal, "archeologisch complex", "archeologische complexen")}, ${countLabel(vondstlocatieInhoud.vondstenTotaal, "vondstgroep", "vondstgroepen")} en ${countLabel(vondstlocatieInhoud.grondsporenTotaal, "grondspoorgroep", "grondspoorgroepen")}.`}
           </p>
           {vondstlocatieInhoud.complexen.length ? (
             <>

@@ -10,18 +10,22 @@ import { pickVergelijkbareRijksmonumenten, toItem, type Item } from "@/lib/herit
 // opent. Ze hangen alle drie aan hetzelfde `selected`-record en horen
 // daarom bij elkaar in één hook, ook al zijn het losse lazy-lookups.
 export function useSelectedDetailEnrichment(selected: Item | null) {
-  const [complexMembers, setComplexMembers] = useState<{ complexUri: string; members: ComplexMember[] } | null>(null);
-  const [onderzoeksgebiedVerrijking, setOnderzoeksgebiedVerrijking] = useState<{ gebiedUri: string; complexen: OnderzoeksgebiedComplex[]; vondstlocaties: OnderzoeksgebiedVondstlocatie[] } & OnderzoeksgebiedAggregaten | null>(null);
-  const [vondstlocatieInhoud, setVondstlocatieInhoud] = useState<({ locatieUri: string } & VondstlocatieInhoud) | null>(null);
-  const [vergelijkbareRijksmonumenten, setVergelijkbareRijksmonumenten] = useState<{ conceptUri: string; conceptLabel: string; items: Item[] } | null>(null);
+  const [complexMembers, setComplexMembers] = useState<{ complexUri: string; members: ComplexMember[]; error?: boolean } | null>(null);
+  const [onderzoeksgebiedVerrijking, setOnderzoeksgebiedVerrijking] = useState<({ gebiedUri: string; complexen: OnderzoeksgebiedComplex[]; vondstlocaties: OnderzoeksgebiedVondstlocatie[]; error?: boolean } & OnderzoeksgebiedAggregaten) | null>(null);
+  const [vondstlocatieInhoud, setVondstlocatieInhoud] = useState<({ locatieUri: string; error?: boolean } & VondstlocatieInhoud) | null>(null);
+  const [vergelijkbareRijksmonumenten, setVergelijkbareRijksmonumenten] = useState<{ conceptUri: string; conceptLabel: string; items: Item[]; error?: boolean } | null>(null);
 
+  // `error: true` houdt een mislukte aanvraag onderscheidbaar van een echt
+  // lege-maar-geldige respons (bv. een complex zonder leden) - zonder dit
+  // vlagje zag een tijdelijke storing er voor de gebruiker identiek uit als
+  // "hier is niets", zonder herkenbare fout of retry-mogelijkheid.
   useEffect(() => {
     if (selected?.objectType !== "Complex" || !selected.linkedDataUrl) return;
     const complexUri = selected.linkedDataUrl;
     const controller = new AbortController();
     fetchComplexMembers(complexUri, controller.signal)
       .then((members) => { if (!controller.signal.aborted) setComplexMembers({ complexUri, members }); })
-      .catch(() => { if (!controller.signal.aborted) setComplexMembers({ complexUri, members: [] }); });
+      .catch(() => { if (!controller.signal.aborted) setComplexMembers({ complexUri, members: [], error: true }); });
     return () => controller.abort();
   }, [selected]);
 
@@ -31,7 +35,7 @@ export function useSelectedDetailEnrichment(selected: Item | null) {
     const controller = new AbortController();
     fetchOnderzoeksgebiedVerrijking(gebiedUri, controller.signal)
       .then((data) => { if (!controller.signal.aborted) setOnderzoeksgebiedVerrijking({ gebiedUri, ...data }); })
-      .catch(() => { if (!controller.signal.aborted) setOnderzoeksgebiedVerrijking({ gebiedUri, complexen: [], vondstlocaties: [], vondstlocatieTotaal: 0, grondsporenTotaal: 0, vondstenTotaal: 0, complexenViaVondstlocatieTotaal: 0 }); });
+      .catch(() => { if (!controller.signal.aborted) setOnderzoeksgebiedVerrijking({ gebiedUri, complexen: [], vondstlocaties: [], vondstlocatieTotaal: 0, grondsporenTotaal: 0, vondstenTotaal: 0, complexenViaVondstlocatieTotaal: 0, error: true }); });
     return () => controller.abort();
   }, [selected]);
 
@@ -41,7 +45,7 @@ export function useSelectedDetailEnrichment(selected: Item | null) {
     const controller = new AbortController();
     fetchVondstlocatieInhoud(locatieUri, controller.signal)
       .then((data) => { if (!controller.signal.aborted) setVondstlocatieInhoud({ locatieUri, ...data }); })
-      .catch(() => { if (!controller.signal.aborted) setVondstlocatieInhoud({ locatieUri, complexen: [], vondsten: [], grondsporen: [], complexenTotaal: 0, vondstenTotaal: 0, grondsporenTotaal: 0 }); });
+      .catch(() => { if (!controller.signal.aborted) setVondstlocatieInhoud({ locatieUri, complexen: [], vondsten: [], grondsporen: [], complexenTotaal: 0, vondstenTotaal: 0, grondsporenTotaal: 0, error: true }); });
     return () => controller.abort();
   }, [selected]);
 
@@ -56,7 +60,7 @@ export function useSelectedDetailEnrichment(selected: Item | null) {
         const items = pickVergelijkbareRijksmonumenten(records.map((record) => toItem(record)), monumentNumber);
         setVergelijkbareRijksmonumenten({ conceptUri: concept.uri, conceptLabel: concept.label, items });
       })
-      .catch(() => { if (!controller.signal.aborted) setVergelijkbareRijksmonumenten({ conceptUri: concept.uri, conceptLabel: concept.label, items: [] }); });
+      .catch(() => { if (!controller.signal.aborted) setVergelijkbareRijksmonumenten({ conceptUri: concept.uri, conceptLabel: concept.label, items: [], error: true }); });
     return () => controller.abort();
   }, [selected]);
 
