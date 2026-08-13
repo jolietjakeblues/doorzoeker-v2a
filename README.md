@@ -27,7 +27,7 @@ Andere archeologische terreinen hebben geen Rijksmonumentrelatie en zijn nu
 als zelfstandige Archis-objecten doorzoekbaar op nummer, naam, plaats,
 omschrijving en waardering. De publieke CHO-graph publiceert voor deze klasse
 geen eigen WKT-geometrie; daarom belooft Doorzoeker daar geen terreinvlak.
-Vondstlocaties zijn zelfstandig doorzoekbaar op hun Archis-nummers,
+Vondstlocaties zijn zelfstandig doorzoekbaar op hun CHO-nummer, Archis-nummers,
 locatienaam, plaats, omschrijving en verwervingswijze. Hun detailweergave
 toont begrensde lijsten van archeologische complexen, vondstgroepen en
 grondspoorgroepen. De bijbehorende RN2-concepten bewaren hun URI en alle

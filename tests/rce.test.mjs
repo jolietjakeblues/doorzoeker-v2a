@@ -591,28 +591,42 @@ test("falls back to functie or a generic label when a complex member has no naam
   assert.equal(members[1].name, "Rijksmonument 532184");
 });
 
-test("discovers archeologische onderzoeksgebieden via woonplaats and omschrijving as separate branches", () => {
-  // ArcheologischOnderzoeksgebied heeft geen naam/registernummer en is met
-  // 112K instanties te groot voor een enkele CONTAINS-query over de hele
-  // collectie (zoals Werelderfgoed/Gezicht/Complex dat wel kunnen) - vandaar
-  // hetzelfde per-branch-patroon als de Rijksmonument-discovery.
+test("discovers archeologische onderzoeksgebieden via CHO-nummer, woonplaats and omschrijving as separate branches", () => {
+  // ArcheologischOnderzoeksgebied heeft geen naam/registernummer - het
+  // cultuurhistorischObjectnummer is de enige identiteit, net als bij
+  // Grondsporen/Vondsten/Archeologische complexen (die alle drie al een
+  // "CHO-nummer"-bron als eerste rang hebben). Ook met 112K instanties te
+  // groot voor een enkele CONTAINS-query over de hele collectie (zoals
+  // Werelderfgoed/Gezicht/Complex dat wel kunnen) - vandaar hetzelfde
+  // per-branch-patroon als de Rijksmonument-discovery.
   const queries = buildArcheologischOnderzoekDiscoveryQueries("Nijmegen");
-  assert.deepEqual(queries.map((q) => q.bron), ["woonplaats (onderzoeksgebied)", "omschrijving (onderzoeksgebied)"]);
+  assert.deepEqual(queries.map((q) => q.bron), ["CHO-nummer (onderzoeksgebied)", "woonplaats (onderzoeksgebied)", "omschrijving (onderzoeksgebied)"]);
   for (const { query } of queries) {
     assert.match(query, /a ceo:ArcheologischOnderzoeksgebied/);
     assert.match(query, /nijmegen/i);
     assert.doesNotMatch(query, /UNION/);
   }
+  const choNummer = queries.find((q) => q.bron === "CHO-nummer (onderzoeksgebied)").query;
+  assert.match(choNummer, /BIND\(\?choi AS \?match\)/);
   const woonplaats = queries.find((q) => q.bron === "woonplaats (onderzoeksgebied)").query;
   assert.match(woonplaats, /ceo:heeftBasisregistratieRelatie\/ceo:heeftBAGRelatie\/ceo:woonplaatsnaam \?match/);
   const omschrijving = queries.find((q) => q.bron === "omschrijving (onderzoeksgebied)").query;
   assert.match(omschrijving, /ceo:heeftOmschrijving\/ceo:omschrijving \?match/);
 });
 
+test("finds an archeologisch onderzoeksgebied by its exact CHO-nummer", () => {
+  // Geverifieerd tegen echte data: onderzoeksgebied 10013982 (Heerlen) is
+  // alleen op woonplaats/omschrijving te vinden, nooit op zijn eigen
+  // CHO-nummer - dit was voor die toevoeging het geval.
+  const document = { results: { bindings: [{ choi: { value: "10013982" }, match: { value: "10013982" } }] } };
+  const matches = parseArcheologischOnderzoekDiscoveryResults(document, "CHO-nummer (onderzoeksgebied)", "10013982");
+  assert.deepEqual(matches, [{ monumentNumber: "10013982", matchSource: "CHO-nummer (onderzoeksgebied)", matchedText: "10013982", matchScore: 10 }]);
+});
+
 test("parses archeologisch-onderzoek discovery matches keyed by cultuurhistorischObjectnummer", () => {
   const document = { results: { bindings: [{ choi: { value: "10000040" }, match: { value: "Nijmegen" } }] } };
   const matches = parseArcheologischOnderzoekDiscoveryResults(document, "woonplaats (onderzoeksgebied)", "nijmegen");
-  assert.deepEqual(matches, [{ monumentNumber: "10000040", matchSource: "woonplaats (onderzoeksgebied)", matchedText: "Nijmegen", matchScore: 10 }]);
+  assert.deepEqual(matches, [{ monumentNumber: "10000040", matchSource: "woonplaats (onderzoeksgebied)", matchedText: "Nijmegen", matchScore: 20 }]);
 });
 
 test("builds a details query for archeologische onderzoeksgebieden keyed by cultuurhistorischObjectnummer", () => {
@@ -764,9 +778,10 @@ test("looks up a built complex by complexnummer or CHO-nummer", () => {
   assert.match(query, /CONTAINS\(LCASE\(STR\(\?naamValue\)\), "512036"\)/);
 });
 
-test("discovers zelfstandige archeologische terreinen via Archis-nummer, naam, plaats, omschrijving en waardering", () => {
+test("discovers zelfstandige archeologische terreinen via CHO-nummer, Archis-nummer, naam, plaats, omschrijving en waardering", () => {
   const queries = buildArcheologischTerreinDiscoveryQueries("Nijmegen");
   assert.deepEqual(queries.map((query) => query.bron), [
+    "CHO-nummer (archeologisch terrein)",
     "Archis-monumentnummer",
     "naam (archeologisch terrein)",
     "woonplaats (archeologisch terrein)",
@@ -777,6 +792,17 @@ test("discovers zelfstandige archeologische terreinen via Archis-nummer, naam, p
     assert.match(query, /a ceo:ArcheologischTerrein/);
     assert.match(query, /cultuurhistorischObjectnummer \?choi/);
   }
+  assert.match(queries[0].query, /BIND\(\?choi AS \?match\)/);
+});
+
+test("finds an archeologisch terrein by its exact CHO-nummer", () => {
+  // Archeologisch terrein had, net als Onderzoeksgebied en Vondstlocatie
+  // eerder, geen zoekbron voor zijn eigen cultuurhistorischObjectnummer -
+  // alleen Archis-monumentnummer (een ander nummer dan het CHO-nummer dat
+  // "Hoort bij" op een Archeologisch complex gebruikt).
+  const document = { results: { bindings: [{ choi: { value: "10000123" }, match: { value: "10000123" } }] } };
+  const matches = parseArcheologischTerreinDiscoveryResults(document, "CHO-nummer (archeologisch terrein)", "10000123");
+  assert.deepEqual(matches, [{ monumentNumber: "10000123", matchSource: "CHO-nummer (archeologisch terrein)", matchedText: "10000123", matchScore: 10 }]);
 });
 
 test("parses discovery en details van een zelfstandig archeologisch terrein", () => {
@@ -785,13 +811,13 @@ test("parses discovery en details van een zelfstandig archeologisch terrein", ()
     "Archis-monumentnummer",
     "12345",
   );
-  assert.deepEqual(matches, [{ monumentNumber: "9001", matchSource: "Archis-monumentnummer", matchedText: "12345", matchScore: 10 }]);
+  assert.deepEqual(matches, [{ monumentNumber: "9001", matchSource: "Archis-monumentnummer", matchedText: "12345", matchScore: 20 }]);
 
   const query = buildArcheologischTerreinDetailsQuery(["9001"]);
   assert.match(query, /VALUES \?choi \{ "9001" \}/);
   assert.match(query, /heeftArcheologischeWaardering/);
   assert.doesNotMatch(query, /heeftGeometrie/);
-  assert.match(buildArcheologischTerreinDiscoveryQueries("3958")[0].query, /FILTER\(STR\(\?match\) = "3958"\)/);
+  assert.match(buildArcheologischTerreinDiscoveryQueries("3958")[1].query, /FILTER\(STR\(\?match\) = "3958"\)/);
 
   const [terrein] = parseStandaloneArcheologischTerreinResults({ results: { bindings: [{
     terrein: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischterrein/9001" },
@@ -810,9 +836,10 @@ test("parses discovery en details van een zelfstandig archeologisch terrein", ()
   assert.equal(terrein.wkt, undefined);
 });
 
-test("discovers vondstlocaties via beide Archis-nummers, naam, plaats, omschrijving en verwerving", () => {
+test("discovers vondstlocaties via CHO-nummer, beide Archis-nummers, naam, plaats, omschrijving en verwerving", () => {
   const queries = buildVondstlocatieDiscoveryQueries("102482");
   assert.deepEqual(queries.map((query) => query.bron), [
+    "CHO-nummer (vondstlocatie)",
     "Archis-vondstmeldingsnummer",
     "Archis-waarnemingsnummer",
     "locatienaam",
@@ -820,14 +847,28 @@ test("discovers vondstlocaties via beide Archis-nummers, naam, plaats, omschrijv
     "omschrijving (vondstlocatie)",
     "verwervingswijze",
   ]);
+  assert.match(queries[0].query, /BIND\(\?choi AS \?match\)/);
   assert.match(queries[0].query, /FILTER\(STR\(\?match\) = "102482"\)/);
-  assert.match(queries[1].query, /archis2Waarnemingsnummer/);
-  assert.match(queries[5].query, /heeftVerwerving\/skos:prefLabel/);
+  assert.match(queries[1].query, /FILTER\(STR\(\?match\) = "102482"\)/);
+  assert.match(queries[2].query, /archis2Waarnemingsnummer/);
+  assert.match(queries[6].query, /heeftVerwerving\/skos:prefLabel/);
+});
+
+test("finds a vondstlocatie by its exact CHO-nummer", () => {
+  // Voorheen kon een Vondstlocatie alleen via Archis-nummers, naam,
+  // woonplaats, omschrijving of verwerving gevonden worden - niet via zijn
+  // eigen cultuurhistorischObjectnummer. Dat brak onder meer de bestaande
+  // "Vondstlocatie"-doorklik vanaf een Grondspoor/Vondst-detail
+  // (onObjectSearch(item.parentObjectNumber)) en de "vondstlocatie"-lijst
+  // onder een Onderzoeksgebied, die beide op dat CHO-nummer zoeken.
+  const document = { results: { bindings: [{ choi: { value: "10094086" }, match: { value: "10094086" } }] } };
+  const matches = parseVondstlocatieDiscoveryResults(document, "CHO-nummer (vondstlocatie)", "10094086");
+  assert.deepEqual(matches, [{ monumentNumber: "10094086", matchSource: "CHO-nummer (vondstlocatie)", matchedText: "10094086", matchScore: 10 }]);
 });
 
 test("parses een zelfstandige vondstlocatie zonder coördinaten te verzinnen", () => {
   const matches = parseVondstlocatieDiscoveryResults({ results: { bindings: [{ choi: { value: "6109334" }, match: { value: "102482" } }] } }, "Archis-vondstmeldingsnummer", "102482");
-  assert.equal(matches[0].matchScore, 10);
+  assert.equal(matches[0].matchScore, 20);
   assert.match(buildVondstlocatieDetailsQuery(["6109334"]), /VALUES \?choi \{ "6109334" \}/);
   const [locatie] = parseVondstlocatieResults({ results: { bindings: [{
     locatie: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/vondstlocatie/6109334" },

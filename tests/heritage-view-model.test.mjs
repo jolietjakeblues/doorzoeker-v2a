@@ -3,6 +3,8 @@ import test from "node:test";
 import {
   linkedConcepts,
   parseUrlState,
+  pickVergelijkbareRijksmonumenten,
+  primaryFunctionConcept,
   primaryIdentifier,
 } from "../lib/heritage-view-model.ts";
 
@@ -44,6 +46,66 @@ test("collects only linked concepts that support an exact search", () => {
       },
     ],
   );
+});
+
+test("pickVergelijkbareRijksmonumenten excludes the opened monument itself and caps the list", () => {
+  const candidates = ["36046", "36047", "36048", "36049", "36050", "36051"].map((monumentNumber) => ({
+    id: monumentNumber,
+    monumentNumber,
+  }));
+  assert.deepEqual(
+    pickVergelijkbareRijksmonumenten(candidates, "36046").map((item) => item.monumentNumber),
+    ["36047", "36048", "36049", "36050", "36051"],
+  );
+});
+
+test("pickVergelijkbareRijksmonumenten respects a custom limit", () => {
+  const candidates = ["36046", "36047", "36048"].map((monumentNumber) => ({
+    id: monumentNumber,
+    monumentNumber,
+  }));
+  assert.deepEqual(
+    pickVergelijkbareRijksmonumenten(candidates, "36046", 1).map((item) => item.monumentNumber),
+    ["36047"],
+  );
+});
+
+test("pickVergelijkbareRijksmonumenten keeps every candidate when the excluded number is absent", () => {
+  const candidates = ["36047", "36048"].map((monumentNumber) => ({
+    id: monumentNumber,
+    monumentNumber,
+  }));
+  assert.deepEqual(
+    pickVergelijkbareRijksmonumenten(candidates, undefined).map((item) => item.monumentNumber),
+    ["36047", "36048"],
+  );
+});
+
+test("primaryFunctionConcept matches the concept whose cleaned label equals item.kind", () => {
+  assert.deepEqual(
+    primaryFunctionConcept({
+      kind: "Woonhuis",
+      functionConcepts: [
+        { uri: "https://example.test/museum", label: "Museum" },
+        { uri: "https://example.test/woonhuis", label: "Woonhuis(K)" },
+      ],
+    }),
+    { uri: "https://example.test/woonhuis", label: "Woonhuis(K)" },
+  );
+});
+
+test("primaryFunctionConcept falls back to the first concept when no label matches", () => {
+  assert.deepEqual(
+    primaryFunctionConcept({
+      kind: "Kerk",
+      functionConcepts: [{ uri: "https://example.test/museum", label: "Museum" }],
+    }),
+    { uri: "https://example.test/museum", label: "Museum" },
+  );
+});
+
+test("primaryFunctionConcept returns undefined without any functionConcepts", () => {
+  assert.equal(primaryFunctionConcept({ kind: "Kerk", functionConcepts: undefined }), undefined);
 });
 
 test("uses an RM prefix only for a Rijksmonument", () => {

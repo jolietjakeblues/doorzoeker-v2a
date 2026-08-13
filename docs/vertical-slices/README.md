@@ -13,7 +13,7 @@ nog bijgekomen.
 | 005 | Bibliotheek en literatuur | Gebouwd en live geverifieerd |
 | 006 | Ruimtelijke relatie Rijksmonument en Werelderfgoed | Plan, niet gebouwd |
 | 007 | Bouwgeschiedenis | Gebouwd en live geverifieerd |
-| 008 | Vergelijkbare Rijksmonumenten | Plan, niet gebouwd |
+| 008 | Vergelijkbare Rijksmonumenten | Fase 1 (functie) gebouwd; multidimensionale score nog plan |
 | 009 | Architectportfolio | Gebouwd en live geverifieerd |
 | 010 | Op deze dag | Gebouwd; cache verloopt veilig bij de volgende UTC-daggrens |
 | 011 | In de buurt | Plan, niet gebouwd |

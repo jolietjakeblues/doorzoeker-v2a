@@ -4,6 +4,42 @@
 
 Gebouwd en getest (2026-08-10). ArcheologischOnderzoeksgebied is als
 zelfstandige zoekbranch aangesloten op woonplaats en onderzoeksomschrijving.
+
+**Bijgewerkt (2026-08-11): ook op eigen CHO-nummer vindbaar.** Een
+gebruiker die het cultuurhistorischObjectnummer van een onderzoeksgebied al
+kende (bijvoorbeeld uit de RCE Linked Data zelf) kon het daarmee niet
+terugvinden - Grondsporen, Vondsten en Archeologische complexen hadden een
+`CHO-nummer (...)`-zoekbron als hoogste rang, Onderzoeksgebied miste die als
+enige van de vier. Toegevoegd als nieuwe rang-1-bron in
+`ARCHEOLOGISCH_ONDERZOEK_SOURCES`, zelfde `BIND(?choi AS ?match)`-patroon.
+Live geverifieerd: onderzoeksgebied 10013982 (Heerlen) is nu op zijn eigen
+nummer te vinden.
+
+**Bijgewerkt (2026-08-12): Vondstlocatie had hetzelfde gat, nu ook opgelost.**
+Ontdekt tijdens het testen van interne doorklikken vanuit een Onderzoeksgebied:
+de "Archeologisch onderzoek binnen dit gebied"- en "Wat hier is
+aangetroffen"-lijsten linkten voorheen naar de externe RCE Linked
+Data-pagina (`<a target="_blank">`) in plaats van naar Doorzoekers eigen
+zoekopdracht - een keuze uit de tijd dat deze subtypen nog geen eigen
+CHO-nummer-zoekingang hadden. Bij het omzetten naar interne navigatie
+(`executeSearch(choNummer)`, zelfde patroon als "Onderdelen van dit
+complex") bleek Vondstlocatie geen CHO-nummer-zoekbron te hebben - alleen
+Archis-vondstmeldingsnummer, Archis-waarnemingsnummer, locatienaam,
+woonplaats, omschrijving en verwervingswijze. Dat brak niet alleen de
+nieuwe interne links, maar ook een al langer bestaande, nooit opgemerkte
+kapotte doorklik: de "Vondstlocatie"-link vanaf een Grondspoor- of
+Vondst-detail (`onObjectSearch(item.parentObjectNumber)` in
+`HeritageDetailFacts.tsx`) zocht al die tijd op een nummer dat nergens
+matchte. Toegevoegd als nieuwe rang-1-bron in `VONDSTLOCATIE_SOURCES`,
+zelfde `BIND(?choi AS ?match)`-patroon, met dezelfde exacte-matchversnelling
+voor numerieke invoer die de Archis-bronnen al hadden. Alle vijf
+externe-link-plekken in `HeritageRelationSections.tsx`
+(Onderzoeksgebied→complexen, Onderzoeksgebied→vondstlocaties,
+Vondstlocatie→complexen, Vondstlocatie→vondsten, Vondstlocatie→grondsporen)
+zijn omgezet naar interne navigatie. Live geverifieerd: vondstlocatie
+10094086 (Trilandis Voormalig Domeinen Terrein, Heerlen) is nu vanuit
+onderzoeksgebied 10013982 met één klik te openen in plaats van naar de LDV
+te springen.
 De detailweergave toont rechtstreeks gekoppelde archeologische complexen,
 maximaal 25 vondstlocaties en totalen van vondstlocaties, vondsten,
 grondsporen en complexen via vondstlocaties. `ArcheologischTerrein` heeft

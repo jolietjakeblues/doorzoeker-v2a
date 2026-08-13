@@ -1,13 +1,15 @@
 import type { useSearchState } from "@/hooks/useSearchState";
 import type { useSelectedDetailEnrichment } from "@/hooks/useSelectedDetailEnrichment";
-import type { Item } from "@/lib/heritage-view-model";
+import type { ConceptField, Item } from "@/lib/heritage-view-model";
 
 type DetailEnrichment = ReturnType<typeof useSelectedDetailEnrichment>;
+type Concept = { uri: string; label: string };
 
 type HeritageRelationSectionsProps = {
   selected: Item;
   enrichment: DetailEnrichment;
   onSearch: ReturnType<typeof useSearchState>["executeSearch"];
+  onConceptSearch: (concept: Concept, field?: ConceptField) => void;
 };
 
 function countLabel(count: number, singular: string, plural: string) {
@@ -18,11 +20,34 @@ export function HeritageRelationSections({
   selected,
   enrichment,
   onSearch: executeSearch,
+  onConceptSearch,
 }: HeritageRelationSectionsProps) {
-  const { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud } = enrichment;
+  const { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten } = enrichment;
   return (
     <>
-{selected.objectType === "Complex" &&
+{selected.objectType === "Rijksmonument" &&
+      vergelijkbareRijksmonumenten &&
+      vergelijkbareRijksmonumenten.conceptUri === selected.functionConcepts?.[0]?.uri &&
+      vergelijkbareRijksmonumenten.items.length ? (
+        <div className="map-object-list">
+          <h3>Vergelijkbare rijksmonumenten</h3>
+          <p><small>Zelfde functie: {vergelijkbareRijksmonumenten.conceptLabel}</small></p>
+          <ul>
+            {vergelijkbareRijksmonumenten.items.map((item) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  onClick={() => void executeSearch(item.monumentNumber ?? item.id)}
+                >
+                  {item.title}
+                </button>
+                {item.place ? ` — ${item.place}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {selected.objectType === "Complex" &&
       complexMembers &&
       complexMembers.complexUri === selected.linkedDataUrl &&
       complexMembers.members.length ? (
@@ -55,14 +80,13 @@ export function HeritageRelationSections({
             <ul>
               {onderzoeksgebiedVerrijking.complexen.map((complex) => (
                 <li key={complex.complexUri}>
-                  <a
-                    href={complex.complexUri}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => void executeSearch(complex.choNumber)}
                   >
                     {complex.typeLabel ||
                       `Archeologisch complex ${complex.choNumber}`}
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -71,9 +95,12 @@ export function HeritageRelationSections({
             <ul>
               {onderzoeksgebiedVerrijking.vondstlocaties.map((vl) => (
                 <li key={vl.vlUri}>
-                  <a href={vl.vlUri} target="_blank" rel="noreferrer">
+                  <button
+                    type="button"
+                    onClick={() => void executeSearch(vl.choNumber)}
+                  >
                     {vl.locatienaam || `Vondstlocatie ${vl.choNumber}`}
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -99,9 +126,9 @@ export function HeritageRelationSections({
               <ul>
                 {vondstlocatieInhoud.complexen.map((complex) => (
                   <li key={complex.uri}>
-                    <a href={complex.uri} target="_blank" rel="noreferrer">
+                    <button type="button" onClick={() => void executeSearch(complex.choNumber)}>
                       {complex.type?.label || `Archeologisch complex ${complex.choNumber}`}
-                    </a>
+                    </button>
                     {complex.type?.schemes?.length ? <small>{complex.type.schemes.map((scheme) => scheme.label).join(" · ")}</small> : null}
                   </li>
                 ))}
@@ -113,15 +140,39 @@ export function HeritageRelationSections({
               <h4>Vondsten</h4>
               <ul>
                 {vondstlocatieInhoud.vondsten.map((vondst) => {
-                  const begrippen = [...vondst.types, ...vondst.materialen, ...vondst.stijlen, ...(vondst.toestand ? [vondst.toestand] : [])];
+                  // "stijl" heeft (nog) geen exacte conceptzoekroute in de
+                  // app (geen ConceptField, geen backend-ondersteuning) -
+                  // blijft daarom platte tekst, in tegenstelling tot type,
+                  // materiaal en toestand die dat al wel hebben.
+                  const begrippen: { concept: typeof vondst.types[number]; field?: ConceptField }[] = [
+                    ...vondst.types.map((concept) => ({ concept, field: "vondsttype" as const })),
+                    ...vondst.materialen.map((concept) => ({ concept, field: "materiaal" as const })),
+                    ...vondst.stijlen.map((concept) => ({ concept, field: undefined })),
+                    ...(vondst.toestand ? [{ concept: vondst.toestand, field: "toestand" as const }] : []),
+                  ];
                   return (
                     <li key={vondst.uri}>
-                      <a href={vondst.uri} target="_blank" rel="noreferrer">
+                      <button type="button" onClick={() => void executeSearch(vondst.choNumber)}>
                         {vondst.archisVondstnummer ? `Archis-vondst ${vondst.archisVondstnummer}` : `Vondst ${vondst.choNumber}`}
-                      </a>
+                      </button>
                       {vondst.aantal ? ` — ${countLabel(vondst.aantal, "exemplaar", "exemplaren")}` : ""}
                       {begrippen.length ? (
-                        <small> — {begrippen.map((concept) => `${concept.label}${concept.schemes?.length ? ` (${concept.schemes.map((scheme) => scheme.label).join(", ")})` : ""}`).join(" · ")}</small>
+                        <small>
+                          {" — "}
+                          {begrippen.map((entry, index) => (
+                            <span key={`${entry.concept.uri}-${index}`}>
+                              {index ? " · " : ""}
+                              {entry.field ? (
+                                <button type="button" className="concept-link" onClick={() => onConceptSearch(entry.concept, entry.field)}>
+                                  {entry.concept.label}
+                                </button>
+                              ) : (
+                                entry.concept.label
+                              )}
+                              {entry.concept.schemes?.length ? ` (${entry.concept.schemes.map((scheme) => scheme.label).join(", ")})` : ""}
+                            </span>
+                          ))}
+                        </small>
                       ) : null}
                     </li>
                   );
@@ -135,9 +186,9 @@ export function HeritageRelationSections({
               <ul>
                 {vondstlocatieInhoud.grondsporen.map((spoor) => (
                   <li key={spoor.uri}>
-                    <a href={spoor.uri} target="_blank" rel="noreferrer">
+                    <button type="button" onClick={() => void executeSearch(spoor.choNumber)}>
                       {spoor.type?.label || `Grondsporen ${spoor.choNumber}`}
-                    </a>
+                    </button>
                     {spoor.aantal ? ` — ${countLabel(spoor.aantal, "spoor", "sporen")}` : ""}
                     {spoor.type?.schemes?.length ? <small>{spoor.type.schemes.map((scheme) => scheme.label).join(" · ")}</small> : null}
                   </li>

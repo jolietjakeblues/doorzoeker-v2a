@@ -1,4 +1,4 @@
-import { statusLabel, type ConceptField, type Item } from "@/lib/heritage-view-model";
+import { primaryFunctionConcept, statusLabel, type ConceptField, type Item } from "@/lib/heritage-view-model";
 
 type Concept = { uri: string; label: string };
 
@@ -118,13 +118,14 @@ export function HeritageDetailFacts({
           <div><dt>Archeologisch complextype</dt><dd><button type="button" className="concept-link" onClick={() => onConceptSearch(item.archaeologicalComplexType!, "archeologischcomplextype")} title={`Zoek alle archeologische complexen van het type ${item.archaeologicalComplexType.label}`}>{item.archaeologicalComplexType.label}</button>{item.archaeologicalComplexType.schemes?.length ? ` (${item.archaeologicalComplexType.schemes.map((scheme) => scheme.label).join(", ")})` : ""}</dd></div>
         ) : null}
         {item.objectType === "Archeologisch complex" && item.archaeologicalContexts?.length ? (
-          <div><dt>Hoort bij</dt><dd>{item.archaeologicalContexts.map((context, index) => <span key={context.uri}>{index ? ", " : ""}<a href={context.uri} target="_blank" rel="noreferrer">{context.label}</a> ({context.type})</span>)}</dd></div>
+          <div><dt>Hoort bij</dt><dd>{item.archaeologicalContexts.map((context, index) => <span key={context.uri}>{index ? ", " : ""}<button type="button" className="concept-link" onClick={() => onObjectSearch(context.choNumber)}>{context.label}</button> ({context.type})</span>)}</dd></div>
         ) : null}
       </>
     );
   }
 
   const hasFunction = item.kind && item.kind !== "Functie niet opgenomen";
+  const functionConcept = primaryFunctionConcept(item);
   const dating =
     item.registrationDate ??
     (item.period !== "Datering niet opgenomen" ? item.period : "");
@@ -135,7 +136,20 @@ export function HeritageDetailFacts({
       {hasFunction ? (
         <div>
           <dt>Functie</dt>
-          <dd>{item.kind}</dd>
+          <dd>
+            {functionConcept ? (
+              <button
+                type="button"
+                className="concept-link"
+                onClick={() => onConceptSearch(functionConcept, "functie")}
+                title="Zoek alle rijksmonumenten met deze functie"
+              >
+                {item.kind}
+              </button>
+            ) : (
+              item.kind
+            )}
+          </dd>
         </div>
       ) : null}
       {item.monumentAardConcept ? (

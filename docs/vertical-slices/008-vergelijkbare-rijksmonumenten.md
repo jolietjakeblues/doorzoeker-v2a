@@ -2,7 +2,21 @@
 
 ## Status
 
-Plan, nog niet gebouwd. Het idee ontstond naar aanleiding van de bestaande
+**Fase 1 (functie) gebouwd (11 augustus 2026).** Bewust kleiner dan het
+oorspronkelijke plan hieronder: één dimensie (functie-concept-URI), geen
+multidimensionale score. `pickVergelijkbareRijksmonumenten` in
+`lib/heritage-view-model.ts`, een nieuwe lazy-lookup in
+`hooks/useSelectedDetailEnrichment.ts` (hergebruikt de al bestaande
+`searchByFunctieConcept`/`buildFunctieConceptQuery` - geen nieuwe route of
+SPARQL-query nodig), en een "Vergelijkbare rijksmonumenten"-sectie in
+`HeritageRelationSections.tsx`. Reden voor deze inperking: de functiedimensie
+had al de volledige keten (record → concept-URI → exacte zoekopdracht)
+klaarstaan, terwijl de multidimensionale score hieronder (monumentaard,
+waardering, gebeurtenistype, actor gecombineerd) nog onbeantwoorde vragen
+heeft over welke dimensieparen zinvol zijn (zie "Empirisch bevestigd"). De
+rest van dit document beschrijft dat grotere, nog niet gebouwde plan.
+
+Het idee ontstond naar aanleiding van de bestaande
 conceptnavigatie: monumentaard, waardering, gebeurtenistype
 en actor zijn nu allemaal losse, klikbare concept-URI's - maar nooit
 gecombineerd. Dit plan combineert ze tot een aanbeveling.

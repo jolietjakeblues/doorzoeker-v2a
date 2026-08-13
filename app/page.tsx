@@ -81,7 +81,7 @@ export default function Home() {
     }
     selectTermSuggestion(suggestion);
   });
-  const { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud } =
+  const { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten } =
     useSelectedDetailEnrichment(selected);
   const opDezeDag = useOpDezeDag();
   const verrasMe = useVerrasMe();
@@ -249,7 +249,7 @@ export default function Home() {
         <HeritageDetailDialog
           selected={selected}
           dialogRef={detailDialogRef}
-          enrichment={{ complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud }}
+          enrichment={{ complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten }}
           onClose={() => setSelected(null)}
           onSearch={executeSearch}
           onConceptSearch={executeConceptSearch}
