@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedQuery, mergeDiscoveryMatches, parseAbrTermSuggestResults, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS } from "../lib/rce.ts";
+import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedQuery, mergeDiscoveryMatches, mergeVondstlocatieInhoud, parseAbrTermSuggestResults, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS, VONDSTLOCATIE_INHOUD_KLASSEN, wktToLatLng } from "../lib/rce.ts";
 import { buildArchaeologyBrowseQuery, buildRijksmonumentenBrowseQuery, parseArchaeologyBrowseNumbers, parseRijksmonumentenBrowseNumbers } from "../lib/rce.ts";
 import { buildFunctieConceptQuery, buildTermUsageQuery, parseFacetResults, parseTermUsageResults } from "../lib/rce.ts";
 
@@ -175,6 +175,25 @@ test("does not throw on malformed or garbage WKT", () => {
   assert.doesNotThrow(() => parseWktGeometry("MultiPolygon ()"));
   assert.doesNotThrow(() => parseWktGeometry("volstrekte onzin"));
   assert.doesNotThrow(() => parseWktGeometry("Point ()"));
+});
+
+test("wktToLatLng crasht niet op een zeer grote ring (TD-18)", () => {
+  // Sommige Werelderfgoed-polygonen (Waddenzee, Hollandse Waterlinies) zijn
+  // megabytes aan WKT met veel meer coördinaten dan dit. Math.max(...lngs)/
+  // Math.min(...lngs) met spread-argumenten crasht V8 al bij 200.000
+  // getallen (RangeError: Maximum call stack size exceeded, geverifieerd
+  // met de node-versie van deze testsuite) - deze test reproduceert die
+  // schaal zonder een megabyte-string in de repository op te nemen.
+  const pointCount = 200_000;
+  const points = Array.from({ length: pointCount }, (_, index) => {
+    const fraction = index / pointCount;
+    return `${(5 + fraction * 0.1).toFixed(6)} ${(52 + fraction * 0.1).toFixed(6)}`;
+  }).join(", ");
+  let result;
+  assert.doesNotThrow(() => { result = wktToLatLng(`Polygon ((${points}))`); });
+  assert.ok(result);
+  assert.ok(Number.isFinite(result.lat));
+  assert.ok(Number.isFinite(result.lng));
 });
 
 test("leaves lat/lng undefined when there is no geometry at all", () => {
@@ -883,12 +902,17 @@ test("parses een zelfstandige vondstlocatie zonder coördinaten te verzinnen", (
   assert.equal(locatie.wkt, undefined);
 });
 
-test("parses begrensde vondstlocatie-inhoud met concept-URI's en aparte totalen", () => {
+test("bouwt een aparte, eigen-begrensde vondstlocatie-inhoudquery per klasse (TD-14)", () => {
   const locatieUri = "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/vondstlocatie/6109334";
-  const query = buildVondstlocatieInhoudQuery(locatieUri);
-  assert.match(query, /VALUES \?klasse \{ ceo:ArcheologischComplex ceo:Vondsten ceo:Grondsporen \}/);
-  assert.match(query, /LIMIT 500/);
+  for (const klasse of VONDSTLOCATIE_INHOUD_KLASSEN) {
+    const query = buildVondstlocatieInhoudQuery(locatieUri, klasse);
+    assert.match(query, new RegExp(`VALUES \\?klasse \\{ ceo:${klasse} \\}`));
+    assert.match(query, /LIMIT 200/);
+  }
   assert.match(buildVondstlocatieInhoudTellingQuery(locatieUri), /COUNT\(DISTINCT \?vondst\)/);
+});
+
+test("parses begrensde vondstlocatie-inhoud met concept-URI's en aparte totalen", () => {
   const inhoud = parseVondstlocatieInhoudResults({ results: { bindings: [
     { object: { value: "v:1" }, klasse: { value: `${CEO}Vondsten` }, choi: { value: "1" }, archisVondstnummer: { value: "5888" }, aantal: { value: "2" }, conceptSoort: { value: "type" }, concept: { value: "rn:type" }, conceptLabel: { value: "aardewerk" } },
     { object: { value: "v:1" }, klasse: { value: `${CEO}Vondsten` }, choi: { value: "1" }, aantal: { value: "2" }, conceptSoort: { value: "materiaal" }, concept: { value: "rn:materiaal" }, conceptLabel: { value: "keramiek" } },
@@ -900,6 +924,40 @@ test("parses begrensde vondstlocatie-inhoud met concept-URI's en aparte totalen"
   assert.equal(inhoud.complexen[0].type.label, "nederzetting");
   assert.equal(inhoud.grondsporen[0].aantal, 6);
   assert.deepEqual(parseVondstlocatieInhoudTelling({ results: { bindings: [{ complexenTotaal: { value: "1" }, vondstenTotaal: { value: "2" }, grondsporenTotaal: { value: "3" } }] } }), { complexenTotaal: 1, vondstenTotaal: 2, grondsporenTotaal: 3 });
+});
+
+test("merget vondsten niet weg wanneer complexen/grondsporen een eigen LIMIT-document vullen (TD-14 regressie)", () => {
+  // Vóór de fix deelden alle drie de klassen één gezamenlijke LIMIT 500,
+  // gesorteerd op ?klasse - "Vondsten" sorteert daarin als laatste, dus een
+  // vondstlocatie met genoeg complexen/grondsporen-rijen kon de vondsten
+  // volledig verdringen. Elk document hieronder simuleert nu het resultaat
+  // van zijn eigen, onafhankelijke per-klasse query: een vol
+  // complexen-document en een vol grondsporen-document mogen de vondsten uit
+  // het derde, eigen document niet meer kunnen verdringen.
+  const volComplexenDocument = {
+    results: { bindings: Array.from({ length: 200 }, (_, index) => ({
+      object: { value: `c:${index}` }, klasse: { value: `${CEO}ArcheologischComplex` }, choi: { value: String(index) },
+    })) },
+  };
+  const volGrondsporenDocument = {
+    results: { bindings: Array.from({ length: 200 }, (_, index) => ({
+      object: { value: `g:${index}` }, klasse: { value: `${CEO}Grondsporen` }, choi: { value: String(index) }, aantal: { value: "1" },
+    })) },
+  };
+  const vondstenDocument = {
+    results: { bindings: [
+      { object: { value: "v:1" }, klasse: { value: `${CEO}Vondsten` }, choi: { value: "1" }, aantal: { value: "2" } },
+    ] },
+  };
+  const inhoud = mergeVondstlocatieInhoud([
+    parseVondstlocatieInhoudResults(volComplexenDocument),
+    parseVondstlocatieInhoudResults(volGrondsporenDocument),
+    parseVondstlocatieInhoudResults(vondstenDocument),
+  ]);
+  assert.equal(inhoud.complexen.length, 25);
+  assert.equal(inhoud.grondsporen.length, 25);
+  assert.equal(inhoud.vondsten.length, 1);
+  assert.equal(inhoud.vondsten[0].uri, "v:1");
 });
 
 test("queries Referentienetwerk 2 als eigen thesaurusbron", () => {

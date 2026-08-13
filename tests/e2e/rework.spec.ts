@@ -285,6 +285,75 @@ test("Rijksmonumenten zijn per 25 te doorbladeren", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Laad 25 volgende resultaten" })).toHaveCount(0);
 });
 
+test("een nieuwe zoekopdracht overschrijft resultaten van een nog lopende 'laad meer' (TD-12 regressie)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", async (route) => {
+    const url = new URL(route.request().url());
+    const browse = url.searchParams.get("browse");
+    const requestedPage = Number(url.searchParams.get("page") ?? "1");
+    const q = url.searchParams.get("q") ?? "";
+
+    if (browse === "rijksmonument" && requestedPage === 1) {
+      return route.fulfill({ json: {
+        results: [{ ...records[0], choNumber: "cho-p1", monumentNumber: "p1", name: "Eerste pagina" }],
+        page: 1, hasMore: true,
+      } });
+    }
+    if (browse === "rijksmonument" && requestedPage === 2) {
+      // Bewust vertraagd: dit simuleert een 'laad meer' die nog loopt
+      // wanneer de gebruiker alweer een heel nieuwe zoekopdracht start.
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return route.fulfill({ json: {
+        results: [{ ...records[0], choNumber: "cho-p2", monumentNumber: "p2", name: "Verouderde vervolgpagina" }],
+        page: 2, hasMore: false,
+      } });
+    }
+    if (q === "nieuwe zoekopdracht") {
+      return route.fulfill({ json: {
+        results: [{ ...records[0], choNumber: "cho-nieuw", monumentNumber: "nieuw", name: "Vers zoekresultaat" }],
+        page: 1, hasMore: false,
+      } });
+    }
+    return route.fulfill({ json: { results: [], page: 1, hasMore: false } });
+  });
+
+  await page.getByRole("button", { name: "Rijksmonumenten", exact: true }).click();
+  await expect(page.getByText("Eerste pagina")).toBeVisible();
+  await page.getByRole("button", { name: "Laad 25 volgende resultaten" }).click();
+
+  // Niet wachten tot 'laad meer' klaar is: meteen een nieuwe, andere
+  // zoekopdracht starten terwijl de vertraagde vervolgpagina nog onderweg is.
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("nieuwe zoekopdracht");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(page.getByText("Vers zoekresultaat")).toBeVisible();
+
+  // Wacht ruim langer dan de vertraagde 'laad meer'-respons nodig heeft, en
+  // controleer dat die verouderde pagina niet alsnog in de nieuwe
+  // zoekopdracht is gelekt.
+  await page.waitForTimeout(700);
+  await expect(page.getByText("Verouderde vervolgpagina")).toHaveCount(0);
+  await expect(page.getByText("Eerste pagina")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "1 resultaat voor “nieuwe zoekopdracht”" })).toBeVisible();
+});
+
+test("een detail geopend via 'bekijk alles' blijft open na herladen (TD-16 regressie)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: { results: [{ ...records[0] }], page: 1, hasMore: false },
+  }));
+
+  await page.getByRole("button", { name: "Rijksmonumenten", exact: true }).click();
+  await expect(page).toHaveURL(/browse=rijksmonument/);
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+  await expect(page).toHaveURL(/object=/);
+  const sharedUrl = page.url();
+
+  await page.reload();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("dialog")).toContainText("Woonhuis van de architect");
+  expect(page.url()).toBe(sharedUrl);
+});
+
 test("zoeken toont een rustige laadstaat op de plaats van de resultaten", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", async (route) => {
@@ -616,4 +685,35 @@ test("groenaanleg verdwijnt wanneer de overige filters geen keuze meer overlaten
 
   await expect(groenaanleg).toHaveCount(0);
   await expect(page.getByText("Woonhuis van de architect")).toBeVisible();
+});
+
+test("groenaanleg blijft aangevinkt tijdens het laden na URL-herstel (TD-13 regressie)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", async (route) => {
+    // Bewust vertraagd: dit geeft de premature-reset-race (TD-13) de kans om
+    // op te treden vóórdat de echte resultaten binnen zijn.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return route.fulfill({
+      json: {
+        page: 1,
+        hasMore: false,
+        results: [{
+          ...records[0],
+          choNumber: "cho-groen",
+          monumentNumber: "groen-1",
+          sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-groen",
+          groenaanleg: { typeAanleg: "Tuin" },
+        }],
+      },
+    });
+  });
+
+  // Simuleert een gedeelde/bewaarde URL met het groenaanleg-filter al aan.
+  await page.goto("/?q=architect&groenaanleg=1");
+  const groenaanleg = page.getByRole("checkbox", {
+    name: /Historische aanleg \(groenaanleg\)/,
+  });
+  await expect(page.getByText("Woonhuis van de architect")).toBeVisible();
+  await expect(groenaanleg).toBeVisible();
+  await expect(groenaanleg).toBeChecked();
 });

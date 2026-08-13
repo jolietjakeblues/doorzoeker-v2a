@@ -43,6 +43,7 @@ import {
   buildVondstenDetailsQuery,
   buildVondstenDiscoveryQueries,
   mergeDiscoveryMatches,
+  mergeVondstlocatieInhoud,
   parseArcheologischOnderzoekDiscoveryResults,
   parseArcheologischOnderzoekResults,
   parseArchaeologyBrowseNumbers,
@@ -81,6 +82,7 @@ import {
   parseVondstenResults,
   pickOpDezeDagCandidate,
   pickRandomCandidate,
+  VONDSTLOCATIE_INHOUD_KLASSEN,
   type ArcheologischTerrein,
   type ComplexMember,
   type RceMonument,
@@ -268,6 +270,19 @@ export async function fetchOpDezeDag(signal?: AbortSignal, now: Date = new Date(
 
 const VERRAS_ME_ATTEMPTS = 7;
 
+// Elk kalenderjaar heeft dezelfde maandlengtes, behalve februari. 2024 is een
+// schrikkeljaar, dus "dagen in de maand" hieronder klopt voor elke maand
+// inclusief 29 februari - zonder dat er een echt jaartal bij hoeft (`maandDag`
+// bevat toch geen jaartal).
+const LEAP_YEAR_FOR_MONTH_LENGTHS = 2024;
+
+function randomMaandDag(): string {
+  const month = 1 + Math.floor(Math.random() * 12);
+  const daysInMonth = new Date(Date.UTC(LEAP_YEAR_FOR_MONTH_LENGTHS, month, 0)).getUTCDate();
+  const day = 1 + Math.floor(Math.random() * daysInMonth);
+  return `${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 // "Verras me" (docs/vertical-slices/014-verras-me.md): op klik, geen
 // idle-load. Hergebruikt buildOpDezeDagQuery met een willekeurige maand-dag
 // in plaats van vandaag, en pickRandomCandidate in plaats van de
@@ -277,9 +292,7 @@ const VERRAS_ME_ATTEMPTS = 7;
 // dag" wordt daarom een paar keer een andere maand-dag geprobeerd.
 export async function fetchVerrasMe(signal?: AbortSignal): Promise<RceMonument | undefined> {
   for (let attempt = 0; attempt < VERRAS_ME_ATTEMPTS; attempt += 1) {
-    const month = 1 + Math.floor(Math.random() * 12);
-    const day = 1 + Math.floor(Math.random() * 28);
-    const maandDag = `${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const maandDag = randomMaandDag();
     const candidatesDocument = await fetchSparql(buildOpDezeDagQuery(maandDag), signal);
     const candidates = parseOpDezeDagCandidates(candidatesDocument);
     const chosen = pickRandomCandidate(candidates);
@@ -334,11 +347,15 @@ export async function searchByFunctieConcept(conceptUri: string, signal?: AbortS
 }
 
 export async function fetchVondstlocatieInhoud(locatieUri: string, signal?: AbortSignal) {
-  const [inhoudDocument, tellingDocument] = await Promise.all([
-    fetchSparql(buildVondstlocatieInhoudQuery(locatieUri), signal),
+  // Elke klasse (ArcheologischComplex/Grondsporen/Vondsten) krijgt zijn eigen
+  // query en eigen LIMIT, zodat een vondstlocatie met veel complexen of
+  // grondsporen niet de vondsten kan verdringen - zie de toelichting bij
+  // buildVondstlocatieInhoudQuery.
+  const [klasseDocuments, tellingDocument] = await Promise.all([
+    Promise.all(VONDSTLOCATIE_INHOUD_KLASSEN.map((klasse) => fetchSparql(buildVondstlocatieInhoudQuery(locatieUri, klasse), signal))),
     fetchSparql(buildVondstlocatieInhoudTellingQuery(locatieUri), signal),
   ]);
-  const inhoud = parseVondstlocatieInhoudResults(inhoudDocument);
+  const inhoud = mergeVondstlocatieInhoud(klasseDocuments.map((document) => parseVondstlocatieInhoudResults(document)));
   const conceptUris = [
     ...inhoud.complexen.flatMap((item) => item.type ? [item.type.uri] : []),
     ...inhoud.vondsten.flatMap((item) => [...item.types, ...item.materialen, ...item.stijlen, ...(item.toestand ? [item.toestand] : [])].map((concept) => concept.uri)),

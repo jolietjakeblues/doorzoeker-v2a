@@ -123,6 +123,23 @@ export function useSearchState() {
   });
 
   const choose = useCallback((item: Item) => setSelected(item), []);
+  // Gedeeld door executeSearch, executeConceptSearch en browseType: een
+  // URL-herstel (?object=<id>) moet het detailvenster heropenen ongeacht via
+  // welk van de drie zoekpaden de pagina is geladen - vóór deze functie werd
+  // dit alleen in executeSearch afgehandeld, waardoor een gedeelde link naar
+  // een via browsen of een conceptzoekopdracht geopend detail na herladen
+  // stil de dialoog niet heropende.
+  function applyPendingSelection(items: Item[]) {
+    if (!pendingSelectedId.current) return;
+    setSelected(
+      items.find(
+        (item) =>
+          item.id === pendingSelectedId.current ||
+          item.monumentNumber === pendingSelectedId.current,
+      ) ?? null,
+    );
+    pendingSelectedId.current = "";
+  }
   const baseResults = remoteResults ?? EMPTY_ITEMS;
   const activeFilters = useMemo(
     () => ({
@@ -158,12 +175,17 @@ export function useSearchState() {
     mspCount,
   } = useFilteredResults(baseResults, activeFilters);
   useEffect(() => {
+    // Tijdens het laden (bv. net na URL-herstel) is baseResults nog leeg en
+    // is groenaanlegCount/mspCount dus altijd 0 - dat zegt niets over de
+    // uiteindelijke resultaten. Pas na een afgeronde zoekopdracht vertelt
+    // een telling van 0 daadwerkelijk dat het filter niets zou tonen.
+    if (remoteState === "loading") return;
     const timer = window.setTimeout(() => {
       if (onlyGroenaanleg && groenaanlegCount === 0) setOnlyGroenaanleg(false);
       if (onlyMsp && mspCount === 0) setOnlyMsp(false);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [groenaanlegCount, mspCount, onlyGroenaanleg, onlyMsp]);
+  }, [groenaanlegCount, mspCount, onlyGroenaanleg, onlyMsp, remoteState]);
   function toggleLegalStatus(label: string) {
     setExcludedStatuses((current) =>
       current.includes(label)
@@ -230,16 +252,7 @@ export function useSearchState() {
       if (!request.isCurrent()) return;
       const items = response.results.map((record) => toItem(record));
       setRemoteResults(items);
-      if (pendingSelectedId.current) {
-        setSelected(
-          items.find(
-            (item) =>
-              item.id === pendingSelectedId.current ||
-              item.monumentNumber === pendingSelectedId.current,
-          ) ?? null,
-        );
-        pendingSelectedId.current = "";
-      }
+      applyPendingSelection(items);
       setHasMore(response.hasMore);
       setRemoteState("success");
     } catch {
@@ -307,7 +320,9 @@ export function useSearchState() {
                   request.signal,
                 );
       if (!request.isCurrent()) return;
-      setRemoteResults(records.map((record) => toItem(record)));
+      const items = records.map((record) => toItem(record));
+      setRemoteResults(items);
+      applyPendingSelection(items);
       setHasMore(false);
       setRemoteState("success");
     } catch {
@@ -387,7 +402,9 @@ export function useSearchState() {
     try {
       const response = await browseRceObjects(kind, request.signal);
       if (!request.isCurrent()) return;
-      setRemoteResults(response.results.map((record) => toItem(record)));
+      const items = response.results.map((record) => toItem(record));
+      setRemoteResults(items);
+      applyPendingSelection(items);
       setHasMore(response.hasMore);
       setRemoteState("success");
     } catch {
@@ -409,11 +426,18 @@ export function useSearchState() {
       setHasMore(false);
       return;
     }
+    // Deelt hetzelfde abort/sequence-systeem als executeSearch/
+    // executeConceptSearch/browseType: start de gebruiker een nieuwe
+    // zoekopdracht terwijl deze aanvraag nog loopt, dan annuleert die nieuwe
+    // aanvraag deze fetch en faalt de isCurrent()-check hieronder, zodat
+    // verouderde resultaten niet alsnog in de nieuwe zoekopdracht belanden.
+    const request = beginRequest();
     setLoadingMore(true);
     try {
       const response = activeBrowseKind
-        ? await browseRceObjects(activeBrowseKind, undefined, nextPage)
-        : await searchRceMonuments(active, undefined, nextPage);
+        ? await browseRceObjects(activeBrowseKind, request.signal, nextPage)
+        : await searchRceMonuments(active, request.signal, nextPage);
+      if (!request.isCurrent()) return;
       const additions = response.results.map((record) => toItem(record));
       setRemoteResults((current) => {
         const merged = new Map(
@@ -426,7 +450,7 @@ export function useSearchState() {
       setResultPage(nextPage);
       setHasMore(response.hasMore);
     } catch {
-      setHasMore(false);
+      if (!request.isAborted() && request.isCurrent()) setHasMore(false);
     } finally {
       setLoadingMore(false);
     }

@@ -55,10 +55,21 @@ export function parseWktGeometry(wkt: string): WktGeometry | undefined {
   return undefined;
 }
 
+// Geen Math.max(...lngs)/Math.min(...lngs): met spread-argumenten crasht V8
+// op een ring van voldoende omvang (RangeError: Maximum call stack size
+// exceeded). Sommige Werelderfgoed-polygonen (Waddenzee, Hollandse
+// Waterlinies) zijn megabytes aan WKT met veruit meer coördinaten dan die
+// grens - precies het geval waarvoor deze functie bedoeld is. Eén lus zonder
+// spread is O(n) en heeft geen argumentenlimiet.
 function boundingBoxFootprint(ring: WktRing): number {
-  const lngs = ring.map(([lng]) => lng);
-  const lats = ring.map(([, lat]) => lat);
-  return (Math.max(...lngs) - Math.min(...lngs)) * (Math.max(...lats) - Math.min(...lats));
+  let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+  for (const [lng, lat] of ring) {
+    if (lng < minLng) minLng = lng;
+    if (lng > maxLng) maxLng = lng;
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+  }
+  return (maxLng - minLng) * (maxLat - minLat);
 }
 
 // Een multipolygon kan uit ver uit elkaar liggende delen bestaan. Kies voor
