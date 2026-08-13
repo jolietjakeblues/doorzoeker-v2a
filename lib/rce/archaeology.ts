@@ -795,7 +795,20 @@ export type VondstlocatieVondst = { uri: string; choNumber: string; archisVondst
 export type VondstlocatieGrondspoor = { uri: string; choNumber: string; aantal: number; type?: ArchaeologyConcept; wkt?: string };
 export type VondstlocatieInhoud = { complexen: VondstlocatieComplex[]; vondsten: VondstlocatieVondst[]; grondsporen: VondstlocatieGrondspoor[]; complexenTotaal: number; vondstenTotaal: number; grondsporenTotaal: number };
 
-export function buildVondstlocatieInhoudQuery(locatieUri: string) {
+export const VONDSTLOCATIE_INHOUD_KLASSEN = ["ArcheologischComplex", "Grondsporen", "Vondsten"] as const;
+export type VondstlocatieInhoudKlasse = (typeof VONDSTLOCATIE_INHOUD_KLASSEN)[number];
+
+// Vóór deze wijziging deelden ArcheologischComplex, Grondsporen en Vondsten
+// één gezamenlijke `LIMIT 500` op triples (niet op objecten - elk
+// concept-veld levert een eigen rij op), gesorteerd op ?klasse. Omdat
+// "Vondsten" daarin alfabetisch als laatste sorteert, kon een vondstlocatie
+// met genoeg complexen/grondsporen-rijen de Vondsten-rijen volledig
+// verdringen: de UI toonde dan een positief aantal (uit de aparte,
+// onbegrensde buildVondstlocatieInhoudTellingQuery) naast een lege lijst,
+// niet te onderscheiden van een echte bug. Elke klasse krijgt daarom nu een
+// eigen, onafhankelijke query en limiet (zie fetchVondstlocatieInhoud in
+// lib/server/rce-adapter.ts, dat de drie documenten samenvoegt).
+export function buildVondstlocatieInhoudQuery(locatieUri: string, klasse: VondstlocatieInhoudKlasse) {
   return `PREFIX ceo: <${CEO}>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX geo: <http://www.opengis.net/ont/geosparql#>
@@ -803,7 +816,7 @@ SELECT ?object ?klasse ?choi ?archisVondstnummer ?aantal ?conceptSoort ?concept 
  GRAPH <${INSTANCES_GRAPH}> {
   <${locatieUri}> ceo:bevatObject ?object .
   ?object a ?klasse ; ceo:cultuurhistorischObjectnummer ?choi .
-  VALUES ?klasse { ceo:ArcheologischComplex ceo:Vondsten ceo:Grondsporen }
+  VALUES ?klasse { ceo:${klasse} }
   OPTIONAL { ?object ceo:archis2Vondstnummer ?archisVondstnummer . }
   OPTIONAL { ?object ceo:aantalVondsten ?aantalVondsten . }
   OPTIONAL { ?object ceo:aantalGrondsporen ?aantalGrondsporen . }
@@ -818,8 +831,8 @@ SELECT ?object ?klasse ?choi ?archisVondstnummer ?aantal ?conceptSoort ?concept 
   }
  }
 }
-ORDER BY ?klasse ?choi
-LIMIT 500`;
+ORDER BY ?choi
+LIMIT 200`;
 }
 
 export function buildVondstlocatieInhoudTellingQuery(locatieUri: string) {
@@ -870,6 +883,21 @@ export function parseVondstlocatieInhoudResults(document: unknown): Omit<Vondstl
     }
   }
   return { complexen: [...complexen.values()].slice(0, 25), vondsten: [...vondsten.values()].slice(0, 25), grondsporen: [...grondsporen.values()].slice(0, 25) };
+}
+
+// Voegt de drie per-klasse documenten van buildVondstlocatieInhoudQuery
+// samen. Elk document bevat door de eigen VALUES-klausel alleen rijen van
+// zijn eigen klasse, dus de andere twee velden zijn al leeg - platslaan en
+// opnieuw cappen op 25 is daarom voldoende, zonder dat er dubbele URI's
+// tussen documenten kunnen ontstaan.
+export function mergeVondstlocatieInhoud(
+  parts: Omit<VondstlocatieInhoud, "complexenTotaal" | "vondstenTotaal" | "grondsporenTotaal">[],
+): Omit<VondstlocatieInhoud, "complexenTotaal" | "vondstenTotaal" | "grondsporenTotaal"> {
+  return {
+    complexen: parts.flatMap((part) => part.complexen).slice(0, 25),
+    vondsten: parts.flatMap((part) => part.vondsten).slice(0, 25),
+    grondsporen: parts.flatMap((part) => part.grondsporen).slice(0, 25),
+  };
 }
 
 export function parseVondstlocatieInhoudTelling(document: unknown) {

@@ -66,3 +66,25 @@ test("fails with 502 when the RCE-service is unreachable", async (context) => {
   assert.equal(response.status, 502);
   assert.equal(response.headers.get("cache-control"), "no-store");
 });
+
+test("kan ook de 29e, 30e of 31e van een maand kiezen, niet alleen dag 1-28 (TD-15)", async (context) => {
+  const originalFetch = globalThis.fetch;
+  const originalRandom = Math.random;
+  context.after(() => { globalThis.fetch = originalFetch; Math.random = originalRandom; });
+  // Eerste Math.random()-aanroep kiest de maand, tweede de dag: 0.95 -> maand
+  // 12 (december), 0.98 -> dag 31 van 31. De oude implementatie kon "31" als
+  // dag nooit produceren, ongeacht de random-waarde.
+  const randomValues = [0.95, 0.98];
+  let call = 0;
+  Math.random = () => randomValues[call++] ?? 0;
+  const requestedDays = [];
+  globalThis.fetch = async (input) => {
+    const url = decodeURIComponent(String(input));
+    const maandDag = url.match(/= "(\d{2}-\d{2})"/)?.[1];
+    if (maandDag) requestedDays.push(maandDag);
+    return Response.json({ results: { bindings: [] } });
+  };
+
+  await GET(new Request("https://doorzoeker.test/api/rce/verras-me"));
+  assert.equal(requestedDays[0], "12-31");
+});

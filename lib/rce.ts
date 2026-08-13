@@ -1,5 +1,6 @@
 export {
   parseWktGeometry,
+  wktToLatLng,
   type WktGeometry,
   type WktRing,
 } from "./rce/geometry.ts";
