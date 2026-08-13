@@ -492,6 +492,23 @@ test("een complexdetail toont geen lege monumentvelden", async ({ page }) => {
   ).toHaveCount(0);
 });
 
+test("een mislukte complexverrijking toont een foutmelding, geen stille leegte (TD-17 regressie)", async ({ page }) => {
+  await page.unroute("**/api/rce/complex-members**");
+  await page.route("**/api/rce/complex-members**", (route) =>
+    route.fulfill({ status: 502, json: { error: "Tijdelijk niet bereikbaar" } }),
+  );
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page
+    .getByRole("button", { name: "Bekijk gegevens van Historisch boerderijcomplex" })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByText("Onderdelen van dit complex konden niet worden geladen. Probeer het later opnieuw.", { exact: true }),
+  ).toBeVisible();
+});
+
 test("de detaildialoog houdt focus vast en herstelt hem na Escape", async ({
   page,
 }) => {
