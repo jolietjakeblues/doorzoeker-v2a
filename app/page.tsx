@@ -230,7 +230,7 @@ export default function Home() {
             idleContent={
               <StartContent
                 item={opDezeDag}
-                onSearch={(searchQuery) => void executeSearch(searchQuery)}
+                onOpen={setSelected}
                 verrasMeItem={verrasMe.item}
                 verrasMeLoading={verrasMe.loading}
                 onVerrasMe={verrasMe.trigger}

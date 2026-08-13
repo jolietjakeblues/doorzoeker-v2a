@@ -3,7 +3,7 @@ import { CardDescription } from "./HeritageResultCard";
 
 type StartContentProps = {
   item: Item | null;
-  onSearch: (query: string) => void;
+  onOpen: (item: Item) => void;
   verrasMeItem: Item | null;
   verrasMeLoading: boolean;
   onVerrasMe: () => void;
@@ -52,15 +52,13 @@ function HeritageTile({ item, onOpen }: { item: Item; onOpen: () => void }) {
   );
 }
 
-export function StartContent({ item, onSearch, verrasMeItem, verrasMeLoading, onVerrasMe }: StartContentProps) {
-  const open = (target: Item) => onSearch(target.monumentNumber ?? target.id);
-
+export function StartContent({ item, onOpen, verrasMeItem, verrasMeLoading, onVerrasMe }: StartContentProps) {
   return (
     <>
       {item && (
         <section className="op-deze-dag">
           <small>OP DEZE DAG INGESCHREVEN</small>
-          <HeritageTile item={item} onOpen={() => open(item)} />
+          <HeritageTile item={item} onOpen={() => onOpen(item)} />
         </section>
       )}
       <section className="verras-me">
@@ -77,7 +75,7 @@ export function StartContent({ item, onSearch, verrasMeItem, verrasMeLoading, on
               ? "Verras me nog een keer"
               : "Verras me"}
         </button>
-        {verrasMeItem && <HeritageTile item={verrasMeItem} onOpen={() => open(verrasMeItem)} />}
+        {verrasMeItem && <HeritageTile item={verrasMeItem} onOpen={() => onOpen(verrasMeItem)} />}
       </section>
       <div className="start-panel">
         <small>ZO WERKT HET</small>
