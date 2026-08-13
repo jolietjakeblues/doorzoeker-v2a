@@ -320,47 +320,45 @@ export function SearchFilters({
           ))}
         </fieldset>
       )}
-      {includesRijksmonumenten &&
-        (groenaanlegCount > 0 || mspCount > 0) && (
-          <fieldset>
-            <legend>Kenmerken</legend>
-            <details className="hint">
-              <summary>Wat betekent dit?</summary>
-              <p>
-                Historische aanleg (groenaanleg) betekent dat er een tuin-
-                of parkaanleg bij het monument hoort. Monumenten Selectie
-                Project verwijst naar een aanwijzingsronde van de RCE tussen
-                ongeveer 1997 en 2002, gericht op gebouwen uit 1850-1940.
-              </p>
-            </details>
-            {groenaanlegCount > 0 && (
-              <label>
-                <input
-                  type="checkbox"
-                  checked={onlyGroenaanleg}
-                  onChange={(event) =>
-                    onOnlyGroenaanlegChange(event.target.checked)
-                  }
-                />
-                <span>Historische aanleg (groenaanleg)</span>
-                <em>
-                  {groenaanlegCount}
-                </em>
-              </label>
-            )}
-            {mspCount > 0 && (
-              <label>
-                <input
-                  type="checkbox"
-                  checked={onlyMsp}
-                  onChange={(event) => onOnlyMspChange(event.target.checked)}
-                />
-                <span>Monumenten Selectie Project</span>
-                <em>{mspCount}</em>
-              </label>
-            )}
-          </fieldset>
-        )}
+      {includesRijksmonumenten && (
+        <fieldset>
+          <legend>Kenmerken</legend>
+          <details className="hint">
+            <summary>Wat betekent dit?</summary>
+            <p>
+              Historische aanleg (groenaanleg) betekent dat er een tuin-
+              of parkaanleg bij het monument hoort. Monumenten Selectie
+              Project verwijst naar een aanwijzingsronde van de RCE tussen
+              ongeveer 1997 en 2002, gericht op gebouwen uit 1850-1940. Een
+              telling van 0 hieronder betekent niet dat dit kenmerk niet
+              bestaat voor Rijksmonumenten - het komt alleen niet voor bij
+              de resultaten die nu zijn geladen.
+            </p>
+          </details>
+          <label>
+            <input
+              type="checkbox"
+              checked={onlyGroenaanleg}
+              onChange={(event) =>
+                onOnlyGroenaanlegChange(event.target.checked)
+              }
+            />
+            <span>Historische aanleg (groenaanleg)</span>
+            <em>
+              {groenaanlegCount}
+            </em>
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={onlyMsp}
+              onChange={(event) => onOnlyMspChange(event.target.checked)}
+            />
+            <span>Monumenten Selectie Project</span>
+            <em>{mspCount}</em>
+          </label>
+        </fieldset>
+      )}
       <button className="reset" type="button" onClick={onReset}>
         Wis alle filters
       </button>

@@ -684,7 +684,7 @@ test("een oude verbindingsfout verdwijnt zodra een nieuwe zoekterm wordt ingevoe
   ).toHaveCount(0);
 });
 
-test("groenaanleg verdwijnt wanneer de overige filters geen keuze meer overlaten", async ({
+test("groenaanleg wordt uitgevinkt (maar blijft zichtbaar) wanneer de overige filters geen keuze meer overlaten", async ({
   page,
 }) => {
   await page.unroute("**/api/rce/search**");
@@ -726,8 +726,40 @@ test("groenaanleg verdwijnt wanneer de overige filters geen keuze meer overlaten
     .getByRole("combobox", { name: "Filter op gemeente of woonplaats" })
     .selectOption("Goirle");
 
-  await expect(groenaanleg).toHaveCount(0);
+  // P1: het filter verdween voorheen helemaal uit de DOM zodra de teller op
+  // deze pagina 0 werd, wat een gebruiker liet denken dat het kenmerk niet
+  // bestond voor Rijksmonumenten. Nu blijft het zichtbaar met "0", en wordt
+  // alleen de eigen aanvinking losgelaten (bestaand gedrag, zie
+  // useSearchState.ts).
+  await expect(groenaanleg).toBeVisible();
+  await expect(groenaanleg).not.toBeChecked();
   await expect(page.getByText("Woonhuis van de architect")).toBeVisible();
+});
+
+test("Kenmerken-filters blijven zichtbaar met telling 0 in plaats van te verdwijnen (P1)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) =>
+    route.fulfill({
+      json: {
+        page: 1,
+        hasMore: false,
+        results: [{ ...records[0] }],
+      },
+    }),
+  );
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("architect");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  const groenaanleg = page.getByRole("checkbox", {
+    name: /Historische aanleg \(groenaanleg\)/,
+  });
+  const msp = page.getByRole("checkbox", {
+    name: /Monumenten Selectie Project/,
+  });
+  await expect(groenaanleg).toBeVisible();
+  await expect(groenaanleg).toHaveAccessibleName(/0$/);
+  await expect(msp).toBeVisible();
+  await expect(msp).toHaveAccessibleName(/0$/);
 });
 
 test("groenaanleg blijft aangevinkt tijdens het laden na URL-herstel (TD-13 regressie)", async ({ page }) => {

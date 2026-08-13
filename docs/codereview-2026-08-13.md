@@ -265,6 +265,21 @@ er gebouwd wordt.
   msp/groenaanleg beschikbaar maken). Nader te analyseren of dit twee
   bewust gescheiden ingangen zijn die beter uitgelegd moeten worden, of dat
   ze feitelijk zouden moeten samenvallen.
+  **Deelfix (P1, ditzelfde traject):** de Kenmerken-filters (groenaanleg/msp)
+  verdwenen voorheen volledig uit het paneel zodra de teller op de geladen
+  pagina 0 was, wat het "dit kenmerk bestaat niet"-misverstand versterkte.
+  Ze blijven nu zichtbaar met hun werkelijke (mogelijk 0) telling. De
+  onderliggende oorzaak - dat elke telling en elk filter alleen over de nu
+  geladen batch van 25 gaat, niet globaal - is nog niet opgelost; zie de
+  observatie hieronder voor een tweede symptoom daarvan.
+  **Extra observatie (2026-08-13):** hetzelfde geldt voor "Laad 25 volgende
+  resultaten" in combinatie met een functie-filter (bv. Rijksmonumenten →
+  functie "Werk-woonhuis"). De knop haalt telkens 25 nieuwe, ongefilterde
+  monumenten op en filtert die daarna pas client-side, dus een klik levert
+  meestal maar een handjevol extra treffers op in plaats van tot 25
+  passende. Een gebruiker verwacht dat "volgende 25" 25 (of minder, indien
+  minder beschikbaar) resultaten toevoegt die aan het actieve filter
+  voldoen.
 - **Getalzoekopdrachten matchen momenteel alleen `ceo:rijksmonumentnummer`
   voor Rijksmonumenten** (`searchByNumber` in
   `lib/server/rce-adapter.ts`), terwijl elk ander objectsoort (complex,
@@ -273,6 +288,9 @@ er gebouwd wordt.
   `ceo:cultuurhistorischObjectnummer` matcht. Ontdekt doordat een geldig
   CHO-nummer ("71286", Rijksmonument "Herenhuis Tolsedijk",
   rijksmonumentnummer 519471) 0 resultaten opleverde.
+  **Update (P1, ditzelfde traject):** opgelost - numerieke zoekopdrachten
+  matchen nu ook op CHO-nummer voor Rijksmonumenten, gelabeld via
+  matchSource "CHO-nummer (rijksmonument)".
   Simpelweg CHO-nummer ook laten meematchen voor Rijksmonumenten riskeert
   echter verwarring: hetzelfde numerieke getal kan toevallig zowel een
   geldig rijksmonumentnummer voor het ene object als een geldig CHO-nummer
