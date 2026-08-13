@@ -1,5 +1,6 @@
 import { fetchOnderzoeksgebiedVerrijking } from "../../../../lib/server/rce-adapter.ts";
 import { CACHE_POLICY, sharedCacheControl } from "../../../../lib/server/http-cache.ts";
+import { withRceErrorHandling } from "../../../../lib/server/route-error-handling.ts";
 
 export const runtime = "edge";
 
@@ -9,9 +10,7 @@ export const runtime = "edge";
 const GEBIED_URI_PATTERN = /^https:\/\/linkeddata\.cultureelerfgoed\.nl\/cho-kennis\/id\/archeologischonderzoeksgebied\/\d+$/;
 
 export async function GET(request: Request) {
-  const startedAt = Date.now();
-
-  try {
+  return withRceErrorHandling({ event: "rce.onderzoeksgebied-verrijking.error" }, async (startedAt) => {
     const url = new URL(request.url);
     const gebied = url.searchParams.get("gebied") ?? "";
     if (!GEBIED_URI_PATTERN.test(gebied)) {
@@ -25,8 +24,5 @@ export async function GET(request: Request) {
         "Server-Timing": `rce;dur=${Date.now() - startedAt}`,
       },
     });
-  } catch (error) {
-    console.error(JSON.stringify({ event: "rce.onderzoeksgebied-verrijking.error", durationMs: Date.now() - startedAt, message: error instanceof Error ? error.message : "unknown" }));
-    return Response.json({ error: "De RCE Linked Data-service is momenteel niet bereikbaar." }, { status: 502 });
-  }
+  });
 }

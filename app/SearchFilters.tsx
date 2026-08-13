@@ -45,22 +45,8 @@ export function SearchFilters({
   onFunctionChange, onMatchSourceChange, onToggleStatus, onClearStatuses,
   onOnlyGroenaanlegChange, onOnlyMspChange, onReset,
 }: SearchFiltersProps) {
-  const setFilters = (value: boolean) => { if (!value) onClose(); };
-  const setObjectType = onObjectTypeChange;
-  const setMonumentAard = onMonumentAardChange;
-  const setProvince = onProvinceChange;
-  const setMunicipality = onMunicipalityChange;
-  const setFunctionFilter = onFunctionChange;
-  const setMatchSourceFilter = onMatchSourceChange;
-  const toggleLegalStatus = onToggleStatus;
-  const clearExcludedStatuses = onClearStatuses;
-  const setOnlyGroenaanleg = onOnlyGroenaanlegChange;
-  const setOnlyMsp = onOnlyMspChange;
-  const reset = onReset;
-  const filters = open;
-
   return (
-    <aside className={filters ? "show" : ""} aria-label="Zoekfilters">
+    <aside className={open ? "show" : ""} aria-label="Zoekfilters">
       <div className="aside-title">
         <div>
           <small>VERFIJN</small>
@@ -68,7 +54,7 @@ export function SearchFilters({
         </div>
         <button
           type="button"
-          onClick={() => setFilters(false)}
+          onClick={onClose}
           aria-label="Filters sluiten"
         >
           ×
@@ -110,15 +96,15 @@ export function SearchFilters({
               name="soort"
               checked={objectType === option}
               onChange={() => {
-                setObjectType(option);
-                setProvince("Alle");
-                setMunicipality("Alle");
-                clearExcludedStatuses();
+                onObjectTypeChange(option);
+                onProvinceChange("Alle");
+                onMunicipalityChange("Alle");
+                onClearStatuses();
                 if (option !== "Alle" && option !== "Rijksmonument") {
-                  setMonumentAard("Alle");
-                  setFunctionFilter("Alle");
-                  setOnlyGroenaanleg(false);
-                  setOnlyMsp(false);
+                  onMonumentAardChange("Alle");
+                  onFunctionChange("Alle");
+                  onOnlyGroenaanlegChange(false);
+                  onOnlyMspChange(false);
                 }
               }}
             />
@@ -149,7 +135,7 @@ export function SearchFilters({
                   type="radio"
                   name="aard"
                   checked={monumentAard === option}
-                  onChange={() => setMonumentAard(option)}
+                  onChange={() => onMonumentAardChange(option)}
                 />
                 <span>
                   {option === "Alle" ? "Alle monumentaarden" : option}
@@ -176,8 +162,8 @@ export function SearchFilters({
               aria-label="Filter op provincie"
               value={province}
               onChange={(event) => {
-                setProvince(event.target.value);
-                setMunicipality("Alle");
+                onProvinceChange(event.target.value);
+                onMunicipalityChange("Alle");
               }}
             >
               <option value="Alle">
@@ -206,7 +192,7 @@ export function SearchFilters({
             <select
               aria-label="Filter op gemeente of woonplaats"
               value={municipality}
-              onChange={(event) => setMunicipality(event.target.value)}
+              onChange={(event) => onMunicipalityChange(event.target.value)}
             >
               <option value="Alle">
                 Alle plaatsen (
@@ -243,7 +229,7 @@ export function SearchFilters({
             <select
               aria-label="Filter op functie"
               value={functionFilter}
-              onChange={(event) => setFunctionFilter(event.target.value)}
+              onChange={(event) => onFunctionChange(event.target.value)}
             >
               <option value="Alle">
                 Alle functies ({objectTypeResults.length})
@@ -283,7 +269,7 @@ export function SearchFilters({
             <select
               aria-label="Filter op matchbron"
               value={matchSourceFilter}
-              onChange={(event) => setMatchSourceFilter(event.target.value)}
+              onChange={(event) => onMatchSourceChange(event.target.value)}
             >
               <option value="Alle">Alle matchbronnen</option>
               {contextMatchSources.map((option) => (
@@ -320,7 +306,7 @@ export function SearchFilters({
               <input
                 type="checkbox"
                 checked={!excludedStatuses.includes(label)}
-                onChange={() => toggleLegalStatus(label)}
+                onChange={() => onToggleStatus(label)}
               />
               <span>{label}</span>
               <em>
@@ -353,7 +339,7 @@ export function SearchFilters({
                   type="checkbox"
                   checked={onlyGroenaanleg}
                   onChange={(event) =>
-                    setOnlyGroenaanleg(event.target.checked)
+                    onOnlyGroenaanlegChange(event.target.checked)
                   }
                 />
                 <span>Historische aanleg (groenaanleg)</span>
@@ -367,7 +353,7 @@ export function SearchFilters({
                 <input
                   type="checkbox"
                   checked={onlyMsp}
-                  onChange={(event) => setOnlyMsp(event.target.checked)}
+                  onChange={(event) => onOnlyMspChange(event.target.checked)}
                 />
                 <span>Monumenten Selectie Project</span>
                 <em>{mspCount}</em>
@@ -375,7 +361,7 @@ export function SearchFilters({
             )}
           </fieldset>
         )}
-      <button className="reset" type="button" onClick={reset}>
+      <button className="reset" type="button" onClick={onReset}>
         Wis alle filters
       </button>
     </aside>

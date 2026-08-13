@@ -1,3 +1,5 @@
+import { capMapSize } from "./expiring-map.ts";
+
 export type RateLimitEntry = { count: number; resetAt: number };
 
 type FixedWindowOptions = {
@@ -29,9 +31,7 @@ export function consumeFixedWindow(
   if (entries.size >= options.maxEntries) {
     pruneExpiredWindows(entries, options.now);
   }
-  if (entries.size >= options.maxEntries) {
-    entries.delete(entries.keys().next().value ?? "");
-  }
+  capMapSize(entries, options.maxEntries);
 
   entries.set(id, { count: 1, resetAt: options.now + options.windowMs });
   return true;
