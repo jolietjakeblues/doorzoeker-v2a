@@ -1,4 +1,4 @@
-import type { RceMonument } from "./types.ts";
+import { OBJECT_KIND, type RceMonument } from "./types.ts";
 import { wktToLatLng } from "./geometry.ts";
 import { escapeSparqlString } from "./sparql.ts";
 
@@ -475,7 +475,7 @@ export function parseWerelderfgoedResults(document: unknown): RceMonument[] {
       postalCode: "",
       sourceUrl: binding.cho?.value ?? "",
       name: binding.naam?.value,
-      monumentNature: "werelderfgoed",
+      monumentNature: OBJECT_KIND.Werelderfgoed,
       description: [
         typeLabel ? typeLabel.charAt(0).toLocaleUpperCase("nl") + typeLabel.slice(1) : undefined,
         jaar ? `Op de Werelderfgoedlijst sinds ${jaar}.` : undefined,
@@ -534,7 +534,7 @@ export function parseGezichtResults(document: unknown): RceMonument[] {
       postalCode: "",
       sourceUrl: binding.cho?.value ?? "",
       name: binding.naam?.value,
-      monumentNature: "gezicht",
+      monumentNature: OBJECT_KIND.Gezicht,
       description: "Rijksbeschermd stads- of dorpsgezicht.",
       officialUrl: binding.url?.value,
       lng: coordinates?.lng,
@@ -601,7 +601,7 @@ export function parseComplexenResults(document: unknown): RceMonument[] {
       postalCode: "",
       sourceUrl: binding.complex?.value ?? "",
       name: binding.naam?.value,
-      monumentNature: "complex",
+      monumentNature: OBJECT_KIND.Complex,
       description: binding.omschrijving?.value || `Complex van ${memberCount} rijksmonument${memberCount === 1 ? "" : "en"}.`,
       complexMemberCount: memberCount || undefined,
       lng: coordinates?.lng,

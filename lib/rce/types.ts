@@ -1,6 +1,27 @@
 import type { ArchaeologyConcept, ArcheologischTerrein } from "./archaeology.ts";
 import type { ComplexMembership, RceParcel } from "./monuments.ts";
 
+// `RceMonument.monumentNature` heeft twee rollen: voor een Rijksmonument
+// bevat het het echte SKOS-`monumentaard`-label (bv. "onroerend gebouwd"),
+// voor de overige objectsoorten dient het als een vast, intern
+// discriminatie-label. Deze constanten zijn de enige plek waar die tweede
+// rol als letterlijke string wordt vastgelegd - producenten (archaeology.ts,
+// monuments.ts) en consumenten (heritage-view-model.ts, de zoekroute) lezen
+// hem allebei via `OBJECT_KIND`, zodat een typefout of hernoeming een
+// compilerfout geeft in plaats van stil de classificatie te breken.
+export const OBJECT_KIND = {
+  Werelderfgoed: "werelderfgoed",
+  Gezicht: "gezicht",
+  Complex: "complex",
+  ArcheologischOnderzoeksgebied: "archeologischonderzoeksgebied",
+  ArcheologischTerrein: "archeologischterrein",
+  Vondstlocatie: "vondstlocatie",
+  Grondsporen: "grondsporen",
+  Vondsten: "vondsten",
+  ArcheologischComplex: "archeologischcomplex",
+} as const;
+export type ObjectKind = (typeof OBJECT_KIND)[keyof typeof OBJECT_KIND];
+
 export type RceMonument = {
   choNumber: string;
   monumentNumber: string;
