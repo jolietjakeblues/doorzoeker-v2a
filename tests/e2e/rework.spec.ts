@@ -164,6 +164,32 @@ test("de startpagina biedt een brede reeks directe zoekvoorbeelden", async ({ pa
   await expect(collecties.getByRole("button", { name: "Grondsporen" })).toBeVisible();
 });
 
+test("'Op deze dag' opent het detail direct, zonder een nieuwe zoekopdracht te starten (bugfix)", async ({ page }) => {
+  await page.unroute("**/api/rce/op-deze-dag");
+  await page.route("**/api/rce/op-deze-dag", (route) => route.fulfill({
+    json: { monument: { ...records[0], choNumber: "cho-opdezedag", monumentNumber: "7586" } },
+  }));
+  await page.unroute("**/api/rce/search**");
+  let searchRequested = false;
+  await page.route("**/api/rce/search**", (route) => {
+    searchRequested = true;
+    return route.fulfill({ json: { results: [], page: 1, hasMore: false } });
+  });
+
+  const startDataReady = page.waitForResponse((response) => response.url().includes("/api/rce/op-deze-dag"));
+  await page.goto("/");
+  await startDataReady;
+
+  // Klikken op de pijl van een al volledig bekend record (het is het
+  // Op-deze-dag-record zelf, geen zoekresultaat) mag geen ambigue
+  // nummerzoekopdracht starten - dat leverde voorheen meerdere,
+  // ongerelateerde treffers op uit andere objectsoorten die toevallig
+  // hetzelfde nummer in hun eigen veld hebben (bv. een Archis-nummer).
+  await page.getByRole("button", { name: "Details van Woonhuis van de architect" }).click();
+  await expect(page.getByRole("dialog")).toContainText("Woonhuis van de architect");
+  expect(searchRequested).toBe(false);
+});
+
 test("vondsten en grondsporen zijn als collectie te openen", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", (route) => {
