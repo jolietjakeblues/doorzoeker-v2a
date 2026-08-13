@@ -27,7 +27,7 @@ test("returns a stable application API contract for a monument number", async (c
     // fallback), so match on "perceelnummer" - only the dedicated parcel
     // query selects it - instead of "heeftBRKRelatie".
     if (url.includes("perceelnummer")) {
-      return Response.json({ results: { bindings: [{ gemeente: { value: "Utrecht" }, sectie: { value: "B" }, perceel: { value: "358" } }] } });
+      return Response.json({ results: { bindings: [{ rmnr: { value: "36046" }, gemeente: { value: "Utrecht" }, sectie: { value: "B" }, perceel: { value: "358" } }] } });
     }
     if (url.includes("GROUP_CONCAT")) {
       return Response.json({ results: { bindings: [{ rmnr: { value: "36046" }, oorspronkelijkeFuncties: { value: "Woonhuis(K)" } }] } });
@@ -46,6 +46,44 @@ test("returns a stable application API contract for a monument number", async (c
   const cached = await GET(new Request("https://doorzoeker.test/api/rce/search?q=36046&page=1", { headers: { "cf-connecting-ip": "test-success" } }));
   assert.equal(cached.status, 200);
   assert.equal(cached.headers.get("x-doorzoeker-cache"), "HIT");
+});
+
+test("finds a Rijksmonument by CHO-nummer when it is not a valid rijksmonumentnummer (P1: 71286)", async (context) => {
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalCaches === undefined) delete globalThis.caches;
+    else globalThis.caches = originalCaches;
+  });
+  globalThis.caches = { default: { match() { throw new Error("cache unavailable"); }, put() { throw new Error("cache unavailable"); } } };
+  globalThis.fetch = async (input) => {
+    const url = decodeURIComponent(String(input));
+    if (url.startsWith(BIBLIOTHEEK_SPARQL)) return Response.json({ results: { bindings: [] } });
+    if (url.includes("GROUP_CONCAT")) return Response.json({ results: { bindings: [] } });
+    if (url.includes("perceelnummer")) return Response.json({ results: { bindings: [] } });
+    const monument = { cho: { value: "rm:71286" }, choi: { value: "71286" }, rmnr: { value: "519471" }, naam: { value: "Herenhuis Tolsedijk" } };
+    if (url.includes("VALUES ?choi")) return Response.json({ results: { bindings: [monument] } });
+    // De CHO-nummer-lookup levert alleen het rijksmonumentnummer op; de
+    // gewone detailquery (buildRceDetailsQuery, ditmaal met dat gevonden
+    // rmnr) haalt daarna via dezelfde gedeelde buildMonumentsFromNumbers-weg
+    // het volledige record op - net als bij een rechtstreekse
+    // rijksmonumentnummer-zoekopdracht.
+    if (url.includes("SELECT ?cho ?choi ?rmnr") && url.includes("519471")) {
+      return Response.json({ results: { bindings: [monument] } });
+    }
+    // Alle overige parallelle branches (complexnummer, archeologische
+    // terreinen/vondstlocaties/..., MSP, groenaanleg, ...): "71286" en
+    // "519471" zijn daar niet relevant, dus die leveren niets op.
+    return Response.json({ results: { bindings: [] } });
+  };
+
+  const response = await GET(new Request("https://doorzoeker.test/api/rce/search?q=71286&page=1", { headers: { "cf-connecting-ip": "test-cho-nummer" } }));
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.equal(document.results.length, 1);
+  assert.equal(document.results[0].monumentNumber, "519471");
+  assert.equal(document.results[0].matchSource, "CHO-nummer (rijksmonument)");
 });
 
 test("rejects a concept-URI outside the known namespaces before contacting RCE", async () => {

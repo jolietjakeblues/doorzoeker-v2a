@@ -26,13 +26,12 @@ import {
   buildOnderzoeksgebiedComplexenQuery,
   buildOnderzoeksgebiedVondstlocatiesQuery,
   buildOpDezeDagQuery,
+  buildRceChoNumberQuery,
   buildRceDetailsQuery,
   buildRceDiscoveryQueries,
   buildRceFacetsQuery,
-  buildRceNumberQuery,
   buildRijksmonumentenBrowseQuery,
   buildGezichtQuery,
-  buildRceParcelQuery,
   buildRceParcelsQuery,
   buildWerelderfgoedQuery,
   buildVondstlocatieDetailsQuery,
@@ -178,16 +177,25 @@ export async function fetchOnderzoeksgebiedVerrijking(gebiedUri: string, signal?
   };
 }
 
+// P1: elk ander objectsoort (complex, archeologisch terrein, vondstlocatie,
+// ...) matcht een numerieke zoekopdracht ook op CHO-nummer, niet alleen op
+// zijn eigen primaire nummer. Rijksmonumenten deden dat niet: een geldig
+// CHO-nummer (bv. "71286") gaf 0 resultaten omdat alleen op
+// rijksmonumentnummer werd gezocht. Beide nummers kunnen tegelijk naar
+// verschillende, ongerelateerde monumenten wijzen (net als bij de andere
+// objectsoorten) - daarom hier expliciet gelabeld via matchSource, in plaats
+// van de CHO-nummer-match stilzwijgend te laten samenvallen met de
+// rijksmonumentnummer-match.
 async function searchByNumber(monumentNumber: string, signal?: AbortSignal): Promise<RceMonument[]> {
-  const [monumentsDocument, parcelsDocument, facetsDocument] = await Promise.all([
-    fetchSparql(buildRceNumberQuery(monumentNumber), signal),
-    fetchSparql(buildRceParcelQuery(monumentNumber), signal),
-    fetchSparql(buildRceFacetsQuery([monumentNumber]), signal),
-  ]);
-  const parcels = parseParcelResults(parcelsDocument);
-  const facets = parseFacetResults(facetsDocument);
-  const monuments = parseSparqlResults(monumentsDocument).map((monument) => ({ ...monument, ...facets.get(monument.monumentNumber), parcels }));
-  return enrichMonuments(monuments, signal);
+  const choDocument = await fetchSparql(buildRceChoNumberQuery(monumentNumber), signal);
+  const choMatches = parseSparqlResults(choDocument).map((monument) => monument.monumentNumber);
+  const numbers = [...new Set([monumentNumber, ...choMatches])];
+  const monuments = await buildMonumentsFromNumbers(numbers, signal);
+  return monuments.map((monument) =>
+    monument.monumentNumber === monumentNumber
+      ? monument
+      : { ...monument, matchSource: "CHO-nummer (rijksmonument)", matchedText: monumentNumber },
+  );
 }
 
 // Exacte conceptzoekopdracht - geen CONTAINS-tekstmatch op een label, maar
@@ -198,7 +206,7 @@ async function searchByNumber(monumentNumber: string, signal?: AbortSignal): Pro
 // dus delen ze vanaf hier dezelfde afhandeling: rijksmonumentnummers
 // opzoeken, dan de gewone detail/percelen/facetten-ophaalslag hergebruiken.
 // Ook hergebruikt door fetchOpDezeDag (één vast rijksmonumentnummer in
-// plaats van een matchquery-uitkomst).
+// plaats van een matchquery-uitkomst) en door searchByNumber hierboven.
 async function buildMonumentsFromNumbers(numbers: string[], signal?: AbortSignal): Promise<RceMonument[]> {
   if (!numbers.length) return [];
   const [detailsDocument, parcelsDocument, facetsDocument] = await Promise.all([

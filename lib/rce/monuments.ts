@@ -161,8 +161,11 @@ export function parseParcelResults(document: unknown): RceParcel[] {
   }));
 }
 
-export function buildRceDetailsQuery(monumentNumbers: string[]) {
-  const values = monumentNumbers.map((number) => `"${escapeSparqlString(number)}"`).join(" ");
+// Gedeeld door buildRceDetailsQuery (VALUES op ?rmnr) en buildRceChoNumberQuery
+// (VALUES op ?choi): zelfde velden, alleen andere identifier om op te matchen.
+// Eén WHERE-body zodat een toekomstig extra veld niet per ongeluk alleen bij
+// de ene variant terechtkomt.
+function buildRceDetailsQueryBody(bindVariable: "rmnr" | "choi", values: string) {
   return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX geo: <http://www.opengis.net/ont/geosparql#>
@@ -183,7 +186,7 @@ WHERE {
  GRAPH <${INSTANCES_GRAPH}> {
   ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ; ceo:cultuurhistorischObjectnummer ?choi ;
        ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> .
-  VALUES ?rmnr { ${values} }
+  VALUES ?${bindVariable} { ${values} }
   OPTIONAL { ?cho ceo:heeftNaam/ceo:naam ?naamValue . }
   OPTIONAL {
     ?cho ceo:heeftOorspronkelijkeFunctie ?functieNode .
@@ -217,8 +220,18 @@ GROUP BY ?cho ?choi ?rmnr
 LIMIT 100`;
 }
 
-export function buildRceNumberQuery(monumentNumber: string) {
-  return buildRceDetailsQuery([monumentNumber]);
+export function buildRceDetailsQuery(monumentNumbers: string[]) {
+  const values = monumentNumbers.map((number) => `"${escapeSparqlString(number)}"`).join(" ");
+  return buildRceDetailsQueryBody("rmnr", values);
+}
+
+// P1: numerieke zoekopdrachten matchten voor Rijksmonumenten alleen op
+// rijksmonumentnummer, terwijl elk ander objectsoort (complex, archeologisch
+// terrein, vondstlocatie, ...) bij zo'n zoekopdracht ook op CHO-nummer
+// matcht. Een geldig CHO-nummer voor een Rijksmonument (bv. "71286") gaf
+// daardoor 0 resultaten. Zie docs/codereview-2026-08-13.md.
+export function buildRceChoNumberQuery(choNumber: string) {
+  return buildRceDetailsQueryBody("choi", `"${escapeSparqlString(choNumber)}"`);
 }
 
 export function buildRijksmonumentenBrowseQuery(page: number) {
@@ -290,24 +303,6 @@ export function parseFacetResults(document: unknown) {
     typeNames: binding.typen?.value?.split("||").filter(Boolean) ?? [],
     legalStatus: "rijksmonument",
   }]));
-}
-
-export function buildRceParcelQuery(monumentNumber: string) {
-  return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
-SELECT DISTINCT ?gemeente ?gemeentecode ?sectie ?perceel ?provinciecode
-WHERE {
- GRAPH <${INSTANCES_GRAPH}> {
-  ?cho a ceo:Rijksmonument ;
-       ceo:rijksmonumentnummer "${escapeSparqlString(monumentNumber)}" ;
-       ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> ;
-       ceo:heeftBasisregistratieRelatie/ceo:heeftBRKRelatie ?brk .
-  ?brk ceo:gemeentenaam ?gemeente ;
-       ceo:sectie ?sectie ;
-       ceo:perceelnummer ?perceel .
-  OPTIONAL { ?brk ceo:gemeentecode ?gemeentecode . }
-  OPTIONAL { ?brk ceo:provinciecode ?provinciecode . }
- }
-}`;
 }
 
 export function buildRceParcelsQuery(monumentNumbers: string[]) {

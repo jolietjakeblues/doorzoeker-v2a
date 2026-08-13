@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceNumberQuery, buildRceParcelQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedQuery, mergeDiscoveryMatches, mergeVondstlocatieInhoud, parseAbrTermSuggestResults, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS, VONDSTLOCATIE_INHOUD_KLASSEN, wktToLatLng } from "../lib/rce.ts";
+import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceChoNumberQuery, buildRceDetailsQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceParcelsQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedQuery, mergeDiscoveryMatches, mergeVondstlocatieInhoud, parseAbrTermSuggestResults, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS, VONDSTLOCATIE_INHOUD_KLASSEN, wktToLatLng } from "../lib/rce.ts";
 import { buildArchaeologyBrowseQuery, buildRijksmonumentenBrowseQuery, parseArchaeologyBrowseNumbers, parseRijksmonumentenBrowseNumbers } from "../lib/rce.ts";
 import { buildFunctieConceptQuery, buildTermUsageQuery, parseFacetResults, parseTermUsageResults } from "../lib/rce.ts";
 
@@ -204,21 +204,21 @@ test("leaves lat/lng undefined when there is no geometry at all", () => {
 });
 
 test("queries and parses BRK parcels separately", () => {
-  const query = buildRceParcelQuery("36046");
+  const query = buildRceParcelsQuery(["36046"]);
   assert.match(query, /ceo:heeftBRKRelatie/);
   assert.doesNotMatch(query, /ceo:heeftBAGRelatie/);
-  const document = { results: { bindings: [{ gemeente: { value: "Utrecht" }, gemeentecode: { value: "996" }, sectie: { value: "B" }, perceel: { value: "358" }, provinciecode: { value: "UT" } }] } };
+  const document = { results: { bindings: [{ rmnr: { value: "36046" }, gemeente: { value: "Utrecht" }, gemeentecode: { value: "996" }, sectie: { value: "B" }, perceel: { value: "358" }, provinciecode: { value: "UT" } }] } };
   assert.deepEqual(parseParcelResults(document), [{ municipality: "Utrecht", municipalityCode: "996", section: "B", parcelNumber: "358", provinceCode: "UT" }]);
 });
 
 test("escapes monument numbers in BRK parcel queries", () => {
-  const query = buildRceParcelQuery('36046" . ?subject ?predicate ?object #');
+  const query = buildRceParcelsQuery(['36046" . ?subject ?predicate ?object #']);
   assert.match(query, /36046\\" \. \?subject \?predicate \?object #/);
-  assert.doesNotMatch(query, /rijksmonumentnummer "36046" \. \?subject/);
+  assert.doesNotMatch(query, /VALUES \?rmnr \{ "36046" \. \?subject/);
 });
 
 test("only queries formally established descriptions", () => {
-  const query = buildRceNumberQuery("36046");
+  const query = buildRceDetailsQuery(["36046"]);
   assert.match(query, new RegExp(`GRAPH <${RCE_SEMANTICS.instancesGraph}>`));
   assert.match(query, new RegExp(`ceo:heeftJuridischeStatus <${RCE_SEMANTICS.activeLegalStatus}>`));
   assert.match(query, /ceo:heeftOmschrijving \?omschrijvingNode/);
@@ -229,6 +229,24 @@ test("only queries formally established descriptions", () => {
   assert.match(query, /ceo:heeftBRKRelatie \?brk/);
   assert.match(query, /ceo:gemeentenaam \?gemeenteValue/);
   assert.match(query, /ceo:provinciecode \?provinciecodeValue/);
+});
+
+test("looks up a Rijksmonument by CHO-nummer, not just rijksmonumentnummer (P1: 71286 gaf 0 resultaten)", () => {
+  const query = buildRceChoNumberQuery("71286");
+  assert.match(query, /VALUES \?choi \{ "71286" \}/);
+  assert.doesNotMatch(query, /VALUES \?rmnr/);
+  assert.match(query, new RegExp(`GRAPH <${RCE_SEMANTICS.instancesGraph}>`));
+  assert.match(query, new RegExp(`ceo:heeftJuridischeStatus <${RCE_SEMANTICS.activeLegalStatus}>`));
+  // Zelfde velden als buildRceDetailsQuery, anders levert een CHO-nummer-match
+  // een ander (armer) record op dan een rijksmonumentnummer-match.
+  assert.match(query, /ceo:heeftOmschrijving \?omschrijvingNode/);
+  assert.match(query, /ceo:heeftBasisregistratieRelatie\/ceo:heeftBAGRelatie \?bag/);
+});
+
+test("escapes CHO-nummers in the CHO-nummer lookup query", () => {
+  const query = buildRceChoNumberQuery('71286" . ?subject ?predicate ?object #');
+  assert.match(query, /71286\\" \. \?subject \?predicate \?object #/);
+  assert.doesNotMatch(query, /VALUES \?choi \{ "71286" \. \?subject/);
 });
 
 test("queries formal original and current functions as separate facets", () => {
