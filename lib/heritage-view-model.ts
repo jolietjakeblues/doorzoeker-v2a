@@ -1,6 +1,8 @@
 import {
+  OBJECT_KIND,
   provinceName,
   type ArcheologischTerrein,
+  type ArchaeologyConcept,
   type ComplexMembership,
   type Gebeurtenis,
   type Groenaanleg,
@@ -79,11 +81,11 @@ export type Item = {
   parentObjectLabel?: string;
   parentObjectNumber?: string;
   archaeologicalFindCount?: number;
-  archaeologicalFindTypes?: { uri: string; label: string; schemes?: { uri: string; label: string }[] }[];
-  archaeologicalMaterials?: { uri: string; label: string; schemes?: { uri: string; label: string }[] }[];
-  archaeologicalStyles?: { uri: string; label: string; schemes?: { uri: string; label: string }[] }[];
-  archaeologicalCondition?: { uri: string; label: string; schemes?: { uri: string; label: string }[] };
-  archaeologicalComplexType?: { uri: string; label: string; schemes?: { uri: string; label: string }[] };
+  archaeologicalFindTypes?: ArchaeologyConcept[];
+  archaeologicalMaterials?: ArchaeologyConcept[];
+  archaeologicalStyles?: ArchaeologyConcept[];
+  archaeologicalCondition?: ArchaeologyConcept;
+  archaeologicalComplexType?: ArchaeologyConcept;
   archaeologicalContexts?: { uri: string; choNumber: string; label: string; type: "Vondstlocatie" | "Archeologisch terrein" | "Onderzoeksgebied" }[];
 };
 
@@ -291,16 +293,16 @@ export function toItem(record: RceMonument): Item {
     record.matchSource === "oorspronkelijke functie" && record.matchedText
       ? displayFunctionName(record.matchedText)
       : record.matchedText;
-  const isWerelderfgoed = record.monumentNature === "werelderfgoed";
-  const isGezicht = record.monumentNature === "gezicht";
-  const isComplex = record.monumentNature === "complex";
+  const isWerelderfgoed = record.monumentNature === OBJECT_KIND.Werelderfgoed;
+  const isGezicht = record.monumentNature === OBJECT_KIND.Gezicht;
+  const isComplex = record.monumentNature === OBJECT_KIND.Complex;
   const isOnderzoeksgebied =
-    record.monumentNature === "archeologischonderzoeksgebied";
-  const isArcheologischTerrein = record.monumentNature === "archeologischterrein";
-  const isVondstlocatie = record.monumentNature === "vondstlocatie";
-  const isGrondspoor = record.monumentNature === "grondsporen";
-  const isVondst = record.monumentNature === "vondsten";
-  const isArcheologischComplex = record.monumentNature === "archeologischcomplex";
+    record.monumentNature === OBJECT_KIND.ArcheologischOnderzoeksgebied;
+  const isArcheologischTerrein = record.monumentNature === OBJECT_KIND.ArcheologischTerrein;
+  const isVondstlocatie = record.monumentNature === OBJECT_KIND.Vondstlocatie;
+  const isGrondspoor = record.monumentNature === OBJECT_KIND.Grondsporen;
+  const isVondst = record.monumentNature === OBJECT_KIND.Vondsten;
+  const isArcheologischComplex = record.monumentNature === OBJECT_KIND.ArcheologischComplex;
   const hasOwnOfficialUrl = isWerelderfgoed || isGezicht;
   const objectType: Item["objectType"] = isWerelderfgoed
     ? "Werelderfgoed"

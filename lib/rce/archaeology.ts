@@ -1,5 +1,5 @@
 import type { DiscoveryMatch } from "./monuments.ts";
-import type { RceMonument } from "./types.ts";
+import { OBJECT_KIND, type RceMonument } from "./types.ts";
 import { wktToLatLng } from "./geometry.ts";
 import { escapeSparqlString } from "./sparql.ts";
 
@@ -126,7 +126,7 @@ export function parseArcheologischOnderzoekResults(document: unknown): RceMonume
       houseNumber: "",
       postalCode: "",
       sourceUrl: binding.gebied?.value ?? "",
-      monumentNature: "archeologischonderzoeksgebied",
+      monumentNature: OBJECT_KIND.ArcheologischOnderzoeksgebied,
       description: binding.omschrijving?.value || "Archeologisch onderzoeksgebied.",
       place: woonplaats,
       municipality: woonplaats,
@@ -362,7 +362,7 @@ export function parseStandaloneArcheologischTerreinResults(document: unknown): R
       postalCode: "",
       sourceUrl: binding.terrein?.value ?? "",
       name: binding.naam?.value,
-      monumentNature: "archeologischterrein",
+      monumentNature: OBJECT_KIND.ArcheologischTerrein,
       description: binding.omschrijving?.value || "Archeologisch terrein.",
       place: woonplaats,
       municipality: woonplaats,
@@ -462,7 +462,7 @@ export function parseVondstlocatieResults(document: unknown): RceMonument[] {
       postalCode: "",
       sourceUrl: binding.locatie?.value ?? "",
       name: binding.locatienaam?.value && binding.locatienaam.value !== "-" ? binding.locatienaam.value : undefined,
-      monumentNature: "vondstlocatie",
+      monumentNature: OBJECT_KIND.Vondstlocatie,
       description: binding.omschrijving?.value || "Archeologische vondstlocatie.",
       place: woonplaats,
       municipality: woonplaats,
@@ -568,7 +568,7 @@ export function parseGrondsporenResults(document: unknown): RceMonument[] {
         : typeLabel && typeLabel.toLocaleLowerCase("nl") !== "onbekend"
           ? typeLabel
           : undefined,
-      monumentNature: "grondsporen",
+      monumentNature: OBJECT_KIND.Grondsporen,
       description,
       place: binding.woonplaats?.value,
       municipality: binding.woonplaats?.value,
@@ -677,7 +677,7 @@ export function parseVondstenResults(document: unknown): RceMonument[] {
       registrationDate: binding.registratiedatum?.value ?? "",
       street: "", houseNumber: "", postalCode: "", sourceUrl: uri,
       name: description.length <= 100 && description !== "Archeologische vondst." ? description : undefined,
-      monumentNature: "vondsten", description,
+      monumentNature: OBJECT_KIND.Vondsten, description,
       place: binding.woonplaats?.value, municipality: binding.woonplaats?.value,
       archaeologicalFindCount: Number(binding.aantal?.value ?? "0"),
       archaeologicalFindTypes: [], archaeologicalMaterials: [], archaeologicalStyles: [],
@@ -771,7 +771,7 @@ export function parseArcheologischeComplexResults(document: unknown): RceMonumen
       choNumber, monumentNumber: choNumber, registrationDate: binding.registratiedatum?.value ?? "",
       street: "", houseNumber: "", postalCode: "", sourceUrl: uri,
       name: typeConcept && typeConcept.label.toLocaleLowerCase("nl") !== "complextype niet te bepalen" ? typeConcept.label : undefined,
-      monumentNature: "archeologischcomplex", description,
+      monumentNature: OBJECT_KIND.ArcheologischComplex, description,
       place: binding.parentPlaats?.value, municipality: binding.parentPlaats?.value,
       archaeologicalComplexType: typeConcept,
       archaeologicalContexts: [],

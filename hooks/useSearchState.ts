@@ -165,15 +165,10 @@ export function useSearchState() {
       province,
     ],
   );
-  const {
-    functions,
-    provinces,
-    municipalities,
-    matchSources,
-    results,
-    groenaanlegCount,
-    mspCount,
-  } = useFilteredResults(baseResults, activeFilters);
+  const { results, groenaanlegCount, mspCount } = useFilteredResults(
+    baseResults,
+    activeFilters,
+  );
   useEffect(() => {
     // Tijdens het laden (bv. net na URL-herstel) is baseResults nog leeg en
     // is groenaanlegCount/mspCount dus altijd 0 - dat zegt niets over de
@@ -542,10 +537,6 @@ export function useSearchState() {
     hasMore,
     loadingMore,
     baseResults,
-    functions,
-    provinces,
-    municipalities,
-    matchSources,
     groenaanlegCount,
     mspCount,
     results,

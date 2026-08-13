@@ -1,4 +1,5 @@
 import { browseRceObjects, searchByActorConcept, searchByArcheologischeComplexTypeConcept, searchByArcheologischeWaarderingConcept, searchByFunctieConcept, searchByGebeurtenisConcept, searchByMonumentAardConcept, searchByVondstenConcept, searchRceMonuments } from "../../../../lib/server/rce-adapter.ts";
+import { OBJECT_KIND } from "../../../../lib/rce.ts";
 import { CONCEPT_URI_PATTERN } from "../concept/route.ts";
 import { pruneExpiredEntries } from "../../../../lib/server/expiring-map.ts";
 import { consumeFixedWindow, type RateLimitEntry } from "../../../../lib/server/fixed-window-rate-limit.ts";
@@ -134,7 +135,7 @@ export async function GET(request: Request) {
     const isPagedTextSearch = !browse && !conceptParam && !/^\d{4,6}$/.test(query) && !/^\d{4}\s?[A-Za-z]{2}$/.test(query);
     const isPagedBrowse = browse === "rijksmonument" || browse === "archeologischterrein" || browse === "onderzoeksgebied" || browse === "vondstlocatie" || browse === "archeologischcomplex" || browse === "vondsten" || browse === "grondsporen";
     const pageSize = 25;
-    const collectionNatures = new Set(["werelderfgoed", "gezicht", "complex", "archeologischonderzoeksgebied", "archeologischterrein", "vondstlocatie", "grondsporen", "vondsten", "archeologischcomplex"]);
+    const collectionNatures = new Set<string>(Object.values(OBJECT_KIND));
     const pagedResultCount = results.filter((result) => !collectionNatures.has(result.monumentNature ?? "")).length;
     const body = JSON.stringify({
       results,

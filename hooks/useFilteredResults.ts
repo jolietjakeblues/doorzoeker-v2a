@@ -29,54 +29,6 @@ export function useFilteredResults(baseResults: Item[], filters: FilterState) {
     [filters],
   );
 
-  const functions = useMemo(
-    () =>
-      [
-        ...new Set(
-          baseResults
-            .flatMap((item) => [
-              ...(item.originalFunctionNames ?? []),
-              ...(item.currentFunctionNames ?? []),
-              item.kind,
-            ])
-            .filter((kind) => kind !== "Functie niet opgenomen"),
-        ),
-      ].sort((a, b) => a.localeCompare(b, "nl")),
-    [baseResults],
-  );
-  const provinces = useMemo(
-    () =>
-      [
-        ...new Set(baseResults.map((item) => item.province).filter(Boolean)),
-      ].sort((a, b) => a.localeCompare(b, "nl")),
-    [baseResults],
-  );
-  const municipalities = useMemo(
-    () =>
-      [
-        ...new Set(
-          baseResults
-            .filter(
-              (item) =>
-                filters.province === "Alle" ||
-                item.province === filters.province,
-            )
-            .map((item) => item.municipality)
-            .filter(Boolean),
-        ),
-      ].sort((a, b) => a.localeCompare(b, "nl")),
-    [baseResults, filters.province],
-  );
-  const matchSources = useMemo(
-    () => [
-      ...new Set(
-        baseResults
-          .map((item) => item.matchSource)
-          .filter((source): source is string => Boolean(source)),
-      ),
-    ],
-    [baseResults],
-  );
   const results = useMemo(
     () => baseResults.filter((item) => matchesFilters(item)),
     [baseResults, matchesFilters],
@@ -91,5 +43,5 @@ export function useFilteredResults(baseResults: Item[], filters: FilterState) {
     [baseResults, matchesFilters],
   );
 
-  return { functions, provinces, municipalities, matchSources, results, groenaanlegCount, mspCount };
+  return { results, groenaanlegCount, mspCount };
 }
