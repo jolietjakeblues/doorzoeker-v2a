@@ -548,14 +548,17 @@ test("parses image results, skipping monuments without a usable depiction URL", 
   assert.equal(byNumber.has("45708"), false);
 });
 
-test("looks up groenaanleg-classificatie by the monument's own CHO subject URI", () => {
+test("looks up groenaanleg-classificatie en -foto by the monument's own CHO subject URI", () => {
   const query = buildGroenaanlegQuery(["https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/rijksmonument/65314"]);
   assert.match(query, /ceo:heeftTypeAanleg\/skos:prefLabel/);
   assert.match(query, /ceo:heeftCategorieGroenaanleg\/skos:prefLabel/);
+  assert.match(query, /edm:isShownBy \?imageValue/);
+  assert.match(query, /foaf:maker \?makerValue/);
+  assert.match(query, /foaf:depiction \?depictionValue/);
   assert.match(query, /<https:\/\/linkeddata\.cultureelerfgoed\.nl\/cho-kennis\/id\/rijksmonument\/65314>/);
 });
 
-test("parses groenaanleg results, skipping monuments with neither type nor categorie", () => {
+test("parses groenaanleg results, skipping monuments with neither type, categorie noch foto", () => {
   const document = { results: { bindings: [
     { rm: { value: "rm:1" }, type: { value: "formele tuin" }, categorie: { value: "aanleg" } },
     { rm: { value: "rm:2" } },
@@ -563,6 +566,37 @@ test("parses groenaanleg results, skipping monuments with neither type nor categ
   const byMonument = parseGroenaanlegResults(document);
   assert.deepEqual(byMonument.get("rm:1"), { typeAanleg: "formele tuin", categorie: "aanleg" });
   assert.equal(byMonument.has("rm:2"), false);
+});
+
+test("parses een eigen groenaanleg-foto, los van de generieke Rijksmonumentfoto", () => {
+  const document = { results: { bindings: [
+    {
+      rm: { value: "rm:1" },
+      type: { value: "formele tuin" },
+      categorie: { value: "aanleg" },
+      image: { value: "https://images.memorix.nl/rce/thumb/fullsize/x.jpg" },
+      maker: { value: "Onbekend (beeldbank RCE)" },
+      depiction: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/afbeelding/x" },
+    },
+  ] } };
+  const byMonument = parseGroenaanlegResults(document);
+  assert.deepEqual(byMonument.get("rm:1"), {
+    typeAanleg: "formele tuin",
+    categorie: "aanleg",
+    image: {
+      url: "https://images.memorix.nl/rce/thumb/fullsize/x.jpg",
+      license: "Onbekend (beeldbank RCE)",
+      sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/afbeelding/x",
+    },
+  });
+});
+
+test("bewaart een groenaanleg-record met alleen een foto, zonder type of categorie", () => {
+  const document = { results: { bindings: [
+    { rm: { value: "rm:1" }, image: { value: "https://images.memorix.nl/rce/thumb/fullsize/x.jpg" } },
+  ] } };
+  const byMonument = parseGroenaanlegResults(document);
+  assert.equal(byMonument.get("rm:1")?.image?.url, "https://images.memorix.nl/rce/thumb/fullsize/x.jpg");
 });
 
 test("looks up complex members by the complex's own CHO subject URI", () => {

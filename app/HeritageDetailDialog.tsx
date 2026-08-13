@@ -246,7 +246,8 @@ export function HeritageDetailDialog({
             ) : null}
             {selected.groenaanleg &&
             (selected.groenaanleg.typeAanleg ||
-              selected.groenaanleg.categorie) ? (
+              selected.groenaanleg.categorie ||
+              selected.groenaanleg.image) ? (
               <div>
                 <dt>Historische aanleg</dt>
                 <dd>
@@ -256,6 +257,36 @@ export function HeritageDetailDialog({
                   ]
                     .filter(Boolean)
                     .join(" — ")}
+                  {selected.groenaanleg.image ? (
+                    <p className="detail-image-credit">
+                      <img
+                        src={selected.groenaanleg.image.url}
+                        alt={`Historische aanleg bij ${selected.title}`}
+                        className="groenaanleg-foto"
+                      />
+                      <small>
+                        Foto groenaanleg — RCE Beeldbank
+                        {selected.groenaanleg.image.license
+                          ? ` (${selected.groenaanleg.image.license})`
+                          : ""}
+                        {selected.groenaanleg.image.sourceUrl ? (
+                          <>
+                            {" "}
+                            ·{" "}
+                            <a
+                              href={selected.groenaanleg.image.sourceUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              bron
+                            </a>
+                          </>
+                        ) : (
+                          ""
+                        )}
+                      </small>
+                    </p>
+                  ) : null}
                 </dd>
               </div>
             ) : null}

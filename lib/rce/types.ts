@@ -81,7 +81,7 @@ export type RceMonument = {
 };
 
 export type MonumentImage = { url: string; title?: string; license?: string; sourceUrl?: string };
-export type Groenaanleg = { typeAanleg?: string; categorie?: string };
+export type Groenaanleg = { typeAanleg?: string; categorie?: string; image?: MonumentImage };
 export type GebeurtenisActor = { naam: string; rol?: string; actorConceptUri?: string };
 export type Gebeurtenis = { naam: string; naamConceptUri?: string; beginDatum?: string; eindDatum?: string; actoren: GebeurtenisActor[] };
 export type LiteratureRef = { uri: string; title: string; year?: string; authors: string[]; sourceUrl?: string };
