@@ -252,3 +252,36 @@ triage in plaats van stil te blijven staan.
 
 Elke fase eindigt met typecheck, lint, unit-/contracttests en Playwright
 groen.
+
+## Nog te analyseren (productbeslissingen, geen losse bugfix)
+
+Deze punten zijn bewust niet als losse TD-fix opgepakt: het zijn
+UX-/productkeuzes die eerst gezamenlijk doorgesproken moeten worden voordat
+er gebouwd wordt.
+
+- **Verwarring tussen de horizontale "Bekijk alles"-balk en het verticale
+  filterpaneel.** Een gebruiker verwachtte dat een klik in de balk (bv.
+  "Rijksmonumenten") ook de filters in het paneel zou aanpassen (bv.
+  msp/groenaanleg beschikbaar maken). Nader te analyseren of dit twee
+  bewust gescheiden ingangen zijn die beter uitgelegd moeten worden, of dat
+  ze feitelijk zouden moeten samenvallen.
+- **Getalzoekopdrachten matchen momenteel alleen `ceo:rijksmonumentnummer`
+  voor Rijksmonumenten** (`searchByNumber` in
+  `lib/server/rce-adapter.ts`), terwijl elk ander objectsoort (complex,
+  archeologisch terrein, vondstlocatie, grondspoor, vondst, archeologisch
+  complex) bij een numerieke zoekopdracht wél ook op
+  `ceo:cultuurhistorischObjectnummer` matcht. Ontdekt doordat een geldig
+  CHO-nummer ("71286", Rijksmonument "Herenhuis Tolsedijk",
+  rijksmonumentnummer 519471) 0 resultaten opleverde.
+  Simpelweg CHO-nummer ook laten meematchen voor Rijksmonumenten riskeert
+  echter verwarring: hetzelfde numerieke getal kan toevallig zowel een
+  geldig rijksmonumentnummer voor het ene object als een geldig CHO-nummer
+  voor een heel ander object zijn, waardoor niet-gerelateerde resultaten
+  door elkaar heen getoond worden. Twee mogelijke richtingen, nader te
+  bepalen:
+  1. Eén numeriek zoekveld dat op meerdere velden matcht, met duidelijke
+     labeling per resultaat van welk veld de match veroorzaakte (zoals nu al
+     gebeurt voor complexnummer/CHO-nummer bij de archeologische soorten).
+  2. Aparte, getypeerde zoekvelden per nummersoort (rijksmonumentnummer,
+     CHO-nummer, Archis2-nummer, ...) zodat een gebruiker expliciet kiest
+     welk veld bedoeld is.
