@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { pruneExpiredEntries } from "../lib/server/expiring-map.ts";
+import { capMapSize, pruneExpiredEntries } from "../lib/server/expiring-map.ts";
 
 test("removes every expired entry and preserves live entries", () => {
   const entries = new Map([
@@ -18,4 +18,20 @@ test("reports zero when no cache entry has expired", () => {
 
   assert.equal(pruneExpiredEntries(entries, 1_000), 0);
   assert.equal(entries.size, 1);
+});
+
+test("capMapSize evicts the oldest-inserted key once the cap is reached", () => {
+  const entries = new Map([["oudste", 1], ["middelste", 2], ["nieuwste", 3]]);
+
+  capMapSize(entries, 3);
+
+  assert.deepEqual([...entries.keys()], ["middelste", "nieuwste"]);
+});
+
+test("capMapSize doet niets zolang de Map onder de cap blijft", () => {
+  const entries = new Map([["a", 1], ["b", 2]]);
+
+  capMapSize(entries, 3);
+
+  assert.deepEqual([...entries.keys()], ["a", "b"]);
 });

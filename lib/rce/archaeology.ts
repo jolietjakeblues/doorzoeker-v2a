@@ -1,4 +1,4 @@
-import type { DiscoveryMatch } from "./monuments.ts";
+import { scoreDiscoveryMatch, type DiscoveryMatch } from "./monuments.ts";
 import { OBJECT_KIND, type RceMonument } from "./types.ts";
 import { wktToLatLng } from "./geometry.ts";
 import { escapeSparqlString } from "./sparql.ts";
@@ -82,9 +82,7 @@ export function parseArcheologischOnderzoekDiscoveryResults(document: unknown, b
     const monumentNumber = binding.choi?.value ?? "";
     const matchedText = binding.match?.value ?? "";
     if (!monumentNumber) return [];
-    const lowerMatch = matchedText.toLocaleLowerCase("nl");
-    const matchtype = lowerMatch === needle ? 0 : lowerMatch.startsWith(needle) ? 1 : 2;
-    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: rang * 10 + matchtype }];
+    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: scoreDiscoveryMatch(rang, matchedText, needle) }];
   });
 }
 
@@ -314,9 +312,7 @@ export function parseArcheologischTerreinDiscoveryResults(document: unknown, bro
     const monumentNumber = binding.choi?.value ?? "";
     const matchedText = binding.match?.value ?? "";
     if (!monumentNumber) return [];
-    const lowerMatch = matchedText.toLocaleLowerCase("nl");
-    const matchtype = lowerMatch === needle ? 0 : lowerMatch.startsWith(needle) ? 1 : 2;
-    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: rang * 10 + matchtype }];
+    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: scoreDiscoveryMatch(rang, matchedText, needle) }];
   });
 }
 
@@ -410,9 +406,7 @@ export function parseVondstlocatieDiscoveryResults(document: unknown, bron: stri
     const monumentNumber = binding.choi?.value ?? "";
     const matchedText = binding.match?.value ?? "";
     if (!monumentNumber) return [];
-    const lowerMatch = matchedText.toLocaleLowerCase("nl");
-    const matchtype = lowerMatch === needle ? 0 : lowerMatch.startsWith(needle) ? 1 : 2;
-    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: rang * 10 + matchtype }];
+    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: scoreDiscoveryMatch(rang, matchedText, needle) }];
   });
 }
 
@@ -507,9 +501,7 @@ export function parseGrondsporenDiscoveryResults(document: unknown, bron: string
     const monumentNumber = binding.choi?.value ?? "";
     const matchedText = binding.match?.value ?? "";
     if (!monumentNumber) return [];
-    const lowerMatch = matchedText.toLocaleLowerCase("nl");
-    const matchtype = lowerMatch === needle ? 0 : lowerMatch.startsWith(needle) ? 1 : 2;
-    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: rang * 10 + matchtype }];
+    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: scoreDiscoveryMatch(rang, matchedText, needle) }];
   });
 }
 
@@ -623,9 +615,7 @@ export function parseVondstenDiscoveryResults(document: unknown, bron: string, t
     const monumentNumber = binding.choi?.value ?? "";
     const matchedText = binding.match?.value ?? "";
     if (!monumentNumber) return [];
-    const lower = matchedText.toLocaleLowerCase("nl");
-    const matchtype = lower === needle ? 0 : lower.startsWith(needle) ? 1 : 2;
-    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: rang * 10 + matchtype }];
+    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: scoreDiscoveryMatch(rang, matchedText, needle) }];
   });
 }
 
@@ -729,8 +719,7 @@ export function parseArcheologischeComplexDiscoveryResults(document: unknown, br
     const monumentNumber = binding.choi?.value ?? "";
     const matchedText = binding.match?.value ?? "";
     if (!monumentNumber) return [];
-    const lower = matchedText.toLocaleLowerCase("nl");
-    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: rang * 10 + (lower === needle ? 0 : lower.startsWith(needle) ? 1 : 2) }];
+    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: scoreDiscoveryMatch(rang, matchedText, needle) }];
   });
 }
 

@@ -85,6 +85,7 @@ import {
   VONDSTLOCATIE_INHOUD_KLASSEN,
   type ArcheologischTerrein,
   type ComplexMember,
+  type OpDezeDagCandidate,
   type RceMonument,
   type VondstenConceptField,
 } from "../rce.ts";
@@ -241,6 +242,31 @@ export async function searchByActorConcept(conceptUri: string, signal?: AbortSig
   return searchByConceptMatchQuery(buildActorConceptQuery(conceptUri), signal);
 }
 
+// Gedeeld door fetchOpDezeDag en fetchVerrasMe: beide proberen een paar
+// maand-dagen met buildOpDezeDagQuery af (niet elke dag heeft een gebouwd
+// monument met afbeelding) en verschillen alleen in hoe de volgende
+// maand-dag wordt gekozen (kalenderdag terugtellend vs. willekeurig) en hoe
+// een kandidaat uit de resultaten wordt gekozen (dag-deterministisch vs.
+// willekeurig).
+async function findMonumentWithImage(
+  maxAttempts: number,
+  nextMaandDag: (attempt: number) => string,
+  pickCandidate: (candidates: OpDezeDagCandidate[]) => string | undefined,
+  signal?: AbortSignal,
+): Promise<RceMonument | undefined> {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const maandDag = nextMaandDag(attempt);
+    const candidatesDocument = await fetchSparql(buildOpDezeDagQuery(maandDag), signal);
+    const candidates = parseOpDezeDagCandidates(candidatesDocument);
+    const chosen = pickCandidate(candidates);
+    if (!chosen) continue;
+    const [monument] = await buildMonumentsFromNumbers([chosen], signal);
+    if (monument?.image?.url) return monument;
+  }
+
+  return undefined;
+}
+
 // "Op deze dag" (docs/vertical-slices/010-op-deze-dag.md): één
 // gebouwd Rijksmonument dat op de huidige kalenderdag is ingeschreven in het
 // Monumentenregister en een gekoppelde afbeelding heeft. `now` is optioneel
@@ -254,18 +280,15 @@ export async function fetchOpDezeDag(signal?: AbortSignal, now: Date = new Date(
   // Niet iedere kalenderdag heeft een gebouwd monument met beeld. Zoek dan
   // maximaal een week terug, zodat de ontdekfunctie zichtbaar blijft zonder
   // de inhoudelijke eis "gebouwd én met afbeelding" los te laten.
-  for (let daysBack = 0; daysBack <= 7; daysBack += 1) {
-    const candidateDay = new Date(utcDay - daysBack * 86_400_000);
-    const maandDag = `${String(candidateDay.getUTCMonth() + 1).padStart(2, "0")}-${String(candidateDay.getUTCDate()).padStart(2, "0")}`;
-    const candidatesDocument = await fetchSparql(buildOpDezeDagQuery(maandDag), signal);
-    const candidates = parseOpDezeDagCandidates(candidatesDocument);
-    const chosen = pickOpDezeDagCandidate(candidates, dayOfYear);
-    if (!chosen) continue;
-    const [monument] = await buildMonumentsFromNumbers([chosen], signal);
-    if (monument?.image?.url) return monument;
-  }
-
-  return undefined;
+  return findMonumentWithImage(
+    8,
+    (daysBack) => {
+      const candidateDay = new Date(utcDay - daysBack * 86_400_000);
+      return `${String(candidateDay.getUTCMonth() + 1).padStart(2, "0")}-${String(candidateDay.getUTCDate()).padStart(2, "0")}`;
+    },
+    (candidates) => pickOpDezeDagCandidate(candidates, dayOfYear),
+    signal,
+  );
 }
 
 const VERRAS_ME_ATTEMPTS = 7;
@@ -291,17 +314,7 @@ function randomMaandDag(): string {
 // aanroep anders. Niet elke maand-dag heeft kandidaten; zoals bij "Op deze
 // dag" wordt daarom een paar keer een andere maand-dag geprobeerd.
 export async function fetchVerrasMe(signal?: AbortSignal): Promise<RceMonument | undefined> {
-  for (let attempt = 0; attempt < VERRAS_ME_ATTEMPTS; attempt += 1) {
-    const maandDag = randomMaandDag();
-    const candidatesDocument = await fetchSparql(buildOpDezeDagQuery(maandDag), signal);
-    const candidates = parseOpDezeDagCandidates(candidatesDocument);
-    const chosen = pickRandomCandidate(candidates);
-    if (!chosen) continue;
-    const [monument] = await buildMonumentsFromNumbers([chosen], signal);
-    if (monument?.image?.url) return monument;
-  }
-
-  return undefined;
+  return findMonumentWithImage(VERRAS_ME_ATTEMPTS, randomMaandDag, pickRandomCandidate, signal);
 }
 
 // Archeologisch onderzoeksgebied is geen kleine collectie zoals Werelderfgoed/
