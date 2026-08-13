@@ -760,3 +760,44 @@ test("groenaanleg blijft aangevinkt tijdens het laden na URL-herstel (TD-13 regr
   await expect(groenaanleg).toBeVisible();
   await expect(groenaanleg).toBeChecked();
 });
+
+test("een groenaanleg-foto wordt getoond met bron en rechten", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: {
+      page: 1,
+      hasMore: false,
+      results: [{
+        ...records[0],
+        choNumber: "cho-groen-foto",
+        monumentNumber: "groen-foto-1",
+        sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-groen-foto",
+        groenaanleg: {
+          typeAanleg: "Tuin",
+          categorie: "Formele aanleg",
+          image: {
+            url: "https://images.memorix.nl/rce/thumb/fullsize/groenaanleg.jpg",
+            license: "Onbekend (beeldbank RCE)",
+            sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/afbeelding/groenaanleg-1",
+          },
+        },
+      }],
+    },
+  }));
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("architect");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Historische aanleg", { exact: true })).toBeVisible();
+  await expect(dialog).toContainText("Tuin — Formele aanleg");
+  const photo = dialog.getByRole("img", { name: "Historische aanleg bij Woonhuis van de architect" });
+  await expect(photo).toBeVisible();
+  await expect(photo).toHaveAttribute("src", "https://images.memorix.nl/rce/thumb/fullsize/groenaanleg.jpg");
+  await expect(dialog.getByText("Foto groenaanleg — RCE Beeldbank (Onbekend (beeldbank RCE))", { exact: false })).toBeVisible();
+  await expect(dialog.getByRole("link", { name: "bron" })).toHaveAttribute(
+    "href",
+    "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/afbeelding/groenaanleg-1",
+  );
+});

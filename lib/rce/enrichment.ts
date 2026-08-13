@@ -92,20 +92,31 @@ export function parseMspIndicatieResults(document: unknown): Set<string> {
 
 // Groenaanleg (historische tuinen en parken) is een eigen graph bovenop
 // gewone Rijksmonument-records - dezelfde CHO-URI, extra eigenschappen. Geen
-// aparte geometrie tonen (heeftAanlegGeometrie) in deze eerste stap, alleen
-// de classificatie als tekstuele verrijking.
+// aparte geometrie tonen (heeftAanlegGeometrie), alleen classificatie en een
+// eigen foto als tekstuele/visuele verrijking. Deze graph heeft een eigen
+// foto per record (edm:isShownBy/foaf:maker), los van de generieke
+// Rijksmonumentfoto uit IMAGE_GRAPH (buildImageQuery) - empirisch bevestigd
+// op ~1.403 van de ~5.145 groenaanleg-records.
 export function buildGroenaanlegQuery(choUris: string[]) {
   const values = choUris.map((uri) => `<${uri}>`).join(" ");
   return `PREFIX ceo: <${CEO}>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX edm: <http://www.europeana.eu/schemas/edm/>
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
 SELECT ?rm
   (SAMPLE(STR(?typeLabel)) AS ?type)
   (SAMPLE(STR(?categorieLabel)) AS ?categorie)
+  (SAMPLE(STR(?imageValue)) AS ?image)
+  (SAMPLE(STR(?makerValue)) AS ?maker)
+  (SAMPLE(STR(?depictionValue)) AS ?depiction)
 WHERE {
   GRAPH <${GROENAANLEG_GRAPH}> {
     VALUES ?rm { ${values} }
     OPTIONAL { ?rm ceo:heeftTypeAanleg/skos:prefLabel ?typeLabel . }
     OPTIONAL { ?rm ceo:heeftCategorieGroenaanleg/skos:prefLabel ?categorieLabel . }
+    OPTIONAL { ?rm edm:isShownBy ?imageValue . }
+    OPTIONAL { ?rm foaf:maker ?makerValue . }
+    OPTIONAL { ?rm foaf:depiction ?depictionValue . }
   }
 }
 GROUP BY ?rm`;
@@ -119,8 +130,12 @@ export function parseGroenaanlegResults(document: unknown): Map<string, Groenaan
     const monumentUri = binding.rm?.value;
     const typeAanleg = binding.type?.value;
     const categorie = binding.categorie?.value;
-    if (!monumentUri || (!typeAanleg && !categorie)) continue;
-    byMonument.set(monumentUri, { typeAanleg, categorie });
+    const imageUrl = binding.image?.value;
+    if (!monumentUri || (!typeAanleg && !categorie && !imageUrl)) continue;
+    const image: MonumentImage | undefined = imageUrl
+      ? { url: imageUrl, license: binding.maker?.value, sourceUrl: binding.depiction?.value }
+      : undefined;
+    byMonument.set(monumentUri, { typeAanleg, categorie, ...(image ? { image } : {}) });
   }
   return byMonument;
 }

@@ -1165,6 +1165,14 @@ h2 {
 .detail-image-credit a {
   color: var(--rce-link);
 }
+.groenaanleg-foto {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  max-height: 220px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+}
 
 @media (max-width: 800px) {
   .govbar {
