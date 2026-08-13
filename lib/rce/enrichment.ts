@@ -94,9 +94,12 @@ export function parseMspIndicatieResults(document: unknown): Set<string> {
 // gewone Rijksmonument-records - dezelfde CHO-URI, extra eigenschappen. Geen
 // aparte geometrie tonen (heeftAanlegGeometrie), alleen classificatie en een
 // eigen foto als tekstuele/visuele verrijking. Deze graph heeft een eigen
-// foto per record (edm:isShownBy/foaf:maker), los van de generieke
-// Rijksmonumentfoto uit IMAGE_GRAPH (buildImageQuery) - empirisch bevestigd
-// op ~1.403 van de ~5.145 groenaanleg-records.
+// foto per record, los van de generieke Rijksmonumentfoto uit IMAGE_GRAPH
+// (buildImageQuery) - empirisch bevestigd op ~1.403 van de ~5.145
+// groenaanleg-records. Let op de indirectie: edm:isShownBy/foaf:maker staan
+// niet rechtstreeks op ?rm, maar op het losse foaf:depiction-knooppunt (een
+// eigen cho-kennis/id/afbeelding/...-resource) - live geverifieerd doordat
+// een eerdere, rechtstreekse versie van deze query altijd leeg terugkwam.
 export function buildGroenaanlegQuery(choUris: string[]) {
   const values = choUris.map((uri) => `<${uri}>`).join(" ");
   return `PREFIX ceo: <${CEO}>
@@ -114,9 +117,11 @@ WHERE {
     VALUES ?rm { ${values} }
     OPTIONAL { ?rm ceo:heeftTypeAanleg/skos:prefLabel ?typeLabel . }
     OPTIONAL { ?rm ceo:heeftCategorieGroenaanleg/skos:prefLabel ?categorieLabel . }
-    OPTIONAL { ?rm edm:isShownBy ?imageValue . }
-    OPTIONAL { ?rm foaf:maker ?makerValue . }
-    OPTIONAL { ?rm foaf:depiction ?depictionValue . }
+    OPTIONAL {
+      ?rm foaf:depiction ?depictionValue .
+      OPTIONAL { ?depictionValue edm:isShownBy ?imageValue . }
+      OPTIONAL { ?depictionValue foaf:maker ?makerValue . }
+    }
   }
 }
 GROUP BY ?rm`;

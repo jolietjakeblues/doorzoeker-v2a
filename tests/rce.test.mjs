@@ -552,9 +552,16 @@ test("looks up groenaanleg-classificatie en -foto by the monument's own CHO subj
   const query = buildGroenaanlegQuery(["https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/rijksmonument/65314"]);
   assert.match(query, /ceo:heeftTypeAanleg\/skos:prefLabel/);
   assert.match(query, /ceo:heeftCategorieGroenaanleg\/skos:prefLabel/);
-  assert.match(query, /edm:isShownBy \?imageValue/);
-  assert.match(query, /foaf:maker \?makerValue/);
-  assert.match(query, /foaf:depiction \?depictionValue/);
+  // Structurele check, niet alleen "komt de substring ergens voor": een
+  // eerdere versie zocht edm:isShownBy/foaf:maker rechtstreeks op ?rm, wat
+  // live SPARQL-verkenning altijd leeg opleverde - die twee properties
+  // staan in werkelijkheid op het losse foaf:depiction-knooppunt, niet op
+  // het Rijksmonument zelf. Deze regex faalt dus expliciet op die eerdere,
+  // foute vorm.
+  assert.match(
+    query,
+    /\?rm foaf:depiction \?depictionValue \.\s*OPTIONAL \{ \?depictionValue edm:isShownBy \?imageValue \. \}\s*OPTIONAL \{ \?depictionValue foaf:maker \?makerValue \. \}/,
+  );
   assert.match(query, /<https:\/\/linkeddata\.cultureelerfgoed\.nl\/cho-kennis\/id\/rijksmonument\/65314>/);
 });
 
