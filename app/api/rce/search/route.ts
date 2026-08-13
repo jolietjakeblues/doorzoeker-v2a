@@ -1,9 +1,10 @@
 import { browseRceObjects, searchByActorConcept, searchByArcheologischeComplexTypeConcept, searchByArcheologischeWaarderingConcept, searchByFunctieConcept, searchByGebeurtenisConcept, searchByMonumentAardConcept, searchByVondstenConcept, searchRceMonuments } from "../../../../lib/server/rce-adapter.ts";
 import { OBJECT_KIND } from "../../../../lib/rce.ts";
 import { CONCEPT_URI_PATTERN } from "../concept/route.ts";
-import { pruneExpiredEntries } from "../../../../lib/server/expiring-map.ts";
+import { capMapSize, pruneExpiredEntries } from "../../../../lib/server/expiring-map.ts";
 import { consumeFixedWindow, type RateLimitEntry } from "../../../../lib/server/fixed-window-rate-limit.ts";
 import { CACHE_POLICY, sharedCacheControl } from "../../../../lib/server/http-cache.ts";
+import { withRceErrorHandling } from "../../../../lib/server/route-error-handling.ts";
 
 type ConceptVeld = "functie" | "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype";
 
@@ -80,9 +81,7 @@ async function writeCache(key: Request, response: Response) {
 }
 
 export async function GET(request: Request) {
-  const startedAt = Date.now();
-
-  try {
+  return withRceErrorHandling({ event: "rce.search.error" }, async (startedAt) => {
     const url = new URL(request.url);
     const query = (url.searchParams.get("q") ?? "").trim();
     const browseParam = url.searchParams.get("browse");
@@ -151,15 +150,12 @@ export async function GET(request: Request) {
         "X-Doorzoeker-Cache": "MISS",
       },
     });
-    if (responseCache.size >= 500) responseCache.delete(responseCache.keys().next().value ?? "");
+    capMapSize(responseCache, 500);
     responseCache.set(cacheKey.url, { body, expiresAt: now + CACHE_POLICY.searchResults.sharedSeconds * 1000 });
     const cachedResponse = response.clone();
     cachedResponse.headers.set("X-Doorzoeker-Cache", "HIT");
     await writeCache(cacheKey, cachedResponse);
     console.info(JSON.stringify({ event: "rce.search", durationMs: Date.now() - startedAt, queryLength: query.length, browse, concept: conceptParam ? veld : undefined, resultCount: results.length }));
     return response;
-  } catch (error) {
-    console.error(JSON.stringify({ event: "rce.search.error", durationMs: Date.now() - startedAt, message: error instanceof Error ? error.message : "unknown" }));
-    return Response.json({ error: "De RCE Linked Data-service is momenteel niet bereikbaar." }, { status: 502 });
-  }
+  });
 }

@@ -38,16 +38,12 @@ export function HeritageDetailDialog({
       selected.title.trim().toLocaleLowerCase("nl") ===
         `${selectedIdentifier.label} ${selectedIdentifier.value}`.toLocaleLowerCase("nl"),
   );
-  const setSelected = (item: Item | null) => { if (!item) onClose(); };
-  const executeConceptSearch = onConceptSearch;
-  const executeSearch = onSearch;
-
   return (
     <div
       className="backdrop"
       role="presentation"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) setSelected(null);
+        if (event.target === event.currentTarget) onClose();
       }}
     >
       <aside
@@ -60,7 +56,7 @@ export function HeritageDetailDialog({
         <button
           className="x"
           type="button"
-          onClick={() => setSelected(null)}
+          onClick={onClose}
           aria-label="Details sluiten"
         >
           ×
@@ -152,9 +148,9 @@ export function HeritageDetailDialog({
             <HeritageDetailFacts
               item={selected}
               onConceptSearch={(concept, field) =>
-                void executeConceptSearch(concept, field)
+                void onConceptSearch(concept, field)
               }
-              onObjectSearch={(number) => void executeSearch(number)}
+              onObjectSearch={(number) => void onSearch(number)}
             />
             {selected.wkt && (
               <div>
@@ -203,7 +199,7 @@ export function HeritageDetailDialog({
                               type="button"
                               className="concept-link"
                               onClick={() =>
-                                void executeConceptSearch(
+                                void onConceptSearch(
                                   {
                                     uri: site.waarderingConceptUri!,
                                     label: site.waardering!,
@@ -322,8 +318,8 @@ export function HeritageDetailDialog({
           <HeritageRelationSections
             selected={selected}
             enrichment={enrichment}
-            onSearch={executeSearch}
-            onConceptSearch={executeConceptSearch}
+            onSearch={onSearch}
+            onConceptSearch={onConceptSearch}
           />
           {selected.literature?.length ? (
             <div className="map-object-list">
@@ -364,7 +360,7 @@ export function HeritageDetailDialog({
                         type="button"
                         className="concept-link"
                         onClick={() =>
-                          void executeConceptSearch(
+                          void onConceptSearch(
                             {
                               uri: gebeurtenis.naamConceptUri!,
                               label: gebeurtenis.naam,
@@ -394,7 +390,7 @@ export function HeritageDetailDialog({
                                 type="button"
                                 className="concept-link"
                                 onClick={() =>
-                                  void executeConceptSearch(
+                                  void onConceptSearch(
                                     {
                                       uri: actor.actorConceptUri!,
                                       label: actor.naam,

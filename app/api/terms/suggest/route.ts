@@ -1,5 +1,5 @@
 import { suggestTerms } from "../../../../lib/server/terms-adapter.ts";
-import { pruneExpiredEntries } from "../../../../lib/server/expiring-map.ts";
+import { capMapSize, pruneExpiredEntries } from "../../../../lib/server/expiring-map.ts";
 import { CACHE_POLICY, NO_STORE, sharedCacheControl } from "../../../../lib/server/http-cache.ts";
 
 export const runtime = "edge";
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
 
   try {
     const suggestions = await suggestTerms(query, request.signal);
-    if (cache.size >= 250) cache.delete(cache.keys().next().value ?? "");
+    capMapSize(cache, 250);
     cache.set(key, { suggestions, expiresAt: now + 300_000 });
     return Response.json(
       { suggestions, unavailable: false },

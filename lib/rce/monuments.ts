@@ -41,6 +41,19 @@ export type RceParcel = {
 
 export type DiscoveryMatch = { monumentNumber: string; matchSource: string; matchedText: string; matchScore: number };
 
+// Domeinonafhankelijke scoreformule, gedeeld door elke discovery-parser
+// (Rijksmonumenten, archeologisch onderzoek, terreinen, vondstlocaties,
+// grondsporen, vondsten, archeologische complexen): hogere bronrang
+// (minder specifiek veld) en een minder exacte match (exact < begint-met
+// < bevat) leveren een hoger, dus slechter, getal op. Eén plek zodat een
+// toekomstige aanpassing van de score- of tiebreakregel niet op elke
+// parser apart hoeft te worden toegepast.
+export function scoreDiscoveryMatch(rang: number, matchedText: string, needle: string): number {
+  const lowerMatch = matchedText.toLocaleLowerCase("nl");
+  const matchtype = lowerMatch === needle ? 0 : lowerMatch.startsWith(needle) ? 1 : 2;
+  return rang * 10 + matchtype;
+}
+
 export type ComplexMembership = { complexnummer?: string; complexnaam?: string; role: "hoofdobject" | "onderdeel" };
 
 const DISCOVERY_SOURCES: { bron: string; rang: number; pattern: string }[] = [
@@ -81,9 +94,7 @@ export function parseDiscoveryBranchResults(document: unknown, bron: string, ter
     const monumentNumber = binding.rmnr?.value ?? "";
     const matchedText = binding.match?.value ?? "";
     if (!monumentNumber) return [];
-    const lowerMatch = matchedText.toLocaleLowerCase("nl");
-    const matchtype = lowerMatch === needle ? 0 : lowerMatch.startsWith(needle) ? 1 : 2;
-    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: rang * 10 + matchtype }];
+    return [{ monumentNumber, matchSource: bron, matchedText, matchScore: scoreDiscoveryMatch(rang, matchedText, needle) }];
   });
 }
 

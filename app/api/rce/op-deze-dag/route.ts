@@ -1,5 +1,6 @@
 import { fetchOpDezeDag } from "../../../../lib/server/rce-adapter.ts";
 import { NO_STORE, sharedCacheControl } from "../../../../lib/server/http-cache.ts";
+import { withRceErrorHandling } from "../../../../lib/server/route-error-handling.ts";
 
 export const runtime = "edge";
 
@@ -26,36 +27,28 @@ function cacheControlForEmptyResult(now = new Date()) {
 }
 
 export async function GET(request: Request) {
-  const startedAt = Date.now();
+  return withRceErrorHandling(
+    {
+      event: "rce.op-deze-dag.error",
+      headers: (startedAt) => ({ "Cache-Control": NO_STORE, "Server-Timing": `rce;dur=${Date.now() - startedAt}` }),
+    },
+    async (startedAt) => {
+      const monument = await fetchOpDezeDag(request.signal);
+      if (!monument) {
+        return Response.json({ monument: null }, {
+          headers: {
+            "Cache-Control": cacheControlForEmptyResult(),
+            "Server-Timing": `rce;dur=${Date.now() - startedAt}`,
+          },
+        });
+      }
 
-  try {
-    const monument = await fetchOpDezeDag(request.signal);
-    if (!monument) {
-      return Response.json({ monument: null }, {
+      return Response.json({ monument }, {
         headers: {
-          "Cache-Control": cacheControlForEmptyResult(),
+          "Cache-Control": cacheControlForResult(),
           "Server-Timing": `rce;dur=${Date.now() - startedAt}`,
         },
       });
-    }
-
-    return Response.json({ monument }, {
-      headers: {
-        "Cache-Control": cacheControlForResult(),
-        "Server-Timing": `rce;dur=${Date.now() - startedAt}`,
-      },
-    });
-  } catch (error) {
-    console.error(JSON.stringify({ event: "rce.op-deze-dag.error", durationMs: Date.now() - startedAt, message: error instanceof Error ? error.message : "unknown" }));
-    return Response.json(
-      { error: "De RCE Linked Data-service is momenteel niet bereikbaar." },
-      {
-        status: 502,
-        headers: {
-          "Cache-Control": NO_STORE,
-          "Server-Timing": `rce;dur=${Date.now() - startedAt}`,
-        },
-      },
-    );
-  }
+    },
+  );
 }

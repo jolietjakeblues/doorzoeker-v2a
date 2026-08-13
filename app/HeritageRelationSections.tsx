@@ -19,7 +19,7 @@ function countLabel(count: number, singular: string, plural: string) {
 export function HeritageRelationSections({
   selected,
   enrichment,
-  onSearch: executeSearch,
+  onSearch,
   onConceptSearch,
 }: HeritageRelationSectionsProps) {
   const { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten } = enrichment;
@@ -44,7 +44,7 @@ export function HeritageRelationSections({
                   <li key={item.id}>
                     <button
                       type="button"
-                      onClick={() => void executeSearch(item.monumentNumber ?? item.id)}
+                      onClick={() => void onSearch(item.monumentNumber ?? item.id)}
                     >
                       {item.title}
                     </button>
@@ -74,7 +74,7 @@ export function HeritageRelationSections({
                   <button
                     type="button"
                     onClick={() =>
-                      void executeSearch(member.monumentNumber)
+                      void onSearch(member.monumentNumber)
                     }
                   >
                     {member.name}
@@ -98,7 +98,7 @@ export function HeritageRelationSections({
                 <li key={complex.complexUri}>
                   <button
                     type="button"
-                    onClick={() => void executeSearch(complex.choNumber)}
+                    onClick={() => void onSearch(complex.choNumber)}
                   >
                     {complex.typeLabel ||
                       `Archeologisch complex ${complex.choNumber}`}
@@ -113,7 +113,7 @@ export function HeritageRelationSections({
                 <li key={vl.vlUri}>
                   <button
                     type="button"
-                    onClick={() => void executeSearch(vl.choNumber)}
+                    onClick={() => void onSearch(vl.choNumber)}
                   >
                     {vl.locatienaam || `Vondstlocatie ${vl.choNumber}`}
                   </button>
@@ -146,7 +146,7 @@ export function HeritageRelationSections({
               <ul>
                 {vondstlocatieInhoud.complexen.map((complex) => (
                   <li key={complex.uri}>
-                    <button type="button" onClick={() => void executeSearch(complex.choNumber)}>
+                    <button type="button" onClick={() => void onSearch(complex.choNumber)}>
                       {complex.type?.label || `Archeologisch complex ${complex.choNumber}`}
                     </button>
                     {complex.type?.schemes?.length ? <small>{complex.type.schemes.map((scheme) => scheme.label).join(" · ")}</small> : null}
@@ -172,7 +172,7 @@ export function HeritageRelationSections({
                   ];
                   return (
                     <li key={vondst.uri}>
-                      <button type="button" onClick={() => void executeSearch(vondst.choNumber)}>
+                      <button type="button" onClick={() => void onSearch(vondst.choNumber)}>
                         {vondst.archisVondstnummer ? `Archis-vondst ${vondst.archisVondstnummer}` : `Vondst ${vondst.choNumber}`}
                       </button>
                       {vondst.aantal ? ` — ${countLabel(vondst.aantal, "exemplaar", "exemplaren")}` : ""}
@@ -206,7 +206,7 @@ export function HeritageRelationSections({
               <ul>
                 {vondstlocatieInhoud.grondsporen.map((spoor) => (
                   <li key={spoor.uri}>
-                    <button type="button" onClick={() => void executeSearch(spoor.choNumber)}>
+                    <button type="button" onClick={() => void onSearch(spoor.choNumber)}>
                       {spoor.type?.label || `Grondsporen ${spoor.choNumber}`}
                     </button>
                     {spoor.aantal ? ` — ${countLabel(spoor.aantal, "spoor", "sporen")}` : ""}

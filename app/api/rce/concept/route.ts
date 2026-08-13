@@ -1,5 +1,6 @@
 import { resolveConcept } from "../../../../lib/server/referentienetwerk-adapter.ts";
 import { CACHE_POLICY, sharedCacheControl } from "../../../../lib/server/http-cache.ts";
+import { withRceErrorHandling } from "../../../../lib/server/route-error-handling.ts";
 
 export const runtime = "edge";
 
@@ -18,26 +19,24 @@ export const runtime = "edge";
 export const CONCEPT_URI_PATTERN = /^https:\/\/data\.cultureelerfgoed\.nl\/term\/id\/(rn\/2|rn|cht|abr)\/[0-9a-fA-F-]+$/;
 
 export async function GET(request: Request) {
-  const startedAt = Date.now();
+  return withRceErrorHandling(
+    { event: "rce.concept.error", message: "De Referentienetwerk-service is momenteel niet bereikbaar." },
+    async (startedAt) => {
+      const url = new URL(request.url);
+      const uri = url.searchParams.get("uri") ?? "";
+      if (!CONCEPT_URI_PATTERN.test(uri)) {
+        return Response.json({ error: "Ongeldige concept-URI." }, { status: 400 });
+      }
 
-  try {
-    const url = new URL(request.url);
-    const uri = url.searchParams.get("uri") ?? "";
-    if (!CONCEPT_URI_PATTERN.test(uri)) {
-      return Response.json({ error: "Ongeldige concept-URI." }, { status: 400 });
-    }
+      const concept = await resolveConcept(uri, request.signal);
+      if (!concept) return Response.json({ error: "Concept niet gevonden." }, { status: 404 });
 
-    const concept = await resolveConcept(uri, request.signal);
-    if (!concept) return Response.json({ error: "Concept niet gevonden." }, { status: 404 });
-
-    return Response.json(concept, {
-      headers: {
-        "Cache-Control": sharedCacheControl(CACHE_POLICY.conceptDetails),
-        "Server-Timing": `rn;dur=${Date.now() - startedAt}`,
-      },
-    });
-  } catch (error) {
-    console.error(JSON.stringify({ event: "rce.concept.error", durationMs: Date.now() - startedAt, message: error instanceof Error ? error.message : "unknown" }));
-    return Response.json({ error: "De Referentienetwerk-service is momenteel niet bereikbaar." }, { status: 502 });
-  }
+      return Response.json(concept, {
+        headers: {
+          "Cache-Control": sharedCacheControl(CACHE_POLICY.conceptDetails),
+          "Server-Timing": `rn;dur=${Date.now() - startedAt}`,
+        },
+      });
+    },
+  );
 }
