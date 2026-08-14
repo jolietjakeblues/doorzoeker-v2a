@@ -15,7 +15,7 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
     return await response.json() as SearchResponse;
   };
   const core = await requestScope("core");
-  if (page !== 1 || /^\d{4,6}$/.test(query.trim()) || /^\d{4}\s?[A-Za-z]{2}$/.test(query.trim()))
+  if (page !== 1 || /^\d{1,6}$/.test(query.trim()) || /^\d{4}\s?[A-Za-z]{2}$/.test(query.trim()))
     return { results: core.results, hasMore: core.hasMore ?? false, page: core.page ?? page };
   const additions = await Promise.allSettled([
     requestScope("heritage"),
@@ -34,7 +34,7 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
 // een tekstzoekopdracht - zie docs/vertical-slices/004-referentienetwerk-concepten.md.
 // `veld` bepaalt via welke eigenschap gezocht wordt; de aanroeper weet dit
 // al op basis van welk label is aangeklikt.
-async function searchByConcept(conceptUri: string, veld: "functie" | "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype" | "stijl" | "bouwkundigestaat", signal?: AbortSignal) {
+async function searchByConcept(conceptUri: string, veld: "functie" | "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype" | "stijl" | "bouwkundigestaat" | "verwerving", signal?: AbortSignal) {
   const response = await fetch(`/api/rce/search?concept=${encodeURIComponent(conceptUri)}&veld=${veld}`, {
     headers: { Accept: "application/json" },
     signal,
@@ -58,6 +58,10 @@ export async function searchByStijlConcept(conceptUri: string, signal?: AbortSig
 
 export async function searchByBouwkundigeStaatConcept(conceptUri: string, signal?: AbortSignal) {
   return searchByConcept(conceptUri, "bouwkundigestaat", signal);
+}
+
+export async function searchByVerwervingConcept(conceptUri: string, signal?: AbortSignal) {
+  return searchByConcept(conceptUri, "verwerving", signal);
 }
 
 export async function searchByGebeurtenisConcept(conceptUri: string, signal?: AbortSignal) {
