@@ -18,6 +18,7 @@ import {
   searchByMateriaalConcept,
   searchByStijlConcept,
   searchByToestandConcept,
+  searchByVerwervingConcept,
   searchByVondstTypeConcept,
   searchRceMonuments,
 } from "@/lib/rce-client";
@@ -316,6 +317,8 @@ export function useSearchState() {
               ? await searchByStijlConcept(concept.uri, request.signal)
             : veld === "bouwkundigestaat"
               ? await searchByBouwkundigeStaatConcept(concept.uri, request.signal)
+            : veld === "verwerving"
+              ? await searchByVerwervingConcept(concept.uri, request.signal)
               : await searchByMonumentAardConcept(
                   concept.uri,
                   request.signal,

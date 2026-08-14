@@ -105,7 +105,8 @@ export type ConceptField =
   | "toestand"
   | "archeologischcomplextype"
   | "stijl"
-  | "bouwkundigestaat";
+  | "bouwkundigestaat"
+  | "verwerving";
 export type LinkedConcept = {
   uri: string;
   label: string;

@@ -23,6 +23,7 @@ import {
   buildBouwkundigeStaatConceptQuery,
   buildMonumentAardConceptQuery,
   buildStijlConceptQuery,
+  buildVerwervingConceptQuery,
   buildMspIndicatieQuery,
   buildOnderzoeksgebiedAggregatenQuery,
   buildOnderzoeksgebiedComplexenQuery,
@@ -246,6 +247,20 @@ export async function searchByStijlConcept(conceptUri: string, signal?: AbortSig
 
 export async function searchByBouwkundigeStaatConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
   return searchByConceptMatchQuery(buildBouwkundigeStaatConceptQuery(conceptUri), signal);
+}
+
+// Anders dan monumentaard/stijl/bouwkundige staat/waardering matcht
+// verwerving op het CHO-nummer van een Vondstlocatie, niet op een
+// rijksmonumentnummer - searchByConceptMatchQuery (via
+// buildMonumentsFromNumbers) zou die nummers dus ten onrechte als
+// rijksmonumentnummer opzoeken. Haalt daarom, net als searchVondstlocaties,
+// de Vondstlocatie-eigen detailquery op.
+export async function searchByVerwervingConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
+  const document = await fetchSparql(buildVerwervingConceptQuery(conceptUri), signal);
+  const numbers = parseConceptSearchMatches(document).slice(0, 25);
+  if (!numbers.length) return [];
+  const details = await fetchSparql(buildVondstlocatieDetailsQuery(numbers), signal);
+  return parseVondstlocatieResults(details);
 }
 
 export async function searchByArcheologischeWaarderingConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
@@ -720,7 +735,13 @@ export async function browseRceObjects(kind: "rijksmonument" | "archeologischter
 
 export async function searchRceMonuments(query: string, signal?: AbortSignal, page = 1, scope: TextSearchScope = "all"): Promise<RceMonument[]> {
   const trimmed = query.trim();
-  if (/^\d{4,6}$/.test(trimmed)) {
+  // {1,6}, niet {4,6}: sommige rijksmonumentnummers uit vroege registraties
+  // zijn korter dan vier cijfers (bv. rijksmonument 20 bestaat echt) - met
+  // {4,6} viel zo'n exacte, geldige zoekopdracht stil terug op vrij
+  // tekstzoeken op de losse cijfers, met tientallen ongerelateerde
+  // resultaten tot gevolg. Ontdekt via een klik op "Vergelijkbare
+  // rijksmonumenten" die op zo'n kort nummer uitkwam.
+  if (/^\d{1,6}$/.test(trimmed)) {
     const [rijksmonumenten, complexen, terreinen, vondstlocaties, grondsporen, vondsten, archeologischeComplexen] = await Promise.all([
       searchByNumber(trimmed, signal),
       optionalSearch("search.complexen", () => fetchSparql(buildComplexenQuery(trimmed), signal)

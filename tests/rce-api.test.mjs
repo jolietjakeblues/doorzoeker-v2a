@@ -48,6 +48,36 @@ test("returns a stable application API contract for a monument number", async (c
   assert.equal(cached.headers.get("x-doorzoeker-cache"), "HIT");
 });
 
+test("treats a short but valid rijksmonumentnummer as an exact lookup, not free text (P1: 'Vergelijkbare rijksmonumenten' zocht op '20')", async (context) => {
+  // Rijksmonument 20 bestaat echt (vroege registratie) maar heeft maar twee
+  // cijfers. Als "20" hier ten onrechte als vrije tekst wordt behandeld,
+  // vindt geen enkele CONTAINS-discoverybron (allemaal leeg gemockt) iets en
+  // faalt de hele zoekopdracht met een 502 - dat verschil bewijst het gedrag,
+  // niet alleen de query-vorm.
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalCaches === undefined) delete globalThis.caches;
+    else globalThis.caches = originalCaches;
+  });
+  globalThis.caches = { default: { match() { throw new Error("cache unavailable"); }, put() { throw new Error("cache unavailable"); } } };
+  globalThis.fetch = async (input) => {
+    const url = decodeURIComponent(String(input));
+    if (url.startsWith(BIBLIOTHEEK_SPARQL)) return Response.json({ results: { bindings: [] } });
+    if (url.includes("SELECT ?cho ?choi ?rmnr") && url.includes('VALUES ?rmnr { "20" }')) {
+      return Response.json({ results: { bindings: [{ cho: { value: "rm:10015" }, choi: { value: "10015" }, rmnr: { value: "20" }, naam: { value: "Herenhuis" } }] } });
+    }
+    return Response.json({ results: { bindings: [] } });
+  };
+
+  const response = await GET(new Request("https://doorzoeker.test/api/rce/search?q=20&page=1", { headers: { "cf-connecting-ip": "test-short-rmnr" } }));
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.equal(document.results.length, 1);
+  assert.equal(document.results[0].monumentNumber, "20");
+});
+
 test("finds a Rijksmonument by CHO-nummer when it is not a valid rijksmonumentnummer (P1: 71286)", async (context) => {
   const originalFetch = globalThis.fetch;
   const originalCaches = globalThis.caches;

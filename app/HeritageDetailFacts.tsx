@@ -67,13 +67,61 @@ export function HeritageDetailFacts({
         {item.objectType === "Archeologisch terrein" && item.archaeologicalValuation ? (
           <div>
             <dt>Archeologische waardering</dt>
-            <dd>{item.archaeologicalValuation}</dd>
+            <dd>
+              {item.archaeologicalValuationConceptUri ? (
+                <button
+                  type="button"
+                  className="concept-link"
+                  onClick={() =>
+                    onConceptSearch(
+                      { uri: item.archaeologicalValuationConceptUri!, label: item.archaeologicalValuation! },
+                      "waardering",
+                    )
+                  }
+                  title="Zoek alle archeologische terreinen met deze waardering"
+                >
+                  {item.archaeologicalValuation}
+                </button>
+              ) : (
+                item.archaeologicalValuation
+              )}
+            </dd>
+          </div>
+        ) : null}
+        {item.objectType === "Archeologisch terrein" && item.parentObjectNumber ? (
+          <div>
+            <dt>Onderdeel van rijksmonument</dt>
+            <dd><button type="button" className="concept-link" onClick={() => onObjectSearch(item.parentObjectNumber!)}>{item.parentObjectLabel}</button></dd>
           </div>
         ) : null}
         {item.objectType === "Vondstlocatie" && item.archaeologicalAcquisition ? (
           <div>
             <dt>Verwervingswijze</dt>
-            <dd>{item.archaeologicalAcquisition}</dd>
+            <dd>
+              {item.archaeologicalAcquisitionConceptUri ? (
+                <button
+                  type="button"
+                  className="concept-link"
+                  onClick={() =>
+                    onConceptSearch(
+                      { uri: item.archaeologicalAcquisitionConceptUri!, label: item.archaeologicalAcquisition! },
+                      "verwerving",
+                    )
+                  }
+                  title="Zoek alle vondstlocaties met deze verwervingswijze"
+                >
+                  {item.archaeologicalAcquisition}
+                </button>
+              ) : (
+                item.archaeologicalAcquisition
+              )}
+            </dd>
+          </div>
+        ) : null}
+        {item.objectType === "Vondstlocatie" && item.parentObjectNumber ? (
+          <div>
+            <dt>Onderzoeksgebied</dt>
+            <dd><button type="button" className="concept-link" onClick={() => onObjectSearch(item.parentObjectNumber!)}>{item.parentObjectLabel}</button></dd>
           </div>
         ) : null}
         {item.objectType === "Grondspoor" && item.archaeologicalType ? (

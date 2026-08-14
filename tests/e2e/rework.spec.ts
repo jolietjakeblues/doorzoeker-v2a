@@ -557,6 +557,68 @@ test("een grondspoor toont aantal, RN2-bron en bijbehorende vondstlocatie", asyn
   await expect(page).toHaveURL(/q=6175362/);
 });
 
+test("een archeologisch terrein toont waardering doorklikbaar en 'onderdeel van rijksmonument' (P1)", async ({ page }) => {
+  const waarderingUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/31020cd0-9029-4609-bbd8-ee83f9baf3f4";
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("veld") === "waardering") {
+      return route.fulfill({ json: { results: [{ ...records[0], name: "Ander terrein met dezelfde waardering", monumentNumber: "888001" }], page: 1, hasMore: false } });
+    }
+    return route.fulfill({ json: { results: [{
+      choNumber: "9001", monumentNumber: "12345", registrationDate: "", street: "", houseNumber: "", postalCode: "",
+      sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischterrein/9001", name: "Romeins grafveld", place: "Nijmegen", municipality: "Nijmegen",
+      description: "Terrein met resten uit de Romeinse tijd.", monumentNature: "archeologischterrein",
+      archaeologicalValuation: "terrein van hoge archeologische waarde", archaeologicalValuationConceptUri: waarderingUri,
+      parentObjectUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/rijksmonument/45708", parentObjectLabel: "Buitenplaats", parentObjectNumber: "532442",
+      matchSource: "omschrijving (archeologisch terrein)", matchedText: "Romeins grafveld", matchScore: 20,
+    }], page: 1, hasMore: false } });
+  });
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Romeins grafveld");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Romeins grafveld" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Buitenplaats", exact: true }).click();
+  await expect(page).toHaveURL(/q=532442/);
+
+  await page.getByRole("button", { name: "Bekijk gegevens van Romeins grafveld" }).click();
+  await dialog.getByRole("button", { name: "terrein van hoge archeologische waarde", exact: true }).click();
+  await expect(page).toHaveURL(/veld=waardering/);
+  await expect(page).toHaveURL(new RegExp(encodeURIComponent(waarderingUri).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  await expect(page.getByText("Ander terrein met dezelfde waardering")).toBeVisible();
+});
+
+test("een vondstlocatie toont verwervingswijze doorklikbaar en ligt binnen een onderzoeksgebied (P1)", async ({ page }) => {
+  const verwervingUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/d303201f-d9c5-44d7-a57c-b65644fed2aa";
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("veld") === "verwerving") {
+      return route.fulfill({ json: { results: [{ ...records[0], name: "Andere vondstlocatie met dezelfde verwervingswijze", monumentNumber: "888002" }], page: 1, hasMore: false } });
+    }
+    return route.fulfill({ json: { results: [{
+      choNumber: "6176097", monumentNumber: "6176097", registrationDate: "", street: "", houseNumber: "", postalCode: "",
+      sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/vondstlocatie/6176097", name: "Kempweg", place: "Meterik", municipality: "Meterik",
+      description: "Archeologische vondstlocatie.", monumentNature: "vondstlocatie",
+      archaeologicalAcquisition: "niet-archeologisch: graafwerk", archaeologicalAcquisitionConceptUri: verwervingUri,
+      parentObjectUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/10001066", parentObjectLabel: "Onderzoeksgebied 10001066", parentObjectNumber: "10001066",
+      matchSource: "CHO-nummer (vondstlocatie)", matchedText: "6176097", matchScore: 0,
+    }], page: 1, hasMore: false } });
+  });
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("6176097");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Kempweg" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Onderzoeksgebied 10001066", exact: true }).click();
+  await expect(page).toHaveURL(/q=10001066/);
+
+  await page.getByRole("button", { name: "Bekijk gegevens van Kempweg" }).click();
+  await dialog.getByRole("button", { name: "niet-archeologisch: graafwerk", exact: true }).click();
+  await expect(page).toHaveURL(/veld=verwerving/);
+  await expect(page).toHaveURL(new RegExp(encodeURIComponent(verwervingUri).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  await expect(page.getByText("Andere vondstlocatie met dezelfde verwervingswijze")).toBeVisible();
+});
+
 test("materiaal van een vondst zoekt exact verder via de RN2-URI", async ({ page }) => {
   const materialUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/91645e25-8d66-44ba-9126-56e64ac5fd1f";
   await page.unroute("**/api/rce/search**");

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeWaarderingConceptQuery, buildBouwkundigeStaatConceptQuery, buildStijlConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceChoNumberQuery, buildRceDetailsQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceParcelsQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedQuery, mergeDiscoveryMatches, mergeVondstlocatieInhoud, parseAbrTermSuggestResults, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS, VONDSTLOCATIE_INHOUD_KLASSEN, wktToLatLng } from "../lib/rce.ts";
+import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeWaarderingConceptQuery, buildBouwkundigeStaatConceptQuery, buildStijlConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceChoNumberQuery, buildRceDetailsQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceParcelsQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVerwervingConceptQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedQuery, mergeDiscoveryMatches, mergeVondstlocatieInhoud, parseAbrTermSuggestResults, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS, VONDSTLOCATIE_INHOUD_KLASSEN, wktToLatLng } from "../lib/rce.ts";
 import { buildArchaeologyBrowseQuery, buildRijksmonumentenBrowseQuery, parseArchaeologyBrowseNumbers, parseRijksmonumentenBrowseNumbers } from "../lib/rce.ts";
 import { buildFunctieConceptQuery, buildTermUsageQuery, parseFacetResults, parseTermUsageResults } from "../lib/rce.ts";
 
@@ -944,6 +944,12 @@ test("parses discovery en details van een zelfstandig archeologisch terrein", ()
   assert.match(query, /heeftArcheologischeWaardering/);
   assert.doesNotMatch(query, /heeftGeometrie/);
   assert.match(buildArcheologischTerreinDiscoveryQueries("3958")[1].query, /FILTER\(STR\(\?match\) = "3958"\)/);
+  // P1: ligtInObject naar Rijksmonument bestaat in de ontologie (3665
+  // exemplaren, live geverifieerd) maar werd nooit opgehaald - een
+  // archeologisch terrein dat onderdeel is van een rijksmonument toonde dat
+  // nergens.
+  assert.match(query, /\?terrein ceo:ligtInObject \?rmValue/);
+  assert.match(query, /\?rmValue a ceo:Rijksmonument ; ceo:rijksmonumentnummer \?rmnrValue/);
 
   const [terrein] = parseStandaloneArcheologischTerreinResults({ results: { bindings: [{
     terrein: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischterrein/9001" },
@@ -954,12 +960,27 @@ test("parses discovery en details van een zelfstandig archeologisch terrein", ()
     woonplaats: { value: "Nijmegen" },
     waarderingLabel: { value: "terrein van hoge archeologische waarde" },
     waarderingConcept: { value: "https://data.cultureelerfgoed.nl/term/id/rn/2/waarde" },
+    rm: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/rijksmonument/45708" },
+    rmnr: { value: "532442" },
+    rmNaam: { value: "Buitenplaats" },
   }] } });
   assert.equal(terrein.monumentNature, "archeologischterrein");
   assert.equal(terrein.monumentNumber, "12345");
   assert.equal(terrein.place, "Nijmegen");
   assert.equal(terrein.archaeologicalValuation, "terrein van hoge archeologische waarde");
   assert.equal(terrein.wkt, undefined);
+  assert.equal(terrein.parentObjectNumber, "532442");
+  assert.equal(terrein.parentObjectLabel, "Buitenplaats");
+});
+
+test("valt terug op 'Rijksmonument {nummer}' als een archeologisch terrein zijn rijksmonument geen naam heeft", () => {
+  const [terrein] = parseStandaloneArcheologischTerreinResults({ results: { bindings: [{
+    terrein: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischterrein/9002" },
+    choi: { value: "9002" },
+    rm: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/rijksmonument/45709" },
+    rmnr: { value: "532443" },
+  }] } });
+  assert.equal(terrein.parentObjectLabel, "Rijksmonument 532443");
 });
 
 test("discovers vondstlocaties via CHO-nummer, beide Archis-nummers, naam, plaats, omschrijving en verwerving", () => {
@@ -995,18 +1016,40 @@ test("finds a vondstlocatie by its exact CHO-nummer", () => {
 test("parses een zelfstandige vondstlocatie zonder coördinaten te verzinnen", () => {
   const matches = parseVondstlocatieDiscoveryResults({ results: { bindings: [{ choi: { value: "6109334" }, match: { value: "102482" } }] } }, "Archis-vondstmeldingsnummer", "102482");
   assert.equal(matches[0].matchScore, 20);
-  assert.match(buildVondstlocatieDetailsQuery(["6109334"]), /VALUES \?choi \{ "6109334" \}/);
+  const detailsQuery = buildVondstlocatieDetailsQuery(["6109334"]);
+  assert.match(detailsQuery, /VALUES \?choi \{ "6109334" \}/);
+  // P1: ligtInObject naar ArcheologischOnderzoeksgebied bestaat in de
+  // ontologie (40092 exemplaren, live geverifieerd) maar werd nooit
+  // opgehaald.
+  assert.match(detailsQuery, /\?locatie ceo:ligtInObject \?gebiedValue/);
+  assert.match(detailsQuery, /\?gebiedValue a ceo:ArcheologischOnderzoeksgebied ; ceo:cultuurhistorischObjectnummer \?gebiedChoiValue/);
   const [locatie] = parseVondstlocatieResults({ results: { bindings: [{
     locatie: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/vondstlocatie/6109334" },
     choi: { value: "6109334" }, vondstmelding: { value: "102482" }, waarneming: { value: "102482" },
     locatienaam: { value: "Padstuk-Dres" }, woonplaats: { value: "Opmeer" },
     verwervingConcept: { value: "https://data.cultureelerfgoed.nl/term/id/rn/2/e06a84fa-62e8-42ff-8f38-0ddfe9485a15" },
     verwervingLabel: { value: "archeologisch: boring" },
+    gebied: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/10001066" },
+    gebiedChoi: { value: "10001066" },
   }] } });
   assert.equal(locatie.monumentNature, "vondstlocatie");
   assert.equal(locatie.monumentNumber, "102482");
   assert.equal(locatie.archaeologicalAcquisition, "archeologisch: boring");
   assert.equal(locatie.wkt, undefined);
+  assert.equal(locatie.parentObjectNumber, "10001066");
+  assert.equal(locatie.parentObjectLabel, "Onderzoeksgebied 10001066");
+});
+
+test("bouwt een exact-match query op een verwervingswijze-concept-URI, matchend op het CHO-nummer van de vondstlocatie", () => {
+  // Anders dan monumentaard/stijl/bouwkundige staat/waardering matcht dit op
+  // het CHO-nummer van een Vondstlocatie, niet op een rijksmonumentnummer -
+  // searchByConceptMatchQuery (Rijksmonument-detailquery) zou dit ten
+  // onrechte als rijksmonumentnummer opzoeken.
+  const uri = "https://data.cultureelerfgoed.nl/term/id/rn/2/d303201f-d9c5-44d7-a57c-b65644fed2aa";
+  const query = buildVerwervingConceptQuery(uri);
+  assert.match(query, /a ceo:Vondstlocatie/);
+  assert.match(query, new RegExp(`ceo:heeftVerwerving <${uri.replaceAll(".", "\\.")}>`));
+  assert.match(query, /LIMIT 100/);
 });
 
 test("bouwt een aparte, eigen-begrensde vondstlocatie-inhoudquery per klasse (TD-14)", () => {

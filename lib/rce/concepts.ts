@@ -40,6 +40,16 @@ SELECT ?rmnr WHERE {
 LIMIT 100`;
 }
 
+export function buildVerwervingConceptQuery(conceptUri: string) {
+  return `PREFIX ceo: <${CEO}>
+SELECT ?rmnr WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?locatie a ceo:Vondstlocatie ; ceo:cultuurhistorischObjectnummer ?rmnr ; ceo:heeftVerwerving <${conceptUri}> .
+  }
+}
+LIMIT 100`;
+}
+
 export function buildArcheologischeWaarderingConceptQuery(conceptUri: string) {
   return `PREFIX ceo: <${CEO}>
 SELECT ?rmnr WHERE {

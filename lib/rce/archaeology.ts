@@ -328,6 +328,9 @@ SELECT ?terrein ?choi
   (SAMPLE(STR(?waarderingLabelValue)) AS ?waarderingLabel)
   (SAMPLE(?waarderingConceptValue) AS ?waarderingConcept)
   (SAMPLE(STR(?registratiedatumValue)) AS ?registratiedatum)
+  (SAMPLE(?rmValue) AS ?rm)
+  (SAMPLE(STR(?rmnrValue)) AS ?rmnr)
+  (SAMPLE(STR(?rmNaamValue)) AS ?rmNaam)
 WHERE {
  GRAPH <${INSTANCES_GRAPH}> {
   ?terrein a ceo:ArcheologischTerrein ; ceo:cultuurhistorischObjectnummer ?choi .
@@ -338,6 +341,11 @@ WHERE {
   OPTIONAL { ?terrein ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?woonplaatsValue . }
   OPTIONAL { ?terrein ceo:heeftArcheologischeWaardering ?waarderingConceptValue . ?waarderingConceptValue skos:prefLabel ?waarderingLabelValue . }
   OPTIONAL { ?terrein ceo:registratiedatum ?registratiedatumValue . }
+  OPTIONAL {
+   ?terrein ceo:ligtInObject ?rmValue .
+   ?rmValue a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnrValue .
+   OPTIONAL { ?rmValue ceo:heeftNaam/ceo:naam ?rmNaamValue . }
+  }
  }
 }
 GROUP BY ?terrein ?choi
@@ -349,6 +357,7 @@ export function parseStandaloneArcheologischTerreinResults(document: unknown): R
   if (!Array.isArray(bindings)) return [];
   return bindings.map((binding) => {
     const woonplaats = binding.woonplaats?.value;
+    const rmnr = binding.rmnr?.value;
     return {
       choNumber: binding.choi?.value ?? "",
       monumentNumber: binding.archisNummer?.value || binding.choi?.value || "",
@@ -364,6 +373,9 @@ export function parseStandaloneArcheologischTerreinResults(document: unknown): R
       municipality: woonplaats,
       archaeologicalValuation: binding.waarderingLabel?.value,
       archaeologicalValuationConceptUri: binding.waarderingConcept?.value,
+      parentObjectUrl: binding.rm?.value,
+      parentObjectLabel: rmnr ? (binding.rmNaam?.value || `Rijksmonument ${rmnr}`) : undefined,
+      parentObjectNumber: rmnr,
     };
   });
 }
@@ -423,6 +435,9 @@ SELECT ?locatie ?choi
   (SAMPLE(?verwervingConceptValue) AS ?verwervingConcept)
   (SAMPLE(STR(?verwervingLabelValue)) AS ?verwervingLabel)
   (SAMPLE(STR(?registratiedatumValue)) AS ?registratiedatum)
+  (SAMPLE(?gebiedValue) AS ?gebied)
+  (SAMPLE(STR(?gebiedChoiValue)) AS ?gebiedChoi)
+  (SAMPLE(STR(?gebiedNaamValue)) AS ?gebiedNaam)
 WHERE {
  GRAPH <${INSTANCES_GRAPH}> {
   ?locatie a ceo:Vondstlocatie ; ceo:cultuurhistorischObjectnummer ?choi .
@@ -434,6 +449,11 @@ WHERE {
   OPTIONAL { ?locatie ceo:heeftBasisregistratieRelatie/ceo:heeftBAGRelatie/ceo:woonplaatsnaam ?woonplaatsValue . }
   OPTIONAL { ?locatie ceo:heeftVerwerving ?verwervingConceptValue . ?verwervingConceptValue skos:prefLabel ?verwervingLabelValue . }
   OPTIONAL { ?locatie ceo:registratiedatum ?registratiedatumValue . }
+  OPTIONAL {
+   ?locatie ceo:ligtInObject ?gebiedValue .
+   ?gebiedValue a ceo:ArcheologischOnderzoeksgebied ; ceo:cultuurhistorischObjectnummer ?gebiedChoiValue .
+   OPTIONAL { ?gebiedValue ceo:heeftNaam/ceo:naam ?gebiedNaamValue . }
+  }
  }
 }
 GROUP BY ?locatie ?choi
@@ -447,6 +467,7 @@ export function parseVondstlocatieResults(document: unknown): RceMonument[] {
     const woonplaats = binding.woonplaats?.value;
     const vondstmelding = binding.vondstmelding?.value;
     const waarneming = binding.waarneming?.value;
+    const gebiedChoi = binding.gebiedChoi?.value;
     return {
       choNumber: binding.choi?.value ?? "",
       monumentNumber: vondstmelding || waarneming || binding.choi?.value || "",
@@ -462,6 +483,9 @@ export function parseVondstlocatieResults(document: unknown): RceMonument[] {
       municipality: woonplaats,
       archaeologicalAcquisition: binding.verwervingLabel?.value,
       archaeologicalAcquisitionConceptUri: binding.verwervingConcept?.value,
+      parentObjectUrl: binding.gebied?.value,
+      parentObjectLabel: gebiedChoi ? (binding.gebiedNaam?.value || `Onderzoeksgebied ${gebiedChoi}`) : undefined,
+      parentObjectNumber: gebiedChoi,
     };
   });
 }
