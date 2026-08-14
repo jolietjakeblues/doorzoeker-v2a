@@ -103,6 +103,9 @@ export function HeritageRelationSections({
                     {complex.typeLabel ||
                       `Archeologisch complex ${complex.choNumber}`}
                   </button>
+                  {complex.typeLabel ? (
+                    <small> (CHO {complex.choNumber})</small>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -149,6 +152,7 @@ export function HeritageRelationSections({
                     <button type="button" onClick={() => void onSearch(complex.choNumber)}>
                       {complex.type?.label || `Archeologisch complex ${complex.choNumber}`}
                     </button>
+                    {complex.type?.label ? <small> (CHO {complex.choNumber})</small> : null}
                     {complex.type?.schemes?.length ? <small>{complex.type.schemes.map((scheme) => scheme.label).join(" · ")}</small> : null}
                   </li>
                 ))}

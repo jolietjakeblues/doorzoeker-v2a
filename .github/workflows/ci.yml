@@ -29,7 +29,6 @@ jobs:
         run: npm test
 
   interaction:
-    continue-on-error: true
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

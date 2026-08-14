@@ -1,4 +1,4 @@
-import { primaryFunctionConcept, statusLabel, type ConceptField, type Item } from "@/lib/heritage-view-model";
+import { displayFunctionName, functionConceptForLabel, primaryFunctionConcept, statusLabel, type ConceptField, type Item } from "@/lib/heritage-view-model";
 
 type Concept = { uri: string; label: string };
 
@@ -129,6 +129,18 @@ export function HeritageDetailFacts({
   const dating =
     item.registrationDate ??
     (item.period !== "Datering niet opgenomen" ? item.period : "");
+  // Naast de primaire functie (hierboven) kan een Rijksmonument meerdere
+  // oorspronkelijke en/of huidige functies hebben - die worden al opgehaald
+  // (facettenquery) maar tot nu toe nergens getoond. Gededupliceerd en
+  // exclusief de al getoonde primaire functie.
+  const otherFunctionNames = [
+    ...new Set(
+      [
+        ...(item.originalFunctionNames ?? []),
+        ...(item.currentFunctionNames ?? []).map(displayFunctionName),
+      ].filter((name) => name && name !== item.kind),
+    ),
+  ];
 
   return (
     <>
@@ -150,6 +162,51 @@ export function HeritageDetailFacts({
               item.kind
             )}
           </dd>
+        </div>
+      ) : null}
+      {otherFunctionNames.length ? (
+        <div>
+          <dt>Overige functies</dt>
+          <dd>
+            {otherFunctionNames.map((name, index) => {
+              const concept = functionConceptForLabel(item, name);
+              return (
+                <span key={name}>
+                  {index ? ", " : ""}
+                  {concept ? (
+                    <button
+                      type="button"
+                      className="concept-link"
+                      onClick={() => onConceptSearch(concept, "functie")}
+                      title="Zoek alle rijksmonumenten met deze functie"
+                    >
+                      {name}
+                    </button>
+                  ) : (
+                    name
+                  )}
+                </span>
+              );
+            })}
+          </dd>
+        </div>
+      ) : null}
+      {item.typeNames?.length ? (
+        <div>
+          <dt>Type</dt>
+          <dd>{item.typeNames.join(", ")}</dd>
+        </div>
+      ) : null}
+      {item.stijlEnCultuur ? (
+        <div>
+          <dt>Stijl en cultuur</dt>
+          <dd>{item.stijlEnCultuur}</dd>
+        </div>
+      ) : null}
+      {item.bouwkundigeStaat ? (
+        <div>
+          <dt>Bouwkundige staat</dt>
+          <dd>{item.bouwkundigeStaat}</dd>
         </div>
       ) : null}
       {item.monumentAardConcept ? (

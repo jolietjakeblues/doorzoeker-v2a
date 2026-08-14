@@ -55,6 +55,8 @@ export type Item = {
   matchedText?: string;
   matchScore?: number;
   legalStatus?: string;
+  stijlEnCultuur?: string;
+  bouwkundigeStaat?: string;
   originalFunctionNames?: string[];
   currentFunctionNames?: string[];
   functionConcepts?: { uri: string; label: string }[];
@@ -150,13 +152,21 @@ export function linkedConcepts(item: Item): LinkedConcept[] {
 // displayFunctionName-opschoning) voorkomt dat een klik op de zichtbare
 // functietekst een ander concept zoekt dan wat er staat; zonder match is het
 // eerste concept een redelijke terugval.
+export function functionConceptForLabel(
+  item: Pick<Item, "functionConcepts">,
+  label: string,
+): { uri: string; label: string } | undefined {
+  return item.functionConcepts?.find(
+    (concept) => displayFunctionName(concept.label) === label,
+  );
+}
+
 export function primaryFunctionConcept(
   item: Pick<Item, "kind" | "functionConcepts">,
 ): { uri: string; label: string } | undefined {
   return (
-    item.functionConcepts?.find(
-      (concept) => displayFunctionName(concept.label) === item.kind,
-    ) ?? item.functionConcepts?.[0]
+    (item.kind ? functionConceptForLabel(item, item.kind) : undefined) ??
+    item.functionConcepts?.[0]
   );
 }
 
@@ -412,6 +422,8 @@ export function toItem(record: RceMonument): Item {
     matchedText,
     matchScore: record.matchScore,
     legalStatus: record.legalStatus,
+    stijlEnCultuur: record.stijlEnCultuur,
+    bouwkundigeStaat: record.bouwkundigeStaat,
     originalFunctionNames,
     currentFunctionNames: record.currentFunctionNames,
     functionConcepts: record.functionConcepts,

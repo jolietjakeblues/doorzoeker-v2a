@@ -215,7 +215,7 @@ zie ook TD-15 hierboven.
 
 ### P4 — toegankelijkheid
 
-**Status (herbevestigd 14 augustus 2026, code opnieuw gelezen): nog open.**
+**Status (14 augustus 2026): TD-33 opgelost; TD-27 nog open.**
 
 **TD-27: kaartmarkers en clusters zijn niet met het toetsenbord te bedienen.**
 `app/HeritageMap.tsx`: elke marker/clusterbadge wordt via Leaflet
@@ -225,30 +225,24 @@ zie ook TD-15 hierboven.
 of een `keydown`-handler - met het toetsenbord is geen enkele marker of
 cluster te bereiken of te activeren.
 
-**TD-33 (nieuw, 14 augustus 2026): archeologische complexen met hetzelfde
-type zijn in "Wat hier is aangetroffen" niet van elkaar te onderscheiden.**
-`app/HeritageRelationSections.tsx:150`:
-`{complex.type?.label || \`Archeologisch complex ${complex.choNumber}\`}`
-- de CHO-nummer-fallback geldt alleen wanneer een complex hélemaal geen
-typelabel heeft. Hebben meerdere complexen bij dezelfde vondstlocatie
-toevallig hetzelfde type (bv. drie keer "urnenveld"), dan tonen ze alle
-drie exact dezelfde tekst in de lijst, met alleen een onzichtbaar
-verschillende click-target (`complex.choNumber`). Geen datafout - elke
-knop zoekt wel degelijk het juiste, eigen complex op - maar een gebruiker
-kan de items visueel niet uit elkaar houden. Live gereproduceerd:
-zoekopdracht "39087" (Vorstengrafdonk, Oss) toont drie identieke
-"urnenveld"-regels.
-**Risico:** laag/middel - geen datacorruptie, wel een gebruiker die niet
-kan zien welk van de drie identieke items hij al bekeken heeft.
-**Voorstel:** CHO-nummer (of een ander onderscheidend kenmerk) altijd
-meetonen naast het typelabel wanneer meerdere items in dezelfde lijst
-hetzelfde typelabel delen, niet alleen als fallback bij een ontbrekend
-label.
+**TD-33: archeologische complexen met hetzelfde type waren in "Wat hier is
+aangetroffen" niet van elkaar te onderscheiden.**
+`app/HeritageRelationSections.tsx` toonde `complex.type?.label` als enige
+tekst - de CHO-nummer-fallback gold alleen wanneer een complex hélemaal
+geen typelabel had. Deelden meerdere complexen bij dezelfde vondstlocatie
+toevallig hetzelfde type (bv. drie keer "urnenveld"), dan toonden ze alle
+drie exact dezelfde tekst, met alleen een onzichtbaar verschillende
+click-target. Live gereproduceerd: zoekopdracht "39087" (Vorstengrafdonk,
+Oss) toonde drie identieke "urnenveld"-regels.
+**Opgelost:** het CHO-nummer wordt nu altijd naast het typelabel getoond
+(niet alleen als fallback bij een ontbrekend label), voor zowel de
+"Archeologisch onderzoek binnen dit gebied"- als de "Wat hier is
+aangetroffen"-lijst.
 
 ### P5 — documentatie en proces
 
-**Status (herbevestigd 14 augustus 2026): TD-28 opgelost, TD-29 t/m TD-32
-nog open - elk hieronder opnieuw tegen de actuele code/config/branches
+**Status (14 augustus 2026): TD-28, TD-30 en TD-32 opgelost; TD-29 en
+TD-31 nog open - elk hieronder tegen de actuele code/config/branches
 gecontroleerd, niet alleen herhaald uit de vorige versie van dit document.**
 
 **TD-28: verticale slice 008 — documenten spraken elkaar tegen, oorzaak gevonden**
@@ -268,32 +262,27 @@ op; `app/api/rce/verras-me/route.ts` bestaat en wordt actief gebruikt
 (zie `SearchHero`/`StartContent`/`useSearchState`), maar staat niet in die
 lijst.
 
-**TD-30: Playwright-interactietests kunnen niets tegenhouden — nog steeds waar.**
-`.github/workflows/ci.yml` regel 32: `continue-on-error: true` op de
-`interaction`-job. `.github/workflows/deploy-workers.yml` draait
-`typecheck`/`lint`/`npm test` vóór het deployen, maar nergens
-`npm run test:e2e` - een e2e-regressie kan een deploy dus nooit
-tegenhouden, ook niet als de e2e-run zelf faalt.
+**TD-30: Playwright-interactietests konden niets tegenhouden. Opgelost:**
+`continue-on-error: true` is weggehaald bij de `interaction`-job in
+`.github/workflows/ci.yml`, en `.github/workflows/deploy-workers.yml`
+draait nu ook `npm run test:e2e` vóór het deploy-commando - een falende
+e2e-run stopt de workflow daar (geen `continue-on-error` op die stap).
+Kan niet lokaal "falend-dan-slagend" bewezen worden zoals code (het was
+een configuratiegat, geen functielogica); de eerstvolgende echte CI-run op
+deze branch is de praktijktoets.
 
 **TD-31: alle unit-/contracttests hangen achter een volledige productiebuild — nog steeds waar.**
 `package.json`: `"test": "npm run build && node --test ..."`.
 
-**TD-32: veel gemergede branches staan nog open, zowel lokaal als op
-GitHub — bevestigd met de PR-historie (`gh pr list --state merged`).**
-Van de 33 remote branches op dit moment zijn er 31 al gemerged (bevestigd
-per PR-nummer); alleen `main` en de twee openstaande Dependabot-PR's
-(`dependabot/npm_and_yarn/eslint-10.8.0` #10,
-`dependabot/npm_and_yarn/typescript-7.0.2` #6 - bewust aangehouden wegens
-majorversie-beleid, zie `docs/beheerbesluiten.md`) horen er nog te staan.
-Voorbeelden van al gemergede branches die nog bestaan:
-`fix/p0-race-conditions-en-datalek`, `fix/p1-zichtbaarheid-van-falen`,
-`fix/p2-typeveiligheid`, `fix/p3-duplicatie-opschonen`,
-`feat/groenaanleg-foto`, `fix/groenaanleg-foto-depiction-pad`,
-`docs/backlog-nummerzoeken-en-ux`, `fix/cho-nummer-en-kenmerken-filter`,
-plus negen `codex/splits-*`-branches uit een eerdere refactorronde.
-**Voorstel:** alle gemergede branches verwijderen (lokaal en op GitHub),
-op zijn vroegst nadat de eigenaar dit expliciet bevestigt - branches
-verwijderen is niet zomaar ongedaan te maken.
+**TD-32: veel gemergede branches stonden nog open, zowel lokaal als op
+GitHub.** **Opgelost (14 augustus 2026), met expliciet akkoord van de
+eigenaar vooraf:** alle 31 bevestigd-gemergede branches (geverifieerd per
+PR-nummer via `gh pr list --state merged`, en per branch nogmaals
+gecontroleerd dat de inhoud al in `main` zat vóór verwijdering) zijn
+verwijderd, lokaal en op GitHub. Alleen `main` en de twee bewust
+openstaande Dependabot-PR's (`dependabot/npm_and_yarn/eslint-10.8.0` #10,
+`dependabot/npm_and_yarn/typescript-7.0.2` #6 - aangehouden wegens
+majorversie-beleid, zie `docs/beheerbesluiten.md`) blijven over.
 
 ## Voorgesteld verbetertraject
 
@@ -303,9 +292,9 @@ verwijderen is niet zomaar ongedaan te maken.
 2. **Zichtbaarheid van falen (TD-17, TD-18):** opgelost (#40, #41).
 3. **Typeveiligheid (TD-19 t/m TD-21):** opgelost (#42).
 4. **Opschonen duplicatie (TD-22 t/m TD-26):** opgelost (#44).
-5. **Toegankelijkheid (TD-27, TD-33):** nog open.
-6. **Documentatie en proces (TD-28 t/m TD-32):** TD-28 opgelost; TD-29
-   t/m TD-32 nog open.
+5. **Toegankelijkheid (TD-27, TD-33):** TD-33 opgelost; TD-27 nog open.
+6. **Documentatie en proces (TD-28 t/m TD-32):** TD-28, TD-30 en TD-32
+   opgelost; TD-29 en TD-31 nog open.
 
 Elke fase eindigt met typecheck, lint, unit-/contracttests en Playwright
 groen.

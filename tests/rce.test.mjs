@@ -20,7 +20,7 @@ test("parses rich SPARQL results", () => {
   // the parenthesis. A stricter regex silently dropped lat/lng for every
   // result, which emptied the map without ever failing a request.
   const document = { results: { bindings: [{ cho: { value: "rm:38342" }, choi: { value: "38342" }, rmnr: { value: "36046" }, functie: { value: "Woonhuis(K)" }, omschrijving: { value: "Pand met 17e eeuwse lijstgevel." }, monumentaard: { value: "onroerend gebouwd" }, volledigAdres: { value: "Brigittenstraat 18" }, postcode: { value: "3512KM" }, woonplaats: { value: "Utrecht" }, wkt: { value: "Point (5.1267842049703 52.088895166661)" }, inschrijving: { value: "1967-06-20" } }] } };
-  assert.deepEqual(parseSparqlResults(document), [{ choNumber: "38342", monumentNumber: "36046", registrationDate: "1967-06-20", street: "", houseNumber: "", postalCode: "3512KM", sourceUrl: "rm:38342", name: undefined, functionName: "Woonhuis(K)", originalFunctionNames: [], currentFunctionNames: [], typeNames: [], legalStatus: "rijksmonument", description: "Pand met 17e eeuwse lijstgevel.", monumentNature: "onroerend gebouwd", monumentAardConceptUri: undefined, fullAddress: "Brigittenstraat 18", place: "Utrecht", municipality: undefined, provinceCode: undefined, lng: 5.1267842049703, lat: 52.088895166661, wkt: "Point (5.1267842049703 52.088895166661)" }]);
+  assert.deepEqual(parseSparqlResults(document), [{ choNumber: "38342", monumentNumber: "36046", registrationDate: "1967-06-20", street: "", houseNumber: "", postalCode: "3512KM", sourceUrl: "rm:38342", name: undefined, functionName: "Woonhuis(K)", originalFunctionNames: [], currentFunctionNames: [], typeNames: [], legalStatus: "rijksmonument", description: "Pand met 17e eeuwse lijstgevel.", monumentNature: "onroerend gebouwd", monumentAardConceptUri: undefined, fullAddress: "Brigittenstraat 18", place: "Utrecht", municipality: undefined, provinceCode: undefined, lng: 5.1267842049703, lat: 52.088895166661, wkt: "Point (5.1267842049703 52.088895166661)", stijlEnCultuur: undefined, bouwkundigeStaat: undefined }]);
 });
 
 test("captures the monumentaard concept-URI alongside its label", () => {
@@ -229,6 +229,25 @@ test("only queries formally established descriptions", () => {
   assert.match(query, /ceo:heeftBRKRelatie \?brk/);
   assert.match(query, /ceo:gemeentenaam \?gemeenteValue/);
   assert.match(query, /ceo:provinciecode \?provinciecodeValue/);
+});
+
+test("queries stijl & cultuur and bouwkundige kwaliteit as formally established facts", () => {
+  const query = buildRceDetailsQuery(["36046"]);
+  assert.match(query, /ceo:heeftStijlEnCultuur \?stijlNode/);
+  assert.match(query, /\?stijlNode ceo:formeelStandpunt true ; ceo:heeftStijlEnCultuurNaam\/skos:prefLabel \?stijlValue/);
+  assert.match(query, /ceo:heeftBouwkundigeKwaliteit \?kwaliteitNode/);
+  assert.match(query, /\?kwaliteitNode ceo:formeelStandpunt true ; ceo:heeftBouwkundigeStaat\/skos:prefLabel \?bouwkundigeStaatValue/);
+  const document = { results: { bindings: [{ rmnr: { value: "36046" }, stijl: { value: "Neo-Renaissance" }, bouwkundigeStaat: { value: "goed" } }] } };
+  const [monument] = parseSparqlResults(document);
+  assert.equal(monument.stijlEnCultuur, "Neo-Renaissance");
+  assert.equal(monument.bouwkundigeStaat, "goed");
+});
+
+test("leaves stijl en cultuur / bouwkundige staat undefined when a Rijksmonument has neither", () => {
+  const document = { results: { bindings: [{ rmnr: { value: "36046" } }] } };
+  const [monument] = parseSparqlResults(document);
+  assert.equal(monument.stijlEnCultuur, undefined);
+  assert.equal(monument.bouwkundigeStaat, undefined);
 });
 
 test("looks up a Rijksmonument by CHO-nummer, not just rijksmonumentnummer (P1: 71286 gaf 0 resultaten)", () => {

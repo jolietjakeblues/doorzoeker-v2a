@@ -145,6 +145,8 @@ export function parseSparqlResults(document: unknown): RceMonument[] {
       lng: coordinates?.lng,
       lat: coordinates?.lat,
       wkt: wkt || undefined,
+      stijlEnCultuur: binding.stijl?.value,
+      bouwkundigeStaat: binding.bouwkundigeStaat?.value,
     };
   });
 }
@@ -182,6 +184,8 @@ SELECT ?cho ?choi ?rmnr
   (SAMPLE(STR(?provinciecodeValue)) AS ?provinciecode)
   (SAMPLE(STR(?wktValue)) AS ?wkt)
   (SAMPLE(STR(?inschrijvingValue)) AS ?inschrijving)
+  (SAMPLE(STR(?stijlValue)) AS ?stijl)
+  (SAMPLE(STR(?bouwkundigeStaatValue)) AS ?bouwkundigeStaat)
 WHERE {
  GRAPH <${INSTANCES_GRAPH}> {
   ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ; ceo:cultuurhistorischObjectnummer ?choi ;
@@ -214,6 +218,14 @@ WHERE {
   }
   OPTIONAL { ?cho ceo:heeftGeometrie/geo:asWKT ?wktValue . }
   OPTIONAL { ?cho ceo:datumInschrijvingInMonumentenregister ?inschrijvingValue . }
+  OPTIONAL {
+    ?cho ceo:heeftStijlEnCultuur ?stijlNode .
+    ?stijlNode ceo:formeelStandpunt true ; ceo:heeftStijlEnCultuurNaam/skos:prefLabel ?stijlValue .
+  }
+  OPTIONAL {
+    ?cho ceo:heeftBouwkundigeKwaliteit ?kwaliteitNode .
+    ?kwaliteitNode ceo:formeelStandpunt true ; ceo:heeftBouwkundigeStaat/skos:prefLabel ?bouwkundigeStaatValue .
+  }
  }
 }
 GROUP BY ?cho ?choi ?rmnr
