@@ -2,7 +2,7 @@
 
 Gecontroleerd op 11 augustus 2026 tegen de statussecties van de afzonderlijke
 documenten en de huidige testset. Slice 014 is er na deze laatste controle
-nog bijgekomen; slice 015 op 14 augustus 2026.
+nog bijgekomen; slices 015 en 016 op 14 augustus 2026.
 
 | Slice | Onderwerp | Status |
 | --- | --- | --- |
@@ -21,6 +21,7 @@ nog bijgekomen; slice 015 op 14 augustus 2026.
 | 013 | Lange omschrijvingen inkorten | Gebouwd en live geverifieerd |
 | 014 | "Verras me"-knop | Gebouwd, unit- en contracttests groen |
 | 015 | "Alle gekoppelde begrippen"-overzicht | Gebouwd, unit- en e2e-tests groen |
+| 016 | "Ontdek een thema" (ontdekken zonder zoekterm, fase 1) | Gebouwd, e2e-test groen |
 
 ## Aandachtspunten
 
