@@ -466,6 +466,8 @@ test("'Onderdeel van complex' is doorklikbaar binnen Doorzoeker, niet alleen pla
 
 test("stijl & cultuur, bouwkundige staat, type en overige functies worden getoond", async ({ page }) => {
   const kantoorUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/kantoor";
+  const stijlUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/478ca85b-ecb3-4a38-8b97-ba78deeba3dd";
+  const bouwkundigeStaatUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/ed0abe81-4466-44c3-a8c4-2f1a0e63176d";
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", (route) => route.fulfill({
     json: {
@@ -481,7 +483,9 @@ test("stijl & cultuur, bouwkundige staat, type en overige functies worden getoon
         ],
         typeNames: ["vrijstaand huis"],
         stijlEnCultuur: "Neo-Renaissance",
+        stijlEnCultuurConceptUri: stijlUri,
         bouwkundigeStaat: "goed",
+        bouwkundigeStaatConceptUri: bouwkundigeStaatUri,
       }],
     },
   }));
@@ -490,12 +494,46 @@ test("stijl & cultuur, bouwkundige staat, type en overige functies worden getoon
   await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText("vrijstaand huis", { exact: true })).toBeVisible();
-  await expect(dialog.getByText("Neo-Renaissance", { exact: true })).toBeVisible();
-  await expect(dialog.getByText("goed", { exact: true })).toBeVisible();
   await expect(dialog.getByText("Toon ruwe WKT", { exact: false })).toHaveCount(0);
   await dialog.getByRole("button", { name: "Kantoor", exact: true }).click();
   await expect(page).toHaveURL(/veld=functie/);
   await expect(page).toHaveURL(new RegExp(encodeURIComponent(kantoorUri).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+});
+
+test("stijl en cultuur / bouwkundige staat zijn doorklikbaar naar hun eigen concept-zoekopdracht", async ({ page }) => {
+  const stijlUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/478ca85b-ecb3-4a38-8b97-ba78deeba3dd";
+  const bouwkundigeStaatUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/ed0abe81-4466-44c3-a8c4-2f1a0e63176d";
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const url = new URL(route.request().url());
+    const veld = url.searchParams.get("veld");
+    if (veld === "stijl") {
+      return route.fulfill({ json: { page: 1, hasMore: false, results: [{
+        ...records[0], choNumber: "cho-stijl", monumentNumber: "999001", name: "Ander pand met dezelfde stijl",
+      }] } });
+    }
+    return route.fulfill({
+      json: {
+        page: 1,
+        hasMore: false,
+        results: [{
+          ...records[0],
+          stijlEnCultuur: "Neo-Renaissance",
+          stijlEnCultuurConceptUri: stijlUri,
+          bouwkundigeStaat: "goed",
+          bouwkundigeStaatConceptUri: bouwkundigeStaatUri,
+        }],
+      },
+    });
+  });
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("architect");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Neo-Renaissance", exact: true }).click();
+  await expect(page).toHaveURL(/veld=stijl/);
+  await expect(page).toHaveURL(new RegExp(encodeURIComponent(stijlUri).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  await expect(page.getByText("Ander pand met dezelfde stijl")).toBeVisible();
 });
 
 test("een grondspoor toont aantal, RN2-bron en bijbehorende vondstlocatie", async ({ page }) => {

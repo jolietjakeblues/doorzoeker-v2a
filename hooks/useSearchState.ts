@@ -11,10 +11,12 @@ import {
   searchByActorConcept,
   searchByArcheologischeWaarderingConcept,
   searchByArcheologischComplexTypeConcept,
+  searchByBouwkundigeStaatConcept,
   searchByGebeurtenisConcept,
   searchByFunctieConcept,
   searchByMonumentAardConcept,
   searchByMateriaalConcept,
+  searchByStijlConcept,
   searchByToestandConcept,
   searchByVondstTypeConcept,
   searchRceMonuments,
@@ -310,6 +312,10 @@ export function useSearchState() {
               ? await searchByToestandConcept(concept.uri, request.signal)
             : veld === "archeologischcomplextype"
               ? await searchByArcheologischComplexTypeConcept(concept.uri, request.signal)
+            : veld === "stijl"
+              ? await searchByStijlConcept(concept.uri, request.signal)
+            : veld === "bouwkundigestaat"
+              ? await searchByBouwkundigeStaatConcept(concept.uri, request.signal)
               : await searchByMonumentAardConcept(
                   concept.uri,
                   request.signal,

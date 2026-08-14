@@ -1,4 +1,4 @@
-import { browseRceObjects, searchByActorConcept, searchByArcheologischeComplexTypeConcept, searchByArcheologischeWaarderingConcept, searchByFunctieConcept, searchByGebeurtenisConcept, searchByMonumentAardConcept, searchByVondstenConcept, searchRceMonuments } from "../../../../lib/server/rce-adapter.ts";
+import { browseRceObjects, searchByActorConcept, searchByArcheologischeComplexTypeConcept, searchByArcheologischeWaarderingConcept, searchByBouwkundigeStaatConcept, searchByFunctieConcept, searchByGebeurtenisConcept, searchByMonumentAardConcept, searchByStijlConcept, searchByVondstenConcept, searchRceMonuments } from "../../../../lib/server/rce-adapter.ts";
 import { OBJECT_KIND } from "../../../../lib/rce.ts";
 import { CONCEPT_URI_PATTERN } from "../concept/route.ts";
 import { capMapSize, pruneExpiredEntries } from "../../../../lib/server/expiring-map.ts";
@@ -6,7 +6,7 @@ import { consumeFixedWindow, type RateLimitEntry } from "../../../../lib/server/
 import { CACHE_POLICY, sharedCacheControl } from "../../../../lib/server/http-cache.ts";
 import { withRceErrorHandling } from "../../../../lib/server/route-error-handling.ts";
 
-type ConceptVeld = "functie" | "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype";
+type ConceptVeld = "functie" | "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype" | "stijl" | "bouwkundigestaat";
 
 function searchByConceptField(veld: ConceptVeld, conceptUri: string, signal?: AbortSignal) {
   if (veld === "functie") return searchByFunctieConcept(conceptUri, signal);
@@ -15,6 +15,8 @@ function searchByConceptField(veld: ConceptVeld, conceptUri: string, signal?: Ab
   if (veld === "actor") return searchByActorConcept(conceptUri, signal);
   if (veld === "vondsttype" || veld === "materiaal" || veld === "toestand") return searchByVondstenConcept(conceptUri, veld, signal);
   if (veld === "archeologischcomplextype") return searchByArcheologischeComplexTypeConcept(conceptUri, signal);
+  if (veld === "stijl") return searchByStijlConcept(conceptUri, signal);
+  if (veld === "bouwkundigestaat") return searchByBouwkundigeStaatConcept(conceptUri, signal);
   return searchByMonumentAardConcept(conceptUri, signal);
 }
 
@@ -96,7 +98,7 @@ export async function GET(request: Request) {
     // (monumentaard).
     const conceptParam = url.searchParams.get("concept");
     const veldParam = url.searchParams.get("veld");
-    const veld: ConceptVeld = veldParam === "functie" || veldParam === "waardering" || veldParam === "gebeurtenis" || veldParam === "actor" || veldParam === "vondsttype" || veldParam === "materiaal" || veldParam === "toestand" || veldParam === "archeologischcomplextype" ? veldParam : "monumentaard";
+    const veld: ConceptVeld = veldParam === "functie" || veldParam === "waardering" || veldParam === "gebeurtenis" || veldParam === "actor" || veldParam === "vondsttype" || veldParam === "materiaal" || veldParam === "toestand" || veldParam === "archeologischcomplextype" || veldParam === "stijl" || veldParam === "bouwkundigestaat" ? veldParam : "monumentaard";
     if (conceptParam && !CONCEPT_URI_PATTERN.test(conceptParam)) {
       return Response.json({ error: "Ongeldige concept-URI." }, { status: 400 });
     }

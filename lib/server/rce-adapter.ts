@@ -20,7 +20,9 @@ import {
   buildGrondsporenDetailsQuery,
   buildGrondsporenDiscoveryQueries,
   buildImageQuery,
+  buildBouwkundigeStaatConceptQuery,
   buildMonumentAardConceptQuery,
+  buildStijlConceptQuery,
   buildMspIndicatieQuery,
   buildOnderzoeksgebiedAggregatenQuery,
   buildOnderzoeksgebiedComplexenQuery,
@@ -236,6 +238,14 @@ async function searchByConceptMatchQuery(matchQuery: string, signal?: AbortSigna
 // lijst bekende namespaces vóór dit aangeroepen wordt.
 export async function searchByMonumentAardConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
   return searchByConceptMatchQuery(buildMonumentAardConceptQuery(conceptUri), signal);
+}
+
+export async function searchByStijlConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
+  return searchByConceptMatchQuery(buildStijlConceptQuery(conceptUri), signal);
+}
+
+export async function searchByBouwkundigeStaatConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
+  return searchByConceptMatchQuery(buildBouwkundigeStaatConceptQuery(conceptUri), signal);
 }
 
 export async function searchByArcheologischeWaarderingConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {

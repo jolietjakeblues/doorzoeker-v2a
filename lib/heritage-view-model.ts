@@ -56,7 +56,9 @@ export type Item = {
   matchScore?: number;
   legalStatus?: string;
   stijlEnCultuur?: string;
+  stijlEnCultuurConcept?: { uri: string; label: string };
   bouwkundigeStaat?: string;
+  bouwkundigeStaatConcept?: { uri: string; label: string };
   originalFunctionNames?: string[];
   currentFunctionNames?: string[];
   functionConcepts?: { uri: string; label: string }[];
@@ -101,7 +103,9 @@ export type ConceptField =
   | "vondsttype"
   | "materiaal"
   | "toestand"
-  | "archeologischcomplextype";
+  | "archeologischcomplextype"
+  | "stijl"
+  | "bouwkundigestaat";
 export type LinkedConcept = {
   uri: string;
   label: string;
@@ -423,7 +427,15 @@ export function toItem(record: RceMonument): Item {
     matchScore: record.matchScore,
     legalStatus: record.legalStatus,
     stijlEnCultuur: record.stijlEnCultuur,
+    stijlEnCultuurConcept:
+      record.stijlEnCultuur && record.stijlEnCultuurConceptUri
+        ? { uri: record.stijlEnCultuurConceptUri, label: record.stijlEnCultuur }
+        : undefined,
     bouwkundigeStaat: record.bouwkundigeStaat,
+    bouwkundigeStaatConcept:
+      record.bouwkundigeStaat && record.bouwkundigeStaatConceptUri
+        ? { uri: record.bouwkundigeStaatConceptUri, label: record.bouwkundigeStaat }
+        : undefined,
     originalFunctionNames,
     currentFunctionNames: record.currentFunctionNames,
     functionConcepts: record.functionConcepts,
