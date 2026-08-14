@@ -354,6 +354,20 @@ er gebouwd wordt.
   passende. Een gebruiker verwacht dat "volgende 25" 25 (of minder, indien
   minder beschikbaar) resultaten toevoegt die aan het actieve filter
   voldoen.
+  **Kleinste eerste stap (14 augustus 2026, #33, met eigenaar afgestemd):**
+  drie opties werden voorgelegd - (a) overal waar een telling nu als
+  definitief oogt duidelijk maken dat het (nog) niet de volledige matchset
+  is, zonder nieuwe SPARQL-belasting, (b) een echte COUNT-query per facet,
+  of (c) alleen het totaalaantal. Eigenaar koos (a). Geïmplementeerd:
+  `ResultsToolbar.tsx` voegt "— nog niet alles geladen" toe aan de
+  resultaatkop zodra `hasMore` waar is; `SearchFilters.tsx` toont bij elke
+  telling (Soort object, Monumentaard, Provincie, Gemeente, Functie,
+  Matchbron, Juridische status, Kenmerken) een "+"-achtervoegsel zolang er
+  nog meer te laden is, met een korte uitleg daarvan in de bestaande
+  `filter-scope`-alinea bovenaan het paneel. Geen nieuwe queries, geen
+  wijziging aan wélke resultaten geladen worden - puur eerlijkheid over wat
+  de getoonde tellingen wel en niet dekken. Optie (b)/(c) (echte globale
+  tellingen) blijven een mogelijke volgende stap, bewust niet nu opgepakt.
 - **Getalzoekopdrachten matchen momenteel alleen `ceo:rijksmonumentnummer`
   voor Rijksmonumenten** (`searchByNumber` in
   `lib/server/rce-adapter.ts`), terwijl elk ander objectsoort (complex,

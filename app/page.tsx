@@ -179,6 +179,7 @@ export default function Home() {
           open={filters}
           baseResults={baseResults}
           objectTypeResults={objectTypeResults}
+          hasMore={hasMore}
           objectType={objectType}
           monumentAard={monumentAard}
           province={province}
@@ -215,6 +216,7 @@ export default function Home() {
             actorSearch={activeConceptVeld === "actor"}
             actorRoles={actorRoles}
             resultCount={results.length}
+            hasMore={hasMore}
             view={view}
             onOpenFilters={() => setFilters(true)}
             onViewChange={setView}
