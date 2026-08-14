@@ -169,6 +169,9 @@ spread; geregeld met een gerichte test op een ring van 200.000 punten
 
 ### P2 — typeveiligheidsgaten die bij de volgende wijziging toeslaan
 
+**Status (bijgewerkt 14 augustus 2026): TD-19 t/m TD-21 zijn opgelost op
+branch `fix/p2-typeveiligheid` (#42).**
+
 **TD-19: `monumentNature` is een stringly-typed veld met twee rollen, zonder gedeelde union**
 
 Een Rijksmonument gebruikt dit veld voor het echte SKOS-`monumentaard`-label;
@@ -193,6 +196,9 @@ implementaties van hetzelfde, één ervan dood.
 
 ### P3 — echte, generieke duplicatie (geen domeinverschil verhullen)
 
+**Status (bijgewerkt 14 augustus 2026): TD-22 t/m TD-26 zijn opgelost op
+branch `fix/p3-duplicatie-opschonen` (#44).**
+
 **TD-22: matchscore-formule letterlijk 7x gekopieerd** in de
 discovery-parsers van `lib/rce/monuments.ts` en `lib/rce/archaeology.ts`.
 
@@ -209,46 +215,97 @@ zie ook TD-15 hierboven.
 
 ### P4 — toegankelijkheid
 
+**Status (herbevestigd 14 augustus 2026, code opnieuw gelezen): nog open.**
+
 **TD-27: kaartmarkers en clusters zijn niet met het toetsenbord te bedienen.**
-`app/HeritageMap.tsx`: `role="button"`/`aria-label` aanwezig, maar geen
-`tabIndex`/`keydown`-handler.
+`app/HeritageMap.tsx`: elke marker/clusterbadge wordt via Leaflet
+(`L.circleMarker`/`L.marker` + `L.divIcon`) getekend met alleen een
+`click`-handler. De clusterbadge heeft `role="button"`/`aria-label`
+(regel 247-251), maar geen enkel element in dit bestand krijgt `tabIndex`
+of een `keydown`-handler - met het toetsenbord is geen enkele marker of
+cluster te bereiken of te activeren.
+
+**TD-33 (nieuw, 14 augustus 2026): archeologische complexen met hetzelfde
+type zijn in "Wat hier is aangetroffen" niet van elkaar te onderscheiden.**
+`app/HeritageRelationSections.tsx:150`:
+`{complex.type?.label || \`Archeologisch complex ${complex.choNumber}\`}`
+- de CHO-nummer-fallback geldt alleen wanneer een complex hélemaal geen
+typelabel heeft. Hebben meerdere complexen bij dezelfde vondstlocatie
+toevallig hetzelfde type (bv. drie keer "urnenveld"), dan tonen ze alle
+drie exact dezelfde tekst in de lijst, met alleen een onzichtbaar
+verschillende click-target (`complex.choNumber`). Geen datafout - elke
+knop zoekt wel degelijk het juiste, eigen complex op - maar een gebruiker
+kan de items visueel niet uit elkaar houden. Live gereproduceerd:
+zoekopdracht "39087" (Vorstengrafdonk, Oss) toont drie identieke
+"urnenveld"-regels.
+**Risico:** laag/middel - geen datacorruptie, wel een gebruiker die niet
+kan zien welk van de drie identieke items hij al bekeken heeft.
+**Voorstel:** CHO-nummer (of een ander onderscheidend kenmerk) altijd
+meetonen naast het typelabel wanneer meerdere items in dezelfde lijst
+hetzelfde typelabel delen, niet alleen als fallback bij een ontbrekend
+label.
 
 ### P5 — documentatie en proces
+
+**Status (herbevestigd 14 augustus 2026): TD-28 opgelost, TD-29 t/m TD-32
+nog open - elk hieronder opnieuw tegen de actuele code/config/branches
+gecontroleerd, niet alleen herhaald uit de vorige versie van dit document.**
 
 **TD-28: verticale slice 008 — documenten spraken elkaar tegen, oorzaak gevonden**
 
 `docs/analyse-2026-08-11.md` claimde dat "Vergelijkbare rijksmonumenten"
 gebouwd en live geverifieerd was; `docs/vertical-slices/008-...md` en de
 status-index spraken dit tegen. Oorzaak: het werk stond op dat moment op
-een niet-gemergde branch. **Inmiddels opgelost:** de functie is intussen
-wél op `main` gemerged (zichtbaar in `hooks/useSelectedDetailEnrichment.ts`
-en `HeritageRelationSections.tsx` als `vergelijkbareRijksmonumenten`); de
-documentatiestatus moet nog met de huidige code in overeenstemming worden
-gebracht.
+een niet-gemergde branch. **Opgelost:** de functie staat inmiddels op
+`main` (`hooks/useSelectedDetailEnrichment.ts`,
+`HeritageRelationSections.tsx` als `vergelijkbareRijksmonumenten`); de
+documentatiestatus in `docs/vertical-slices/008-...md` is met de huidige
+code in overeenstemming gebracht.
 
-**TD-29: ADR-0002's routelijst mist `/api/rce/verras-me`** — niet
-opnieuw geverifieerd na de repo-correctie, mogelijk inmiddels aangevuld.
+**TD-29: ADR-0002's routelijst mist `/api/rce/verras-me` — nog steeds waar.**
+`docs/adr/0002-hybride-gegevensarchitectuur.md` somt zes `/api/rce/*`-routes
+op; `app/api/rce/verras-me/route.ts` bestaat en wordt actief gebruikt
+(zie `SearchHero`/`StartContent`/`useSearchState`), maar staat niet in die
+lijst.
 
-**TD-30: Playwright-interactietests kunnen niets tegenhouden** wanneer
-`continue-on-error: true` staat op de interaction-job en `deploy-workers.yml`
-geen `test:e2e` draait vóór deployen.
+**TD-30: Playwright-interactietests kunnen niets tegenhouden — nog steeds waar.**
+`.github/workflows/ci.yml` regel 32: `continue-on-error: true` op de
+`interaction`-job. `.github/workflows/deploy-workers.yml` draait
+`typecheck`/`lint`/`npm test` vóór het deployen, maar nergens
+`npm run test:e2e` - een e2e-regressie kan een deploy dus nooit
+tegenhouden, ook niet als de e2e-run zelf faalt.
 
-**TD-31: alle unit-/contracttests hangen achter een volledige productiebuild**
-via `npm run build && node --test ...` in `package.json`.
+**TD-31: alle unit-/contracttests hangen achter een volledige productiebuild — nog steeds waar.**
+`package.json`: `"test": "npm run build && node --test ..."`.
 
-**TD-32: meerdere lokale/remote branches met mogelijk niet-gemergd werk** —
-zie ook de repo-correctie hierboven; branches verdienen een expliciete
-triage in plaats van stil te blijven staan.
+**TD-32: veel gemergede branches staan nog open, zowel lokaal als op
+GitHub — bevestigd met de PR-historie (`gh pr list --state merged`).**
+Van de 33 remote branches op dit moment zijn er 31 al gemerged (bevestigd
+per PR-nummer); alleen `main` en de twee openstaande Dependabot-PR's
+(`dependabot/npm_and_yarn/eslint-10.8.0` #10,
+`dependabot/npm_and_yarn/typescript-7.0.2` #6 - bewust aangehouden wegens
+majorversie-beleid, zie `docs/beheerbesluiten.md`) horen er nog te staan.
+Voorbeelden van al gemergede branches die nog bestaan:
+`fix/p0-race-conditions-en-datalek`, `fix/p1-zichtbaarheid-van-falen`,
+`fix/p2-typeveiligheid`, `fix/p3-duplicatie-opschonen`,
+`feat/groenaanleg-foto`, `fix/groenaanleg-foto-depiction-pad`,
+`docs/backlog-nummerzoeken-en-ux`, `fix/cho-nummer-en-kenmerken-filter`,
+plus negen `codex/splits-*`-branches uit een eerdere refactorronde.
+**Voorstel:** alle gemergede branches verwijderen (lokaal en op GitHub),
+op zijn vroegst nadat de eigenaar dit expliciet bevestigt - branches
+verwijderen is niet zomaar ongedaan te maken.
 
 ## Voorgesteld verbetertraject
 
-1. **Correctheid (TD-12 t/m TD-16):** opgelost, zie boven.
-2. **Zichtbaarheid van falen (TD-17, TD-18):** in uitvoering.
-3. **Typeveiligheid (TD-19 t/m TD-21):** nog te doen.
-4. **Opschonen duplicatie (TD-22 t/m TD-26):** nog te doen.
-5. **Toegankelijkheid (TD-27):** nog te doen.
-6. **Documentatie en proces (TD-28 t/m TD-32):** deels achterhaald door de
-   repo-correctie; TD-28's documentatiestatus behoeft een update.
+**Status (bijgewerkt 14 augustus 2026):**
+
+1. **Correctheid (TD-12 t/m TD-16):** opgelost (#40).
+2. **Zichtbaarheid van falen (TD-17, TD-18):** opgelost (#40, #41).
+3. **Typeveiligheid (TD-19 t/m TD-21):** opgelost (#42).
+4. **Opschonen duplicatie (TD-22 t/m TD-26):** opgelost (#44).
+5. **Toegankelijkheid (TD-27, TD-33):** nog open.
+6. **Documentatie en proces (TD-28 t/m TD-32):** TD-28 opgelost; TD-29
+   t/m TD-32 nog open.
 
 Elke fase eindigt met typecheck, lint, unit-/contracttests en Playwright
 groen.
