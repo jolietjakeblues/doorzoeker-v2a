@@ -451,6 +451,22 @@ h2 {
   background: #fff;
   color: var(--rce-blue);
 }
+.export {
+  display: flex;
+  gap: 8px;
+}
+.export button {
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #9c9c9c;
+  background: #fff;
+  color: var(--rce-blue);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.export button:hover {
+  border-color: var(--rce-blue);
+}
 
 .results {
   min-width: 0;

@@ -9,6 +9,7 @@ import { SearchFilters } from "./SearchFilters";
 import { SearchResults } from "./SearchResults";
 import { StartContent } from "./StartContent";
 import { statusLabel } from "@/lib/heritage-view-model";
+import { exportFileName, itemsToCsv, itemsToGeoJson } from "@/lib/export";
 import { useTermSuggestions } from "@/hooks/useTermSuggestions";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { useSelectedDetailEnrichment } from "@/hooks/useSelectedDetailEnrichment";
@@ -155,6 +156,23 @@ export default function Home() {
     () => results.filter((item) => item.lat && item.lng),
     [results],
   );
+  // Puur client-side: de gefilterde resultatenlijst staat al in `results`,
+  // geen serveraanroep nodig. Zie docs/vertical-slices/012-resultaten-exporteren.md.
+  function exportResults(format: "csv" | "geojson") {
+    const content =
+      format === "csv"
+        ? itemsToCsv(results)
+        : JSON.stringify(itemsToGeoJson(results));
+    const blob = new Blob([content], {
+      type: format === "csv" ? "text/csv;charset=utf-8" : "application/geo+json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = exportFileName(format);
+    link.click();
+    URL.revokeObjectURL(url);
+  }
   return (
     <main>
       <SiteHeader onReset={reset} />
@@ -223,6 +241,7 @@ export default function Home() {
             view={view}
             onOpenFilters={() => setFilters(true)}
             onViewChange={setView}
+            onExport={exportResults}
           />
 
           <SearchResults

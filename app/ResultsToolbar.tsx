@@ -7,6 +7,7 @@ type ResultsToolbarProps = {
   view: "list" | "map";
   onOpenFilters: () => void;
   onViewChange: (view: "list" | "map") => void;
+  onExport: (format: "csv" | "geojson") => void;
 };
 
 export function ResultsToolbar({
@@ -18,6 +19,7 @@ export function ResultsToolbar({
   view,
   onOpenFilters,
   onViewChange,
+  onExport,
 }: ResultsToolbarProps) {
   return (
     <div className="toolbar">
@@ -50,6 +52,16 @@ export function ResultsToolbar({
         <button className="mobile-filter" type="button" onClick={onOpenFilters}>
           ☰ Filters
         </button>
+        {resultCount > 0 && (
+          <span className="export" aria-label="Exporteer resultaten">
+            <button type="button" onClick={() => onExport("csv")}>
+              Exporteer als CSV
+            </button>
+            <button type="button" onClick={() => onExport("geojson")}>
+              Exporteer als GeoJSON
+            </button>
+          </span>
+        )}
         <span className="switch" aria-label="Weergave">
           <button
             type="button"
