@@ -3,6 +3,7 @@ type ResultsToolbarProps = {
   actorSearch: boolean;
   actorRoles: string[];
   resultCount: number;
+  hasMore: boolean;
   view: "list" | "map";
   onOpenFilters: () => void;
   onViewChange: (view: "list" | "map") => void;
@@ -13,6 +14,7 @@ export function ResultsToolbar({
   actorSearch,
   actorRoles,
   resultCount,
+  hasMore,
   view,
   onOpenFilters,
   onViewChange,
@@ -28,12 +30,18 @@ export function ResultsToolbar({
               <small>
                 {" "}- {resultCount} erfgoedobject{resultCount === 1 ? "" : "en"}
                 {actorRoles.length ? ` (${actorRoles.join(", ")})` : ""}
+                {hasMore ? " — nog niet alles geladen" : ""}
               </small>
             </>
           ) : (
             <>
               {resultCount} {resultCount === 1 ? "resultaat" : "resultaten"}
               {active ? ` voor “${active}”` : ""}
+              {hasMore ? (
+                <small> — nog niet alles geladen</small>
+              ) : (
+                ""
+              )}
             </>
           )}
         </h2>

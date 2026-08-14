@@ -129,6 +129,37 @@ test("zoeken toont verschillende erfgoedtypen", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("resultaatteller en filtertellingen maken duidelijk dat er nog meer te laden is (#33)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: { results: [{ ...records[0] }], page: 1, hasMore: true },
+  }));
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Woonhuis");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+
+  const heading = page.getByRole("heading", { name: "1 resultaat voor “Woonhuis”" });
+  await expect(heading).toBeVisible();
+  await expect(heading).toContainText("nog niet alles geladen");
+
+  const filters = page.getByRole("complementary", { name: "Zoekfilters" });
+  await expect(filters.locator("label", { hasText: "Alle soorten" })).toContainText("1+");
+  await expect(filters).toContainText("een \"+\" achter een aantal betekent dat dit een ondergrens is");
+});
+
+test("resultaatteller en filtertellingen tonen geen '+' zodra alles geladen is (#33)", async ({ page }) => {
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+
+  const heading = page.getByRole("heading", { name: "3 resultaten voor “Goirle”" });
+  await expect(heading).toBeVisible();
+  await expect(heading).not.toContainText("nog niet alles geladen");
+
+  const filters = page.getByRole("complementary", { name: "Zoekfilters" });
+  const alleSoorten = filters.locator("label", { hasText: "Alle soorten" });
+  await expect(alleSoorten).toContainText("3");
+  await expect(alleSoorten).not.toContainText("3+");
+});
+
 test("de startpagina biedt een brede reeks directe zoekvoorbeelden", async ({ page }) => {
   await page.goto("/");
 

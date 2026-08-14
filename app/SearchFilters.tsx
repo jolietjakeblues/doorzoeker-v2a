@@ -1,9 +1,18 @@
 import { statusLabel, type Item } from "@/lib/heritage-view-model";
 
+// Zolang er nog meer te laden is (hasMore), is elke telling hieronder een
+// ondergrens - er kunnen bij de nog niet geladen resultaten extra matches
+// voor deze optie zitten. De "+" maakt dat verschil zichtbaar zonder een
+// aparte SPARQL COUNT-query per facet te introduceren.
+function formatCount(count: number, hasMore: boolean) {
+  return hasMore ? `${count}+` : String(count);
+}
+
 type SearchFiltersProps = {
   open: boolean;
   baseResults: Item[];
   objectTypeResults: Item[];
+  hasMore: boolean;
   objectType: string;
   monumentAard: string;
   province: string;
@@ -36,7 +45,7 @@ type SearchFiltersProps = {
 };
 
 export function SearchFilters({
-  open, baseResults, objectTypeResults, objectType, monumentAard, province,
+  open, baseResults, objectTypeResults, hasMore, objectType, monumentAard, province,
   municipality, functionFilter, matchSourceFilter, excludedStatuses,
   onlyGroenaanleg, onlyMsp, includesRijksmonumenten, contextProvinces,
   contextMunicipalities, contextFunctions, contextMatchSources, contextStatuses,
@@ -62,6 +71,9 @@ export function SearchFilters({
       </div>
       <p className="filter-scope">
         De aantallen hieronder gaan over de resultaten die nu zijn geladen.
+        {hasMore
+          ? " Er zijn nog meer resultaten te laden; een \"+\" achter een aantal betekent dat dit een ondergrens is - er kunnen bij het nog niet geladene extra treffers voor die optie zitten."
+          : ""}
       </p>
       <fieldset>
         <legend>Soort object</legend>
@@ -110,10 +122,13 @@ export function SearchFilters({
             />
             <span>{option === "Alle" ? "Alle soorten" : option}</span>
             <em>
-              {option === "Alle"
-                ? baseResults.length
-                : baseResults.filter((item) => item.objectType === option)
-                    .length}
+              {formatCount(
+                option === "Alle"
+                  ? baseResults.length
+                  : baseResults.filter((item) => item.objectType === option)
+                      .length,
+                hasMore,
+              )}
             </em>
           </label>
         ))}
@@ -141,13 +156,16 @@ export function SearchFilters({
                   {option === "Alle" ? "Alle monumentaarden" : option}
                 </span>
                 <em>
-                  {option === "Alle"
-                    ? baseResults.filter(
-                        (item) => item.objectType === "Rijksmonument",
-                      ).length
-                    : baseResults.filter(
-                        (item) => item.monumentAard === option,
-                      ).length}
+                  {formatCount(
+                    option === "Alle"
+                      ? baseResults.filter(
+                          (item) => item.objectType === "Rijksmonument",
+                        ).length
+                      : baseResults.filter(
+                          (item) => item.monumentAard === option,
+                        ).length,
+                    hasMore,
+                  )}
                 </em>
               </label>
             ))}
@@ -167,16 +185,17 @@ export function SearchFilters({
               }}
             >
               <option value="Alle">
-                Alle provincies ({objectTypeResults.length})
+                Alle provincies ({formatCount(objectTypeResults.length, hasMore)})
               </option>
               {contextProvinces.map((option) => (
                 <option key={option} value={option}>
                   {option} (
-                  {
+                  {formatCount(
                     objectTypeResults.filter(
                       (item) => item.province === option,
-                    ).length
-                  }
+                    ).length,
+                    hasMore,
+                  )}
                   )
                 </option>
               ))}
@@ -196,24 +215,26 @@ export function SearchFilters({
             >
               <option value="Alle">
                 Alle plaatsen (
-                {
+                {formatCount(
                   objectTypeResults.filter(
                     (item) =>
                       province === "Alle" || item.province === province,
-                  ).length
-                }
+                  ).length,
+                  hasMore,
+                )}
                 )
               </option>
               {contextMunicipalities.map((option) => (
                 <option key={option} value={option}>
                   {option} (
-                  {
+                  {formatCount(
                     objectTypeResults.filter(
                       (item) =>
                         item.municipality === option &&
                         (province === "Alle" || item.province === province),
-                    ).length
-                  }
+                    ).length,
+                    hasMore,
+                  )}
                   )
                 </option>
               ))}
@@ -232,20 +253,21 @@ export function SearchFilters({
               onChange={(event) => onFunctionChange(event.target.value)}
             >
               <option value="Alle">
-                Alle functies ({objectTypeResults.length})
+                Alle functies ({formatCount(objectTypeResults.length, hasMore)})
               </option>
               {contextFunctions.map((option) => (
                 <option key={option} value={option}>
                   {option} (
-                  {
+                  {formatCount(
                     objectTypeResults.filter((item) =>
                       [
                         item.kind,
                         ...(item.originalFunctionNames ?? []),
                         ...(item.currentFunctionNames ?? []),
                       ].includes(option),
-                    ).length
-                  }
+                    ).length,
+                    hasMore,
+                  )}
                   )
                 </option>
               ))}
@@ -275,11 +297,12 @@ export function SearchFilters({
               {contextMatchSources.map((option) => (
                 <option key={option} value={option}>
                   {option} (
-                  {
+                  {formatCount(
                     objectTypeResults.filter(
                       (item) => item.matchSource === option,
-                    ).length
-                  }
+                    ).length,
+                    hasMore,
+                  )}
                   )
                 </option>
               ))}
@@ -310,11 +333,12 @@ export function SearchFilters({
               />
               <span>{label}</span>
               <em>
-                {
+                {formatCount(
                   baseResults.filter(
                     (item) => statusLabel(item.objectType) === label,
-                  ).length
-                }
+                  ).length,
+                  hasMore,
+                )}
               </em>
             </label>
           ))}
@@ -345,7 +369,7 @@ export function SearchFilters({
             />
             <span>Historische aanleg (groenaanleg)</span>
             <em>
-              {groenaanlegCount}
+              {formatCount(groenaanlegCount, hasMore)}
             </em>
           </label>
           <label>
@@ -355,7 +379,7 @@ export function SearchFilters({
               onChange={(event) => onOnlyMspChange(event.target.checked)}
             />
             <span>Monumenten Selectie Project</span>
-            <em>{mspCount}</em>
+            <em>{formatCount(mspCount, hasMore)}</em>
           </label>
         </fieldset>
       )}
