@@ -586,6 +586,44 @@ test("stijl en cultuur / bouwkundige staat zijn doorklikbaar naar hun eigen conc
   await expect(page.getByText("Ander pand met dezelfde stijl")).toBeVisible();
 });
 
+test("'Alle gekoppelde begrippen' toont elk begrip gegroepeerd en is zelf ook doorklikbaar", async ({ page }) => {
+  const functieUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/functie-woonhuis";
+  const stijlUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/stijl-neorenaissance";
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("veld") === "stijl") {
+      return route.fulfill({ json: { page: 1, hasMore: false, results: [{
+        ...records[0], choNumber: "cho-stijl", monumentNumber: "999002", name: "Ander pand met dezelfde stijl",
+      }] } });
+    }
+    return route.fulfill({
+      json: {
+        page: 1,
+        hasMore: false,
+        results: [{
+          ...records[0],
+          functionConcepts: [{ uri: functieUri, label: "Woonhuis" }],
+          stijlEnCultuur: "Neo-Renaissance",
+          stijlEnCultuurConceptUri: stijlUri,
+        }],
+      },
+    });
+  });
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("architect");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+
+  const overzicht = page.locator(".map-object-list", { hasText: "Alle gekoppelde begrippen" });
+  await expect(overzicht.getByRole("button", { name: "Functie: Woonhuis", exact: true })).toBeVisible();
+  await expect(overzicht.getByRole("button", { name: "Stijl en cultuur: Neo-Renaissance", exact: true })).toBeVisible();
+
+  await overzicht.getByRole("button", { name: "Stijl en cultuur: Neo-Renaissance", exact: true }).click();
+  await expect(page).toHaveURL(/veld=stijl/);
+  await expect(page).toHaveURL(new RegExp(encodeURIComponent(stijlUri).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  await expect(page.getByText("Ander pand met dezelfde stijl")).toBeVisible();
+});
+
 test("een grondspoor toont aantal, RN2-bron en bijbehorende vondstlocatie", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", (route) => route.fulfill({ json: { results: [{

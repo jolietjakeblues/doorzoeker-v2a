@@ -147,6 +147,25 @@ export function linkedConcepts(item: Item): LinkedConcept[] {
       field: "archeologischcomplextype",
       group: "Archeologisch complextype",
     });
+  if (item.stijlEnCultuurConcept)
+    concepts.push({
+      ...item.stijlEnCultuurConcept,
+      field: "stijl",
+      group: "Stijl en cultuur",
+    });
+  if (item.bouwkundigeStaatConcept)
+    concepts.push({
+      ...item.bouwkundigeStaatConcept,
+      field: "bouwkundigestaat",
+      group: "Bouwkundige staat",
+    });
+  if (item.archaeologicalAcquisition && item.archaeologicalAcquisitionConceptUri)
+    concepts.push({
+      uri: item.archaeologicalAcquisitionConceptUri,
+      label: item.archaeologicalAcquisition,
+      field: "verwerving",
+      group: "Verwervingswijze",
+    });
   return concepts;
 }
 
