@@ -615,10 +615,10 @@ test("'Alle gekoppelde begrippen' toont elk begrip gegroepeerd en is zelf ook do
   await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
 
   const overzicht = page.locator(".map-object-list", { hasText: "Alle gekoppelde begrippen" });
-  await expect(overzicht.getByText("— Functie")).toBeVisible();
-  await expect(overzicht.getByText("— Stijl en cultuur")).toBeVisible();
+  await expect(overzicht.getByRole("button", { name: "Functie: Woonhuis", exact: true })).toBeVisible();
+  await expect(overzicht.getByRole("button", { name: "Stijl en cultuur: Neo-Renaissance", exact: true })).toBeVisible();
 
-  await overzicht.getByRole("button", { name: "Neo-Renaissance", exact: true }).click();
+  await overzicht.getByRole("button", { name: "Stijl en cultuur: Neo-Renaissance", exact: true }).click();
   await expect(page).toHaveURL(/veld=stijl/);
   await expect(page).toHaveURL(new RegExp(encodeURIComponent(stijlUri).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   await expect(page.getByText("Ander pand met dezelfde stijl")).toBeVisible();

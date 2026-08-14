@@ -473,9 +473,8 @@ export function HeritageDetailDialog({
                       }
                       title={`Zoek alle erfgoedobjecten met ${concept.group.toLowerCase()}: ${concept.label}`}
                     >
-                      {concept.label}
+                      {concept.group}: {concept.label}
                     </button>
-                    <small> — {concept.group}</small>
                   </li>
                 ))}
               </ul>
