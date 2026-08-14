@@ -31,6 +31,10 @@ jobs:
         run: npm run lint
       - name: Test
         run: npm test
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Interaction tests
+        run: npm run test:e2e
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
         with:

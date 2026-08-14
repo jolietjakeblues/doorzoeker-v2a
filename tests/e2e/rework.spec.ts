@@ -418,6 +418,86 @@ test("een vondstlocatie toont vondsten met hun RN2-bron", async ({ page }) => {
   await expect(page.getByText(/aardewerk \(Archeologisch Informatie Systeem\).*fragment \(Cultuurhistorische Object Informatie\)/)).toBeVisible();
 });
 
+test("archeologische complexen met hetzelfde type blijven van elkaar te onderscheiden (TD-33)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({ json: { results: [{
+    choNumber: "39087", monumentNumber: "39087", registrationDate: "1994-05-17", street: "", houseNumber: "", postalCode: "",
+    sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/vondstlocatie/39087", name: "Vorstengrafdonk", place: "Oss", municipality: "Oss",
+    description: "Archeologische vondstlocatie.", monumentNature: "vondstlocatie", archaeologicalAcquisition: "archeologisch: opgraving",
+    matchSource: "Archis-waarnemingsnummer", matchedText: "39087", matchScore: 10,
+  }], page: 1, hasMore: false } }));
+  await page.unroute("**/api/rce/vondstlocatie-inhoud**");
+  await page.route("**/api/rce/vondstlocatie-inhoud**", (route) => route.fulfill({ json: {
+    complexen: [
+      { uri: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischcomplex/1", choNumber: "111",
+        type: { label: "urnenveld", schemes: [{ uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/ais", label: "Archeologisch Informatie Systeem" }] } },
+      { uri: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischcomplex/2", choNumber: "222",
+        type: { label: "urnenveld", schemes: [{ uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/ais", label: "Archeologisch Informatie Systeem" }] } },
+    ],
+    grondsporen: [], complexenTotaal: 2, grondsporenTotaal: 0, vondstenTotaal: 0, vondsten: [],
+  } }));
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("39087");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Vorstengrafdonk" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("(CHO 111)", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("(CHO 222)", { exact: true })).toBeVisible();
+});
+
+test("'Onderdeel van complex' is doorklikbaar binnen Doorzoeker, niet alleen platte tekst", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: {
+      page: 1,
+      hasMore: false,
+      results: [{
+        ...records[0],
+        complexes: [{ complexnummer: "519470", complexnaam: "Buitenplaats De Ruiten", role: "onderdeel" }],
+      }],
+    },
+  }));
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("architect");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Buitenplaats De Ruiten" }).click();
+  await expect(page).toHaveURL(/q=519470/);
+});
+
+test("stijl & cultuur, bouwkundige staat, type en overige functies worden getoond", async ({ page }) => {
+  const kantoorUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/kantoor";
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: {
+      page: 1,
+      hasMore: false,
+      results: [{
+        ...records[0],
+        wkt: "Point (5.07 51.52)",
+        originalFunctionNames: ["Woonhuis", "Kantoor"],
+        functionConcepts: [
+          { uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/woonhuis", label: "Woonhuis" },
+          { uri: kantoorUri, label: "Kantoor" },
+        ],
+        typeNames: ["vrijstaand huis"],
+        stijlEnCultuur: "Neo-Renaissance",
+        bouwkundigeStaat: "goed",
+      }],
+    },
+  }));
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("architect");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("vrijstaand huis", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Neo-Renaissance", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("goed", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Toon ruwe WKT", { exact: false })).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Kantoor", exact: true }).click();
+  await expect(page).toHaveURL(/veld=functie/);
+  await expect(page).toHaveURL(new RegExp(encodeURIComponent(kantoorUri).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+});
+
 test("een grondspoor toont aantal, RN2-bron en bijbehorende vondstlocatie", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", (route) => route.fulfill({ json: { results: [{

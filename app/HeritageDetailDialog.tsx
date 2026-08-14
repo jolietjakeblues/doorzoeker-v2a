@@ -152,17 +152,6 @@ export function HeritageDetailDialog({
               }
               onObjectSearch={(number) => void onSearch(number)}
             />
-            {selected.wkt && (
-              <div>
-                <dt>Geometrie</dt>
-                <dd>
-                  <details>
-                    <summary>Toon ruwe WKT (WGS84)</summary>
-                    <code>{selected.wkt}</code>
-                  </details>
-                </dd>
-              </div>
-            )}
             {selected.parcels?.length ? (
               <div>
                 <dt>Kadastrale percelen</dt>
@@ -229,10 +218,20 @@ export function HeritageDetailDialog({
                 <dd>
                   {selected.complexes.map((complex, index) => (
                     <span key={complex.complexnummer ?? index}>
-                      {complex.complexnaam ||
-                        (complex.complexnummer
-                          ? `Complex ${complex.complexnummer}`
-                          : "Complex")}
+                      {complex.complexnummer ? (
+                        <button
+                          type="button"
+                          className="concept-link"
+                          onClick={() =>
+                            void onSearch(complex.complexnummer!)
+                          }
+                        >
+                          {complex.complexnaam ||
+                            `Complex ${complex.complexnummer}`}
+                        </button>
+                      ) : (
+                        complex.complexnaam || "Complex"
+                      )}
                       {complex.complexnummer && complex.complexnaam
                         ? ` (${complex.complexnummer})`
                         : ""}
