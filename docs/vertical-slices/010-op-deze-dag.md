@@ -81,8 +81,11 @@ plaats van een tekstlijst, doorklikbaar naar het volledige record.
    vragen") uit uitsluitend gebouwde kandidaten met foto. Zo ziet elke
    bezoeker op dezelfde dag hetzelfde monument
    (belangrijk voor caching), niet iets anders per request.
-3. UI: één kaart/tegel in het bestaande `start-panel` (de sectie die nu
-   al "ZO WERKT HET" toont wanneer er nog geen zoekopdracht is), met de
+3. UI: één kaart/tegel in het bestaande `start-panel` (de sectie die op
+   dat moment nog "ZO WERKT HET" toonde wanneer er nog geen zoekopdracht
+   was - dat paneel is op 14 augustus 2026 verwijderd als dubbele
+   onboarding, los van de eigen `op-deze-dag`-sectie waar deze tegel
+   staat), met de
    titel "Op deze dag ingeschreven", de foto als achtergrond (zelfde
    tegel-stijl als de resultatenkaarten met foto), naam, jaartal en een
    doorklik (`executeSearch(monumentNumber)`, zelfde patroon als de
