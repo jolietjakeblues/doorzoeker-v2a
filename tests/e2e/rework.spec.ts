@@ -802,6 +802,29 @@ test("een oude verbindingsfout verdwijnt zodra een nieuwe zoekterm wordt ingevoe
   ).toHaveCount(0);
 });
 
+test("'Probeer opnieuw' herhaalt de laatst mislukte zoekopdracht (P1)", async ({ page }) => {
+  // searchRceMonuments vuurt voor een tekstzoekopdracht meerdere parallelle
+  // deelverzoeken af (core/heritage/archaeology-a/archaeology-b) - een
+  // simpele call-counter is dus onbetrouwbaar om "vóór/na retry" te
+  // onderscheiden. Een expliciete vlag, omgezet ná de eerste mislukking en
+  // vóór de klik op "Probeer opnieuw", is dat wel.
+  let shouldFail = true;
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    if (shouldFail) return route.fulfill({ status: 502, json: { error: "Tijdelijk niet bereikbaar" } });
+    return route.fulfill({ json: { page: 1, hasMore: false, results: [{ ...records[0] }] } });
+  });
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("architect");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  const errorMessage = page.getByText("De RCE Linked Data-service is momenteel niet bereikbaar.");
+  await expect(errorMessage).toBeVisible();
+  shouldFail = false;
+  await page.getByRole("button", { name: "Probeer opnieuw" }).click();
+  await expect(errorMessage).toHaveCount(0);
+  await expect(page.getByText("Woonhuis van de architect")).toBeVisible();
+});
+
 test("groenaanleg wordt uitgevinkt (maar blijft zichtbaar) wanneer de overige filters geen keuze meer overlaten", async ({
   page,
 }) => {

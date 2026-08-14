@@ -29,6 +29,7 @@ type SearchHeroProps = {
   remoteState: RemoteState;
   onSearch: (term: string) => void;
   onBrowse: (kind: BrowseKind) => void;
+  onRetry: () => void;
 };
 
 export function SearchHero({
@@ -44,6 +45,7 @@ export function SearchHero({
   remoteState,
   onSearch,
   onBrowse,
+  onRetry,
 }: SearchHeroProps) {
   function submitSearch(event: FormEvent) {
     event.preventDefault();
@@ -180,10 +182,15 @@ export function SearchHero({
         {remoteState === "loading"
           ? "De actuele RCE-data wordt doorzocht…"
           : remoteState === "error"
-            ? "De RCE Linked Data-service is momenteel niet bereikbaar. Probeer het later opnieuw."
+            ? "De RCE Linked Data-service is momenteel niet bereikbaar."
             : remoteState === "success"
               ? "Resultaten rechtstreeks uit de actuele RCE Linked Data"
               : "Actuele brondata · vaste URI's · herleidbare bronnen"}
+        {remoteState === "error" ? (
+          <button type="button" className="retry" onClick={onRetry}>
+            Probeer opnieuw
+          </button>
+        ) : null}
       </p>
     </section>
   );

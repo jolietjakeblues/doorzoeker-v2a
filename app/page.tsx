@@ -51,6 +51,7 @@ export default function Home() {
     filters,
     setFilters,
     remoteState,
+    retry,
     hasMore,
     loadingMore,
     baseResults,
@@ -170,6 +171,7 @@ export default function Home() {
         remoteState={remoteState}
         onSearch={(term) => void executeSearch(term)}
         onBrowse={(kind) => void browseType(kind)}
+        onRetry={retry}
       />
       {/* SearchHero owns the complete search introduction and combobox. */}
       <section className={`work ${!active ? "start" : ""}`}>
