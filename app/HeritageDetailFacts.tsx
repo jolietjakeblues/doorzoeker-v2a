@@ -200,13 +200,39 @@ export function HeritageDetailFacts({
       {item.stijlEnCultuur ? (
         <div>
           <dt>Stijl en cultuur</dt>
-          <dd>{item.stijlEnCultuur}</dd>
+          <dd>
+            {item.stijlEnCultuurConcept ? (
+              <button
+                type="button"
+                className="concept-link"
+                onClick={() => onConceptSearch(item.stijlEnCultuurConcept!, "stijl")}
+                title="Zoek alle rijksmonumenten met deze stijl"
+              >
+                {item.stijlEnCultuur}
+              </button>
+            ) : (
+              item.stijlEnCultuur
+            )}
+          </dd>
         </div>
       ) : null}
       {item.bouwkundigeStaat ? (
         <div>
           <dt>Bouwkundige staat</dt>
-          <dd>{item.bouwkundigeStaat}</dd>
+          <dd>
+            {item.bouwkundigeStaatConcept ? (
+              <button
+                type="button"
+                className="concept-link"
+                onClick={() => onConceptSearch(item.bouwkundigeStaatConcept!, "bouwkundigestaat")}
+                title="Zoek alle rijksmonumenten met deze bouwkundige staat"
+              >
+                {item.bouwkundigeStaat}
+              </button>
+            ) : (
+              item.bouwkundigeStaat
+            )}
+          </dd>
         </div>
       ) : null}
       {item.monumentAardConcept ? (

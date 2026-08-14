@@ -34,7 +34,7 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
 // een tekstzoekopdracht - zie docs/vertical-slices/004-referentienetwerk-concepten.md.
 // `veld` bepaalt via welke eigenschap gezocht wordt; de aanroeper weet dit
 // al op basis van welk label is aangeklikt.
-async function searchByConcept(conceptUri: string, veld: "functie" | "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype", signal?: AbortSignal) {
+async function searchByConcept(conceptUri: string, veld: "functie" | "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype" | "stijl" | "bouwkundigestaat", signal?: AbortSignal) {
   const response = await fetch(`/api/rce/search?concept=${encodeURIComponent(conceptUri)}&veld=${veld}`, {
     headers: { Accept: "application/json" },
     signal,
@@ -50,6 +50,14 @@ export async function searchByMonumentAardConcept(conceptUri: string, signal?: A
 
 export async function searchByArcheologischeWaarderingConcept(conceptUri: string, signal?: AbortSignal) {
   return searchByConcept(conceptUri, "waardering", signal);
+}
+
+export async function searchByStijlConcept(conceptUri: string, signal?: AbortSignal) {
+  return searchByConcept(conceptUri, "stijl", signal);
+}
+
+export async function searchByBouwkundigeStaatConcept(conceptUri: string, signal?: AbortSignal) {
+  return searchByConcept(conceptUri, "bouwkundigestaat", signal);
 }
 
 export async function searchByGebeurtenisConcept(conceptUri: string, signal?: AbortSignal) {

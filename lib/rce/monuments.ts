@@ -146,7 +146,9 @@ export function parseSparqlResults(document: unknown): RceMonument[] {
       lat: coordinates?.lat,
       wkt: wkt || undefined,
       stijlEnCultuur: binding.stijl?.value,
+      stijlEnCultuurConceptUri: binding.stijlConcept?.value,
       bouwkundigeStaat: binding.bouwkundigeStaat?.value,
+      bouwkundigeStaatConceptUri: binding.bouwkundigeStaatConcept?.value,
     };
   });
 }
@@ -185,7 +187,9 @@ SELECT ?cho ?choi ?rmnr
   (SAMPLE(STR(?wktValue)) AS ?wkt)
   (SAMPLE(STR(?inschrijvingValue)) AS ?inschrijving)
   (SAMPLE(STR(?stijlValue)) AS ?stijl)
+  (SAMPLE(STR(?stijlConceptValue)) AS ?stijlConcept)
   (SAMPLE(STR(?bouwkundigeStaatValue)) AS ?bouwkundigeStaat)
+  (SAMPLE(STR(?bouwkundigeStaatConceptValue)) AS ?bouwkundigeStaatConcept)
 WHERE {
  GRAPH <${INSTANCES_GRAPH}> {
   ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ; ceo:cultuurhistorischObjectnummer ?choi ;
@@ -220,11 +224,13 @@ WHERE {
   OPTIONAL { ?cho ceo:datumInschrijvingInMonumentenregister ?inschrijvingValue . }
   OPTIONAL {
     ?cho ceo:heeftStijlEnCultuur ?stijlNode .
-    ?stijlNode ceo:formeelStandpunt true ; ceo:heeftStijlEnCultuurNaam/skos:prefLabel ?stijlValue .
+    ?stijlNode ceo:formeelStandpunt true ; ceo:heeftStijlEnCultuurNaam ?stijlConceptValue .
+    ?stijlConceptValue skos:prefLabel ?stijlValue .
   }
   OPTIONAL {
     ?cho ceo:heeftBouwkundigeKwaliteit ?kwaliteitNode .
-    ?kwaliteitNode ceo:formeelStandpunt true ; ceo:heeftBouwkundigeStaat/skos:prefLabel ?bouwkundigeStaatValue .
+    ?kwaliteitNode ceo:formeelStandpunt true ; ceo:heeftBouwkundigeStaat ?bouwkundigeStaatConceptValue .
+    ?bouwkundigeStaatConceptValue skos:prefLabel ?bouwkundigeStaatValue .
   }
  }
 }

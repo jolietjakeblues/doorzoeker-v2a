@@ -16,6 +16,30 @@ SELECT ?rmnr WHERE {
 LIMIT 100`;
 }
 
+export function buildStijlConceptQuery(conceptUri: string) {
+  return `PREFIX ceo: <${CEO}>
+SELECT ?rmnr WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ; ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> ;
+         ceo:heeftStijlEnCultuur ?stijlNode .
+    ?stijlNode ceo:formeelStandpunt true ; ceo:heeftStijlEnCultuurNaam <${conceptUri}> .
+  }
+}
+LIMIT 100`;
+}
+
+export function buildBouwkundigeStaatConceptQuery(conceptUri: string) {
+  return `PREFIX ceo: <${CEO}>
+SELECT ?rmnr WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ; ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> ;
+         ceo:heeftBouwkundigeKwaliteit ?kwaliteitNode .
+    ?kwaliteitNode ceo:formeelStandpunt true ; ceo:heeftBouwkundigeStaat <${conceptUri}> .
+  }
+}
+LIMIT 100`;
+}
+
 export function buildArcheologischeWaarderingConceptQuery(conceptUri: string) {
   return `PREFIX ceo: <${CEO}>
 SELECT ?rmnr WHERE {

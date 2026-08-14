@@ -48,7 +48,9 @@ export type RceMonument = {
   lng?: number;
   wkt?: string;
   stijlEnCultuur?: string;
+  stijlEnCultuurConceptUri?: string;
   bouwkundigeStaat?: string;
+  bouwkundigeStaatConceptUri?: string;
   parcels?: RceParcel[];
   matchSource?: string;
   matchedText?: string;
