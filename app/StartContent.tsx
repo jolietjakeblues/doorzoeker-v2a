@@ -77,32 +77,6 @@ export function StartContent({ item, onOpen, verrasMeItem, verrasMeLoading, onVe
         </button>
         {verrasMeItem && <HeritageTile item={verrasMeItem} onOpen={() => onOpen(verrasMeItem)} />}
       </section>
-      <div className="start-panel">
-        <small>ZO WERKT HET</small>
-        <h2>Wat deze zoekmachine doet</h2>
-        <p>
-          Doorzoeker doorzoekt de actuele CHO-dataset van de Rijksdienst voor het
-          Cultureel Erfgoed en laat bij elk resultaat het gegevensveld zien waarin
-          de zoekterm is gevonden.
-        </p>
-        <div>
-          <article>
-            <b>01</b>
-            <h3>Zoek breed</h3>
-            <p>Gebruik een nummer, plaats, functie, monumentaard of omschrijving.</p>
-          </article>
-          <article>
-            <b>02</b>
-            <h3>Matchbron per resultaat</h3>
-            <p>Elk resultaat vermeldt de matchbron en de geregistreerde waarde.</p>
-          </article>
-          <article>
-            <b>03</b>
-            <h3>Controleer de bron</h3>
-            <p>Bekijk functie, adres, geometrie, percelen en de canonieke RCE-link.</p>
-          </article>
-        </div>
-      </div>
     </>
   );
 }

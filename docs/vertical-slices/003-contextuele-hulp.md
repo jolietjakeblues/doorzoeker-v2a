@@ -81,6 +81,14 @@ Het bestaande "ZO WERKT HET"-paneel (`start-panel`) blijft zoals het is -
 dat legt uit *hoe* je zoekt, deze hints leggen uit *wat de resultaten
 betekenen* zodra je ze ziet. Twee aparte, elkaar aanvullende dingen.
 
+**Correctie (14 augustus 2026):** het "ZO WERKT HET"-paneel is alsnog
+verwijderd (`app/StartContent.tsx`) - het bleek zelf de dubbeling te zijn
+waar dit document voor waarschuwde: kaart 01 ("Zoek breed") herhaalde
+letterlijk de introzin in `SearchHero.tsx`, en kaart 02 ("Matchbron per
+resultaat") herhaalde de contextuele matchbron-hint uit `SearchFilters.tsx`
+die hierboven al wordt genoemd. De contextuele hints uit dit document
+blijven ongewijzigd en zijn nu de enige uitleglaag op de startpagina.
+
 ## Scope-afbakening
 
 - Geen gebruikersaccounts of een "niet meer tonen"-voorkeur - te zwaar voor
