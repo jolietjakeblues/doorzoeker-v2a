@@ -2,6 +2,7 @@ import type { RefObject } from "react";
 import type { useSelectedDetailEnrichment } from "@/hooks/useSelectedDetailEnrichment";
 import type { useSearchState } from "@/hooks/useSearchState";
 import {
+  linkedConcepts,
   MONUMENT_REGISTER_BASE_URL,
   primaryIdentifier,
   statusLabel,
@@ -32,6 +33,7 @@ export function HeritageDetailDialog({
   onConceptSearch,
 }: HeritageDetailDialogProps) {
   const { complexMembers } = enrichment;
+  const allLinkedConcepts = linkedConcepts(selected);
   const selectedIdentifier = primaryIdentifier(selected);
   const selectedIdentifierRepeatsTitle = Boolean(
     selectedIdentifier &&
@@ -443,6 +445,37 @@ export function HeritageDetailDialog({
                     ) : (
                       ""
                     )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {allLinkedConcepts.length ? (
+            <div className="map-object-list">
+              <h3>Alle gekoppelde begrippen</h3>
+              <p>
+                <small>
+                  Elk begrip hieronder is een doorklik naar alle
+                  erfgoedobjecten met precies datzelfde begrip.
+                </small>
+              </p>
+              <ul>
+                {allLinkedConcepts.map((concept) => (
+                  <li key={`${concept.field}-${concept.uri}`}>
+                    <button
+                      type="button"
+                      className="concept-link"
+                      onClick={() =>
+                        void onConceptSearch(
+                          { uri: concept.uri, label: concept.label },
+                          concept.field,
+                        )
+                      }
+                      title={`Zoek alle erfgoedobjecten met ${concept.group.toLowerCase()}: ${concept.label}`}
+                    >
+                      {concept.label}
+                    </button>
+                    <small> — {concept.group}</small>
                   </li>
                 ))}
               </ul>

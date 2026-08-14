@@ -21,9 +21,13 @@ test("collects only linked concepts that support an exact search", () => {
       archaeologicalMaterials: [
         { uri: "https://example.test/messing", label: "messing" },
       ],
-      archaeologicalStyles: [
-        { uri: "https://example.test/romeins", label: "Romeins" },
-      ],
+      stijlEnCultuurConcept: { uri: "https://example.test/streekeigen", label: "streek-eigen bouwtrant" },
+      bouwkundigeStaatConcept: { uri: "https://example.test/goed", label: "goed" },
+      archaeologicalAcquisition: "niet-archeologisch: graafwerk",
+      archaeologicalAcquisitionConceptUri: "https://example.test/graafwerk",
+      // description heeft geen eigen concept-URI en levert dus bewust geen
+      // entry op - niet elk veld op Item ondersteunt een exacte zoekopdracht.
+      description: "Een lange vrije-tekst omschrijving zonder concept-URI.",
     }),
     [
       {
@@ -43,6 +47,24 @@ test("collects only linked concepts that support an exact search", () => {
         label: "messing",
         field: "materiaal",
         group: "Materiaal",
+      },
+      {
+        uri: "https://example.test/streekeigen",
+        label: "streek-eigen bouwtrant",
+        field: "stijl",
+        group: "Stijl en cultuur",
+      },
+      {
+        uri: "https://example.test/goed",
+        label: "goed",
+        field: "bouwkundigestaat",
+        group: "Bouwkundige staat",
+      },
+      {
+        uri: "https://example.test/graafwerk",
+        label: "niet-archeologisch: graafwerk",
+        field: "verwerving",
+        group: "Verwervingswijze",
       },
     ],
   );
