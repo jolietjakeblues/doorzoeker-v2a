@@ -171,6 +171,9 @@ export default function Home() {
         remoteState={remoteState}
         onSearch={(term) => void executeSearch(term)}
         onBrowse={(kind) => void browseType(kind)}
+        onDiscoverTheme={(uri, label) =>
+          void executeConceptSearch({ uri, label }, "functie")
+        }
         onRetry={retry}
       />
       {/* SearchHero owns the complete search introduction and combobox. */}

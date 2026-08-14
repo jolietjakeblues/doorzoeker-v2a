@@ -16,6 +16,20 @@ const DIRECT_SEARCHES = [
   "517443",
 ] as const;
 
+// Vaste, live tegen de RCE-endpoint geverifieerde functie-concept-URI's
+// (14 augustus 2026, via het echte buildFunctieConceptQuery-querypatroon
+// in lib/rce/concepts.ts) - laat ontdekken zonder zoekterm toe via een
+// paar populaire thema's, met hetzelfde exacte-conceptzoekmechanisme als
+// elders in de app (executeConceptSearch, veld "functie"). Aantal
+// gekoppelde Rijksmonumenten ter referentie, niet getoond in de UI.
+const DISCOVERY_THEMES = [
+  { label: "Kerken", uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/6fa5f251-cd84-4f3a-acb7-7c219df2540f" }, // 2310
+  { label: "Molens", uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/fea024ba-83a0-4418-afbe-3b7b4588797e" }, // 1126
+  { label: "Kastelen", uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/cd714157-2a9f-47ad-bf20-928e17aaf32b" }, // 96
+  { label: "Boerderijen", uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/e95cb75d-b99c-4ae9-841c-827b28e75458" }, // 5484
+  { label: "Landhuizen", uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/1f7aa947-bb93-4bde-8204-9d82b5f9b617" }, // 452
+] as const;
+
 type SearchHeroProps = {
   query: string;
   setQuery: (value: string) => void;
@@ -29,6 +43,7 @@ type SearchHeroProps = {
   remoteState: RemoteState;
   onSearch: (term: string) => void;
   onBrowse: (kind: BrowseKind) => void;
+  onDiscoverTheme: (uri: string, label: string) => void;
   onRetry: () => void;
 };
 
@@ -45,6 +60,7 @@ export function SearchHero({
   remoteState,
   onSearch,
   onBrowse,
+  onDiscoverTheme,
   onRetry,
 }: SearchHeroProps) {
   function submitSearch(event: FormEvent) {
@@ -142,6 +158,18 @@ export function SearchHero({
         {DIRECT_SEARCHES.map((term) => (
           <button type="button" key={term} onClick={() => onSearch(term)}>
             {term}
+          </button>
+        ))}
+      </nav>
+      <nav aria-label="Ontdek een thema">
+        Ontdek een thema:{" "}
+        {DISCOVERY_THEMES.map((theme) => (
+          <button
+            type="button"
+            key={theme.uri}
+            onClick={() => onDiscoverTheme(theme.uri, theme.label)}
+          >
+            {theme.label}
           </button>
         ))}
       </nav>

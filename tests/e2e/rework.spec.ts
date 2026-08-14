@@ -160,6 +160,27 @@ test("resultaatteller en filtertellingen tonen geen '+' zodra alles geladen is (
   await expect(alleSoorten).not.toContainText("3+");
 });
 
+test("'Ontdek een thema' laat erfgoed ontdekken zonder zoekterm (#32)", async ({ page }) => {
+  const kerkUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/6fa5f251-cd84-4f3a-acb7-7c219df2540f";
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("concept") === kerkUri && url.searchParams.get("veld") === "functie") {
+      return route.fulfill({ json: { results: [{ ...records[0], name: "Sint-Jorisbasiliek" }], page: 1, hasMore: false } });
+    }
+    return route.fulfill({ json: { results: [], page: 1, hasMore: false } });
+  });
+
+  const themas = page.getByRole("navigation", { name: "Ontdek een thema" });
+  for (const label of ["Kerken", "Molens", "Kastelen", "Boerderijen", "Landhuizen"])
+    await expect(themas.getByRole("button", { name: label, exact: true })).toBeVisible();
+
+  await themas.getByRole("button", { name: "Kerken", exact: true }).click();
+  await expect(page).toHaveURL(/veld=functie/);
+  await expect(page).toHaveURL(new RegExp(encodeURIComponent(kerkUri).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  await expect(page.getByText("Sint-Jorisbasiliek")).toBeVisible();
+});
+
 test("de startpagina biedt een brede reeks directe zoekvoorbeelden", async ({ page }) => {
   await page.goto("/");
 
