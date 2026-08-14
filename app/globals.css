@@ -159,6 +159,21 @@ header p a {
 .source-status.error {
   color: var(--error);
 }
+.source-status .retry {
+  margin-left: 8px;
+  border: 1px solid var(--error);
+  border-radius: 4px;
+  padding: 2px 10px;
+  background: none;
+  color: var(--error);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.source-status .retry:hover {
+  background: var(--error);
+  color: #fff;
+}
 .source-status.success {
   color: var(--success);
   font-weight: 700;

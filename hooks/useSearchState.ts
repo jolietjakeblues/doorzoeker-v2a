@@ -506,6 +506,18 @@ export function useSearchState() {
     setHasMore(false);
   }
 
+  // Herhaalt de laatst geprobeerde actie (tekstzoekopdracht, conceptzoekopdracht
+  // of browse) na een mislukte poging. Alle drie zetten hun eigen
+  // "actief"-state al vóór de fetch en laten die staan wanneer
+  // setRemoteState("error") wordt gezet, dus die state is hier zonder extra
+  // boekhouding opnieuw af te leiden.
+  function retry() {
+    if (activeBrowseKind) void browseType(activeBrowseKind);
+    else if (activeConceptUri)
+      void executeConceptSearch({ uri: activeConceptUri, label: active }, activeConceptVeld);
+    else void executeSearch(query);
+  }
+
   return {
     query,
     setQuery: editQuery,
@@ -555,5 +567,6 @@ export function useSearchState() {
     browseType,
     loadMore,
     reset,
+    retry,
   };
 }
