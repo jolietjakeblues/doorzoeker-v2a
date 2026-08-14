@@ -421,15 +421,6 @@ export function useSearchState() {
   async function loadMore() {
     if (!active || loadingMore || activeConceptUri) return;
     const nextPage = resultPage + 1;
-    const lastResult = remoteResults?.at(-1);
-    if (!activeBrowseKind && (
-      !lastResult?.monumentNumber ||
-      !lastResult.matchedText ||
-      lastResult.matchScore === undefined
-    )) {
-      setHasMore(false);
-      return;
-    }
     // Deelt hetzelfde abort/sequence-systeem als executeSearch/
     // executeConceptSearch/browseType: start de gebruiker een nieuwe
     // zoekopdracht terwijl deze aanvraag nog loopt, dan annuleert die nieuwe

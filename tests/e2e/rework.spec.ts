@@ -311,6 +311,56 @@ test("Rijksmonumenten zijn per 25 te doorbladeren", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Laad 25 volgende resultaten" })).toHaveCount(0);
 });
 
+test("'laad meer' bij tekstzoekopdracht stopt niet als het laatst geladen item toevallig geen matchScore heeft (P1)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const url = new URL(route.request().url());
+    const scope = url.searchParams.get("scope");
+    const requestedPage = Number(url.searchParams.get("page") ?? "1");
+
+    if (scope === "core") {
+      return route.fulfill({ json: {
+        results: [{
+          ...records[0],
+          choNumber: `cho-core-${requestedPage}`,
+          sourceUrl: `https://linkeddata.cultureelerfgoed.nl/cho-core-${requestedPage}`,
+          monumentNumber: `core-${requestedPage}`,
+          name: `Rijksmonument pagina ${requestedPage}`,
+        }],
+        page: requestedPage,
+        hasMore: requestedPage === 1,
+      } });
+    }
+    if (scope === "heritage" && requestedPage === 1) {
+      // Dit heritage-item heeft geen matchedText/matchScore (die worden
+      // alleen door de core-discovery gezet) en komt na het core-item in de
+      // samengevoegde resultatenlijst terecht - precies de situatie die de
+      // kapotte "laatste item" heuristiek in loadMore liet struikelen.
+      return route.fulfill({ json: {
+        results: [{
+          ...records[1],
+          choNumber: "cho-heritage-1",
+          sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-heritage-1",
+          monumentNumber: "complex-1",
+          name: "Historisch complex",
+        }],
+        page: 1,
+        hasMore: false,
+      } });
+    }
+    return route.fulfill({ json: { results: [], page: requestedPage, hasMore: false } });
+  });
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(page.getByText("Historisch complex")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Laad 25 volgende resultaten" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Laad 25 volgende resultaten" }).click();
+  await expect(page.getByText("Rijksmonument pagina 2")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Laad 25 volgende resultaten" })).toHaveCount(0);
+});
+
 test("een nieuwe zoekopdracht overschrijft resultaten van een nog lopende 'laad meer' (TD-12 regressie)", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", async (route) => {

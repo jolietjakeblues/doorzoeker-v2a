@@ -167,6 +167,34 @@ grootste/belangrijkste record in de collectie.
 spread; geregeld met een gerichte test op een ring van 200.000 punten
 (empirisch bevestigd dat de oude implementatie daar al op crasht).
 
+**TD-34: "Laad 25 volgende resultaten" stopte soms stil terwijl er nog
+resultaten klaarstonden**
+
+`hooks/useSearchState.ts` (`loadMore`). Bij een tekstzoekopdracht
+combineert `searchRceMonuments` (`lib/rce-client.ts`) vier parallelle
+deelzoekopdrachten (`core`/`heritage`/`archaeology-a`/`archaeology-b`) tot
+één gesorteerde `Map`, waarbij de `core`-treffers (met `matchedText`/
+`matchScore`, want die komen uit de discovery-scoring) altijd eerst worden
+ingevoegd en de andere drie scopes daarna overheen. Elk item uit die andere
+drie scopes dat niet toevallig botst met een bestaande `core`-sleutel komt
+daardoor als laatste in de itervolgorde terecht. `loadMore` gebruikte
+echter juist "heeft het laatste item in de resultatenlijst een
+`matchScore`?" als extra voorwaarde bovenop de al correcte
+`hasMore`-status uit de respons, om te bepalen of een vervolgpagina zin
+had. Zodra een zoekopdracht ook maar één Complex/Onderzoeksgebied/
+Werelderfgoed/Gezicht-treffer opleverde (die nooit een `matchScore` hebben,
+want die typen worden alleen op pagina 1 opgehaald), zette deze heuristiek
+`hasMore` alsnog stil op `false` en werd de knop onbruikbaar - ook als de
+`core`-scope (Rijksmonumenten) zelf nog wél meer pagina's had. Gevonden
+door de eigenaar bij een zoekopdracht op "Woonhuis" in Edam (122
+resultaten klaar, knop deed niets).
+
+**Risico:** middel — geen datacorruptie, maar een deel van de resultaten
+was voor de gebruiker structureel onbereikbaar zonder enige foutmelding.
+**Opgelost:** de heuristiek is verwijderd; `loadMore` vertrouwt nu volledig
+op de al correcte `hasMore` (afgeleid van `core.hasMore` in de respons),
+dezelfde waarde die ook de zichtbaarheid van de knop bepaalt.
+
 ### P2 — typeveiligheidsgaten die bij de volgende wijziging toeslaan
 
 **Status (bijgewerkt 14 augustus 2026): TD-19 t/m TD-21 zijn opgelost op
