@@ -129,6 +129,43 @@ test("zoeken toont verschillende erfgoedtypen", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("resultaten zijn te exporteren als CSV en GeoJSON (#34)", async ({ page }) => {
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(page.getByRole("heading", { name: "3 resultaten voor “Goirle”" })).toBeVisible();
+
+  const [csvDownload] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Exporteer als CSV" }).click(),
+  ]);
+  expect(csvDownload.suggestedFilename()).toMatch(/^doorzoeker-export-\d{4}-\d{2}-\d{2}\.csv$/);
+  const csvStream = await csvDownload.createReadStream();
+  const csvChunks: Buffer[] = [];
+  for await (const chunk of csvStream) csvChunks.push(chunk);
+  const csv = Buffer.concat(csvChunks).toString("utf-8");
+  expect(csv.split("\r\n")[0]).toBe(
+    "monumentnummer,titel,adres,postcode,plaats,provincie,soort object,monumentaard,functie,registratiedatum,matchbron",
+  );
+  expect(csv).toContain("Woonhuis van de architect");
+
+  const [geoJsonDownload] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Exporteer als GeoJSON" }).click(),
+  ]);
+  expect(geoJsonDownload.suggestedFilename()).toMatch(/^doorzoeker-export-\d{4}-\d{2}-\d{2}\.geojson$/);
+  const geoJsonStream = await geoJsonDownload.createReadStream();
+  const geoJsonChunks: Buffer[] = [];
+  for await (const chunk of geoJsonStream) geoJsonChunks.push(chunk);
+  const geojson = JSON.parse(Buffer.concat(geoJsonChunks).toString("utf-8"));
+  expect(geojson.type).toBe("FeatureCollection");
+  expect(geojson.features).toHaveLength(3);
+  // De testfixture-records dragen geen wkt-veld, dus geen crash op een
+  // ontbrekende geometrie is precies wat hier getoetst wordt - de WKT->
+  // GeoJSON-omzetting zelf (point/polygon) staat al onder unit test in
+  // tests/export.test.mjs.
+  expect(geojson.features[0].geometry).toBeNull();
+});
+
 test("resultaatteller en filtertellingen maken duidelijk dat er nog meer te laden is (#33)", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", (route) => route.fulfill({

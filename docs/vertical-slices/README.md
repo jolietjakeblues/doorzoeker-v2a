@@ -2,7 +2,8 @@
 
 Gecontroleerd op 11 augustus 2026 tegen de statussecties van de afzonderlijke
 documenten en de huidige testset. Slice 014 is er na deze laatste controle
-nog bijgekomen; slices 015 en 016 op 14 augustus 2026.
+nog bijgekomen; slices 015 en 016 op 14 augustus 2026, en slice 012 is op
+diezelfde datum alsnog gebouwd.
 
 | Slice | Onderwerp | Status |
 | --- | --- | --- |
@@ -17,7 +18,7 @@ nog bijgekomen; slices 015 en 016 op 14 augustus 2026.
 | 009 | Architectportfolio | Gebouwd en live geverifieerd |
 | 010 | Op deze dag | Gebouwd; cache verloopt veilig bij de volgende UTC-daggrens |
 | 011 | In de buurt | Plan, niet gebouwd |
-| 012 | Resultaten exporteren | Plan, niet gebouwd |
+| 012 | Resultaten exporteren | Gebouwd, unit- en e2e-tests groen |
 | 013 | Lange omschrijvingen inkorten | Gebouwd en live geverifieerd |
 | 014 | "Verras me"-knop | Gebouwd, unit- en contracttests groen |
 | 015 | "Alle gekoppelde begrippen"-overzicht | Gebouwd, unit- en e2e-tests groen |
@@ -33,7 +34,5 @@ nog bijgekomen; slices 015 en 016 op 14 augustus 2026.
 - Slice 008 moet eerst bepalen welke semantische dimensies “vergelijkbaar”
   maken en hoe diversiteit en uitlegbaarheid worden bewaakt.
 - Slice 011 vereist een expliciete straal, maximum en prestatiemeting.
-- Slice 012 vereist een besluit of alleen geladen resultaten of de volledige
-  matchset worden geëxporteerd.
 
 Deze index is documentatie. Hij stelt geen nieuwe uitvoervolgorde vast.

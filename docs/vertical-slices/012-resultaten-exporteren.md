@@ -2,9 +2,14 @@
 
 ## Status
 
-Plan, nog niet gebouwd. Voor onderzoekers en lokale historici is "neem
-mijn gefilterde zoekresultaat mee" waarschijnlijk waardevoller dan nog een
-UI-feature - dit is een pure frontend-functie, geen nieuwe databron nodig.
+Gebouwd (14 augustus 2026), exact volgens het onderstaande plan - geen
+wijzigingen aan de aanpak nodig tijdens het bouwen. `lib/export.ts`
+(`itemsToCsv`, `itemsToGeoJson`, `exportFileName`), twee exportknoppen in
+`app/ResultsToolbar.tsx` naast de weergave-toggle, downloadlogica
+(`Blob`+`URL.createObjectURL`) in `app/page.tsx`. De twee "Openstaande
+vragen" hieronder zijn tijdens het bouwen beantwoord: bestandsnaam is
+`doorzoeker-export-JJJJ-MM-DD.{csv,geojson}`, en de export werkt vanuit
+zowel lijst- als kaartweergave zonder extra werk (dezelfde `results`).
 
 ## Aanleiding
 
@@ -74,3 +79,15 @@ wil, bv. in QGIS/kaartsoftware).
 
 De toolbar heeft een werkende exportknop die de huidige resultatenlijst
 als geldig CSV- en GeoJSON-bestand downloadt, zonder nieuwe serveraanroep.
+
+## Getest
+
+- `tests/export.test.mjs`: `itemsToCsv` (header, escaping van komma's/
+  aanhalingstekens, ontbrekende velden als lege cel), `itemsToGeoJson`
+  (Point- en Polygon-omzetting in lng/lat-volgorde, `null`-geometrie
+  zonder crash bij ontbrekende WKT), `exportFileName` (voorspelbare
+  per-dag bestandsnaam).
+- `tests/e2e/rework.spec.ts` ("resultaten zijn te exporteren als CSV en
+  GeoJSON (#34)"): klikt beide exportknoppen, leest de daadwerkelijk
+  gedownloade bestanden (via Playwright's `download`-event), en
+  controleert bestandsnaam, CSV-header/-inhoud en geldige GeoJSON-structuur.

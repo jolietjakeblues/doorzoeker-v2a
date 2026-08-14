@@ -11,7 +11,7 @@
         "build": "vinext build",
         "start": "vinext start",
         "deploy": "vinext build && wrangler deploy --config dist/server/wrangler.json",
-        "test": "npm run build && node --test tests/rendered-html.test.mjs tests/heritage-view-model.test.mjs tests/rce.test.mjs tests/rce-api.test.mjs tests/concept-api.test.mjs tests/bibliotheek-adapter.test.mjs tests/op-deze-dag-api.test.mjs tests/verras-me-api.test.mjs tests/map-clustering.test.mjs tests/terms-api.test.mjs tests/expiring-map.test.mjs tests/fixed-window-rate-limit.test.mjs tests/http-cache.test.mjs",
+        "test": "npm run build && node --test tests/rendered-html.test.mjs tests/heritage-view-model.test.mjs tests/rce.test.mjs tests/rce-api.test.mjs tests/concept-api.test.mjs tests/bibliotheek-adapter.test.mjs tests/op-deze-dag-api.test.mjs tests/verras-me-api.test.mjs tests/map-clustering.test.mjs tests/terms-api.test.mjs tests/expiring-map.test.mjs tests/fixed-window-rate-limit.test.mjs tests/http-cache.test.mjs tests/export.test.mjs",
         "test:e2e": "playwright test",
         "typecheck": "tsc --noEmit --incremental false",
         "lint": "eslint . --ignore-pattern dist --ignore-pattern .next"
