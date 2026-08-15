@@ -50,12 +50,36 @@ SELECT ?rmnr WHERE {
 LIMIT 100`;
 }
 
+// Matcht op het eigen CHO-nummer van het terrein, niet op een gekoppeld
+// rijksmonumentnummer: van de ~13.000 terreinen met een waardering heeft
+// slechts ~14% een ceo:ligtInObject-relatie naar een Rijksmonument. De
+// oudere versie van deze query (via ligtInObject) liet de overige ~86%
+// stilzwijgend 0 resultaten opleveren bij een klik op hun eigen
+// waardering-label - zie searchByVerwervingConcept voor hetzelfde patroon.
+// SELECT-variabele heet net als daar bewust ?rmnr, niet omdat het een
+// rijksmonumentnummer is (het is het CHO-nummer van het terrein), maar
+// omdat parseConceptSearchMatches() die bindingnaam verwacht.
 export function buildArcheologischeWaarderingConceptQuery(conceptUri: string) {
   return `PREFIX ceo: <${CEO}>
 SELECT ?rmnr WHERE {
   GRAPH <${INSTANCES_GRAPH}> {
-    ?terrein a ceo:ArcheologischTerrein ; ceo:heeftArcheologischeWaardering <${conceptUri}> ; ceo:ligtInObject ?rm .
-    ?rm ceo:rijksmonumentnummer ?rmnr ; ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> .
+    ?terrein a ceo:ArcheologischTerrein ; ceo:cultuurhistorischObjectnummer ?rmnr ;
+             ceo:heeftArcheologischeWaardering <${conceptUri}> .
+  }
+}
+LIMIT 100`;
+}
+
+// Matcht op het eigen CHO-nummer van het grondspoor - zelfde
+// heeftType/heeftTypeNaam-pad dat al wordt gebruikt om het type te tonen
+// (buildGrondsporenDetailsQuery in lib/rce/archaeology.ts). SELECT-
+// variabele heet ?rmnr om dezelfde reden als hierboven.
+export function buildGrondspoorTypeConceptQuery(conceptUri: string) {
+  return `PREFIX ceo: <${CEO}>
+SELECT ?rmnr WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?grondspoor a ceo:Grondsporen ; ceo:cultuurhistorischObjectnummer ?rmnr ;
+                ceo:heeftType/ceo:heeftTypeNaam <${conceptUri}> .
   }
 }
 LIMIT 100`;

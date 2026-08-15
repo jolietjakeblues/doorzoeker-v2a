@@ -25,6 +25,8 @@ test("collects only linked concepts that support an exact search", () => {
       bouwkundigeStaatConcept: { uri: "https://example.test/goed", label: "goed" },
       archaeologicalAcquisition: "niet-archeologisch: graafwerk",
       archaeologicalAcquisitionConceptUri: "https://example.test/graafwerk",
+      archaeologicalType: "grondverkleuring",
+      archaeologicalTypeConceptUri: "https://example.test/grondverkleuring",
       // description heeft geen eigen concept-URI en levert dus bewust geen
       // entry op - niet elk veld op Item ondersteunt een exacte zoekopdracht.
       description: "Een lange vrije-tekst omschrijving zonder concept-URI.",
@@ -65,6 +67,12 @@ test("collects only linked concepts that support an exact search", () => {
         label: "niet-archeologisch: graafwerk",
         field: "verwerving",
         group: "Verwervingswijze",
+      },
+      {
+        uri: "https://example.test/grondverkleuring",
+        label: "grondverkleuring",
+        field: "grondspoortype",
+        group: "Type grondspoor",
       },
     ],
   );

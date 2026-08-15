@@ -128,7 +128,23 @@ export function HeritageDetailFacts({
           <div>
             <dt>Type grondspoor</dt>
             <dd>
-              {item.archaeologicalType}
+              {item.archaeologicalTypeConceptUri ? (
+                <button
+                  type="button"
+                  className="concept-link"
+                  onClick={() =>
+                    onConceptSearch(
+                      { uri: item.archaeologicalTypeConceptUri!, label: item.archaeologicalType! },
+                      "grondspoortype",
+                    )
+                  }
+                  title="Zoek alle grondsporen van dit type"
+                >
+                  {item.archaeologicalType}
+                </button>
+              ) : (
+                item.archaeologicalType
+              )}
               {item.archaeologicalTypeSchemes?.length
                 ? ` (${item.archaeologicalTypeSchemes.map((scheme) => scheme.label).join(", ")})`
                 : ""}

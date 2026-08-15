@@ -739,6 +739,32 @@ test("'Alle gekoppelde begrippen' toont elk begrip gegroepeerd en is zelf ook do
   await expect(page.getByText("Ander pand met dezelfde stijl")).toBeVisible();
 });
 
+test("type grondspoor is doorklikbaar naar zijn eigen conceptzoekopdracht (gemeld door de eigenaar, CHO 10000187)", async ({ page }) => {
+  const typeUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/f4ae6fd1-8ae5-4265-8021-652c637de15c";
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("veld") === "grondspoortype") {
+      return route.fulfill({ json: { results: [{ ...records[0], name: "Ander grondspoor met hetzelfde type", monumentNumber: "888003" }], page: 1, hasMore: false } });
+    }
+    return route.fulfill({ json: { results: [{
+      choNumber: "10000187", monumentNumber: "10000187", registrationDate: "2015-06-09", street: "", houseNumber: "", postalCode: "",
+      sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/grondsporen/10000187", name: "Grondverkleuring", place: "Almere", municipality: "Almere",
+      description: "Grondverkleuring", monumentNature: "grondsporen", archaeologicalTraceCount: 10, archaeologicalType: "grondverkleuring",
+      archaeologicalTypeConceptUri: typeUri,
+      matchSource: "omschrijving (grondspoor)", matchedText: "Grondverkleuring", matchScore: 20,
+    }], page: 1, hasMore: false } });
+  });
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Grondverkleuring");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Grondverkleuring" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "grondverkleuring", exact: true }).click();
+  await expect(page).toHaveURL(/veld=grondspoortype/);
+  await expect(page).toHaveURL(new RegExp(encodeURIComponent(typeUri).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  await expect(page.getByText("Ander grondspoor met hetzelfde type")).toBeVisible();
+});
+
 test("een grondspoor toont aantal, RN2-bron en bijbehorende vondstlocatie", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", (route) => route.fulfill({ json: { results: [{

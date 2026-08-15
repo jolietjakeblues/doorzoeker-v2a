@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeWaarderingConceptQuery, buildBouwkundigeStaatConceptQuery, buildStijlConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceChoNumberQuery, buildRceDetailsQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceParcelsQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVerwervingConceptQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedQuery, mergeDiscoveryMatches, mergeVondstlocatieInhoud, parseAbrTermSuggestResults, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS, VONDSTLOCATIE_INHOUD_KLASSEN, wktToLatLng } from "../lib/rce.ts";
+import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeWaarderingConceptQuery, buildBouwkundigeStaatConceptQuery, buildStijlConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildGrondspoorTypeConceptQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceChoNumberQuery, buildRceDetailsQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceParcelsQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVerwervingConceptQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedQuery, mergeDiscoveryMatches, mergeVondstlocatieInhoud, parseAbrTermSuggestResults, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS, VONDSTLOCATIE_INHOUD_KLASSEN, wktToLatLng } from "../lib/rce.ts";
 import { buildArchaeologyBrowseQuery, buildRijksmonumentenBrowseQuery, parseArchaeologyBrowseNumbers, parseRijksmonumentenBrowseNumbers } from "../lib/rce.ts";
 import { buildFunctieConceptQuery, buildTermUsageQuery, parseFacetResults, parseTermUsageResults } from "../lib/rce.ts";
 
@@ -41,16 +41,20 @@ test("builds an exact-match query on a monumentaard concept-URI instead of a lab
   assert.match(query, /LIMIT 100/);
 });
 
-test("builds an exact-match query on an archeologische-waardering concept-URI, reached via het gekoppelde ArcheologischTerrein", () => {
-  // Fase 2 (2026-08-10): live geverifieerd dat heeftArcheologischeWaardering
-  // naar dezelfde rn/2-namespace wijst als heeftMonumentAard - zie
-  // docs/vertical-slices/004-referentienetwerk-concepten.md.
+test("builds an exact-match query on an archeologische-waardering concept-URI, op het eigen CHO-nummer van het terrein (P1: 86% van de terreinen heeft geen ligtInObject-koppeling)", () => {
+  // Live geverifieerd (15 augustus 2026): van de ~13.018 ArcheologischTerrein-
+  // instanties met een waardering hebben er maar ~1.812 (~14%) een
+  // ceo:ligtInObject-relatie naar een Rijksmonument. De oudere queryvorm
+  // (via ligtInObject naar een rijksmonumentnummer) liet de overige ~86%
+  // stilzwijgend 0 resultaten opleveren bij een klik op hun eigen
+  // waardering-label - zie CHO 6042545 (heeft heeftArcheologischeWaardering,
+  // geen ligtInObject).
   const uri = "https://data.cultureelerfgoed.nl/term/id/rn/2/31020cd0-9029-4609-bbd8-ee83f9baf3f4";
   const query = buildArcheologischeWaarderingConceptQuery(uri);
   assert.match(query, /a ceo:ArcheologischTerrein/);
+  assert.match(query, /ceo:cultuurhistorischObjectnummer \?rmnr/);
   assert.match(query, new RegExp(`ceo:heeftArcheologischeWaardering <${uri.replaceAll(".", "\\.")}>`));
-  assert.match(query, /ceo:ligtInObject \?rm/);
-  assert.match(query, new RegExp(`ceo:heeftJuridischeStatus <${RCE_SEMANTICS.activeLegalStatus}>`));
+  assert.doesNotMatch(query, /ligtInObject/);
   assert.match(query, /LIMIT 100/);
 });
 
@@ -1049,6 +1053,19 @@ test("bouwt een exact-match query op een verwervingswijze-concept-URI, matchend 
   const query = buildVerwervingConceptQuery(uri);
   assert.match(query, /a ceo:Vondstlocatie/);
   assert.match(query, new RegExp(`ceo:heeftVerwerving <${uri.replaceAll(".", "\\.")}>`));
+  assert.match(query, /LIMIT 100/);
+});
+
+test("bouwt een exact-match query op een grondspoor-type-concept-URI, matchend op het eigen CHO-nummer van het grondspoor", () => {
+  // Het type-veld op Grondsporen heeft een eigen concept-URI
+  // (archaeologicalTypeConceptUri, zie buildGrondsporenDetailsQuery), maar
+  // stond nog niet als exacte zoekopdracht doorklikbaar - gemeld door de
+  // eigenaar (CHO 10000187, type "grondverkleuring") en live geverifieerd.
+  const uri = "https://data.cultureelerfgoed.nl/term/id/rn/2/f4ae6fd1-8ae5-4265-8021-652c637de15c";
+  const query = buildGrondspoorTypeConceptQuery(uri);
+  assert.match(query, /a ceo:Grondsporen/);
+  assert.match(query, /ceo:cultuurhistorischObjectnummer \?rmnr/);
+  assert.match(query, new RegExp(`ceo:heeftType/ceo:heeftTypeNaam <${uri.replaceAll(".", "\\.")}>`));
   assert.match(query, /LIMIT 100/);
 });
 

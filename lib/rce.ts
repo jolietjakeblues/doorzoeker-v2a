@@ -23,6 +23,7 @@ export {
   buildBouwkundigeStaatConceptQuery,
   buildFunctieConceptQuery,
   buildGebeurtenisConceptQuery,
+  buildGrondspoorTypeConceptQuery,
   buildMonumentAardConceptQuery,
   buildStijlConceptQuery,
   buildVerwervingConceptQuery,
