@@ -15,8 +15,16 @@ const CSV_COLUMNS = [
   "matchbron",
 ] as const;
 
+// Spreadsheetsoftware (Excel, Google Sheets) interpreteert een cel die met
+// =, +, - of @ begint als formule, ook als de waarde uit brondata komt in
+// plaats van vrije gebruikersinvoer. Een voorloop-apostrof dwingt platte
+// tekst af zonder de zichtbare waarde te veranderen (CSV-formule-injectie).
+function neutralizeFormula(text: string) {
+  return /^[=+\-@]/.test(text) ? `'${text}` : text;
+}
+
 function csvField(value: string | undefined) {
-  const text = value ?? "";
+  const text = neutralizeFormula(value ?? "");
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 

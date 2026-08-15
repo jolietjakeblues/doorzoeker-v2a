@@ -129,6 +129,32 @@ test("zoeken toont verschillende erfgoedtypen", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("belangrijke knoppen halen de WCAG 2.5.5-ondergrens van 44x44 CSS px (accessibility-review 15-08-2026)", async ({ page }) => {
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(page.getByRole("heading", { name: "3 resultaten voor “Goirle”" })).toBeVisible();
+
+  async function assertAtLeast44(locator: ReturnType<typeof page.locator>, label: string) {
+    const box = await locator.boundingBox();
+    expect(box, `${label} niet gevonden`).not.toBeNull();
+    expect(box!.width, `${label} breedte`).toBeGreaterThanOrEqual(44);
+    expect(box!.height, `${label} hoogte`).toBeGreaterThanOrEqual(44);
+  }
+
+  await assertAtLeast44(page.getByRole("button", { name: "Lijstweergave" }), "weergave-toggle (lijst)");
+  await assertAtLeast44(page.getByRole("button", { name: "Kaartweergave" }), "weergave-toggle (kaart)");
+  await assertAtLeast44(page.getByRole("button", { name: "Exporteer als CSV" }), "exportknop CSV");
+  await assertAtLeast44(page.getByRole("button", { name: "Exporteer als GeoJSON" }), "exportknop GeoJSON");
+  await assertAtLeast44(
+    page.getByRole("navigation", { name: "Ontdek een thema" }).getByRole("button", { name: "Kerken", exact: true }),
+    "themaknop (Kerken)",
+  );
+  await assertAtLeast44(
+    page.getByRole("complementary", { name: "Zoekfilters" }).locator("label", { hasText: "Alle soorten" }),
+    "filterrij (Alle soorten)",
+  );
+});
+
 test("resultaten zijn te exporteren als CSV en GeoJSON (#34)", async ({ page }) => {
   await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
   await page.getByRole("button", { name: "Doorzoek RCE" }).click();

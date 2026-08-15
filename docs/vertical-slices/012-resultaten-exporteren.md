@@ -11,6 +11,14 @@ vragen" hieronder zijn tijdens het bouwen beantwoord: bestandsnaam is
 `doorzoeker-export-JJJJ-MM-DD.{csv,geojson}`, en de export werkt vanuit
 zowel lijst- als kaartweergave zonder extra werk (dezelfde `results`).
 
+**Update (15 augustus 2026, codereview-bevinding):** CSV-formule-injectie
+verholpen - een waarde die begint met `=`, `+`, `-` of `@` krijgt nu een
+voorloop-apostrof (`neutralizeFormula()` in `lib/export.ts`) zodat
+spreadsheetsoftware het niet als formule uitvoert. Zie `docs/te-doen.md`
+voor de nog openstaande export-punten (linked-data-identiteit in de
+kolommen, geen waarschuwing in het bestand zelf bij een onvolledige
+export).
+
 ## Aanleiding
 
 Alle huidige (gefilterde) resultaten staan al client-side in het
