@@ -260,6 +260,11 @@ header p a {
   background: var(--rce-blue-hover);
 }
 .hero form .clear {
+  min-width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 0 8px;
   background: transparent;
   color: #7b8580;
@@ -307,6 +312,9 @@ header p a {
   font-size: 14px;
 }
 .hero nav button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   margin-left: 8px;
   padding: 4px 12px;
   border: 1px solid var(--rce-blue);
@@ -411,7 +419,9 @@ h2 {
 .work aside label {
   display: grid;
   grid-template-columns: 18px 1fr auto;
+  align-items: center;
   gap: 9px;
+  min-height: 44px;
   padding: 7px 0;
   color: var(--ink);
   font-size: 15px;
@@ -456,7 +466,7 @@ h2 {
   gap: 8px;
 }
 .export button {
-  height: 38px;
+  height: 44px;
   padding: 0 12px;
   border: 1px solid #9c9c9c;
   background: #fff;
@@ -487,8 +497,8 @@ h2 {
   border: 1px solid var(--line);
 }
 .switch button {
-  width: 42px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-right: 1px solid var(--line);
   background: #fff;

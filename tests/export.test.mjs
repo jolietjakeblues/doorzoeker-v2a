@@ -99,6 +99,24 @@ test("itemsToGeoJson zet een polygon-WKT om naar Polygon-coördinaten in lng/lat
   });
 });
 
+test("itemsToCsv neutraliseert waarden die spreadsheetsoftware als formule zou interpreteren", () => {
+  const gevaarlijk = [
+    { ...rijksmonument, id: "cho-formule-1", title: "=HYPERLINK(\"https://evil.test\")" },
+    { ...rijksmonument, id: "cho-formule-2", title: "+SUM(1,1)" },
+    { ...rijksmonument, id: "cho-formule-3", title: "-2+3" },
+    { ...rijksmonument, id: "cho-formule-4", title: "@command" },
+    { ...rijksmonument, id: "cho-formule-5", title: "Gewoon een titel met een - erin" },
+  ];
+  const rows = itemsToCsv(gevaarlijk).split("\r\n").slice(1);
+  assert.equal(rows[0], '517912,"\'=HYPERLINK(""https://evil.test"")",Dorpsstraat 1,5051AA,Goirle,Noord-Brabant,Rijksmonument,Gebouwd,Woonhuis,2002-01-01,oorspronkelijke functie');
+  assert.equal(rows[1], '517912,"\'+SUM(1,1)",Dorpsstraat 1,5051AA,Goirle,Noord-Brabant,Rijksmonument,Gebouwd,Woonhuis,2002-01-01,oorspronkelijke functie');
+  assert.equal(rows[2], "517912,'-2+3,Dorpsstraat 1,5051AA,Goirle,Noord-Brabant,Rijksmonument,Gebouwd,Woonhuis,2002-01-01,oorspronkelijke functie");
+  assert.equal(rows[3], "517912,'@command,Dorpsstraat 1,5051AA,Goirle,Noord-Brabant,Rijksmonument,Gebouwd,Woonhuis,2002-01-01,oorspronkelijke functie");
+  // Een liggend streepje verderop in de tekst (niet aan het begin) blijft
+  // onaangeroerd - alleen een leidend =, +, - of @ is gevaarlijk.
+  assert.equal(rows[4], "517912,Gewoon een titel met een - erin,Dorpsstraat 1,5051AA,Goirle,Noord-Brabant,Rijksmonument,Gebouwd,Woonhuis,2002-01-01,oorspronkelijke functie");
+});
+
 test("exportFileName geeft een voorspelbare, per-dag bestandsnaam met de juiste extensie", () => {
   const today = new Date().toISOString().slice(0, 10);
   assert.equal(exportFileName("csv"), `doorzoeker-export-${today}.csv`);
