@@ -19,6 +19,7 @@ import {
   buildGroenaanlegQuery,
   buildGrondsporenDetailsQuery,
   buildGrondsporenDiscoveryQueries,
+  buildGrondspoorTypeConceptQuery,
   buildImageQuery,
   buildBouwkundigeStaatConceptQuery,
   buildMonumentAardConceptQuery,
@@ -249,12 +250,11 @@ export async function searchByBouwkundigeStaatConcept(conceptUri: string, signal
   return searchByConceptMatchQuery(buildBouwkundigeStaatConceptQuery(conceptUri), signal);
 }
 
-// Anders dan monumentaard/stijl/bouwkundige staat/waardering matcht
-// verwerving op het CHO-nummer van een Vondstlocatie, niet op een
-// rijksmonumentnummer - searchByConceptMatchQuery (via
-// buildMonumentsFromNumbers) zou die nummers dus ten onrechte als
-// rijksmonumentnummer opzoeken. Haalt daarom, net als searchVondstlocaties,
-// de Vondstlocatie-eigen detailquery op.
+// Anders dan monumentaard/stijl/bouwkundige staat matcht verwerving op het
+// CHO-nummer van een Vondstlocatie, niet op een rijksmonumentnummer -
+// searchByConceptMatchQuery (via buildMonumentsFromNumbers) zou die
+// nummers dus ten onrechte als rijksmonumentnummer opzoeken. Haalt daarom,
+// net als searchVondstlocaties, de Vondstlocatie-eigen detailquery op.
 export async function searchByVerwervingConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
   const document = await fetchSparql(buildVerwervingConceptQuery(conceptUri), signal);
   const numbers = parseConceptSearchMatches(document).slice(0, 25);
@@ -263,8 +263,27 @@ export async function searchByVerwervingConcept(conceptUri: string, signal?: Abo
   return parseVondstlocatieResults(details);
 }
 
+// Matcht op het eigen CHO-nummer van het Archeologisch terrein, niet op een
+// gekoppeld rijksmonumentnummer (zie de toelichting bij
+// buildArcheologischeWaarderingConceptQuery: slechts ~14% van de terreinen
+// met een waardering heeft zo'n koppeling). Haalt daarom de terrein-eigen
+// detailquery op, net als searchByVerwervingConcept voor Vondstlocatie.
 export async function searchByArcheologischeWaarderingConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
-  return searchByConceptMatchQuery(buildArcheologischeWaarderingConceptQuery(conceptUri), signal);
+  const document = await fetchSparql(buildArcheologischeWaarderingConceptQuery(conceptUri), signal);
+  const numbers = parseConceptSearchMatches(document).slice(0, 25);
+  if (!numbers.length) return [];
+  const details = await fetchSparql(buildArcheologischTerreinDetailsQuery(numbers), signal);
+  return parseStandaloneArcheologischTerreinResults(details);
+}
+
+// Matcht op het eigen CHO-nummer van het grondspoor, zelfde patroon als
+// verwerving/waardering hierboven.
+export async function searchByGrondspoorTypeConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
+  const document = await fetchSparql(buildGrondspoorTypeConceptQuery(conceptUri), signal);
+  const numbers = parseConceptSearchMatches(document).slice(0, 25);
+  if (!numbers.length) return [];
+  const details = await fetchSparql(buildGrondsporenDetailsQuery(numbers), signal);
+  return parseGrondsporenResults(details);
 }
 
 export async function searchByGebeurtenisConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {

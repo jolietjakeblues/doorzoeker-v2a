@@ -151,10 +151,14 @@ test("does not require q when a valid concept-URI is present", async (context) =
   assert.equal(document.results[0].monumentAardConceptUri, conceptUri);
 });
 
-test("dispatches to the archeologische-waardering concept search when veld=waardering, not monumentaard", async (context) => {
+test("dispatches to the archeologische-waardering concept search when veld=waardering, matching op het eigen CHO-nummer van het terrein (P1: niet via ligtInObject)", async (context) => {
   // Fase 2 (2026-08-10): veld bepaalt expliciet via welke eigenschap
   // gezocht wordt - zonder deze parameter zou de route niet kunnen weten
   // welke van de twee concept-zoekopdrachten bedoeld is.
+  // 15 augustus 2026: query matcht nu op het eigen CHO-nummer van het
+  // ArcheologischTerrein, niet meer op een gekoppeld rijksmonumentnummer
+  // (~86% van de terreinen met een waardering heeft geen ligtInObject-
+  // relatie naar een Rijksmonument, zie CHO 6042545).
   const originalFetch = globalThis.fetch;
   const originalCaches = globalThis.caches;
   context.after(() => {
@@ -166,19 +170,25 @@ test("dispatches to the archeologische-waardering concept search when veld=waard
   const conceptUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/31020cd0-9029-4609-bbd8-ee83f9baf3f4";
   globalThis.fetch = async (input) => {
     const url = decodeURIComponent(String(input));
-    if (url.includes("heeftMonumentAard") && url.includes("SELECT ?rmnr")) throw new Error("moet niet op monumentaard zoeken wanneer veld=waardering is meegegeven");
-    if (url.includes("heeftArcheologischeWaardering") && url.includes("SELECT ?rmnr")) {
-      return Response.json({ results: { bindings: [{ rmnr: { value: "45708" } }] } });
+    if (url.includes("heeftMonumentAard")) throw new Error("moet niet op monumentaard zoeken wanneer veld=waardering is meegegeven");
+    if (url.includes("heeftArcheologischeWaardering") && !url.includes("VALUES")) {
+      return Response.json({ results: { bindings: [{ rmnr: { value: "6042545" } }] } });
     }
-    if (url.includes("perceelnummer")) return Response.json({ results: { bindings: [] } });
-    if (url.includes("GROUP_CONCAT")) return Response.json({ results: { bindings: [{ rmnr: { value: "45708" } }] } });
-    return Response.json({ results: { bindings: [{ cho: { value: "rm:45708" }, choi: { value: "45708" }, rmnr: { value: "45708" } }] } });
+    if (url.includes("a ceo:ArcheologischTerrein") && url.includes("VALUES ?choi")) {
+      return Response.json({ results: { bindings: [{
+        terrein: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischterrein/6042545" },
+        choi: { value: "6042545" },
+        naam: { value: "Zonder rijksmonumentkoppeling" },
+      }] } });
+    }
+    return Response.json({ results: { bindings: [] } });
   };
 
-  const response = await GET(new Request(`https://doorzoeker.test/api/rce/search?concept=${encodeURIComponent(conceptUri)}&veld=waardering`, { headers: { "cf-connecting-ip": "test-waardering-success" } }));
+  const response = await GET(new Request(`https://doorzoeker.test/api/rce/search?concept=${encodeURIComponent(conceptUri)}&veld=waardering`, { headers: { "cf-connecting-ip": "test-waardering-p1-success" } }));
   assert.equal(response.status, 200);
   const document = await response.json();
-  assert.equal(document.results[0].monumentNumber, "45708");
+  assert.equal(document.results[0].monumentNumber, "6042545");
+  assert.equal(document.results[0].name, "Zonder rijksmonumentkoppeling");
 });
 
 test("dispatches to the gebeurtenis concept search when veld=gebeurtenis", async (context) => {

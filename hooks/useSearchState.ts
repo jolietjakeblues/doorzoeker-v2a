@@ -13,6 +13,7 @@ import {
   searchByArcheologischComplexTypeConcept,
   searchByBouwkundigeStaatConcept,
   searchByGebeurtenisConcept,
+  searchByGrondspoorTypeConcept,
   searchByFunctieConcept,
   searchByMonumentAardConcept,
   searchByMateriaalConcept,
@@ -319,6 +320,8 @@ export function useSearchState() {
               ? await searchByBouwkundigeStaatConcept(concept.uri, request.signal)
             : veld === "verwerving"
               ? await searchByVerwervingConcept(concept.uri, request.signal)
+            : veld === "grondspoortype"
+              ? await searchByGrondspoorTypeConcept(concept.uri, request.signal)
               : await searchByMonumentAardConcept(
                   concept.uri,
                   request.signal,

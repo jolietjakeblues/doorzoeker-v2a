@@ -40,15 +40,26 @@ maandag verder opgepakt.
      allemaal net onder 44px (meestal alleen in hoogte). CSS aangepast in
      `app/globals.css`; nieuwe e2e-test controleert dit voor de
      belangrijkste knoppen.
-3. **Nieuwe doorklik-gaten, gemeld door de eigenaar (15 augustus 2026, nog
-   niet geverifieerd of geïmplementeerd):**
-   - Grondspoor-veld "Type" (bv. "grondverkleuring") is ook een
-     concept-URI-gekoppeld begrip - zie CHO 10000187 in de live RCE-data.
-   - Bevestiging (geen nieuwe koppeling, maar een concreet
-     voorbeeldrecord): "Archeologische waardering: hoge archeologische
-     waarde" is een link - zie CHO 6042545. Navragen of dit al werkt via
-     de bestaande waardering-doorklik of dat dit specifieke object/pad
-     nog ontbreekt.
+3. **Nieuwe doorklik-gaten, gemeld door de eigenaar (15 augustus 2026) -
+   beide onderzocht en opgelost, zelfde dag:**
+   - ~~Grondspoor-veld "Type" (bv. "grondverkleuring") is ook een
+     concept-URI-gekoppeld begrip - zie CHO 10000187.~~ **Opgelost.** De
+     concept-URI werd al opgehaald (`archaeologicalTypeConceptUri`) maar
+     nergens gebruikt. Nieuw conceptveld `grondspoortype` door de hele
+     stack (query, route, client, hook, UI); "Type grondspoor" is nu een
+     `concept-link`-knop in `app/HeritageDetailFacts.tsx` en meegenomen in
+     "Alle gekoppelde begrippen".
+   - ~~"Archeologische waardering: hoge archeologische waarde" is een link
+     - zie CHO 6042545.~~ **Echte bug gevonden en opgelost, niet alleen
+     een bevestiging.** `buildArcheologischeWaarderingConceptQuery` matchte
+     via `ceo:ligtInObject` naar een gekoppeld Rijksmonument - maar live
+     geverifieerd: van de ~13.018 ArcheologischTerrein-instanties met een
+     waardering hebben er maar ~1.812 (~14%) zo'n koppeling. CHO 6042545
+     is één van de overige ~86%: waardering wél gezet, geen
+     `ligtInObject`, dus de oude query gaf daar stilzwijgend 0 resultaten.
+     Query matcht nu op het eigen CHO-nummer van het terrein (zelfde
+     patroon als `searchByVerwervingConcept`); resultaten tonen voortaan
+     het terrein zelf in plaats van een toevallig gekoppeld Rijksmonument.
 
 ## Uit de codereview
 

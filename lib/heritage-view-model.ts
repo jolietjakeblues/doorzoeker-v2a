@@ -106,7 +106,8 @@ export type ConceptField =
   | "archeologischcomplextype"
   | "stijl"
   | "bouwkundigestaat"
-  | "verwerving";
+  | "verwerving"
+  | "grondspoortype";
 export type LinkedConcept = {
   uri: string;
   label: string;
@@ -165,6 +166,13 @@ export function linkedConcepts(item: Item): LinkedConcept[] {
       label: item.archaeologicalAcquisition,
       field: "verwerving",
       group: "Verwervingswijze",
+    });
+  if (item.archaeologicalType && item.archaeologicalTypeConceptUri)
+    concepts.push({
+      uri: item.archaeologicalTypeConceptUri,
+      label: item.archaeologicalType,
+      field: "grondspoortype",
+      group: "Type grondspoor",
     });
   return concepts;
 }
