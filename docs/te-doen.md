@@ -3,8 +3,18 @@
 Lopend to-do-document. Vastgelegd op 14 augustus 2026, na afronding van
 PR's #55-#60 en twee reviews (functioneel + security) op `main`
 (`463f5f4`). Aangevuld op 15 augustus 2026 (mobiel/toegankelijkheid,
-`/accessibility-review`-bevindingen, en drie zaterdag-fixes). Wordt
-maandag verder opgepakt.
+`/accessibility-review`-bevindingen, drie zaterdag-fixes, en een
+design critique). Wordt maandag verder opgepakt.
+
+## Domeinnaam (volgende week)
+
+15. **Sitenaam wordt `doorzoekerfgoed.nl`.** Registratie is gestart bij
+    zowel Cloudflare als Strato (15 augustus 2026) - nog niet afgerond,
+    nog geen DNS/Worker-koppeling. Zodra de registratie rond is: custom
+    domain koppelen aan de Cloudflare Worker, `README.md`/deploydocs
+    bijwerken (nu nog `doorzoeker-v2a.jolietjakeblues64.workers.dev`),
+    en controleren of er ergens hardcoded verwijzingen naar de oude
+    workers.dev-URL staan.
 
 ## Kwaliteit en toegankelijkheid
 
@@ -61,6 +71,29 @@ maandag verder opgepakt.
      patroon als `searchByVerwervingConcept`); resultaten tonen voortaan
      het terrein zelf in plaats van een toevallig gekoppeld Rijksmonument.
 
+4. **Nog twee doorklik-gaten, gemeld door de eigenaar (15 augustus 2026,
+   via mobiele screenshots) - beide onderzocht en opgelost, zelfde dag:**
+   - ~~"Type" bij een Rijksmonument (bv. "Bovenkruier", CHO 27601) staat
+     als platte tekst, geen link.~~ **Opgelost.** `buildRceFacetsQuery`
+     haalde alleen het label op (`.../heeftTypeNaam/skos:prefLabel`), de
+     concept-URI werd genegeerd. Nieuw conceptveld `monumenttype` door de
+     hele stack; "Type" is nu een `concept-link`-knop in
+     `app/HeritageDetailFacts.tsx` en meegenomen in "Alle gekoppelde
+     begrippen".
+   - ~~De CHO-nummers naast archeologische-complextypen in "Wat hier is
+     aangetroffen" (Vondstlocatie-detail) kloppen niet - moeten rn/2-URI's
+     zijn.~~ **Opgelost.** De concept-URI van het type was al opgehaald
+     (`complex.type.uri`, via `?object ceo:heeftType/ceo:heeftTypeNaam
+     ?concept`) maar nooit gebruikt; de knop opende in plaats daarvan de
+     losse complex-*instantie* op CHO-nummer, met dat instantienummer
+     misleidend tussen haakjes vlak naast de typenaam gezet (leek een
+     definitie van het type, was het niet). In `app/HeritageRelationSections.tsx`:
+     het type is nu zelf een `concept-link` naar
+     `veld=archeologischcomplextype` (zoekt alle complexen van dit type);
+     de instantie blijft apart en duidelijk gelabeld opvraagbaar als
+     "Complex {CHO-nummer}" (behoudt TD-33's doel: complexen met hetzelfde
+     type onderscheidbaar houden).
+
 ## Uit de codereview
 
 1. **Export verliest linked-data-identiteit.** `lib/export.ts` (CSV en
@@ -96,6 +129,39 @@ maandag verder opgepakt.
    steeds met een volledige `vinext build`, wat gericht testen vertraagt
    en buildcontrole met unitcontrole vermengt. Voorstel: opsplitsen in
    `test:unit`, `build`, `check`, `test:e2e`.
+
+## Uit de design critique (15 augustus 2026)
+
+Live tegen `https://doorzoeker-v2a.jolietjakeblues64.workers.dev/`, via
+DOM/CSS-inspectie (geen screenshots beschikbaar in die sessie). Volledige
+critique met alle metingen staat in de sessietranscriptie van 15 augustus;
+hieronder de drie prioriteiten.
+
+12. **`.concept-link`-knoppen hebben geen resting-state kleur.** De
+    kern-interactie van de app (klik op een begrip → exacte
+    zoekopdracht - overal in "Alle gekoppelde begrippen" en losse
+    detailvelden) erft zwarte tekstkleur en wordt pas blauw bij `:hover`.
+    Op touch/toetsenbord (geen hover) is er dus geen kleursignaal dat het
+    klikbaar is, alleen de onderstreping. Geef `.concept-link` in
+    `app/globals.css` een expliciete resting-state kleur
+    (`var(--rce-blue)`), consistent met elk ander interactief element.
+13. **H1 op de startpagina heeft dezelfde regelafstand-ratio als lopende
+    tekst.** `font-size: 40px` met `line-height: 64px` (1,6×, exact de
+    globale body-ratio). Een display-kop met zoveel lucht oogt losser en
+    minder "ontworpen". Strakkere `line-height` (~1,1-1,2×) specifiek
+    voor `.hero h1`.
+14. **Twee incompatibele knop-hoekstijlen naast elkaar.** Scherp (0px
+    radius: "Doorzoek RCE", weergave-toggle, exportknoppen) versus
+    volledig rond (20-22px: "Direct zoeken"/"Ontdek een thema"-pills,
+    "Verras me"), zonder duidelijke regel wanneer welke gebruikt wordt.
+    Eén conventie per actietype kiezen en consequent toepassen.
+
+Kleinere observaties uit dezelfde critique (geen aparte actie, alleen
+genoteerd): secundaire tekstkleur is inconsistent (grijs bij hero-intro/
+`dt`-labels, zwart bij de adresregel op resultaatkaarten - één
+kleurtoken voor secundaire tekst gebruiken); de drie navigatierijen
+(Direct zoeken/Ontdek een thema/Bekijk alles) hebben identiek visueel
+gewicht ondanks verschillende functies.
 
 ## Uit de securityreview
 

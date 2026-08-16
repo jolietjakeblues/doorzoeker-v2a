@@ -40,6 +40,17 @@ SELECT ?rmnr WHERE {
 LIMIT 100`;
 }
 
+export function buildMonumentTypeConceptQuery(conceptUri: string) {
+  return `PREFIX ceo: <${CEO}>
+SELECT ?rmnr WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ; ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> ;
+         ceo:heeftType/ceo:heeftTypeNaam <${conceptUri}> .
+  }
+}
+LIMIT 100`;
+}
+
 export function buildVerwervingConceptQuery(conceptUri: string) {
   return `PREFIX ceo: <${CEO}>
 SELECT ?rmnr WHERE {

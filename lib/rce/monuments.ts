@@ -283,6 +283,7 @@ SELECT ?rmnr
   (GROUP_CONCAT(DISTINCT STR(?huidigeFunctie); separator="||") AS ?huidigeFuncties)
   (GROUP_CONCAT(DISTINCT CONCAT(STR(?functieConcept), "~~", STR(?functieLabel)); separator="||") AS ?functieConcepten)
   (GROUP_CONCAT(DISTINCT STR(?typeNaam); separator="||") AS ?typen)
+  (GROUP_CONCAT(DISTINCT CONCAT(STR(?typeConcept), "~~", STR(?typeNaam)); separator="||") AS ?typeConcepten)
 WHERE {
   GRAPH <${INSTANCES_GRAPH}> {
     VALUES ?rmnr { ${values} }
@@ -303,7 +304,10 @@ WHERE {
       ?functieNode ceo:formeelStandpunt true ; ceo:heeftFunctieNaam ?functieConcept .
       ?functieConcept skos:prefLabel ?functieLabel .
     }
-    OPTIONAL { ?cho ceo:heeftType/ceo:heeftTypeNaam/skos:prefLabel ?typeNaam . }
+    OPTIONAL {
+      ?cho ceo:heeftType/ceo:heeftTypeNaam ?typeConcept .
+      ?typeConcept skos:prefLabel ?typeNaam .
+    }
   }
 }
 GROUP BY ?rmnr`;
@@ -319,6 +323,10 @@ export function parseFacetResults(document: unknown) {
       return uri && label ? [{ uri, label }] : [];
     }) ?? [],
     typeNames: binding.typen?.value?.split("||").filter(Boolean) ?? [],
+    typeConcepts: binding.typeConcepten?.value?.split("||").flatMap((value) => {
+      const [uri, label] = value.split("~~");
+      return uri && label ? [{ uri, label }] : [];
+    }) ?? [],
     legalStatus: "rijksmonument",
   }]));
 }

@@ -36,6 +36,7 @@ export type RceMonument = {
   currentFunctionNames?: string[];
   functionConcepts?: { uri: string; label: string }[];
   typeNames?: string[];
+  typeConcepts?: { uri: string; label: string }[];
   legalStatus?: string;
   description?: string;
   monumentNature?: string;
