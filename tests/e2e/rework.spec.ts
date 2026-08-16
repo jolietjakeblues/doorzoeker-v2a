@@ -583,21 +583,28 @@ test("een vondstlocatie toont vondsten met hun RN2-bron", async ({ page }) => {
   await expect(page.getByText(/aardewerk \(Archeologisch Informatie Systeem\).*fragment \(Cultuurhistorische Object Informatie\)/)).toBeVisible();
 });
 
-test("archeologische complexen met hetzelfde type blijven van elkaar te onderscheiden (TD-33)", async ({ page }) => {
+test("archeologische complexen met hetzelfde type blijven van elkaar te onderscheiden, type is doorklikbaar naar het rn/2-begrip (TD-33, P1: CHO's naast een type klopten niet)", async ({ page }) => {
+  const urnenveldUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/urnenveld";
   await page.unroute("**/api/rce/search**");
-  await page.route("**/api/rce/search**", (route) => route.fulfill({ json: { results: [{
-    choNumber: "39087", monumentNumber: "39087", registrationDate: "1994-05-17", street: "", houseNumber: "", postalCode: "",
-    sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/vondstlocatie/39087", name: "Vorstengrafdonk", place: "Oss", municipality: "Oss",
-    description: "Archeologische vondstlocatie.", monumentNature: "vondstlocatie", archaeologicalAcquisition: "archeologisch: opgraving",
-    matchSource: "Archis-waarnemingsnummer", matchedText: "39087", matchScore: 10,
-  }], page: 1, hasMore: false } }));
+  await page.route("**/api/rce/search**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("veld") === "archeologischcomplextype") {
+      return route.fulfill({ json: { results: [{ ...records[0], name: "Ander complex met hetzelfde type", monumentNumber: "888004" }], page: 1, hasMore: false } });
+    }
+    return route.fulfill({ json: { results: [{
+      choNumber: "39087", monumentNumber: "39087", registrationDate: "1994-05-17", street: "", houseNumber: "", postalCode: "",
+      sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/vondstlocatie/39087", name: "Vorstengrafdonk", place: "Oss", municipality: "Oss",
+      description: "Archeologische vondstlocatie.", monumentNature: "vondstlocatie", archaeologicalAcquisition: "archeologisch: opgraving",
+      matchSource: "Archis-waarnemingsnummer", matchedText: "39087", matchScore: 10,
+    }], page: 1, hasMore: false } });
+  });
   await page.unroute("**/api/rce/vondstlocatie-inhoud**");
   await page.route("**/api/rce/vondstlocatie-inhoud**", (route) => route.fulfill({ json: {
     complexen: [
       { uri: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischcomplex/1", choNumber: "111",
-        type: { label: "urnenveld", schemes: [{ uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/ais", label: "Archeologisch Informatie Systeem" }] } },
+        type: { uri: urnenveldUri, label: "urnenveld", schemes: [{ uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/ais", label: "Archeologisch Informatie Systeem" }] } },
       { uri: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischcomplex/2", choNumber: "222",
-        type: { label: "urnenveld", schemes: [{ uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/ais", label: "Archeologisch Informatie Systeem" }] } },
+        type: { uri: urnenveldUri, label: "urnenveld", schemes: [{ uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/ais", label: "Archeologisch Informatie Systeem" }] } },
     ],
     grondsporen: [], complexenTotaal: 2, grondsporenTotaal: 0, vondstenTotaal: 0, vondsten: [],
   } }));
@@ -605,8 +612,21 @@ test("archeologische complexen met hetzelfde type blijven van elkaar te ondersch
   await page.getByRole("button", { name: "Doorzoek RCE" }).click();
   await page.getByRole("button", { name: "Bekijk gegevens van Vorstengrafdonk" }).click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByText("(CHO 111)", { exact: true })).toBeVisible();
-  await expect(dialog.getByText("(CHO 222)", { exact: true })).toBeVisible();
+
+  // TD-33: nog steeds van elkaar te onderscheiden via hun eigen CHO-nummer,
+  // nu duidelijk gelabeld als "Complex {nummer}" i.p.v. een verwarrende
+  // "(CHO {nummer})" die naast het type-begrip stond.
+  await expect(dialog.getByRole("button", { name: "Complex 111", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Complex 222", exact: true })).toBeVisible();
+
+  // P1: het type zelf is nu een echte doorklik naar het rn/2-begrip, niet
+  // langer een CHO-nummer dat niets met het type te maken had.
+  const typeLinks = dialog.getByRole("button", { name: "urnenveld", exact: true });
+  await expect(typeLinks).toHaveCount(2);
+  await typeLinks.first().click();
+  await expect(page).toHaveURL(/veld=archeologischcomplextype/);
+  await expect(page).toHaveURL(new RegExp(encodeURIComponent(urnenveldUri).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  await expect(page.getByText("Ander complex met hetzelfde type")).toBeVisible();
 });
 
 test("'Onderdeel van complex' is doorklikbaar binnen Doorzoeker, niet alleen platte tekst", async ({ page }) => {
@@ -663,6 +683,32 @@ test("stijl & cultuur, bouwkundige staat, type en overige functies worden getoon
   await dialog.getByRole("button", { name: "Kantoor", exact: true }).click();
   await expect(page).toHaveURL(/veld=functie/);
   await expect(page).toHaveURL(new RegExp(encodeURIComponent(kantoorUri).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+});
+
+test("Type is doorklikbaar naar zijn eigen conceptzoekopdracht (gemeld door de eigenaar, CHO 27601 'Bovenkruier')", async ({ page }) => {
+  const bovenkruierUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/9ba13642-5aa7-42fa-862f-4b9c71455cce";
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("veld") === "monumenttype") {
+      return route.fulfill({ json: { page: 1, hasMore: false, results: [{
+        ...records[0], choNumber: "cho-type", monumentNumber: "999005", name: "Andere molen met hetzelfde type",
+      }] } });
+    }
+    return route.fulfill({ json: { page: 1, hasMore: false, results: [{
+      ...records[0],
+      typeNames: ["Bovenkruier"],
+      typeConcepts: [{ uri: bovenkruierUri, label: "Bovenkruier" }],
+    }] } });
+  });
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("architect");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Bovenkruier", exact: true }).click();
+  await expect(page).toHaveURL(/veld=monumenttype/);
+  await expect(page).toHaveURL(new RegExp(encodeURIComponent(bovenkruierUri).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  await expect(page.getByText("Andere molen met hetzelfde type")).toBeVisible();
 });
 
 test("stijl en cultuur / bouwkundige staat zijn doorklikbaar naar hun eigen concept-zoekopdracht", async ({ page }) => {

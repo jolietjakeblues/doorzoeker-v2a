@@ -23,6 +23,7 @@ import {
   buildImageQuery,
   buildBouwkundigeStaatConceptQuery,
   buildMonumentAardConceptQuery,
+  buildMonumentTypeConceptQuery,
   buildStijlConceptQuery,
   buildVerwervingConceptQuery,
   buildMspIndicatieQuery,
@@ -248,6 +249,10 @@ export async function searchByStijlConcept(conceptUri: string, signal?: AbortSig
 
 export async function searchByBouwkundigeStaatConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
   return searchByConceptMatchQuery(buildBouwkundigeStaatConceptQuery(conceptUri), signal);
+}
+
+export async function searchByMonumentTypeConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
+  return searchByConceptMatchQuery(buildMonumentTypeConceptQuery(conceptUri), signal);
 }
 
 // Anders dan monumentaard/stijl/bouwkundige staat matcht verwerving op het

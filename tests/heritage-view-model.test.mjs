@@ -6,6 +6,7 @@ import {
   pickVergelijkbareRijksmonumenten,
   primaryFunctionConcept,
   primaryIdentifier,
+  typeConceptForLabel,
 } from "../lib/heritage-view-model.ts";
 
 const base = { objectNumber: "cho-42" };
@@ -27,6 +28,9 @@ test("collects only linked concepts that support an exact search", () => {
       archaeologicalAcquisitionConceptUri: "https://example.test/graafwerk",
       archaeologicalType: "grondverkleuring",
       archaeologicalTypeConceptUri: "https://example.test/grondverkleuring",
+      typeConcepts: [
+        { uri: "https://example.test/bovenkruier", label: "Bovenkruier" },
+      ],
       // description heeft geen eigen concept-URI en levert dus bewust geen
       // entry op - niet elk veld op Item ondersteunt een exacte zoekopdracht.
       description: "Een lange vrije-tekst omschrijving zonder concept-URI.",
@@ -37,6 +41,12 @@ test("collects only linked concepts that support an exact search", () => {
         label: "Woonhuis",
         field: "functie",
         group: "Functie",
+      },
+      {
+        uri: "https://example.test/bovenkruier",
+        label: "Bovenkruier",
+        field: "monumenttype",
+        group: "Type",
       },
       {
         uri: "https://example.test/waardering",
@@ -76,6 +86,21 @@ test("collects only linked concepts that support an exact search", () => {
       },
     ],
   );
+});
+
+test("typeConceptForLabel matcht op het exacte typelabel en levert undefined zonder match", () => {
+  const item = {
+    typeConcepts: [
+      { uri: "https://example.test/bovenkruier", label: "Bovenkruier" },
+      { uri: "https://example.test/stellingmolen", label: "Stellingmolen" },
+    ],
+  };
+  assert.deepEqual(typeConceptForLabel(item, "Stellingmolen"), {
+    uri: "https://example.test/stellingmolen",
+    label: "Stellingmolen",
+  });
+  assert.equal(typeConceptForLabel(item, "Onbekend type"), undefined);
+  assert.equal(typeConceptForLabel({}, "Bovenkruier"), undefined);
 });
 
 test("pickVergelijkbareRijksmonumenten excludes the opened monument itself and caps the list", () => {

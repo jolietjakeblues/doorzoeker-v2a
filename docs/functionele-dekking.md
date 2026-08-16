@@ -140,9 +140,10 @@ klik exact op de concept-URI. Zonder aangetoonde koppeling staat er expliciet
 `zoekt op tekst`. Zo wekt een bruikbaar thesauruswoord geen onterechte indruk
 dat alle CHO-objecten ermee zijn geclassificeerd. Archeologische waardering,
 verwervingswijze, gebeurtenistype, actor, stijl en cultuur, bouwkundige
-staat en het type van een grondspoor zijn daarnaast vanuit records exact
-doorzoekbaar; het detailpaneel verzamelt al deze en de eerdergenoemde
-begrippen ook in één gegroepeerd "Alle gekoppelde begrippen"-overzicht.
+staat, het type van een grondspoor en het type van een Rijksmonument
+(bv. "Bovenkruier") zijn daarnaast vanuit records exact doorzoekbaar; het
+detailpaneel verzamelt al deze en de eerdergenoemde begrippen ook in één
+gegroepeerd "Alle gekoppelde begrippen"-overzicht.
 Bibliotheek en Beeldbank gebruiken CHT in hun
 eigen brondata; dat maakt CHT niet automatisch een algemene CHO-zoekindex.
 

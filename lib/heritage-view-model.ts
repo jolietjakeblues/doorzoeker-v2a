@@ -63,6 +63,7 @@ export type Item = {
   currentFunctionNames?: string[];
   functionConcepts?: { uri: string; label: string }[];
   typeNames?: string[];
+  typeConcepts?: { uri: string; label: string }[];
   parcels?: RceParcel[];
   archaeologicalSites?: ArcheologischTerrein[];
   complexes?: ComplexMembership[];
@@ -107,7 +108,8 @@ export type ConceptField =
   | "stijl"
   | "bouwkundigestaat"
   | "verwerving"
-  | "grondspoortype";
+  | "grondspoortype"
+  | "monumenttype";
 export type LinkedConcept = {
   uri: string;
   label: string;
@@ -119,6 +121,8 @@ export function linkedConcepts(item: Item): LinkedConcept[] {
   const concepts: LinkedConcept[] = [];
   for (const concept of item.functionConcepts ?? [])
     concepts.push({ ...concept, field: "functie", group: "Functie" });
+  for (const concept of item.typeConcepts ?? [])
+    concepts.push({ ...concept, field: "monumenttype", group: "Type" });
   if (item.monumentAardConcept)
     concepts.push({
       ...item.monumentAardConcept,
@@ -200,6 +204,16 @@ export function primaryFunctionConcept(
     (item.kind ? functionConceptForLabel(item, item.kind) : undefined) ??
     item.functionConcepts?.[0]
   );
+}
+
+// item.typeNames (platte labels) en item.typeConcepts (uri+label-paren)
+// komen uit dezelfde facettenquery maar zijn onafhankelijk gededupliceerd -
+// zelfde reden als functionConceptForLabel hierboven.
+export function typeConceptForLabel(
+  item: Pick<Item, "typeConcepts">,
+  label: string,
+): { uri: string; label: string } | undefined {
+  return item.typeConcepts?.find((concept) => concept.label === label);
 }
 
 const VERGELIJKBARE_RIJKSMONUMENTEN_LIMIT = 5;
@@ -468,6 +482,7 @@ export function toItem(record: RceMonument): Item {
     currentFunctionNames: record.currentFunctionNames,
     functionConcepts: record.functionConcepts,
     typeNames: record.typeNames,
+    typeConcepts: record.typeConcepts,
     lat: record.lat ?? 0,
     lng: record.lng ?? 0,
     monumentAardConcept:

@@ -1,4 +1,4 @@
-import { displayFunctionName, functionConceptForLabel, primaryFunctionConcept, statusLabel, type ConceptField, type Item } from "@/lib/heritage-view-model";
+import { displayFunctionName, functionConceptForLabel, primaryFunctionConcept, statusLabel, typeConceptForLabel, type ConceptField, type Item } from "@/lib/heritage-view-model";
 
 type Concept = { uri: string; label: string };
 
@@ -258,7 +258,28 @@ export function HeritageDetailFacts({
       {item.typeNames?.length ? (
         <div>
           <dt>Type</dt>
-          <dd>{item.typeNames.join(", ")}</dd>
+          <dd>
+            {item.typeNames.map((name, index) => {
+              const concept = typeConceptForLabel(item, name);
+              return (
+                <span key={`${name}-${index}`}>
+                  {index ? ", " : ""}
+                  {concept ? (
+                    <button
+                      type="button"
+                      className="concept-link"
+                      onClick={() => onConceptSearch(concept, "monumenttype")}
+                      title="Zoek alle rijksmonumenten van dit type"
+                    >
+                      {name}
+                    </button>
+                  ) : (
+                    name
+                  )}
+                </span>
+              );
+            })}
+          </dd>
         </div>
       ) : null}
       {item.stijlEnCultuur ? (

@@ -16,6 +16,7 @@ import {
   searchByGrondspoorTypeConcept,
   searchByFunctieConcept,
   searchByMonumentAardConcept,
+  searchByMonumentTypeConcept,
   searchByMateriaalConcept,
   searchByStijlConcept,
   searchByToestandConcept,
@@ -322,6 +323,8 @@ export function useSearchState() {
               ? await searchByVerwervingConcept(concept.uri, request.signal)
             : veld === "grondspoortype"
               ? await searchByGrondspoorTypeConcept(concept.uri, request.signal)
+            : veld === "monumenttype"
+              ? await searchByMonumentTypeConcept(concept.uri, request.signal)
               : await searchByMonumentAardConcept(
                   concept.uri,
                   request.signal,

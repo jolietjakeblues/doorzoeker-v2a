@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeWaarderingConceptQuery, buildBouwkundigeStaatConceptQuery, buildStijlConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildGrondspoorTypeConceptQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceChoNumberQuery, buildRceDetailsQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceParcelsQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVerwervingConceptQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedQuery, mergeDiscoveryMatches, mergeVondstlocatieInhoud, parseAbrTermSuggestResults, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS, VONDSTLOCATIE_INHOUD_KLASSEN, wktToLatLng } from "../lib/rce.ts";
+import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeWaarderingConceptQuery, buildBouwkundigeStaatConceptQuery, buildStijlConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildGrondspoorTypeConceptQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMonumentTypeConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceChoNumberQuery, buildRceDetailsQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceParcelsQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVerwervingConceptQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedQuery, mergeDiscoveryMatches, mergeVondstlocatieInhoud, parseAbrTermSuggestResults, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS, VONDSTLOCATIE_INHOUD_KLASSEN, wktToLatLng } from "../lib/rce.ts";
 import { buildArchaeologyBrowseQuery, buildRijksmonumentenBrowseQuery, parseArchaeologyBrowseNumbers, parseRijksmonumentenBrowseNumbers } from "../lib/rce.ts";
 import { buildFunctieConceptQuery, buildTermUsageQuery, parseFacetResults, parseTermUsageResults } from "../lib/rce.ts";
 
@@ -308,7 +308,12 @@ test("queries formal original and current functions as separate facets", () => {
   assert.equal((query.match(/ceo:formeelStandpunt true/g) ?? []).length, 3);
   assert.match(query, /ceo:heeftFunctieNaam \?functieConcept/);
   assert.match(query, /STR\(\?functieConcept\)/);
-  assert.match(query, /ceo:heeftType\/ceo:heeftTypeNaam\/skos:prefLabel/);
+  // Type moet net als functie zowel het label als de concept-URI vastleggen
+  // (voorheen alleen /skos:prefLabel via het pad, de URI werd genegeerd -
+  // gemeld door de eigenaar: "Type" was geen doorklik).
+  assert.match(query, /ceo:heeftType\/ceo:heeftTypeNaam \?typeConcept/);
+  assert.match(query, /\?typeConcept skos:prefLabel \?typeNaam/);
+  assert.match(query, /CONCAT\(STR\(\?typeConcept\), "~~", STR\(\?typeNaam\)\)/);
 });
 
 test("discovers names, addresses, functions, types and descriptions as separate fast queries per source", () => {
@@ -348,6 +353,35 @@ test("keeps function labels paired with their concept URIs", () => {
     { uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/abc", label: "Woonhuis" },
     { uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/def", label: "Museum" },
   ]);
+});
+
+test("keeps type labels paired with their concept URIs (gemeld door de eigenaar: 'Type' was geen doorklik)", () => {
+  const facets = parseFacetResults({
+    results: {
+      bindings: [{
+        rmnr: { value: "513195" },
+        typen: { value: "Bovenkruier" },
+        typeConcepten: {
+          value: "https://data.cultureelerfgoed.nl/term/id/rn/2/9ba13642-5aa7-42fa-862f-4b9c71455cce~~Bovenkruier",
+        },
+      }],
+    },
+  });
+  assert.deepEqual(facets.get("513195").typeNames, ["Bovenkruier"]);
+  assert.deepEqual(facets.get("513195").typeConcepts, [
+    { uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/9ba13642-5aa7-42fa-862f-4b9c71455cce", label: "Bovenkruier" },
+  ]);
+});
+
+test("builds an exact-match query on een monumenttype-concept-URI", () => {
+  // Live geverifieerd (15 augustus 2026, CHO 27601 "Bovenkruier"): matcht
+  // meerdere rijksmonumenten met hetzelfde type.
+  const uri = "https://data.cultureelerfgoed.nl/term/id/rn/2/9ba13642-5aa7-42fa-862f-4b9c71455cce";
+  const query = buildMonumentTypeConceptQuery(uri);
+  assert.match(query, /a ceo:Rijksmonument/);
+  assert.match(query, new RegExp(`ceo:heeftType/ceo:heeftTypeNaam <${uri.replaceAll(".", "\\.")}>`));
+  assert.match(query, new RegExp(`ceo:heeftJuridischeStatus <${RCE_SEMANTICS.activeLegalStatus}>`));
+  assert.match(query, /LIMIT 100/);
 });
 
 test("measures how Referentienetwerk concepts are actually used in CHO", () => {

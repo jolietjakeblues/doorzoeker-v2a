@@ -25,6 +25,7 @@ export {
   buildGebeurtenisConceptQuery,
   buildGrondspoorTypeConceptQuery,
   buildMonumentAardConceptQuery,
+  buildMonumentTypeConceptQuery,
   buildStijlConceptQuery,
   buildVerwervingConceptQuery,
   buildVondstenConceptQuery,
