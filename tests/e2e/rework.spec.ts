@@ -143,8 +143,8 @@ test("belangrijke knoppen halen de WCAG 2.5.5-ondergrens van 44x44 CSS px (acces
 
   await assertAtLeast44(page.getByRole("button", { name: "Lijstweergave" }), "weergave-toggle (lijst)");
   await assertAtLeast44(page.getByRole("button", { name: "Kaartweergave" }), "weergave-toggle (kaart)");
-  await assertAtLeast44(page.getByRole("button", { name: "Exporteer als CSV" }), "exportknop CSV");
-  await assertAtLeast44(page.getByRole("button", { name: "Exporteer als GeoJSON" }), "exportknop GeoJSON");
+  await assertAtLeast44(page.getByRole("button", { name: "Exporteer 3 resultaten als CSV" }), "exportknop CSV");
+  await assertAtLeast44(page.getByRole("button", { name: "Exporteer 3 resultaten als GeoJSON" }), "exportknop GeoJSON");
   await assertAtLeast44(
     page.getByRole("navigation", { name: "Ontdek een thema" }).getByRole("button", { name: "Kerken", exact: true }),
     "themaknop (Kerken)",
@@ -155,14 +155,40 @@ test("belangrijke knoppen halen de WCAG 2.5.5-ondergrens van 44x44 CSS px (acces
   );
 });
 
+test("skip-link laat een toetsenbordgebruiker de 24 knoppen in de zoekintro overslaan (accessibility-review 15-08-2026)", async ({ page }) => {
+  // Geen zoekopdracht vooraf: de allereerste Tab-druk op de pagina moet
+  // meteen de skip-link raken, niet een van de 24 knoppen in Direct
+  // zoeken/Ontdek een thema/Bekijk alles.
+  const skipLink = page.getByRole("link", { name: "Direct naar resultaten" });
+  await page.keyboard.press("Tab");
+  await expect(skipLink).toBeFocused();
+
+  await skipLink.click();
+  await expect(page.locator("#results")).toBeFocused();
+});
+
+test("secundaire tekstkleur van de adresregel op resultaatkaarten is consistent met andere secundaire tekst (design critique 15-08-2026)", async ({ page }) => {
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  const address = page.getByText("Goirle", { exact: true }).first();
+  await expect(address).toBeVisible();
+  await expect(address).toHaveCSS("color", "rgb(89, 89, 89)");
+});
+
+test("Referrer-Policy is expliciet ingesteld voor externe bronnen zoals PDOK-kaarttegels en RCE-afbeeldingen (securityreview 15-08-2026)", async ({ page }) => {
+  await expect(page.locator('meta[name="referrer"]')).toHaveAttribute("content", "strict-origin-when-cross-origin");
+});
+
 test("resultaten zijn te exporteren als CSV en GeoJSON (#34)", async ({ page }) => {
   await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
   await page.getByRole("button", { name: "Doorzoek RCE" }).click();
   await expect(page.getByRole("heading", { name: "3 resultaten voor “Goirle”" })).toBeVisible();
 
+  // Knoptekst vermeldt het aantal (codereview: export kon onvolledig zijn
+  // zonder dat te vermelden) - hier alle 3 geladen resultaten.
   const [csvDownload] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "Exporteer als CSV" }).click(),
+    page.getByRole("button", { name: "Exporteer 3 resultaten als CSV" }).click(),
   ]);
   expect(csvDownload.suggestedFilename()).toMatch(/^doorzoeker-export-\d{4}-\d{2}-\d{2}\.csv$/);
   const csvStream = await csvDownload.createReadStream();
@@ -176,7 +202,7 @@ test("resultaten zijn te exporteren als CSV en GeoJSON (#34)", async ({ page }) 
 
   const [geoJsonDownload] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "Exporteer als GeoJSON" }).click(),
+    page.getByRole("button", { name: "Exporteer 3 resultaten als GeoJSON" }).click(),
   ]);
   expect(geoJsonDownload.suggestedFilename()).toMatch(/^doorzoeker-export-\d{4}-\d{2}-\d{2}\.geojson$/);
   const geoJsonStream = await geoJsonDownload.createReadStream();

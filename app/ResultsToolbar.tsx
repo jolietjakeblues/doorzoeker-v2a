@@ -55,10 +55,10 @@ export function ResultsToolbar({
         {resultCount > 0 && (
           <span className="export" aria-label="Exporteer resultaten">
             <button type="button" onClick={() => onExport("csv")}>
-              Exporteer als CSV
+              Exporteer {resultCount} {resultCount === 1 ? "resultaat" : "resultaten"} als CSV
             </button>
             <button type="button" onClick={() => onExport("geojson")}>
-              Exporteer als GeoJSON
+              Exporteer {resultCount} {resultCount === 1 ? "resultaat" : "resultaten"} als GeoJSON
             </button>
           </span>
         )}

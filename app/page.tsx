@@ -175,6 +175,9 @@ export default function Home() {
   }
   return (
     <main>
+      <a href="#results" className="skip-link">
+        Direct naar resultaten
+      </a>
       <SiteHeader onReset={reset} />
       <SearchHero
         query={query}
@@ -231,7 +234,7 @@ export default function Home() {
           onOnlyMspChange={setOnlyMsp}
           onReset={reset}
         />
-        <div className="results">
+        <div className="results" id="results" tabIndex={-1}>
           <ResultsToolbar
             active={active}
             actorSearch={activeConceptVeld === "actor"}
