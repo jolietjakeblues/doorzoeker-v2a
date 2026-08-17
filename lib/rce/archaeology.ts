@@ -148,23 +148,23 @@ export function parseArcheologischOnderzoekResults(document: unknown): RceMonume
 // Vondsten en complexen-onder-een-Vondstlocatie worden nooit als lijst opgehaald -
 // alleen als aggregaattelling, want zelfs in het grootste onderzoeksgebied bleek dat
 // in de praktijk (7.750 vondsten, 3.458 complexen) geen bruikbare lijst op te leveren.
-export type OnderzoeksgebiedComplex = { complexUri: string; choNumber: string; typeLabel?: string };
+export type OnderzoeksgebiedComplex = { complexUri: string; choNumber: string; type?: ArchaeologyConcept };
 export type OnderzoeksgebiedVondstlocatie = { vlUri: string; choNumber: string; locatienaam?: string };
 export type OnderzoeksgebiedAggregaten = { vondstlocatieTotaal: number; grondsporenTotaal: number; vondstenTotaal: number; complexenViaVondstlocatieTotaal: number };
 
 export function buildOnderzoeksgebiedComplexenQuery(gebiedUri: string) {
   return `PREFIX ceo: <${CEO}>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-SELECT ?complex ?choi
+SELECT ?complex ?choi ?typeConcept
   (SAMPLE(STR(?typeLabelValue)) AS ?typeLabel)
 WHERE {
   GRAPH <${INSTANCES_GRAPH}> {
     <${gebiedUri}> ceo:bevatObject ?complex .
     ?complex a ceo:ArcheologischComplex ; ceo:cultuurhistorischObjectnummer ?choi .
-    OPTIONAL { ?complex ceo:heeftType/ceo:heeftTypeNaam/skos:prefLabel ?typeLabelValue . }
+    OPTIONAL { ?complex ceo:heeftType/ceo:heeftTypeNaam ?typeConcept . ?typeConcept skos:prefLabel ?typeLabelValue . }
   }
 }
-GROUP BY ?complex ?choi
+GROUP BY ?complex ?choi ?typeConcept
 LIMIT 100`;
 }
 
@@ -174,7 +174,9 @@ export function parseOnderzoeksgebiedComplexenResults(document: unknown): Onderz
   return bindings.map((binding) => ({
     complexUri: binding.complex?.value ?? "",
     choNumber: binding.choi?.value ?? "",
-    typeLabel: binding.typeLabel?.value || undefined,
+    type: binding.typeConcept?.value && binding.typeLabel?.value
+      ? { uri: binding.typeConcept.value, label: binding.typeLabel.value }
+      : undefined,
   }));
 }
 

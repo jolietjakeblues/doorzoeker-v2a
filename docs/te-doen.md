@@ -131,6 +131,28 @@ design critique). Wordt maandag verder opgepakt.
    volledigheid van matches binnen zo'n categorie (niet de hele categorie),
    maar is dezelfde soort stille-fout-bug op een dieper niveau. Nog niet
    gefixt.
+6. ~~**Zelfde CHO-citaat-bug als item 5 hierboven, maar dan bij een
+   Onderzoeksgebied's "Archeologisch onderzoek binnen dit gebied"-lijst,
+   gemeld door de eigenaar (17 augustus 2026, CHO 2010285 en
+   10030417).**~~ **Opgelost - miste bij de eerdere fix van dezelfde bug bij
+   Vondstlocaties.** `OnderzoeksgebiedComplex` had alleen `typeLabel` (platte
+   tekst); `buildOnderzoeksgebiedComplexenQuery` gebruikte het collapsed pad
+   `heeftType/heeftTypeNaam/skos:prefLabel` en gooide de concept-URI weg. De
+   UI toonde het CHO-nummer van de complex-*instantie* misleidend tussen
+   haakjes naast de typenaam (leek een begrip-referentie, was het niet) -
+   exact dezelfde bug als eerder gefixt voor `vondstlocatieInhoud.complexen`,
+   maar deze aparte code-plek (`onderzoeksgebiedVerrijking.complexen`,
+   eigen query/type/route) werd toen niet meegenomen. Live geverifieerd
+   (CHO 2010285: complex 10000011 "niet opgehoogde, individuele huisplaats").
+   Fix: query gesplitst in losse triples (`?typeConcept` + `?typeLabel`),
+   `OnderzoeksgebiedComplex.typeLabel` vervangen door `type?: ArchaeologyConcept`,
+   `fetchOnderzoeksgebiedVerrijking` resolvet nu ook schemes via
+   `resolveConcepts`, en `HeritageRelationSections.tsx` toont het type als
+   `concept-link` naar `archeologischcomplextype` met de instantie apart als
+   "Complex {CHO-nummer}". **Les:** bij een volgend "overal"-gemeld
+   patroonprobleem eerst alle code-plekken met hetzelfde SPARQL-pad
+   doorzoeken (`grep heeftType/ceo:heeftTypeNaam/skos:prefLabel`), niet
+   alleen de plek uit het eerste voorbeeld.
 
 ## Uit de codereview
 
