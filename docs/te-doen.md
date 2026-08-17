@@ -298,11 +298,20 @@ design critique). Wordt maandag verder opgepakt.
    voor, met regressietests voor `=HYPERLINK(...)`, `+SUM(1,1)`,
    `-2+3`, `@command`, en een controle dat een streepje ergens *midden*
    in de tekst (niet leidend) onaangeroerd blijft.
-4. **Drie hoge npm-audit-meldingen** (bevestigd via `npm audit`): twee
-   DoS-advisories in `image-size` (via `vinext`), één in `nanoid`. Niet
-   blind `npm audit fix --force` gebruiken - npm stelt een oudere
-   `vinext`-versie voor. Gerichte upgrade of override onderzoeken en
-   daarna build, beeldoptimalisatie en deployment controleren.
+4. ~~**Drie hoge npm-audit-meldingen** (bevestigd via `npm audit`): twee
+   DoS-advisories in `image-size` (via `vinext`), één in `nanoid`.~~
+   **Opgelost (17 augustus 2026), gericht in plaats van blind.** Niet
+   `npm audit fix --force` gebruikt (dat wilde eerst een oudere
+   `vinext`-versie voorstellen). In plaats daarvan: `vinext` `1.0.0-beta.4`
+   → `^1.0.0-beta.6` - beta.6 heeft `image-size` als afhankelijkheid
+   helemaal laten vallen, dus dat lost zich vanzelf op. Vereiste wel een
+   gekoppelde bump van de peer-dependency `@vitejs/plugin-rsc` (`0.5.26` →
+   `0.5.34`, de ondergrens die `vinext@1.0.0-beta.6` zelf opgeeft). De losse
+   `nanoid`-melding (via `vite` → `postcss`) is daarna met een gewone
+   `npm audit fix` meegenomen (patch-bump `3.3.17` → `3.3.18`, geen
+   peer-conflicten). `npm audit` geeft nu 0 kwetsbaarheden. Build,
+   RSC-server-rendering en beeldoptimalisatie (groenaanleg-foto-e2e-test)
+   gecontroleerd na de upgrade - alles blijft werken.
 5. **Kaarttoegankelijkheid (TD-27, blijft open).** Kaartmarkers/clusters
    zijn niet volledig toetsenbordbedienbaar; `role="button"` zonder
    focus-/toetsenbordgedrag maakt een Leaflet-cluster nog geen bruikbare
