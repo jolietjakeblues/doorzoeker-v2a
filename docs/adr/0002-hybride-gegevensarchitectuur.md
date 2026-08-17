@@ -53,6 +53,7 @@ velden mogen een exacte conceptzoekroute gebruiken.
 - `GET /api/rce/vondstlocatie-inhoud`: begrensde vondsten, grondsporen en
   archeologische complexen met RN2-herkomst;
 - `GET /api/rce/op-deze-dag`: dagelijkse Rijksmonumentselectie;
+- `GET /api/rce/verras-me`: willekeurige Rijksmonumentselectie op klik;
 - `GET /api/terms/suggest`: RN2-woordsuggesties voor de CHO-zoekbalk.
 
 De zoekroute gebruikt de gedeelde Cloudflare-cache waar die beschikbaar is,
