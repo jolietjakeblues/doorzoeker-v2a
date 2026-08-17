@@ -11,8 +11,7 @@ Doorzoeker is in publieke bèta, live op
 [doorzoekerfgoed.nl](https://doorzoekerfgoed.nl). Een bug gevonden of een
 suggestie? [Meld het via GitHub Issues](https://github.com/jolietjakeblues/doorzoeker-v2a/issues/new?template=bug_report.md).
 
-Deze repository is een schone herbouw van Doorzoeker. Er is geen code uit
-[Doorzoeker V1](https://github.com/jolietjakeblues/doorzoeker_v1) gekopieerd.
+Deze repository is een schone herbouw van Doorzoeker. De originele [Doorzoeker](https://github.com/Joppe-A/rce-doorzoeker) is gebouwd door Fubineva in 2013/2014 (interactieontwerp door Enference) in opdracht van RCE.
 
 ## Wat je kunt doorzoeken
 
