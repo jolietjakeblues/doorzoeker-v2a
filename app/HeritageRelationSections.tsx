@@ -96,16 +96,23 @@ export function HeritageRelationSections({
             <ul>
               {onderzoeksgebiedVerrijking.complexen.map((complex) => (
                 <li key={complex.complexUri}>
-                  <button
-                    type="button"
-                    onClick={() => void onSearch(complex.choNumber)}
-                  >
-                    {complex.typeLabel ||
-                      `Archeologisch complex ${complex.choNumber}`}
-                  </button>
-                  {complex.typeLabel ? (
-                    <small> (CHO {complex.choNumber})</small>
+                  {complex.type ? (
+                    <>
+                      <button
+                        type="button"
+                        className="concept-link"
+                        onClick={() => onConceptSearch(complex.type!, "archeologischcomplextype")}
+                        title="Zoek alle archeologische complexen van dit type"
+                      >
+                        {complex.type.label}
+                      </button>
+                      {complex.type.schemes?.length ? <small> ({complex.type.schemes.map((scheme) => scheme.label).join(" · ")})</small> : null}
+                      {" — "}
+                    </>
                   ) : null}
+                  <button type="button" onClick={() => void onSearch(complex.choNumber)}>
+                    {complex.type ? `Complex ${complex.choNumber}` : `Archeologisch complex ${complex.choNumber}`}
+                  </button>
                 </li>
               ))}
             </ul>
