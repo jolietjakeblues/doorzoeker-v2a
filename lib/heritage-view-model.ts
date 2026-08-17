@@ -345,8 +345,11 @@ export function toItem(record: RceMonument): Item {
   const originalFunctionNames = record.originalFunctionNames
     ?.map(displayFunctionName)
     .filter(Boolean);
+  const currentFunctionNames = record.currentFunctionNames
+    ?.map(displayFunctionName)
+    .filter(Boolean);
   const matchedText =
-    record.matchSource === "oorspronkelijke functie" && record.matchedText
+    (record.matchSource === "oorspronkelijke functie" || record.matchSource === "huidige functie") && record.matchedText
       ? displayFunctionName(record.matchedText)
       : record.matchedText;
   const isWerelderfgoed = record.monumentNature === OBJECT_KIND.Werelderfgoed;
@@ -479,7 +482,7 @@ export function toItem(record: RceMonument): Item {
         ? { uri: record.bouwkundigeStaatConceptUri, label: record.bouwkundigeStaat }
         : undefined,
     originalFunctionNames,
-    currentFunctionNames: record.currentFunctionNames,
+    currentFunctionNames,
     functionConcepts: record.functionConcepts,
     typeNames: record.typeNames,
     typeConcepts: record.typeConcepts,
