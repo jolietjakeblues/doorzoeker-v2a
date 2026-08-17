@@ -32,10 +32,23 @@ design critique). Wordt maandag verder opgepakt.
    `role="dialog"`/`aria-modal`/`aria-labelledby` met werkende focus-trap,
    zichtbare focusindicator bij echte Tab-navigatie, geen `<img>` zonder
    alt-tekst.
-   - **Kaarttoegankelijkheid (TD-27, blijft open, major).** Bevestigd: 31
-     Leaflet-markers (SVG `path`) zonder `tabindex`/`role` - volledig
-     onbereikbaar via toetsenbord, onzichtbaar voor schermlezers als
-     interactief element.
+   - ~~**Kaarttoegankelijkheid (TD-27, major).**~~ **Opgelost (17 augustus
+     2026).** Bevestigd: 31 Leaflet-markers (SVG `path`) zonder
+     `tabindex`/`role` - volledig onbereikbaar via toetsenbord, onzichtbaar
+     voor schermlezers als interactief element. `app/HeritageMap.tsx`:
+     nieuwe `makeKeyboardAccessible()`-helper geeft elk interactief
+     kaartelement (punt-markers, vorm-polygonen, clusterbadges) een
+     `tabindex`, `role="button"`, `aria-label` en een `keydown`-handler die
+     Enter/Spatie hetzelfde laat doen als een klik; nieuwe
+     `:focus-visible`-outline in `app/globals.css`. Onderweg bleek dat
+     Leaflet's eigen `L.Marker` (gebruikt voor clusterbadges) via
+     `options.keyboard` al standaard een tabbare wrapper-`div` aanmaakt
+     zonder Enter/Spatie te koppelen aan de klik-actie - de helper
+     hergebruikt die bestaande wrapper (via `marker.getElement()`) in
+     plaats van er een tweede, geneste tabstop naast te zetten. Live
+     geverifieerd: precies één focusbare stop per marker/cluster, Enter en
+     een echte muisklik geven identiek gedrag. Regressietest in
+     `tests/e2e/rework.spec.ts`.
    - ~~**Geen skip-link (minor).**~~ **Opgelost (17 augustus 2026).**
      Toetsenbordgebruiker moest elke keer door 24 knoppen (Direct zoeken +
      Ontdek een thema + Bekijk alles) tabben voor de resultaten bereikbaar
@@ -271,6 +284,22 @@ design critique). Wordt maandag verder opgepakt.
       startpagina-secties (Ontdek een thema/Bekijk alles), en het bredere
       "Gemeente/woonplaats"-semantiekpunt uit dezelfde review (vraagt eerst
       uitzoeken of de onderliggende data beide betekenissen draagt).
+11. **TD-27 (kaarttoegankelijkheid) opgelost, plus een gerelateerde
+    UX-vraag van de eigenaar meteen meegenomen (17 augustus 2026).** Zie
+    item 2 hierboven voor de volledige TD-27-beschrijving. Daarnaast: de
+    eigenaar vroeg of de Kaartweergave-knop uitgegrijsd kan worden als geen
+    van de resultaten een eigen locatie heeft (bv. Archeologisch terrein,
+    Vondstlocatie, Archeologisch complex, Vondst, Grondspoor - deze vijf
+    objectsoorten hebben zelf geen `wkt`/`lat`/`lng` in
+    `lib/rce/archaeology.ts`, geverifieerd door alle parsefuncties na te
+    lopen). In plaats van dit per objectsoort hard te coderen (zou TD-04's
+    eigen les negeren) telt `app/page.tsx` gewoon `mapItems.length` - die
+    array was al gefilterd op `item.lat && item.lng` voor de kaart zelf.
+    `ResultsToolbar.tsx` krijgt een nieuwe `disableMapView`-prop die de
+    knop `disabled` zet met een uitleggende `title`; werkt daardoor ook
+    correct bij gemengde resultaten (bv. een tekstzoekopdracht die toevallig
+    alleen archeologische treffers zonder geometrie oplevert). Live
+    geverifieerd en afgedekt met e2e-tests.
 
 ## Uit de codereview
 
@@ -298,24 +327,14 @@ design critique). Wordt maandag verder opgepakt.
    voor, met regressietests voor `=HYPERLINK(...)`, `+SUM(1,1)`,
    `-2+3`, `@command`, en een controle dat een streepje ergens *midden*
    in de tekst (niet leidend) onaangeroerd blijft.
-4. ~~**Drie hoge npm-audit-meldingen** (bevestigd via `npm audit`): twee
-   DoS-advisories in `image-size` (via `vinext`), één in `nanoid`.~~
-   **Opgelost (17 augustus 2026), gericht in plaats van blind.** Niet
-   `npm audit fix --force` gebruikt (dat wilde eerst een oudere
-   `vinext`-versie voorstellen). In plaats daarvan: `vinext` `1.0.0-beta.4`
-   → `^1.0.0-beta.6` - beta.6 heeft `image-size` als afhankelijkheid
-   helemaal laten vallen, dus dat lost zich vanzelf op. Vereiste wel een
-   gekoppelde bump van de peer-dependency `@vitejs/plugin-rsc` (`0.5.26` →
-   `0.5.34`, de ondergrens die `vinext@1.0.0-beta.6` zelf opgeeft). De losse
-   `nanoid`-melding (via `vite` → `postcss`) is daarna met een gewone
-   `npm audit fix` meegenomen (patch-bump `3.3.17` → `3.3.18`, geen
-   peer-conflicten). `npm audit` geeft nu 0 kwetsbaarheden. Build,
-   RSC-server-rendering en beeldoptimalisatie (groenaanleg-foto-e2e-test)
-   gecontroleerd na de upgrade - alles blijft werken.
-5. **Kaarttoegankelijkheid (TD-27, blijft open).** Kaartmarkers/clusters
-   zijn niet volledig toetsenbordbedienbaar; `role="button"` zonder
-   focus-/toetsenbordgedrag maakt een Leaflet-cluster nog geen bruikbare
-   knop.
+4. **Drie hoge npm-audit-meldingen** (bevestigd via `npm audit`): twee
+   DoS-advisories in `image-size` (via `vinext`), één in `nanoid`. Niet
+   blind `npm audit fix --force` gebruiken - npm stelt een oudere
+   `vinext`-versie voor. Gerichte upgrade of override onderzoeken en
+   daarna build, beeldoptimalisatie en deployment controleren.
+5. ~~**Kaarttoegankelijkheid (TD-27).**~~ **Opgelost (17 augustus 2026).**
+   Zie item 2 hierboven onder "Kwaliteit en toegankelijkheid" voor de
+   volledige beschrijving van de fix.
 6. **Testscript bouwt eerst (TD-31, blijft open).** `npm test` start nog
    steeds met een volledige `vinext build`, wat gericht testen vertraagt
    en buildcontrole met unitcontrole vermengt. Voorstel: opsplitsen in

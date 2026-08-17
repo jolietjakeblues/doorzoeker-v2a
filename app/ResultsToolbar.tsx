@@ -5,6 +5,7 @@ type ResultsToolbarProps = {
   resultCount: number;
   hasMore: boolean;
   view: "list" | "map";
+  disableMapView: boolean;
   onOpenFilters: () => void;
   onViewChange: (view: "list" | "map") => void;
   onExport: (format: "csv" | "geojson") => void;
@@ -17,6 +18,7 @@ export function ResultsToolbar({
   resultCount,
   hasMore,
   view,
+  disableMapView,
   onOpenFilters,
   onViewChange,
   onExport,
@@ -78,6 +80,12 @@ export function ResultsToolbar({
             onClick={() => onViewChange("map")}
             aria-label="Kaartweergave"
             aria-pressed={view === "map"}
+            disabled={disableMapView}
+            title={
+              disableMapView
+                ? "Geen van deze resultaten heeft een eigen locatie op de kaart"
+                : undefined
+            }
           >
             ⌖
           </button>
