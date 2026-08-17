@@ -226,3 +226,7 @@ De broncode van deze repository valt onder de [MIT-licentie](LICENSE). Dit
 geldt alleen voor de broncode: de RCE Linked Data die de applicatie bevraagt
 valt onder het eigen hergebruiksbeleid van de RCE/Kadaster, zie
 [Beheerbesluiten](docs/beheerbesluiten.md).
+
+## Dank
+
+Met dank aan Dirk, Kees, Hans en Joppe voor de ideeën en inspiratie.
