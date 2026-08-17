@@ -245,6 +245,7 @@ export default function Home() {
             resultCount={results.length}
             hasMore={hasMore}
             view={view}
+            disableMapView={mapItems.length === 0}
             onOpenFilters={() => setFilters(true)}
             onViewChange={setView}
             onExport={exportResults}

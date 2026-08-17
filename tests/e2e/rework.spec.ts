@@ -1118,6 +1118,48 @@ test("de kaartpositie blijft in de URL staan na herladen", async ({ page }) => {
   expect(page.url()).toBe(sharedUrl);
 });
 
+test("Kaartweergave-knop is uitgeschakeld als geen van de resultaten een eigen locatie heeft (UX-review 17-08-2026: archeologisch onderzoeksgebied heeft geen wkt/lat/lng)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) =>
+    route.fulfill({ json: { results: [records[2]], page: 1, hasMore: false } }),
+  );
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Onderzoek");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(
+    page.getByRole("heading", { name: "1 resultaat voor “Onderzoek”" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Kaartweergave" })).toBeDisabled();
+});
+
+test("Kaartweergave-knop blijft bruikbaar zodra minstens één resultaat een eigen locatie heeft", async ({ page }) => {
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(
+    page.getByRole("heading", { name: "3 resultaten voor “Goirle”" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Kaartweergave" })).toBeEnabled();
+});
+
+test("kaartmarkers zijn met het toetsenbord bedienbaar, niet alleen met de muis (TD-27, accessibility-review 15-08-2026: 31 Leaflet-markers zonder tabindex/role gevonden)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) =>
+    route.fulfill({ json: { results: [records[0]], page: 1, hasMore: false } }),
+  );
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Woonhuis");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(
+    page.getByRole("heading", { name: "1 resultaat voor “Woonhuis”" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Kaartweergave" }).click();
+
+  const marker = page.locator('.leaflet-map [role="button"]').first();
+  await expect(marker).toHaveAttribute("tabindex", "0");
+  await marker.focus();
+  await page.keyboard.press("Enter");
+
+  await expect(page.getByRole("dialog")).toBeVisible();
+});
+
 test("een gekozen termsuggestie behoudt URI en bron na herladen", async ({
   page,
 }) => {

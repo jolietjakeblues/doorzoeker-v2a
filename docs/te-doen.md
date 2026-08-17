@@ -32,10 +32,23 @@ design critique). Wordt maandag verder opgepakt.
    `role="dialog"`/`aria-modal`/`aria-labelledby` met werkende focus-trap,
    zichtbare focusindicator bij echte Tab-navigatie, geen `<img>` zonder
    alt-tekst.
-   - **Kaarttoegankelijkheid (TD-27, blijft open, major).** Bevestigd: 31
-     Leaflet-markers (SVG `path`) zonder `tabindex`/`role` - volledig
-     onbereikbaar via toetsenbord, onzichtbaar voor schermlezers als
-     interactief element.
+   - ~~**Kaarttoegankelijkheid (TD-27, major).**~~ **Opgelost (17 augustus
+     2026).** Bevestigd: 31 Leaflet-markers (SVG `path`) zonder
+     `tabindex`/`role` - volledig onbereikbaar via toetsenbord, onzichtbaar
+     voor schermlezers als interactief element. `app/HeritageMap.tsx`:
+     nieuwe `makeKeyboardAccessible()`-helper geeft elk interactief
+     kaartelement (punt-markers, vorm-polygonen, clusterbadges) een
+     `tabindex`, `role="button"`, `aria-label` en een `keydown`-handler die
+     Enter/Spatie hetzelfde laat doen als een klik; nieuwe
+     `:focus-visible`-outline in `app/globals.css`. Onderweg bleek dat
+     Leaflet's eigen `L.Marker` (gebruikt voor clusterbadges) via
+     `options.keyboard` al standaard een tabbare wrapper-`div` aanmaakt
+     zonder Enter/Spatie te koppelen aan de klik-actie - de helper
+     hergebruikt die bestaande wrapper (via `marker.getElement()`) in
+     plaats van er een tweede, geneste tabstop naast te zetten. Live
+     geverifieerd: precies één focusbare stop per marker/cluster, Enter en
+     een echte muisklik geven identiek gedrag. Regressietest in
+     `tests/e2e/rework.spec.ts`.
    - ~~**Geen skip-link (minor).**~~ **Opgelost (17 augustus 2026).**
      Toetsenbordgebruiker moest elke keer door 24 knoppen (Direct zoeken +
      Ontdek een thema + Bekijk alles) tabben voor de resultaten bereikbaar
@@ -330,10 +343,9 @@ design critique). Wordt maandag verder opgepakt.
    blind `npm audit fix --force` gebruiken - npm stelt een oudere
    `vinext`-versie voor. Gerichte upgrade of override onderzoeken en
    daarna build, beeldoptimalisatie en deployment controleren.
-5. **Kaarttoegankelijkheid (TD-27, blijft open).** Kaartmarkers/clusters
-   zijn niet volledig toetsenbordbedienbaar; `role="button"` zonder
-   focus-/toetsenbordgedrag maakt een Leaflet-cluster nog geen bruikbare
-   knop.
+5. ~~**Kaarttoegankelijkheid (TD-27).**~~ **Opgelost (17 augustus 2026).**
+   Zie item 2 hierboven onder "Kwaliteit en toegankelijkheid" voor de
+   volledige beschrijving van de fix.
 6. **Testscript bouwt eerst (TD-31, blijft open).** `npm test` start nog
    steeds met een volledige `vinext build`, wat gericht testen vertraagt
    en buildcontrole met unitcontrole vermengt. Voorstel: opsplitsen in
