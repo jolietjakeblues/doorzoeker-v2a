@@ -1,6 +1,9 @@
 # Security- en stabilisatiereview
 
-Datum: 11 augustus 2026.
+Datum: 11 augustus 2026. Bijgewerkt 17 augustus 2026 na
+`docs/security-assessment-2026-08-17.md` (rate limiting op vier extra
+routes, minimumlengte op vrije tekst, HTTPS-afdwinging en basisheaders op
+Workerniveau) - zie dat document voor de volledige onderbouwing.
 
 Status: uitgevoerd. De stabilisatiepunten en het routebrede limiterbesluit zijn
 op 11 augustus 2026 vastgelegd.
@@ -9,13 +12,20 @@ op 11 augustus 2026 vastgelegd.
 
 | Route | Invoervalidatie | Cache | Rate limiting | Foutgedrag | Bevinding |
 | --- | --- | --- | --- | --- | --- |
-| `/api/rce/search` | Zoeklengte, pagina 1-20, allowlists voor browse, scope, veld en concept-URI | Lokale microcache plus Cache API, 300 seconden | 30 per minuut, best effort per isolate | 400, 429 en 502 met logging | Sterkste bescherming, maar limiter is niet globaal |
-| `/api/rce/concept` | Allowlist voor bekende termnamespaces | 3600 seconden gedeeld | Geen | 400, 404 en 502 met logging | Actor-URI valideert, maar deze route kan die bron niet oplossen |
-| `/api/rce/complex-members` | Exact CHO-complex-URI-patroon | 300 seconden gedeeld | Geen | 400 en 502 met logging | Invoer veilig begrensd |
-| `/api/rce/onderzoeksgebied-verrijking` | Exact CHO-onderzoeksgebied-URI-patroon | 300 seconden gedeeld | Geen | 400 en 502 met logging | Invoer veilig begrensd |
-| `/api/rce/vondstlocatie-inhoud` | Exact CHO-vondstlocatie-URI-patroon | 300 seconden gedeeld | Geen | 400 en 502 met logging | Invoer veilig begrensd |
+| `/api/rce/search` | Zoeklengte (min. 2 tekens voor vrije tekst, numeriek mag korter), pagina 1-20, allowlists voor browse, scope, veld en concept-URI | Lokale microcache plus Cache API, 300 seconden | 30 per minuut, best effort per isolate | 400, 429 en 502 met logging | Sterkste bescherming, maar limiter is niet globaal |
+| `/api/rce/concept` | Allowlist voor bekende termnamespaces | 3600 seconden gedeeld | 30 per minuut, best effort per isolate (17-08-2026) | 400, 404 en 502 met logging | Actor-URI valideert, maar deze route kan die bron niet oplossen |
+| `/api/rce/complex-members` | Exact CHO-complex-URI-patroon | 300 seconden gedeeld | 30 per minuut, best effort per isolate (17-08-2026) | 400 en 502 met logging | Invoer veilig begrensd |
+| `/api/rce/onderzoeksgebied-verrijking` | Exact CHO-onderzoeksgebied-URI-patroon | 300 seconden gedeeld | 30 per minuut, best effort per isolate (17-08-2026) | 400 en 502 met logging | Invoer veilig begrensd |
+| `/api/rce/vondstlocatie-inhoud` | Exact CHO-vondstlocatie-URI-patroon | 300 seconden gedeeld | 30 per minuut, best effort per isolate (17-08-2026) | 400 en 502 met logging | Invoer veilig begrensd |
 | `/api/rce/op-deze-dag` | Geen gebruikersinvoer | Succes tot volgende UTC-dag; leeg maximaal 300 seconden | Geen | 502 met logging en `no-store` | Kalenderdagveilig; succes, leegte en uitval hebben expliciet cachegedrag |
 | `/api/terms/suggest` | Minimaal 2 en maximaal 80 tekens | Lokale map en gedeelde succescache, 300 seconden | Geen | Valt open terug naar lege suggesties met `no-store` | Hits en misses delen dezelfde cachepolicy; lokale map is per isolate |
+
+De vier nieuw gelimiteerde routes delen de aanpak (en de "niet globaal"-
+beperking S-03 hieronder) via `lib/server/route-rate-limit.ts` - één
+gedeelde implementatie in plaats van vier eigen kopieën. `/api/rce/op-deze-dag`
+en `/api/terms/suggest` blijven bewust ongelimiteerd: de eerste heeft geen
+gebruikersinvoer (geen aanvalsoppervlak om te vermenigvuldigen), de tweede
+heeft al zijn eigen 2-80-tekensbegrenzing en een gedeelde succescache.
 
 ## Securitybevindingen
 

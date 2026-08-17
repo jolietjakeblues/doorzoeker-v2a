@@ -55,6 +55,22 @@ test("accepts a bare rn/<uuid> actor-URI (namespace for graph/actorenrol), but s
   assert.equal(response.status, 404);
 });
 
+test("rate limiteert na 30 verzoeken per minuut (securityassessment 17-08-2026: deze route had voorheen geen limiter)", async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+  globalThis.fetch = async () => Response.json({ results: { bindings: [] } });
+  const uri = "https://data.cultureelerfgoed.nl/term/id/rn/2/fc966a68-8863-4970-a83e-110f96006c21";
+  const request = () => GET(new Request(`https://doorzoeker.test/api/rce/concept?uri=${encodeURIComponent(uri)}`, { headers: { "cf-connecting-ip": "test-concept-rate-limit" } }));
+
+  for (let i = 0; i < 30; i++) {
+    const response = await request();
+    assert.notEqual(response.status, 429, `verzoek ${i + 1} van 30 hoorde nog niet gelimiteerd te zijn`);
+  }
+  const limited = await request();
+  assert.equal(limited.status, 429);
+  assert.equal(limited.headers.get("retry-after"), "60");
+});
+
 test("fails with 502 when the Referentienetwerk-service is unreachable", async (context) => {
   const originalFetch = globalThis.fetch;
   context.after(() => { globalThis.fetch = originalFetch; });
