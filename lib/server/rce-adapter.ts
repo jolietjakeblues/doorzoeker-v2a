@@ -175,8 +175,10 @@ export async function fetchOnderzoeksgebiedVerrijking(gebiedUri: string, signal?
     fetchSparql(buildOnderzoeksgebiedVondstlocatiesQuery(gebiedUri), signal),
     fetchSparql(buildOnderzoeksgebiedAggregatenQuery(gebiedUri), signal),
   ]);
+  const complexen = parseOnderzoeksgebiedComplexenResults(complexenDocument);
+  const resolved = await resolveConcepts(complexen.flatMap((item) => item.type ? [item.type.uri] : []), signal);
   return {
-    complexen: parseOnderzoeksgebiedComplexenResults(complexenDocument),
+    complexen: complexen.map((item) => ({ ...item, type: item.type ? { ...item.type, ...resolved.get(item.type.uri) } : undefined })),
     vondstlocaties: parseOnderzoeksgebiedVondstlocatiesResults(vondstlocatiesDocument),
     ...parseOnderzoeksgebiedAggregatenResults(aggregatenDocument),
   };

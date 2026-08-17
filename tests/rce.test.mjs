@@ -834,18 +834,23 @@ test("looks up archeologische complexen rechtstreeks onder een onderzoeksgebied"
   const query = buildOnderzoeksgebiedComplexenQuery(gebiedUri);
   assert.match(query, new RegExp(`<${gebiedUri}> ceo:bevatObject \\?complex`));
   assert.match(query, /a ceo:ArcheologischComplex/);
-  assert.match(query, /ceo:heeftType\/ceo:heeftTypeNaam\/skos:prefLabel/);
+  // Losse triples (niet het collapsed pad ?heeftTypeNaam/skos:prefLabel) -
+  // zodat de concept-URI van het complextype ook beschikbaar is en niet
+  // alleen het label (gemeld door de eigenaar: CHO-nummers naast een
+  // onderzoeksgebied's complexen waren geen doorklik naar het rn/2-begrip,
+  // 17-08-2026).
+  assert.match(query, /\?complex ceo:heeftType\/ceo:heeftTypeNaam \?typeConcept \. \?typeConcept skos:prefLabel \?typeLabelValue \./);
 });
 
-test("parses onderzoeksgebied-complexen, falling back to a generic label without a typeLabel", () => {
+test("parses onderzoeksgebied-complexen, keeping the type's concept-URI paired with its label (gemeld door de eigenaar, 17-08-2026)", () => {
   const document = { results: { bindings: [
-    { complex: { value: "c:1" }, choi: { value: "2122057" }, typeLabel: { value: "Terp/wierde" } },
+    { complex: { value: "c:1" }, choi: { value: "2122057" }, typeConcept: { value: "https://data.cultureelerfgoed.nl/term/id/rn/2/terp" }, typeLabel: { value: "Terp/wierde" } },
     { complex: { value: "c:2" }, choi: { value: "2122058" } },
   ] } };
   const complexen = parseOnderzoeksgebiedComplexenResults(document);
   assert.deepEqual(complexen, [
-    { complexUri: "c:1", choNumber: "2122057", typeLabel: "Terp/wierde" },
-    { complexUri: "c:2", choNumber: "2122058", typeLabel: undefined },
+    { complexUri: "c:1", choNumber: "2122057", type: { uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/terp", label: "Terp/wierde" } },
+    { complexUri: "c:2", choNumber: "2122058", type: undefined },
   ]);
 });
 
