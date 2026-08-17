@@ -382,6 +382,38 @@ test("keeps name search working when another discovery branch is temporarily una
   assert.equal(document.results[0].matchSource, "naam");
 });
 
+test("onderzoeksgebied-discovery degradeert per brontak, niet per categorie (TD-04-bugfix: searchArcheologischOnderzoek gebruikte Promise.all i.p.v. allSettled, dus één falende van zijn 3 takken liet de hele categorie leeg zijn terwijl de andere 2 takken allang klaar waren)", async (context) => {
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalCaches === undefined) delete globalThis.caches;
+    else globalThis.caches = originalCaches;
+  });
+  globalThis.caches = { default: { match() { return undefined; }, put() {} } };
+  globalThis.fetch = async (input) => {
+    const url = decodeURIComponent(String(input));
+    if (url.startsWith(BIBLIOTHEEK_SPARQL)) return Response.json({ results: { bindings: [] } });
+    if (url.includes("SELECT DISTINCT ?choi ?match")) {
+      // De woonplaats-tak faalt; CHO-nummer en omschrijving slagen (leeg).
+      if (url.includes("woonplaatsnaam ?match")) return new Response("tijdelijk niet bereikbaar", { status: 503 });
+      if (url.includes("BIND(?choi AS ?match)")) {
+        return Response.json({ results: { bindings: [{ choi: { value: "10001077" }, match: { value: "10001077" } }] } });
+      }
+      return Response.json({ results: { bindings: [] } });
+    }
+    if (url.includes("SELECT ?gebied ?choi") && url.includes("VALUES ?choi")) {
+      return Response.json({ results: { bindings: [{ gebied: { value: "gebied:10001077" }, choi: { value: "10001077" }, omschrijving: { value: "Archeologische begeleiding." }, woonplaats: { value: "Diemen" } }] } });
+    }
+    return Response.json({ results: { bindings: [] } });
+  };
+
+  const response = await GET(new Request("https://doorzoeker.test/api/rce/search?q=10001077&page=1", { headers: { "cf-connecting-ip": "test-onderzoeksgebied-branch-fail-soft" } }));
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.ok(document.results.some((item) => item.monumentNumber === "10001077"), "de CHO-nummer-tak had ondanks de falende woonplaats-tak moeten surfacen");
+});
+
 test("cachet een tekstzoekopdracht niet als een categorie tijdelijk faalt (gemeld door de eigenaar: doorklik naar CHO 10001066 gaf 0 resultaten)", async (context) => {
   // Reproductie van het gemelde probleem: een Archeologisch onderzoeksgebied
   // (CHO 10001066) is alleen vindbaar via de onderzoeksgebieden-categorie.
