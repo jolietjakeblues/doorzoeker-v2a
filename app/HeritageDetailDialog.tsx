@@ -83,9 +83,6 @@ export function HeritageDetailDialog({
           <small>{statusLabel(selected.objectType)}</small>
         </div>
         <div className="detail-copy">
-          <p className="detail-guide">
-            In dit venster: locatie, kenmerken, relaties en bronnen.
-          </p>
           {!selectedIdentifierRepeatsTitle ? (
             <small>
               {selectedIdentifier?.label.toLocaleUpperCase("nl")}{" "}
@@ -300,12 +297,6 @@ export function HeritageDetailDialog({
                 </dd>
               </div>
             ) : null}
-            <div>
-              <dt>Bron</dt>
-              <dd>
-                {selected.official ? "RCE Linked Data" : "Voorbeelddata"}
-              </dd>
-            </div>
           </dl>
           {selected.image ? (
             <p className="detail-image-credit">
@@ -480,6 +471,31 @@ export function HeritageDetailDialog({
               </ul>
             </div>
           ) : null}
+          <div className="map-object-list">
+            <h3>Brongegevens</h3>
+            <dl>
+              <div>
+                <dt>Dataset</dt>
+                <dd>{selected.official ? "RCE Linked Data" : "Voorbeelddata"}</dd>
+              </div>
+              {selectedIdentifier ? (
+                <div>
+                  <dt>Primaire identifier</dt>
+                  <dd>
+                    {selectedIdentifier.label} {selectedIdentifier.value}
+                  </dd>
+                </div>
+              ) : null}
+              {selected.linkedDataUrl ?? selected.sourceUrl ? (
+                <div>
+                  <dt>Object-URI</dt>
+                  <dd>
+                    <code>{selected.linkedDataUrl ?? selected.sourceUrl}</code>
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+          </div>
           <div className="detail-links">
             <a
               href={

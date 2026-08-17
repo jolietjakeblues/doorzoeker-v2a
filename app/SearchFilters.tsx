@@ -70,10 +70,8 @@ export function SearchFilters({
         </button>
       </div>
       <p className="filter-scope">
-        De aantallen hieronder gaan over de resultaten die nu zijn geladen.
-        {hasMore
-          ? " Er zijn nog meer resultaten te laden; een \"+\" achter een aantal betekent dat dit een ondergrens is - er kunnen bij het nog niet geladene extra treffers voor die optie zitten."
-          : ""}
+        Filters gelden voor de geladen resultaten.
+        {hasMore ? " \"12+\" betekent dat er nog meer kunnen zijn." : ""}
       </p>
       <fieldset>
         <legend>Soort object</legend>

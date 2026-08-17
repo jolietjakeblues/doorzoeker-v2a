@@ -7,7 +7,7 @@ import {
   type Item,
 } from "@/lib/heritage-view-model";
 
-const DESCRIPTION_EXCERPT_LENGTH = 300;
+const DESCRIPTION_EXCERPT_LENGTH = 200;
 
 export function CardDescription({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -67,6 +67,12 @@ export function HeritageResultCard({
   const identifierRepeatsTitle =
     item.title.trim().toLocaleLowerCase("nl") ===
     `${identifier.label} ${identifier.value}`.toLocaleLowerCase("nl");
+  // item.period draagt ook de matchcontext ("Gevonden via ...") - zie
+  // heritage-view-model.ts. Die tekst verklaart waarom dit resultaat matcht
+  // en verdient daarom meer gewicht dan een generieke kenmerken-chip.
+  const matchContext = item.period?.startsWith("Gevonden via ")
+    ? item.period
+    : undefined;
 
   return (
     <article
@@ -95,6 +101,7 @@ export function HeritageResultCard({
         </small>
         <h3>{item.title}</h3>
         {location ? <p className="address">{location}</p> : null}
+        {matchContext ? <p className="match-context">{matchContext}</p> : null}
         <CardDescription text={item.description} />
         <div className="card-facts" aria-label="Kenmerken">
           {hasFunction && item.objectType === "Rijksmonument" ? (
@@ -123,7 +130,7 @@ export function HeritageResultCard({
           {item.legalStatus && item.objectType !== "Rijksmonument" ? (
             <span>{item.legalStatus}</span>
           ) : null}
-          {item.period !== "Datering niet opgenomen" ? (
+          {item.period !== "Datering niet opgenomen" && !matchContext ? (
             <span>{item.period}</span>
           ) : null}
         </div>
