@@ -85,6 +85,31 @@ function tooltip(titleText: string, detail: string) {
   return content;
 }
 
+// Leaflet-markers en -vormen zijn standaard alleen met de muis bedienbaar:
+// een SVG <path>/<circle> zonder tabindex is voor toetsenbord- en
+// screenreadergebruikers onzichtbaar als interactief element (TD-27,
+// accessibility-review 15-08-2026: 31 markers zo bevestigd onbereikbaar).
+// Dit maakt élk interactief kaartelement - punt, vorm of clusterbadge -
+// een echte toetsenbord-knop: focusbaar, met label, en Enter/Spatie doet
+// hetzelfde als een klik.
+function makeKeyboardAccessible(
+  element: Element | undefined,
+  label: string,
+  onActivate: () => void,
+) {
+  if (!element) return;
+  element.setAttribute("tabindex", "0");
+  element.setAttribute("role", "button");
+  element.setAttribute("aria-label", label);
+  element.addEventListener("keydown", (event) => {
+    const key = (event as KeyboardEvent).key;
+    if (key === "Enter" || key === " ") {
+      event.preventDefault();
+      onActivate();
+    }
+  });
+}
+
 export function HeritageMap({
   items,
   onSelect,
@@ -173,6 +198,11 @@ export function HeritageMap({
           ),
         );
         polygon.on("click", () => selectRef.current(item));
+        makeKeyboardAccessible(
+          polygon.getElement(),
+          `${item.title}, ${[item.address, item.place].filter(Boolean).join(", ")}`,
+          () => selectRef.current(item),
+        );
         shapeBounds = shapeBounds
           ? shapeBounds.extend(polygon.getBounds())
           : polygon.getBounds();
@@ -204,6 +234,11 @@ export function HeritageMap({
               ),
             );
             marker.on("click", () => selectRef.current(item));
+            makeKeyboardAccessible(
+              marker.getElement(),
+              `${item.title}, ${[item.address, item.place].filter(Boolean).join(", ")}`,
+              () => selectRef.current(item),
+            );
           }
           return;
         }
@@ -232,6 +267,11 @@ export function HeritageMap({
               ),
             );
             marker.on("click", () => selectRef.current(item));
+            makeKeyboardAccessible(
+              marker.getElement(),
+              `${item.title}, ${[item.address, item.place].filter(Boolean).join(", ")}`,
+              () => selectRef.current(item),
+            );
             continue;
           }
 
@@ -244,26 +284,7 @@ export function HeritageMap({
           const badge = document.createElement("span");
           badge.className = "heritage-cluster";
           badge.textContent = String(cluster.items.length);
-          badge.setAttribute("role", "button");
-          badge.setAttribute(
-            "aria-label",
-            `${cluster.items.length} erfgoedobjecten; klik om in te zoomen`,
-          );
-          const marker = L.marker(center, {
-            icon: L.divIcon({
-              html: badge,
-              className: "heritage-cluster-wrapper",
-              iconSize: [46, 46],
-              iconAnchor: [23, 23],
-            }),
-          }).addTo(markerLayer);
-          marker.bindTooltip(
-            tooltip(
-              `${cluster.items.length} erfgoedobjecten`,
-              "Klik om de groep te bekijken",
-            ),
-          );
-          marker.on("click", () => {
+          const zoomIntoCluster = () => {
             const clusterBounds = L.latLngBounds(
               cluster.items.map((item) => L.latLng(item.lat, item.lng)),
             );
@@ -279,7 +300,33 @@ export function HeritageMap({
                 padding: [55, 55],
                 maxZoom: 17,
               });
-          });
+          };
+          const marker = L.marker(center, {
+            icon: L.divIcon({
+              html: badge,
+              className: "heritage-cluster-wrapper",
+              iconSize: [46, 46],
+              iconAnchor: [23, 23],
+            }),
+          }).addTo(markerLayer);
+          marker.bindTooltip(
+            tooltip(
+              `${cluster.items.length} erfgoedobjecten`,
+              "Klik om de groep te bekijken",
+            ),
+          );
+          marker.on("click", zoomIntoCluster);
+          // L.Marker maakt zijn icon-element zelf al tabbaar (options.keyboard,
+          // standaard aan) - maar koppelt Enter/Spatie niet aan de click-actie.
+          // makeKeyboardAccessible() hierop toepassen zou daarom een tweede,
+          // geneste tabstop op de binnenste badge introduceren; in plaats
+          // daarvan hergebruikt dit de ÉÉN focusbare wrapper die Leaflet al
+          // aanmaakt en voegt alleen het ontbrekende toetsenbordgedrag toe.
+          makeKeyboardAccessible(
+            marker.getElement(),
+            `${cluster.items.length} erfgoedobjecten; klik om in te zoomen`,
+            zoomIntoCluster,
+          );
         }
       };
 
