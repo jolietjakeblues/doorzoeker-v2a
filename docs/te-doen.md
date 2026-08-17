@@ -358,24 +358,22 @@ DOM/CSS-inspectie (geen screenshots beschikbaar in die sessie). Volledige
 critique met alle metingen staat in de sessietranscriptie van 15 augustus;
 hieronder de drie prioriteiten.
 
-12. **`.concept-link`-knoppen hebben geen resting-state kleur.** De
-    kern-interactie van de app (klik op een begrip → exacte
-    zoekopdracht - overal in "Alle gekoppelde begrippen" en losse
-    detailvelden) erft zwarte tekstkleur en wordt pas blauw bij `:hover`.
-    Op touch/toetsenbord (geen hover) is er dus geen kleursignaal dat het
-    klikbaar is, alleen de onderstreping. Geef `.concept-link` in
-    `app/globals.css` een expliciete resting-state kleur
-    (`var(--rce-blue)`), consistent met elk ander interactief element.
-13. **H1 op de startpagina heeft dezelfde regelafstand-ratio als lopende
-    tekst.** `font-size: 40px` met `line-height: 64px` (1,6×, exact de
-    globale body-ratio). Een display-kop met zoveel lucht oogt losser en
-    minder "ontworpen". Strakkere `line-height` (~1,1-1,2×) specifiek
-    voor `.hero h1`.
-14. **Twee incompatibele knop-hoekstijlen naast elkaar.** Scherp (0px
-    radius: "Doorzoek RCE", weergave-toggle, exportknoppen) versus
-    volledig rond (20-22px: "Direct zoeken"/"Ontdek een thema"-pills,
-    "Verras me"), zonder duidelijke regel wanneer welke gebruikt wordt.
-    Eén conventie per actietype kiezen en consequent toepassen.
+12. ~~**`.concept-link`-knoppen hebben geen resting-state kleur.**~~
+    **Opgelost (PR #68, 17 augustus 2026, vóór deze sessie al gemerged -
+    hier pas achteraf gecorrigeerd na een check door de eigenaar dat dit
+    document verouderd was).** `.concept-link` in `app/globals.css` heeft
+    nu `color: var(--rce-blue)` als resting state, consistent met elk
+    ander interactief element. Live in de code geverifieerd.
+13. ~~**H1 op de startpagina heeft dezelfde regelafstand-ratio als lopende
+    tekst.**~~ **Opgelost (PR #68).** `.hero h1` heeft nu
+    `line-height: 1.15` in plaats van de globale body-ratio (1,6×). Live
+    in de code geverifieerd.
+14. ~~**Twee incompatibele knop-hoekstijlen naast elkaar.**~~ **Opgelost
+    (PR #68).** "Verras me" hoorde qua functie bij de primaire actieknoppen
+    ("Doorzoek RCE") en is nu scherp (0px radius) in plaats van rond,
+    consistent met die knoppenfamilie; de conventie staat toegelicht in
+    een code-comment bij `.hero nav button`. Live in de code
+    geverifieerd.
 
 Kleinere observaties uit dezelfde critique: ~~secundaire tekstkleur is
 inconsistent (grijs bij hero-intro/`dt`-labels, zwart bij de adresregel
@@ -464,4 +462,18 @@ actie, alleen genoteerd).
   visueel onderscheid term/bronrecord, universeel navigeerbaar-
   predicaatpatroon, inline uitklapbare resultaatgroepen, aparte
   tegelweergave - allemaal nog alleen geanalyseerd (v1-vergelijking),
-  geen van alle gepland of gebouwd.
+  geen van alle gepland of gebouwd. Geverifieerd (17 augustus 2026): geen
+  van deze componenten bestaat in `app/`.
+- ~~**TD-11/A-06-status in `docs/analyse-2026-08-11.md` klopte niet.**~~
+  **Opgelost (17 augustus 2026), gevonden tijdens een to-do-doorloop met
+  de eigenaar.** Het TD-register en de analyselijst zeiden nog "Open"/
+  "nog niet uitgevoerd" voor de licentiekeuze, terwijl de sectie erboven
+  én `docs/beheerbesluiten.md` al sinds 11 augustus zeggen dat dit
+  opgelost is (MIT). Precies het soort documentatiedrift dat TD-09 zelf
+  beschrijft - nu gecorrigeerd.
+- ~~**TD-29: ADR-0002's routelijst mist `/api/rce/verras-me`.**~~
+  **Opgelost (17 augustus 2026).** `docs/adr/0002-hybride-gegevensarchitectuur.md`
+  somde alle 7 andere `/api/*`-routes op maar niet deze, al sinds
+  `codereview-2026-08-13.md` bekend en nooit meegenomen in dit document.
+  Geverifieerd tegen de daadwerkelijke routes in `app/api/` (8 stuks) vóór
+  het toevoegen.
