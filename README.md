@@ -1,9 +1,15 @@
 # Doorzoeker: erfgoed digitaal
 
+[![CI](https://github.com/jolietjakeblues/doorzoeker-v2a/actions/workflows/ci.yml/badge.svg)](https://github.com/jolietjakeblues/doorzoeker-v2a/actions/workflows/ci.yml)
+
 Doorzoeker maakt de Linked Data van de Rijksdienst voor het Cultureel Erfgoed
 doorzoekbaar zonder alles terug te brengen tot Rijksmonumenten. De applicatie
 laat verschillende soorten erfgoed als verschillende objecten zien en houdt de
 bron-URI's bij de gegevens.
+
+Doorzoeker is in publieke bèta, live op
+[doorzoekerfgoed.nl](https://doorzoekerfgoed.nl). Een bug gevonden of een
+suggestie? [Meld het via GitHub Issues](https://github.com/jolietjakeblues/doorzoeker-v2a/issues/new?template=bug_report.md).
 
 Deze repository is een schone herbouw van Doorzoeker. Er is geen code uit
 [Doorzoeker V1](https://github.com/jolietjakeblues/doorzoeker_v1) gekopieerd.
@@ -114,6 +120,13 @@ hele grote collectie in één keer bij de RCE op te vragen.
 
 ## Gegevensvoorzieningen
 
+Doorzoeker bevraagt rechtstreeks de
+[RCE Linked Data Voorziening](https://linkeddata.cultureelerfgoed.nl/) via
+SPARQL. De objecten en hun relaties zijn gemodelleerd volgens de
+[CEO-ontologie](https://linkeddata.cultureelerfgoed.nl/def/ceo)
+(Cultureel Erfgoed Ontologie) - de namespace die in iedere querybuilder onder
+`lib/rce/` als `ceo:` terugkomt.
+
 - `rce/cho`: objecten, relaties, geometrie en een deel van de verrijkingen;
 - `thesauri/referentienetwerk`: concepten en de vier gebruikte RN2-schema's;
 - `rce/bibliotheek`: gekoppelde publicaties;
@@ -173,6 +186,18 @@ npm test
 npm run test:e2e
 ```
 
+`npm test` bouwt eerst (`vinext build`) en draait dan alle unit- en
+contracttests. Voor snelle iteratie op een enkele test tijdens het
+ontwikkelen, zonder te wachten op een build:
+
+```sh
+npm run test:unit
+```
+
+Alleen de twee testbestanden die het gebouwde Worker-bestand nodig hebben
+(`tests/rendered-html.test.mjs`, `tests/worker-security.test.mjs`) draaien
+via `npm run test:build`, dat zelf ook eerst bouwt.
+
 ## Publiceren
 
 De applicatie wordt gebouwd met vinext en draait op Cloudflare Workers. Een
@@ -183,6 +208,17 @@ zijn ingesteld. Handmatig bouwen en publiceren kan met:
 ```sh
 npm run deploy
 ```
+
+## Hoe dit gebouwd is
+
+Doorzoeker wordt ontwikkeld met Claude Code als codeerassistent. Elke
+wijziging komt binnen als een pull request; er wordt nooit rechtstreeks naar
+`main` gecommit en niets merget automatisch. De eigenaar beoordeelt en merget
+elke PR zelf, altijd na een groene CI-run (typecheck, lint, unit-tests, de
+volledige Playwright-interactietestsuite). De volledige ontwikkel- en
+besluitgeschiedenis is publiek na te lezen in [`docs/`](docs), inclusief een
+uitgevoerde [security-assessment](docs/security-assessment-2026-08-17.md) en
+toegankelijkheidsreview.
 
 ## Licentie
 
