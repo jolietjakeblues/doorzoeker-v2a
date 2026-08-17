@@ -120,6 +120,13 @@ hele grote collectie in één keer bij de RCE op te vragen.
 
 ## Gegevensvoorzieningen
 
+Doorzoeker bevraagt rechtstreeks de
+[RCE Linked Data Voorziening](https://linkeddata.cultureelerfgoed.nl/) via
+SPARQL. De objecten en hun relaties zijn gemodelleerd volgens de
+[CEO-ontologie](https://linkeddata.cultureelerfgoed.nl/def/ceo)
+(Cultureel Erfgoed Ontologie) - de namespace die in iedere querybuilder onder
+`lib/rce/` als `ceo:` terugkomt.
+
 - `rce/cho`: objecten, relaties, geometrie en een deel van de verrijkingen;
 - `thesauri/referentienetwerk`: concepten en de vier gebruikte RN2-schema's;
 - `rce/bibliotheek`: gekoppelde publicaties;
