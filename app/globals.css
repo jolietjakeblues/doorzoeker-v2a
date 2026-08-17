@@ -68,6 +68,24 @@ a {
   clip: rect(0, 0, 0, 0);
 }
 
+/* Onzichtbaar tot een toetsenbordgebruiker 'm focust - laat toe de kop en de
+   24 knoppen in Direct zoeken/Ontdek een thema/Bekijk alles over te slaan
+   (accessibility-review 15-08-2026). */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 12px;
+  z-index: 2000;
+  padding: 10px 16px;
+  background: var(--rce-blue);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+.skip-link:focus {
+  top: 12px;
+}
+
 /* Kop: logo op wit, gele balk eronder (cultureelerfgoed.nl heeft geen blauw lintje meer) */
 .govbar {
   height: 96px;
@@ -681,7 +699,7 @@ h2 {
 }
 .copy .address {
   margin: 0;
-  color: var(--ink);
+  color: var(--muted);
 }
 .card-facts {
   display: flex;

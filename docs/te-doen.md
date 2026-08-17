@@ -34,9 +34,13 @@ design critique). Wordt maandag verder opgepakt.
      Leaflet-markers (SVG `path`) zonder `tabindex`/`role` - volledig
      onbereikbaar via toetsenbord, onzichtbaar voor schermlezers als
      interactief element.
-   - **Geen skip-link (minor, blijft open).** Toetsenbordgebruiker moet
-     elke keer door 24 knoppen (Direct zoeken + Ontdek een thema + Bekijk
-     alles) tabben voor de resultaten/filters bereikbaar zijn.
+   - ~~**Geen skip-link (minor).**~~ **Opgelost (17 augustus 2026).**
+     Toetsenbordgebruiker moest elke keer door 24 knoppen (Direct zoeken +
+     Ontdek een thema + Bekijk alles) tabben voor de resultaten bereikbaar
+     waren. Nieuwe `.skip-link` (`app/globals.css`, onzichtbaar tot focus)
+     als eerste element in `<main>`, springt naar `#results`
+     (`tabIndex={-1}` zodat de div zelf focus kan krijgen). E2e-test
+     controleert dat de allereerste Tab-druk de link raakt.
    - ~~**Focus keert niet terug na sluiten detailvenster.**~~ **Vals
      positief, geen actie nodig.** Eerste test gebruikte een ruwe
      JS-`.click()` zonder voorafgaande focus, wat `previouslyFocused` in
@@ -163,12 +167,16 @@ design critique). Wordt maandag verder opgepakt.
    de review: kolommen `object_uri`, `cho_nummer`, `primaire_identifier`,
    `identifier_type` toevoegen, plus een stabiele Feature-`id` (bron-URI)
    in GeoJSON.
-2. **Export kan onvolledig zijn zonder dat te vermelden.** Bij `hasMore`
-   wordt alleen de geladen/gefilterde set geëxporteerd; het bestand zelf
-   bevat geen waarschuwing daarover (de UI-melding verdwijnt zodra het
-   bestand wordt doorgestuurd). Kleinste oplossing uit de review: expliciet
-   benoemen hoeveel resultaten worden geëxporteerd (bv. "Exporteer 25
-   geladen resultaten" op de knop).
+2. ~~**Export kan onvolledig zijn zonder dat te vermelden.**~~ **Deels
+   opgelost (17 augustus 2026).** Bij `hasMore` wordt alleen de geladen/
+   gefilterde set geëxporteerd; het bestand zelf bevat geen waarschuwing
+   daarover (de UI-melding verdwijnt zodra het bestand wordt doorgestuurd).
+   Kleinste oplossing uit de review toegepast: de exportknoppen in
+   `app/ResultsToolbar.tsx` vermelden nu expliciet hoeveel resultaten
+   geëxporteerd worden ("Exporteer 25 resultaten als CSV"). **Blijft
+   open:** dit staat alleen op de knop, niet in het bestand zelf (bv. een
+   metadatarij of GeoJSON-`properties`) - iemand die het bestand los
+   doorstuurt ziet de "nog niet alles geladen"-context niet meer.
 3. ~~**CSV-formule-injectie.**~~ **Opgelost (15 augustus 2026).**
    `csvField()` in `lib/export.ts` escaped wel `"`, `,` en `\n`, maar
    neutraliseerde geen leidende `=`, `+`, `-` of `@`. Een
@@ -216,12 +224,14 @@ hieronder de drie prioriteiten.
     "Verras me"), zonder duidelijke regel wanneer welke gebruikt wordt.
     Eén conventie per actietype kiezen en consequent toepassen.
 
-Kleinere observaties uit dezelfde critique (geen aparte actie, alleen
-genoteerd): secundaire tekstkleur is inconsistent (grijs bij hero-intro/
-`dt`-labels, zwart bij de adresregel op resultaatkaarten - één
-kleurtoken voor secundaire tekst gebruiken); de drie navigatierijen
-(Direct zoeken/Ontdek een thema/Bekijk alles) hebben identiek visueel
-gewicht ondanks verschillende functies.
+Kleinere observaties uit dezelfde critique: ~~secundaire tekstkleur is
+inconsistent (grijs bij hero-intro/`dt`-labels, zwart bij de adresregel
+op resultaatkaarten - één kleurtoken voor secundaire tekst gebruiken)~~
+**opgelost (17 augustus 2026)** - `.copy .address` gebruikte
+`var(--ink)`, nu `var(--muted)` net als de rest. De drie navigatierijen
+(Direct zoeken/Ontdek een thema/Bekijk alles) hebben nog steeds
+identiek visueel gewicht ondanks verschillende functies (geen aparte
+actie, alleen genoteerd).
 
 ## Uit de securityreview
 
@@ -245,9 +255,12 @@ gewicht ondanks verschillende functies.
    platformlimiet toevoegen waar metingen misbruik aantonen.
 10. **Externe afbeeldingen en kaarttegels (PDOK, RCE).** Bezoekers-IP en
     mogelijk referrerinformatie gaan naar die derde partijen. Privacy-
-    /informatiebeveiligingspunt, geen klassieke kwetsbaarheid. Voorstel:
-    een beperkte `Referrer-Policy` instellen en externe bronnen vastleggen
-    in de privacyinformatie.
+    /informatiebeveiligingspunt, geen klassieke kwetsbaarheid.
+    ~~Voorstel: een beperkte `Referrer-Policy` instellen~~ **opgelost
+    (17 augustus 2026)** - `metadata.referrer` in `app/layout.tsx` staat nu
+    expliciet op `strict-origin-when-cross-origin` (was voorheen impliciet
+    de browserdefault, nergens vastgelegd). **Blijft open:** externe
+    bronnen vastleggen in de privacyinformatie (geen code-taak).
 11. **Logging bewaken bij toekomstige uitbreiding.** Nu beheerst (de
     zoekroute logt alleen de lengte van de zoekterm, niet de inhoud).
     Aandachtspunt voor later: als volledige zoekvragen, URI's of
