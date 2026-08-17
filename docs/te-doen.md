@@ -314,23 +314,34 @@ design critique). Wordt maandag verder opgepakt.
 
 ## Uit de codereview
 
-1. **Export verliest linked-data-identiteit.** `lib/export.ts` (CSV en
-   GeoJSON) bevat geen bron-URI, CHO-nummer, identifier-type of URI's van
-   gekoppelde concepten; `monumentnummer` valt terug op `item.id`, dus
-   die kolom kan verschillende soorten identifiers bevatten. Voorstel uit
-   de review: kolommen `object_uri`, `cho_nummer`, `primaire_identifier`,
-   `identifier_type` toevoegen, plus een stabiele Feature-`id` (bron-URI)
-   in GeoJSON.
-2. ~~**Export kan onvolledig zijn zonder dat te vermelden.**~~ **Deels
-   opgelost (17 augustus 2026).** Bij `hasMore` wordt alleen de geladen/
-   gefilterde set geëxporteerd; het bestand zelf bevat geen waarschuwing
-   daarover (de UI-melding verdwijnt zodra het bestand wordt doorgestuurd).
-   Kleinste oplossing uit de review toegepast: de exportknoppen in
-   `app/ResultsToolbar.tsx` vermelden nu expliciet hoeveel resultaten
-   geëxporteerd worden ("Exporteer 25 resultaten als CSV"). **Blijft
-   open:** dit staat alleen op de knop, niet in het bestand zelf (bv. een
-   metadatarij of GeoJSON-`properties`) - iemand die het bestand los
-   doorstuurt ziet de "nog niet alles geladen"-context niet meer.
+1. ~~**Export verliest linked-data-identiteit.**~~ **Opgelost (17 augustus
+   2026).** `lib/export.ts` bevatte geen bron-URI, CHO-nummer,
+   identifier-type; `monumentnummer` viel terug op `item.id`, dus die
+   kolom kon verschillende soorten identifiers bevatten. Vier kolommen
+   toegevoegd aan zowel CSV als GeoJSON-`properties`: `object_uri`
+   (`linkedDataUrl` met `sourceUrl` als terugval - zelfde keuze als de
+   "Brongegevens"-sectie in `HeritageDetailDialog`), `cho_nummer`
+   (`item.objectNumber`), `primaire_identifier` en `identifier_type`
+   (hergebruikt de al bestaande `primaryIdentifier()`-helper, dezelfde
+   die de UI ook gebruikt - geen nieuwe logica). GeoJSON-Features krijgen
+   bovendien een stabiele top-level `id` (de bron-URI), weggelaten
+   wanneer een item geen enkele URI heeft. Regressietests in
+   `tests/export.test.mjs`.
+2. ~~**Export kan onvolledig zijn zonder dat te vermelden.**~~ **Volledig
+   opgelost (deel 1: 17 augustus 2026 eerder; deel 2: 17 augustus 2026,
+   vandaag).** Bij `hasMore` wordt alleen de geladen/gefilterde set
+   geëxporteerd. Eerder al opgelost: de exportknoppen in
+   `app/ResultsToolbar.tsx` vermelden expliciet hoeveel resultaten
+   geëxporteerd worden ("Exporteer 25 resultaten als CSV"). **Nu ook in
+   het bestand zelf:** `itemsToCsv`/`itemsToGeoJson` krijgen een
+   `hasMore`-parameter (doorgegeven vanuit `app/page.tsx`). Bij CSV komt
+   er een extra rij ná de data met alleen kolom 1 gevuld (een
+   voorloopregel zou naïeve "eerste rij is header"-parsers in de war
+   brengen); bij GeoJSON een top-level `metadata: { compleet: false,
+   opmerking: "..." }`-lid naast `type`/`features` (onbekende leden
+   worden door GeoJSON-consumenten genegeerd, zelfde vrijheid als `bbox`
+   gebruikt). Regressietests in `tests/export.test.mjs` en een nieuwe
+   e2e-test die een echt gedownload bestand controleert.
 3. ~~**CSV-formule-injectie.**~~ **Opgelost (15 augustus 2026).**
    `csvField()` in `lib/export.ts` escaped wel `"`, `,` en `\n`, maar
    neutraliseerde geen leidende `=`, `+`, `-` of `@`. Een
@@ -346,10 +357,20 @@ design critique). Wordt maandag verder opgepakt.
 5. ~~**Kaarttoegankelijkheid (TD-27).**~~ **Opgelost (17 augustus 2026).**
    Zie item 2 hierboven onder "Kwaliteit en toegankelijkheid" voor de
    volledige beschrijving van de fix.
-6. **Testscript bouwt eerst (TD-31, blijft open).** `npm test` start nog
-   steeds met een volledige `vinext build`, wat gericht testen vertraagt
-   en buildcontrole met unitcontrole vermengt. Voorstel: opsplitsen in
-   `test:unit`, `build`, `check`, `test:e2e`.
+6. ~~**Testscript bouwt eerst (TD-31).**~~ **Opgelost (17 augustus 2026).**
+   `npm test` (`package.json`) begon nog steeds met een volledige `vinext
+   build`, wat gericht testen vertraagde en buildcontrole met
+   unitcontrole vermengde. Van de 16 testbestanden hebben er maar 2
+   (`rendered-html.test.mjs`, `worker-security.test.mjs`) daadwerkelijk
+   `dist/server/index.js` nodig (geverifieerd via `grep -l "dist/"
+   tests/*.test.mjs`) - de overige 14 testen source-bestanden rechtstreeks.
+   Nieuwe `test:unit`-script draait alleen die 14, zonder build (210
+   tests in ~5s zonder een voorafgaande `vinext build`); nieuwe
+   `test:build` draait de 2 build-afhankelijke bestanden zelfstandig
+   (bouwt zelf, dus los uitvoerbaar). `npm test` blijft ongewijzigd van
+   gedrag (bouwt één keer, test dezelfde 16 bestanden, geen wijziging aan
+   CI nodig) maar roept nu `test:unit` aan i.p.v. de losse bestandenlijst
+   te herhalen.
 
 ## Uit de design critique (15 augustus 2026)
 
