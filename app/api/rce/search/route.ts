@@ -1,9 +1,9 @@
-import { browseRceObjects, searchByActorConcept, searchByArcheologischeComplexTypeConcept, searchByArcheologischeWaarderingConcept, searchByBouwkundigeStaatConcept, searchByFunctieConcept, searchByGebeurtenisConcept, searchByGrondspoorTypeConcept, searchByMonumentAardConcept, searchByMonumentTypeConcept, searchByStijlConcept, searchByVerwervingConcept, searchByVondstenConcept, searchRceMonuments } from "../../../../lib/server/rce-adapter.ts";
+import { browseRceObjects, searchByActorConcept, searchByArcheologischeComplexTypeConcept, searchByArcheologischeWaarderingConcept, searchByBouwkundigeStaatConcept, searchByFunctieConcept, searchByGebeurtenisConcept, searchByGrondspoorTypeConcept, searchByMonumentAardConcept, searchByMonumentTypeConcept, searchByStijlConcept, searchByVerwervingConcept, searchByVondstenConcept, searchRceMonuments, type SearchPartialFailure } from "../../../../lib/server/rce-adapter.ts";
 import { OBJECT_KIND } from "../../../../lib/rce.ts";
 import { CONCEPT_URI_PATTERN } from "../concept/route.ts";
 import { capMapSize, pruneExpiredEntries } from "../../../../lib/server/expiring-map.ts";
 import { consumeFixedWindow, type RateLimitEntry } from "../../../../lib/server/fixed-window-rate-limit.ts";
-import { CACHE_POLICY, sharedCacheControl } from "../../../../lib/server/http-cache.ts";
+import { CACHE_POLICY, NO_STORE, sharedCacheControl } from "../../../../lib/server/http-cache.ts";
 import { withRceErrorHandling } from "../../../../lib/server/route-error-handling.ts";
 
 type ConceptVeld = "functie" | "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype" | "stijl" | "bouwkundigestaat" | "verwerving" | "grondspoortype" | "monumenttype";
@@ -131,11 +131,21 @@ export async function GET(request: Request) {
     const cached = await readCache(cacheKey);
     if (cached) return cached;
 
+    // Een tekstzoekopdracht splitst in losse categorieën (Rijksmonument,
+    // Vondstlocatie, Onderzoeksgebied, ...) die elk apart kunnen falen op een
+    // trage of tijdelijk onbereikbare RCE-SPARQL-tak. searchRceMonuments vangt
+    // zo'n falen intern op en valt terug op een lege lijst voor die categorie
+    // (zie optionalSearch in rce-adapter.ts), zodat één hapering niet de hele
+    // zoekopdracht laat mislukken. Zonder de tracker hieronder zou zo'n
+    // onvolledig resultaat - bv. "0 resultaten" terwijl het object alleen in
+    // de gefaalde categorie zat - hierna alsnog 5 minuten lang gecachet en
+    // aan alle bezoekers geserveerd worden, alsof het een geldig antwoord was.
+    const partialFailure: SearchPartialFailure = { partial: false };
     const results = browse
       ? await browseRceObjects(browse, request.signal, page)
       : conceptParam
         ? await searchByConceptField(veld, conceptParam, request.signal)
-        : await searchRceMonuments(query, request.signal, page, scope);
+        : await searchRceMonuments(query, request.signal, page, scope, partialFailure);
     const isPagedTextSearch = !browse && !conceptParam && !/^\d{1,6}$/.test(query) && !/^\d{4}\s?[A-Za-z]{2}$/.test(query);
     const isPagedBrowse = browse === "rijksmonument" || browse === "archeologischterrein" || browse === "onderzoeksgebied" || browse === "vondstlocatie" || browse === "archeologischcomplex" || browse === "vondsten" || browse === "grondsporen";
     const pageSize = 25;
@@ -150,17 +160,19 @@ export async function GET(request: Request) {
     const response = new Response(body, {
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control": sharedCacheControl(CACHE_POLICY.searchResults),
+        "Cache-Control": partialFailure.partial ? NO_STORE : sharedCacheControl(CACHE_POLICY.searchResults),
         "Server-Timing": `rce;dur=${Date.now() - startedAt}`,
-        "X-Doorzoeker-Cache": "MISS",
+        "X-Doorzoeker-Cache": partialFailure.partial ? "SKIP" : "MISS",
       },
     });
-    capMapSize(responseCache, 500);
-    responseCache.set(cacheKey.url, { body, expiresAt: now + CACHE_POLICY.searchResults.sharedSeconds * 1000 });
-    const cachedResponse = response.clone();
-    cachedResponse.headers.set("X-Doorzoeker-Cache", "HIT");
-    await writeCache(cacheKey, cachedResponse);
-    console.info(JSON.stringify({ event: "rce.search", durationMs: Date.now() - startedAt, queryLength: query.length, browse, concept: conceptParam ? veld : undefined, resultCount: results.length }));
+    if (!partialFailure.partial) {
+      capMapSize(responseCache, 500);
+      responseCache.set(cacheKey.url, { body, expiresAt: now + CACHE_POLICY.searchResults.sharedSeconds * 1000 });
+      const cachedResponse = response.clone();
+      cachedResponse.headers.set("X-Doorzoeker-Cache", "HIT");
+      await writeCache(cacheKey, cachedResponse);
+    }
+    console.info(JSON.stringify({ event: "rce.search", durationMs: Date.now() - startedAt, queryLength: query.length, browse, concept: conceptParam ? veld : undefined, resultCount: results.length, partial: partialFailure.partial }));
     return response;
   });
 }
