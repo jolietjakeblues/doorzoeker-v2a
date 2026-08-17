@@ -86,6 +86,35 @@ a {
   top: 12px;
 }
 
+main {
+  position: relative;
+}
+.beta-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 160px;
+  height: 160px;
+  overflow: hidden;
+  z-index: 10;
+  pointer-events: none;
+}
+.beta-badge span {
+  position: absolute;
+  top: 38px;
+  right: -42px;
+  width: 220px;
+  padding: 6px 0;
+  background: var(--rce-yellow);
+  color: var(--ink);
+  text-align: center;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  transform: rotate(45deg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
 /* Kop: logo op wit, gele balk eronder (cultureelerfgoed.nl heeft geen blauw lintje meer) */
 .govbar {
   height: 96px;
@@ -1285,6 +1314,17 @@ h2 {
 @media (max-width: 520px) {
   .brand small {
     display: none;
+  }
+  .beta-badge {
+    width: 100px;
+    height: 100px;
+  }
+  .beta-badge span {
+    top: 22px;
+    right: -34px;
+    width: 150px;
+    padding: 4px 0;
+    font-size: 11px;
   }
   .hero h1 {
     font-size: 26px;

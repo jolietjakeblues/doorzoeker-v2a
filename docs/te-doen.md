@@ -281,10 +281,23 @@ design critique). Wordt maandag verder opgepakt.
       (`.github/ISSUE_TEMPLATE/bug_report.md`), zodat bèta-testers ergens
       terechtkunnen om een bug of suggestie te melden - die mogelijkheid
       ontbrak volledig.
-    - **Bewust nog niet meegenomen:** een zichtbare "Beta"-badge in de UI
-      zelf (exacte tekst/plek nog niet afgestemd met de eigenaar), en
-      Cloudflare Web Analytics (moet eerst handmatig aangezet worden in
-      het Cloudflare-dashboard, buiten bereik van de repo).
+    - ~~Een zichtbare "Beta"-badge in de UI zelf.~~ **Opgelost.** Nieuwe
+      `app/BetaBadge.tsx`: een diagonaal "Bèta"-lint rechtsboven op de
+      pagina (`position: absolute` binnen `main`, `pointer-events: none`
+      zodat het nooit klikken blokkeert), met een kleinere variant onder
+      520px viewportbreedte. Live gecontroleerd op desktop- en
+      mobielformaat.
+    - **Cloudflare Web Analytics: geen actie nodig.** De eigenaar zette
+      het aan in het dashboard en zag geen token - dat klopt: bij een
+      domein dat al via Cloudflare's proxy loopt (noodzakelijk voor een
+      custom domain op een Worker) injecteert Cloudflare de
+      meetscript-tag zelf aan de edge ("automatische installatie"), er is
+      niets in de repo aan te passen. Data verschijnt pas in het
+      dashboard na wat echte paginabezoeken.
+    - Concept-introbericht voor de eerste bèta-testers vastgelegd in
+      `docs/beta-intro-bericht.md` (wat Doorzoeker is, waar feedback op
+      gewenst is, hoe te melden, bekende beperkingen) - door de eigenaar
+      zelf te versturen naar wie hij uitnodigt.
 
 ## Uit de codereview
 

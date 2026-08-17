@@ -141,6 +141,18 @@ test("de footer noemt de bèta-status, een feedbacklink naar GitHub en de privac
   );
 });
 
+test("de bèta-badge staat rechtsboven, ook nog na een zoekopdracht", async ({ page }) => {
+  const badge = page.locator(".beta-badge");
+  await expect(badge).toContainText("Bèta");
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(
+    page.getByRole("heading", { name: "3 resultaten voor “Goirle”" }),
+  ).toBeVisible();
+  await expect(badge).toContainText("Bèta");
+});
+
 test("belangrijke knoppen halen de WCAG 2.5.5-ondergrens van 44x44 CSS px (accessibility-review 15-08-2026)", async ({ page }) => {
   await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
   await page.getByRole("button", { name: "Doorzoek RCE" }).click();

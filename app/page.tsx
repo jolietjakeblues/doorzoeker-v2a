@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { HeritageDetailDialog } from "./HeritageDetailDialog";
 import { SiteHeader } from "./SiteHeader";
 import { SiteFooter } from "./SiteFooter";
+import { BetaBadge } from "./BetaBadge";
 import { SearchHero } from "./SearchHero";
 import { ResultsToolbar } from "./ResultsToolbar";
 import { SearchFilters } from "./SearchFilters";
@@ -176,6 +177,7 @@ export default function Home() {
   }
   return (
     <main>
+      <BetaBadge />
       <a href="#results" className="skip-link">
         Direct naar resultaten
       </a>
