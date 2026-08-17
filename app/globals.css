@@ -532,6 +532,10 @@ h2 {
   background: var(--rce-blue);
   color: #fff;
 }
+.switch button:disabled {
+  color: var(--line);
+  cursor: not-allowed;
+}
 
 .op-deze-dag {
   margin-bottom: 32px;
@@ -1067,6 +1071,11 @@ h2 {
 .heritage-cluster:hover {
   background: var(--rce-blue-hover);
   transform: scale(1.06);
+}
+.leaflet-interactive:focus-visible,
+.heritage-cluster:focus-visible {
+  outline: 3px solid var(--rce-yellow);
+  outline-offset: 2px;
 }
 
 /* Detailpaneel */
