@@ -498,3 +498,49 @@ actie, alleen genoteerd).
   `codereview-2026-08-13.md` bekend en nooit meegenomen in dit document.
   Geverifieerd tegen de daadwerkelijke routes in `app/api/` (8 stuks) vóór
   het toevoegen.
+
+## Brainstorm vervolgideeën (18 augustus 2026, ná de bèta-release)
+
+Losse ideeën uit een gesprek met de eigenaar, de dag na de publieke
+bèta-release. Bewust nog niet gebouwd of zelfs verkend - puur vastgelegd
+zodat ze niet verloren gaan. Volgorde is geen prioriteit.
+
+**Eerst opgepakt (bevestigd door de eigenaar): de kaart, vóór de thesaurus.**
+De kaart-cluster is concreter en kleiner (zie hieronder, "verticale slice
+006/011" en groenaanleg-kaartlaag in de bestaande "Nog openstaand"-lijst
+hierboven). De thesaurus (A-08 t/m A-13) is bewust gepland vóór de
+*officiële* release, niet vóór deze bèta - te groot en te vaag om er nu
+tussendoor te doen, verdient een eigen planningstraject zoals TD-04/05
+kreeg.
+
+- **Wikidata-koppeling via rijksmonumentnummer.** De CHO-data bevat geen
+  rechtstreekse `owl:sameAs`-koppeling naar Wikidata; een link zou een
+  losse lookup vereisen. Nog te verifiëren welke Wikidata-property het
+  rijksmonumentnummer vasthoudt. Voorbeelden van de eigenaar:
+  <https://www.wikidata.org/wiki/Q11721989> en
+  <https://www.wikidata.org/wiki/Q17464661>.
+- **SKOS-matchrelaties benutten, niet alleen `skos:exactMatch`.** De
+  thesauri bevatten ook `skos:closeMatch`, `skos:related`,
+  `skos:broadMatch` en `skos:narrowMatch`. Toepassing: bv. een architect-
+  of actorconcept koppelen aan een equivalent elders (RKDartists,
+  Wikidata).
+- **Vrije-tekstzoeken op meerdere willekeurige woorden.** Nu wordt in de
+  praktijk op één woord gezocht, of op een vaste twee-woorden-frase die
+  toevallig naast elkaar in de tekst staat. Gewenst: zoeken op twee
+  willekeurige woorden die ergens (niet per se naast elkaar) in dezelfde
+  tekst voorkomen - een echte multi-term AND-zoekopdracht. **Nadrukkelijk
+  geen thesaurus-synoniemexpansie** ("kerk" ook laten matchen op
+  "kerkhof") - dat was een eerdere, onjuiste aanname bij het vastleggen
+  van dit idee; expliciet gecorrigeerd door de eigenaar.
+- **Tekst toevoegen over het belang van Linked Open Data voor Doorzoeker.**
+  Ergens (README en/of in de app zelf) uitleggen waaróm Doorzoeker op
+  linked data draait en waarom dat waarde heeft - nu wordt het gebruikt
+  (URI's, herleidbare bronnen) maar nergens uitgelegd waaróm dat ertoe
+  doet.
+- **Nog te verkennen RCE-graphs als mogelijke nieuwe databronnen** - nog
+  helemaal niet onderzocht wat erin zit, dat is de eerstvolgende stap
+  (niet vandaag) vóór er iets over gebouwd wordt:
+  - los van `rce/cho`: `Archaeological-Knowledge-Bank`, `histgeo`,
+    `Bebouwde-omgeving-referentienetwerk`;
+  - binnen `rce/cho`: `actorenrol`, `gezicht_hvdl`, `werelderfgoed_hvdl`,
+    `archiefdagen`, `linies`, `buitenplaatsen`, `OmschrijvingenOnderwerp`.
