@@ -89,6 +89,7 @@ import {
   VONDSTLOCATIE_INHOUD_KLASSEN,
   type ArcheologischTerrein,
   type ComplexMember,
+  type DiscoveryMatch,
   type OpDezeDagCandidate,
   type RceMonument,
   type VondstenConceptField,
@@ -382,10 +383,12 @@ export async function fetchVerrasMe(signal?: AbortSignal): Promise<RceMonument |
 // ARCHEOLOGISCH_ONDERZOEK_SOURCES in rce.ts) in plaats van één CONTAINS-query
 // op de hele collectie.
 async function searchArcheologischOnderzoek(term: string, signal?: AbortSignal): Promise<RceMonument[]> {
-  const branchResults = await Promise.all(
-    buildArcheologischOnderzoekDiscoveryQueries(term).map(({ bron, query }) =>
-      fetchSparql(query, signal).then((document) => parseArcheologischOnderzoekDiscoveryResults(document, bron, term)),
-    ),
+  const branchResults = await runDiscoveryBranches(
+    "search.onderzoeksgebieden",
+    buildArcheologischOnderzoekDiscoveryQueries(term),
+    term,
+    parseArcheologischOnderzoekDiscoveryResults,
+    signal,
   );
   const discovery = mergeDiscoveryMatches(branchResults).slice(0, 25);
   if (!discovery.length) return [];
@@ -426,6 +429,46 @@ async function optionalSearch<T>(event: string, work: () => Promise<T>, fallback
   }
 }
 
+// Gedeelde mechaniek voor "loop ranked discovery-brontakken af, laat een
+// falende tak individueel vallen (warn + drop), faal alleen als ALLE
+// aangeroepen takken faalden" (TD-04). Vervangt de losse, bijna-identieke
+// kopie die tot nu in 6-7 functies apart stond - waaronder
+// searchArcheologischOnderzoek, die daar per ongeluk Promise.all gebruikte
+// i.p.v. allSettled: één falende van zijn 3 brontakken liet daardoor de
+// hele onderzoeksgebieden-categorie verdwijnen, terwijl de andere takken
+// allang klaar waren (bugfix 17-08-2026). `branches.length > 0 &&` sluit
+// aan op searchByText's eigen `includeCore && branchResults.length === 0`:
+// bij een leeg aangeroepen brontakkenlijst (scope sluit core uit) is dat
+// geen falen, gewoon "niets aangeroepen".
+async function runDiscoveryBranches(
+  event: string,
+  branches: { bron: string; query: string }[],
+  term: string,
+  parse: (document: unknown, bron: string, term: string) => DiscoveryMatch[],
+  signal?: AbortSignal,
+  tracker?: SearchPartialFailure,
+): Promise<DiscoveryMatch[][]> {
+  const settled = await Promise.allSettled(
+    branches.map(({ bron, query }) => fetchSparql(query, signal).then((document) => parse(document, bron, term))),
+  );
+  if (signal?.aborted) throw signal.reason;
+  const branchResults = settled.flatMap((result, index) => {
+    if (result.status === "fulfilled") return [result.value];
+    console.warn(JSON.stringify({
+      event: `${event}.branch.unavailable`,
+      source: branches[index].bron,
+      message: result.reason instanceof Error ? result.reason.message : "unknown",
+    }));
+    if (tracker) tracker.partial = true;
+    return [];
+  });
+  if (branches.length > 0 && branchResults.length === 0) {
+    throw settled.find((result): result is PromiseRejectedResult => result.status === "rejected")?.reason
+      ?? new Error(`Geen ${event}-bron bereikbaar`);
+  }
+  return branchResults;
+}
+
 export async function searchByFunctieConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
   return searchByConceptMatchQuery(buildFunctieConceptQuery(conceptUri), signal);
 }
@@ -456,19 +499,13 @@ export async function fetchVondstlocatieInhoud(locatieUri: string, signal?: Abor
 }
 
 async function searchArcheologischeTerreinen(term: string, signal?: AbortSignal): Promise<RceMonument[]> {
-  const queries = buildArcheologischTerreinDiscoveryQueries(term);
-  const settled = await Promise.allSettled(
-    queries.map(({ bron, query }) =>
-      fetchSparql(query, signal).then((document) => parseArcheologischTerreinDiscoveryResults(document, bron, term)),
-    ),
+  const branchResults = await runDiscoveryBranches(
+    "search.archeologische-terreinen",
+    buildArcheologischTerreinDiscoveryQueries(term),
+    term,
+    parseArcheologischTerreinDiscoveryResults,
+    signal,
   );
-  if (signal?.aborted) throw signal.reason;
-  const branchResults = settled.flatMap((result, index) => {
-    if (result.status === "fulfilled") return [result.value];
-    console.warn(JSON.stringify({ event: "search.archeologische-terreinen.branch.unavailable", source: queries[index].bron, message: result.reason instanceof Error ? result.reason.message : "unknown" }));
-    return [];
-  });
-  if (!branchResults.length) throw settled.find((result) => result.status === "rejected")?.reason ?? new Error("Geen terreinzoekbron bereikbaar");
   const discovery = mergeDiscoveryMatches(branchResults).slice(0, 25);
   if (!discovery.length) return [];
   const detailsDocument = await fetchSparql(buildArcheologischTerreinDetailsQuery(discovery.map((match) => match.monumentNumber)), signal);
@@ -480,17 +517,13 @@ async function searchArcheologischeTerreinen(term: string, signal?: AbortSignal)
 }
 
 async function searchVondstlocaties(term: string, signal?: AbortSignal): Promise<RceMonument[]> {
-  const queries = buildVondstlocatieDiscoveryQueries(term);
-  const settled = await Promise.allSettled(queries.map(({ bron, query }) =>
-    fetchSparql(query, signal).then((document) => parseVondstlocatieDiscoveryResults(document, bron, term)),
-  ));
-  if (signal?.aborted) throw signal.reason;
-  const branches = settled.flatMap((result, index) => {
-    if (result.status === "fulfilled") return [result.value];
-    console.warn(JSON.stringify({ event: "search.vondstlocaties.branch.unavailable", source: queries[index].bron, message: result.reason instanceof Error ? result.reason.message : "unknown" }));
-    return [];
-  });
-  if (!branches.length) throw settled.find((result) => result.status === "rejected")?.reason ?? new Error("Geen vondstlocatiezoekbron bereikbaar");
+  const branches = await runDiscoveryBranches(
+    "search.vondstlocaties",
+    buildVondstlocatieDiscoveryQueries(term),
+    term,
+    parseVondstlocatieDiscoveryResults,
+    signal,
+  );
   const discovery = mergeDiscoveryMatches(branches).slice(0, 25);
   if (!discovery.length) return [];
   const details = await fetchSparql(buildVondstlocatieDetailsQuery(discovery.map((match) => match.monumentNumber)), signal);
@@ -502,17 +535,13 @@ async function searchVondstlocaties(term: string, signal?: AbortSignal): Promise
 }
 
 async function searchGrondsporen(term: string, signal?: AbortSignal): Promise<RceMonument[]> {
-  const queries = buildGrondsporenDiscoveryQueries(term);
-  const settled = await Promise.allSettled(queries.map(({ bron, query }) =>
-    fetchSparql(query, signal).then((document) => parseGrondsporenDiscoveryResults(document, bron, term)),
-  ));
-  if (signal?.aborted) throw signal.reason;
-  const branches = settled.flatMap((result, index) => {
-    if (result.status === "fulfilled") return [result.value];
-    console.warn(JSON.stringify({ event: "search.grondsporen.branch.unavailable", source: queries[index].bron, message: result.reason instanceof Error ? result.reason.message : "unknown" }));
-    return [];
-  });
-  if (!branches.length) throw settled.find((result) => result.status === "rejected")?.reason ?? new Error("Geen grondspoorzoekbron bereikbaar");
+  const branches = await runDiscoveryBranches(
+    "search.grondsporen",
+    buildGrondsporenDiscoveryQueries(term),
+    term,
+    parseGrondsporenDiscoveryResults,
+    signal,
+  );
   const discovery = mergeDiscoveryMatches(branches).slice(0, 25);
   if (!discovery.length) return [];
   const details = await fetchSparql(buildGrondsporenDetailsQuery(discovery.map((match) => match.monumentNumber)), signal);
@@ -558,17 +587,13 @@ async function buildVondstenFromDiscovery(discovery: ReturnType<typeof mergeDisc
 }
 
 async function searchVondsten(term: string, signal?: AbortSignal): Promise<RceMonument[]> {
-  const queries = buildVondstenDiscoveryQueries(term);
-  const settled = await Promise.allSettled(queries.map(({ bron, query }) =>
-    fetchSparql(query, signal).then((document) => parseVondstenDiscoveryResults(document, bron, term)),
-  ));
-  if (signal?.aborted) throw signal.reason;
-  const branches = settled.flatMap((result, index) => {
-    if (result.status === "fulfilled") return [result.value];
-    console.warn(JSON.stringify({ event: "search.vondsten.branch.unavailable", source: queries[index].bron, message: result.reason instanceof Error ? result.reason.message : "unknown" }));
-    return [];
-  });
-  if (!branches.length) throw settled.find((result) => result.status === "rejected")?.reason ?? new Error("Geen vondstzoekbron bereikbaar");
+  const branches = await runDiscoveryBranches(
+    "search.vondsten",
+    buildVondstenDiscoveryQueries(term),
+    term,
+    parseVondstenDiscoveryResults,
+    signal,
+  );
   return buildVondstenFromDiscovery(mergeDiscoveryMatches(branches).slice(0, 25), signal);
 }
 
@@ -594,15 +619,13 @@ async function buildArcheologischeComplexenFromDiscovery(discovery: ReturnType<t
 }
 
 async function searchArcheologischeComplexen(term: string, signal?: AbortSignal): Promise<RceMonument[]> {
-  const queries = buildArcheologischeComplexDiscoveryQueries(term);
-  const settled = await Promise.allSettled(queries.map(({ bron, query }) => fetchSparql(query, signal).then((document) => parseArcheologischeComplexDiscoveryResults(document, bron, term))));
-  if (signal?.aborted) throw signal.reason;
-  const branches = settled.flatMap((result, index) => {
-    if (result.status === "fulfilled") return [result.value];
-    console.warn(JSON.stringify({ event: "search.archeologische-complexen.branch.unavailable", source: queries[index].bron, message: result.reason instanceof Error ? result.reason.message : "unknown" }));
-    return [];
-  });
-  if (!branches.length) throw settled.find((result) => result.status === "rejected")?.reason ?? new Error("Geen archeologisch-complexzoekbron bereikbaar");
+  const branches = await runDiscoveryBranches(
+    "search.archeologische-complexen",
+    buildArcheologischeComplexDiscoveryQueries(term),
+    term,
+    parseArcheologischeComplexDiscoveryResults,
+    signal,
+  );
   return buildArcheologischeComplexenFromDiscovery(mergeDiscoveryMatches(branches).slice(0, 25), signal);
 }
 
@@ -617,22 +640,9 @@ export type TextSearchScope = "all" | "core" | "heritage" | "archaeology-a" | "a
 async function searchByText(term: string, signal?: AbortSignal, page = 1, scope: TextSearchScope = "all", tracker?: SearchPartialFailure): Promise<RceMonument[]> {
   const includeCore = scope === "all" || scope === "core";
   const discoveryQueries = includeCore ? buildRceDiscoveryQueries(term) : [];
-  const discoverySettled = await timed("search.discovery", () => Promise.allSettled(
-    discoveryQueries.map(({ bron, query }) =>
-      fetchSparql(query, signal).then((document) => parseDiscoveryBranchResults(document, bron, term)),
-    ),
-  ));
-  if (signal?.aborted) throw signal.reason;
-  const branchResults = discoverySettled.flatMap((result, index) => {
-    if (result.status === "fulfilled") return [result.value];
-    console.warn(JSON.stringify({ event: "search.discovery.branch.unavailable", source: discoveryQueries[index].bron, message: result.reason instanceof Error ? result.reason.message : "unknown" }));
-    if (tracker) tracker.partial = true;
-    return [];
-  });
-  if (includeCore && branchResults.length === 0) {
-    const firstFailure = discoverySettled.find((result) => result.status === "rejected");
-    throw firstFailure?.reason ?? new Error("Geen zoekbron bereikbaar");
-  }
+  const branchResults = await timed("search.discovery", () =>
+    runDiscoveryBranches("search.discovery", discoveryQueries, term, parseDiscoveryBranchResults, signal, tracker),
+  );
 
   const [werelderfgoed, gezichten, complexen, onderzoeksgebieden, archeologischeTerreinen, vondstlocaties, grondsporen, vondsten, archeologischeComplexen] = await Promise.all([
     page === 1 && (scope === "all" || scope === "heritage")

@@ -1,4 +1,5 @@
 import type { ComplexMember, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, RceMonument, VondstlocatieInhoud } from "@/lib/rce";
+import type { ConceptField } from "@/lib/heritage-view-model";
 
 export type SearchResponse = { results: RceMonument[]; page?: number; pageSize?: number; hasMore?: boolean };
 export type BrowseKind = "rijksmonument" | "archeologischterrein" | "onderzoeksgebied" | "vondstlocatie" | "archeologischcomplex" | "vondsten" | "grondsporen" | "werelderfgoed" | "gezicht" | "complex";
@@ -34,7 +35,7 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
 // een tekstzoekopdracht - zie docs/vertical-slices/004-referentienetwerk-concepten.md.
 // `veld` bepaalt via welke eigenschap gezocht wordt; de aanroeper weet dit
 // al op basis van welk label is aangeklikt.
-async function searchByConcept(conceptUri: string, veld: "functie" | "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype" | "stijl" | "bouwkundigestaat" | "verwerving" | "grondspoortype" | "monumenttype", signal?: AbortSignal) {
+async function searchByConcept(conceptUri: string, veld: ConceptField, signal?: AbortSignal) {
   const response = await fetch(`/api/rce/search?concept=${encodeURIComponent(conceptUri)}&veld=${veld}`, {
     headers: { Accept: "application/json" },
     signal,

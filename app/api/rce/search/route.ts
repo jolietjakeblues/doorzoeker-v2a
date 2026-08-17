@@ -1,14 +1,13 @@
 import { browseRceObjects, searchByActorConcept, searchByArcheologischeComplexTypeConcept, searchByArcheologischeWaarderingConcept, searchByBouwkundigeStaatConcept, searchByFunctieConcept, searchByGebeurtenisConcept, searchByGrondspoorTypeConcept, searchByMonumentAardConcept, searchByMonumentTypeConcept, searchByStijlConcept, searchByVerwervingConcept, searchByVondstenConcept, searchRceMonuments, type SearchPartialFailure } from "../../../../lib/server/rce-adapter.ts";
 import { OBJECT_KIND } from "../../../../lib/rce.ts";
+import { isConceptField, type ConceptField } from "../../../../lib/heritage-view-model.ts";
 import { CONCEPT_URI_PATTERN } from "../concept/route.ts";
 import { capMapSize, pruneExpiredEntries } from "../../../../lib/server/expiring-map.ts";
 import { CACHE_POLICY, NO_STORE, sharedCacheControl } from "../../../../lib/server/http-cache.ts";
 import { createRateLimiter, rateLimitedResponse } from "../../../../lib/server/route-rate-limit.ts";
 import { withRceErrorHandling } from "../../../../lib/server/route-error-handling.ts";
 
-type ConceptVeld = "functie" | "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype" | "stijl" | "bouwkundigestaat" | "verwerving" | "grondspoortype" | "monumenttype";
-
-function searchByConceptField(veld: ConceptVeld, conceptUri: string, signal?: AbortSignal) {
+function searchByConceptField(veld: ConceptField, conceptUri: string, signal?: AbortSignal) {
   if (veld === "functie") return searchByFunctieConcept(conceptUri, signal);
   if (veld === "waardering") return searchByArcheologischeWaarderingConcept(conceptUri, signal);
   if (veld === "gebeurtenis") return searchByGebeurtenisConcept(conceptUri, signal);
@@ -81,7 +80,7 @@ export async function GET(request: Request) {
     // (monumentaard).
     const conceptParam = url.searchParams.get("concept");
     const veldParam = url.searchParams.get("veld");
-    const veld: ConceptVeld = veldParam === "functie" || veldParam === "waardering" || veldParam === "gebeurtenis" || veldParam === "actor" || veldParam === "vondsttype" || veldParam === "materiaal" || veldParam === "toestand" || veldParam === "archeologischcomplextype" || veldParam === "stijl" || veldParam === "bouwkundigestaat" || veldParam === "verwerving" || veldParam === "grondspoortype" || veldParam === "monumenttype" ? veldParam : "monumentaard";
+    const veld: ConceptField = isConceptField(veldParam) ? veldParam : "monumentaard";
     if (conceptParam && !CONCEPT_URI_PATTERN.test(conceptParam)) {
       return Response.json({ error: "Ongeldige concept-URI." }, { status: 400 });
     }

@@ -135,8 +135,12 @@ design critique). Wordt maandag verder opgepakt.
    woonplaats) en laten een individueel gefaalde bron eveneens stil vallen
    zonder dat te melden aan de nieuwe tracker - dat raakt alleen de
    volledigheid van matches binnen zo'n categorie (niet de hele categorie),
-   maar is dezelfde soort stille-fout-bug op een dieper niveau. Nog niet
-   gefixt.
+   maar is dezelfde soort stille-fout-bug op een dieper niveau. **Update
+   (TD-04, 17 augustus 2026): deze helpers gebruiken nu allemaal dezelfde
+   gedeelde `runDiscoveryBranches`-helper - zie item 9 hieronder. Ze melden
+   een individueel gefaalde bron nog steeds niet aan de partialFailure-
+   tracker (alleen `searchByText`'s eigen kerndiscovery doet dat); dat deel
+   van deze beperking blijft dus staan.**
 6. ~~**Zelfde CHO-citaat-bug als item 5 hierboven, maar dan bij een
    Onderzoeksgebied's "Archeologisch onderzoek binnen dit gebied"-lijst,
    gemeld door de eigenaar (17 augustus 2026, CHO 2010285 en
@@ -208,6 +212,34 @@ design critique). Wordt maandag verder opgepakt.
    stond (bv. "Boerderij" én "Boerderij(M)") - dat loste zich vanzelf op
    doordat de dedup in `contextFunctions` nu op de opgeschoonde waarde
    werkt.
+9. **TD-04/TD-05 opgepakt (17 augustus 2026), gedeeltelijk opgelost - zie
+   `docs/analyse-2026-08-11.md` voor het volledige "wel/niet meegenomen"-
+   overzicht.** Twee gerichte, mechanische verbeteringen, geen volledige
+   unificatie (dat zou objectsoorten kunstmatig tot één model reduceren,
+   precies wat TD-04's eigen analyse afraadt):
+   - **TD-04:** het "loop ranked discovery-brontakken af, laat een falende
+     tak individueel vallen" patroon stond 6-7 keer bijna-identiek herhaald
+     in `lib/server/rce-adapter.ts`. Samengevoegd tot één
+     `runDiscoveryBranches`-helper. Daarbij bleek `searchArcheologischOnderzoek`
+     als enige nog `Promise.all` te gebruiken in plaats van `allSettled` -
+     één falende van zijn 3 brontakken liet daardoor de hele
+     onderzoeksgebieden-categorie verdwijnen. Echte bug, meteen gefixt en
+     afgedekt met een regressietest in `tests/rce-api.test.mjs`.
+   - **TD-05:** de `ConceptField`-unie (14 waarden) stond onafhankelijk 4
+     keer herhaald in `lib/heritage-view-model.ts`,
+     `app/api/rce/search/route.ts` en `lib/rce-client.ts`. Samengevoegd tot
+     één bron van waarheid (`CONCEPT_FIELDS` + `isConceptField`). Daarbij
+     bleek `parseUrlState`'s eigen allowlist maar 9 van de 14 velden te
+     herkennen - `stijl`, `bouwkundigestaat`, `verwerving`,
+     `grondspoortype` en `monumenttype` misten, dus een gedeelde link met
+     zo'n conceptzoekopdracht herstelde na page reload niet. Echte bug,
+     meteen gefixt en afgedekt met een regressietest in
+     `tests/heritage-view-model.test.mjs`.
+   - **Nadrukkelijk niet meegenomen:** een generieke SPARQL-querybuilder-
+     generator voor de 14 conceptvelden, een generieke discovery-
+     querygenerator per objectsoort, en het samenvoegen van de 3
+     onafhankelijke paginering/LIMIT-schema's. Zie
+     `docs/analyse-2026-08-11.md` voor de onderbouwing per punt.
 
 ## Uit de codereview
 
@@ -347,10 +379,13 @@ actie, alleen genoteerd).
   Werelderfgoed/Gezichten - plan, niet gebouwd.
 - **Verticale slice 011**: "In de buurt" (geolocatie-gebaseerd ontdekken)
   - plan, niet gebouwd.
-- **TD-04, TD-05, TD-08, TD-09**: querybouw/parsing-duplicatie per
-  objectsoort, ontbrekend algemeen contract voor navigeerbare
-  predicaatwaarden, moduleomvang die tests breed maakt, documentatie/
-  implementatiestatus die uit elkaar kan lopen - alle nog open, zie
+- **TD-04, TD-05**: gedeeltelijk opgelost op 17 augustus 2026 (gedeelde
+  `runDiscoveryBranches`-helper + `CONCEPT_FIELDS`-bron van waarheid, met
+  twee echte bugs onderweg gevonden en gefixt) - zie item 9 hierboven en
+  `docs/analyse-2026-08-11.md` voor wat wél en wat nadrukkelijk niet is
+  meegenomen.
+- **TD-08, TD-09**: moduleomvang die tests breed maakt, documentatie/
+  implementatiestatus die uit elkaar kan lopen - nog open, zie
   `docs/analyse-2026-08-11.md`.
 - **TD-10**: TypeScript 7 en ESLint 10 (major-upgrades) staan als open
   Dependabot-PR's, bewust uitgesteld - besluitvoorstel in

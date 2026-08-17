@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  CONCEPT_FIELDS,
   linkedConcepts,
   parseUrlState,
   pickVergelijkbareRijksmonumenten,
@@ -281,6 +282,15 @@ test("restores an exact concept search and generic selected object from the URL"
   assert.equal(state.conceptField, "monumentaard");
   assert.equal(state.selectedId, "cho-42");
   assert.equal(state.page, 3);
+});
+
+test("restores conceptField voor alle 14 velden na page reload (TD-05 bugfix 17-08-2026: de losse 9-voudige allowlist herkende stijl, bouwkundigestaat, verwerving, grondspoortype en monumenttype niet - een gedeelde link met die velden herstelde niet)", () => {
+  assert.equal(CONCEPT_FIELDS.length, 14);
+  for (const veld of CONCEPT_FIELDS) {
+    const state = parseUrlState(`?concept=https%3A%2F%2Fdata.cultureelerfgoed.nl%2Fterm%2Fid%2Frn%2F2%2Fabc&veld=${veld}`);
+    assert.equal(state.conceptField, veld, `veld=${veld} had moeten herstellen`);
+  }
+  assert.equal(parseUrlState("?veld=onbekend").conceptField, undefined);
 });
 
 test("keeps old rm links working while new links use object", () => {

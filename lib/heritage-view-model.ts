@@ -95,21 +95,35 @@ export type Item = {
 };
 
 export const EMPTY_ITEMS: Item[] = [];
-export type ConceptField =
-  | "functie"
-  | "monumentaard"
-  | "waardering"
-  | "gebeurtenis"
-  | "actor"
-  | "vondsttype"
-  | "materiaal"
-  | "toestand"
-  | "archeologischcomplextype"
-  | "stijl"
-  | "bouwkundigestaat"
-  | "verwerving"
-  | "grondspoortype"
-  | "monumenttype";
+// Eén bron van waarheid voor de 14 navigeerbare conceptvelden (TD-05). De
+// eerdere aanpak - dit union type onafhankelijk als losse letterlijke
+// string-union herhalen in app/api/rce/search/route.ts, lib/rce-client.ts
+// en de parseUrlState-allowlist hieronder - raakte uit sync: 5 van de 14
+// velden (stijl, bouwkundigestaat, verwerving, grondspoortype,
+// monumenttype) ontbraken in die allowlist, waardoor een gedeelde link met
+// die velden na page reload conceptField niet herstelde (bugfix
+// 17-08-2026).
+export const CONCEPT_FIELDS = [
+  "functie",
+  "monumentaard",
+  "waardering",
+  "gebeurtenis",
+  "actor",
+  "vondsttype",
+  "materiaal",
+  "toestand",
+  "archeologischcomplextype",
+  "stijl",
+  "bouwkundigestaat",
+  "verwerving",
+  "grondspoortype",
+  "monumenttype",
+] as const;
+export type ConceptField = (typeof CONCEPT_FIELDS)[number];
+const CONCEPT_FIELD_SET: ReadonlySet<string> = new Set(CONCEPT_FIELDS);
+export function isConceptField(value: string | null): value is ConceptField {
+  return value !== null && CONCEPT_FIELD_SET.has(value);
+}
 export type LinkedConcept = {
   uri: string;
   label: string;
@@ -516,18 +530,7 @@ export function parseUrlState(search: string) {
   const province = params.get("provincie");
   const municipality = params.get("gemeente");
   const conceptField = params.get("veld");
-  const parsedConceptField: ConceptField | undefined =
-    conceptField === "functie" ||
-    conceptField === "monumentaard" ||
-    conceptField === "waardering" ||
-    conceptField === "gebeurtenis" ||
-    conceptField === "actor" ||
-    conceptField === "vondsttype" ||
-    conceptField === "materiaal" ||
-    conceptField === "toestand" ||
-    conceptField === "archeologischcomplextype"
-      ? conceptField
-      : undefined;
+  const parsedConceptField: ConceptField | undefined = isConceptField(conceptField) ? conceptField : undefined;
   const page = Number(params.get("pagina") ?? "1");
   const mapLat = Number(params.get("lat"));
   const mapLng = Number(params.get("lng"));
