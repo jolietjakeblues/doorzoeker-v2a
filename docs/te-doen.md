@@ -6,15 +6,17 @@ PR's #55-#60 en twee reviews (functioneel + security) op `main`
 `/accessibility-review`-bevindingen, drie zaterdag-fixes, en een
 design critique). Wordt maandag verder opgepakt.
 
-## Domeinnaam (volgende week)
+## Domeinnaam
 
-15. **Sitenaam wordt `doorzoekerfgoed.nl`.** Registratie is gestart bij
-    zowel Cloudflare als Strato (15 augustus 2026) - nog niet afgerond,
-    nog geen DNS/Worker-koppeling. Zodra de registratie rond is: custom
-    domain koppelen aan de Cloudflare Worker, `README.md`/deploydocs
-    bijwerken (nu nog `doorzoeker-v2a.jolietjakeblues64.workers.dev`),
-    en controleren of er ergens hardcoded verwijzingen naar de oude
-    workers.dev-URL staan.
+15. ~~**Sitenaam wordt `doorzoekerfgoed.nl`.**~~ **Afgerond (17 augustus
+    2026, bevestigd door de eigenaar).** `doorzoekerfgoed.nl` en
+    `www.doorzoekerfgoed.nl` zijn live en gekoppeld aan de Cloudflare
+    Worker (live geverifieerd tijdens de security assessment - zie
+    `docs/security-assessment-2026-08-17.md`). `README.md` bevat geen
+    hardcoded workers.dev-URL om bij te werken; gecontroleerd, geen
+    andere hardcoded verwijzingen naar de oude workers.dev-URL gevonden
+    in `.md`/`.ts`/`.tsx`/`.json`-bestanden buiten de historische
+    sessiedocumentatie (die blijft ongewijzigd als tijdslijn).
 
 ## Kwaliteit en toegankelijkheid
 
@@ -189,6 +191,23 @@ design critique). Wordt maandag verder opgepakt.
      versienummer: react-server-dom-webpack 19.2.8 > de 19.2.1-fixgrens),
      en of de door Vercel/Hacktron gemelde vinext-eigen kwetsbaarheden al
      zijn opgelost in de hier gebruikte bèta-versie (`1.0.0-beta.5`).
+8. ~~**"Gemaal(M)", "Kapel(K1)" e.d. bleven onopgeschoond staan, gemeld
+   door de eigenaar (17 augustus 2026).**~~ **Opgelost.** `toItem()` in
+   `lib/heritage-view-model.ts` haalde `originalFunctionNames` wel door
+   `displayFunctionName()` (strippen van een `(...)`-staart) maar
+   `currentFunctionNames` niet - exact dezelfde soort asymmetrie als
+   eerdere bugs deze sessie, nu tussen "oorspronkelijke" en "huidige
+   functie" in plaats van tussen twee objectsoorten. `HeritageDetailFacts.tsx`
+   compenseerde dit lokaal alleen in het detailpaneel; de filterlijst
+   (`contextFunctions` in `app/page.tsx`) en de "gevonden via"-tekst bij
+   zoekresultaten (`matchedText`, alleen gecheckt op matchSource
+   `"oorspronkelijke functie"`, niet `"huidige functie"`) toonden de rauwe
+   waarde nog wel. Beide nu gefixt bij de bron; de lokale compensatie in
+   `HeritageDetailFacts.tsx` is overbodig en verwijderd. Neveneffect: de
+   eigenaar meldde dat dezelfde functie soms dubbel in de filterlijst
+   stond (bv. "Boerderij" én "Boerderij(M)") - dat loste zich vanzelf op
+   doordat de dedup in `contextFunctions` nu op de opgeschoonde waarde
+   werkt.
 
 ## Uit de codereview
 

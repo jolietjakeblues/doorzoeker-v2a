@@ -1,4 +1,4 @@
-import { displayFunctionName, functionConceptForLabel, primaryFunctionConcept, statusLabel, typeConceptForLabel, type ConceptField, type Item } from "@/lib/heritage-view-model";
+import { functionConceptForLabel, primaryFunctionConcept, statusLabel, typeConceptForLabel, type ConceptField, type Item } from "@/lib/heritage-view-model";
 
 type Concept = { uri: string; label: string };
 
@@ -201,7 +201,7 @@ export function HeritageDetailFacts({
     ...new Set(
       [
         ...(item.originalFunctionNames ?? []),
-        ...(item.currentFunctionNames ?? []).map(displayFunctionName),
+        ...(item.currentFunctionNames ?? []),
       ].filter((name) => name && name !== item.kind),
     ),
   ];

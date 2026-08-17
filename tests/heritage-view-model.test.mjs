@@ -6,10 +6,49 @@ import {
   pickVergelijkbareRijksmonumenten,
   primaryFunctionConcept,
   primaryIdentifier,
+  toItem,
   typeConceptForLabel,
 } from "../lib/heritage-view-model.ts";
 
 const base = { objectNumber: "cho-42" };
+
+const baseRecord = {
+  choNumber: "10015422",
+  monumentNumber: "10015422",
+  registrationDate: "2000-01-01",
+  street: "",
+  houseNumber: "",
+  postalCode: "",
+  sourceUrl: "https://linkeddata.cultureelerfgoed.nl/rm:10015422",
+};
+
+test("currentFunctionNames wordt net als originalFunctionNames opgeschoond van een (code)-staart (gemeld door de eigenaar: 'Gemaal(M)', 'Kapel(K1)' bleven overal onopgeschoond staan)", () => {
+  const item = toItem({
+    ...baseRecord,
+    originalFunctionNames: ["Boerderij(M)", "Boerderij"],
+    currentFunctionNames: ["Gemaal(M)", "Kapel(K1)"],
+  });
+  assert.deepEqual(item.originalFunctionNames, ["Boerderij", "Boerderij"]);
+  assert.deepEqual(item.currentFunctionNames, ["Gemaal", "Kapel"]);
+});
+
+test("matchedText wordt ook opgeschoond wanneer de treffer via 'huidige functie' komt, niet alleen 'oorspronkelijke functie'", () => {
+  const item = toItem({
+    ...baseRecord,
+    matchSource: "huidige functie",
+    matchedText: "Gemaal(M)",
+  });
+  assert.equal(item.matchedText, "Gemaal");
+});
+
+test("matchedText via andere matchbronnen (bv. woonplaats) blijft ongemoeid", () => {
+  const item = toItem({
+    ...baseRecord,
+    matchSource: "woonplaats",
+    matchedText: "Utrecht",
+  });
+  assert.equal(item.matchedText, "Utrecht");
+});
 
 test("collects only linked concepts that support an exact search", () => {
   assert.deepEqual(
