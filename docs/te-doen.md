@@ -271,6 +271,20 @@ design critique). Wordt maandag verder opgepakt.
       startpagina-secties (Ontdek een thema/Bekijk alles), en het bredere
       "Gemeente/woonplaats"-semantiekpunt uit dezelfde review (vraagt eerst
       uitzoeken of de onderliggende data beide betekenissen draagt).
+11. **Voorbereiding bèta-publicatie (17 augustus 2026).** Nieuwe
+    `app/SiteFooter.tsx`, onderaan elke pagina:
+    - Korte, feitelijke privacyvermelding: bezoekers-IP gaat naar PDOK
+      (kaarttegels) en de RCE-beeldbank (afbeeldingen) zodra de kaart of
+      een foto bekeken wordt; Doorzoeker zelf verzamelt geen
+      persoonsgegevens en gebruikt geen tracking-cookies.
+    - Feedbacklink naar een nieuw GitHub-issuetemplate
+      (`.github/ISSUE_TEMPLATE/bug_report.md`), zodat bèta-testers ergens
+      terechtkunnen om een bug of suggestie te melden - die mogelijkheid
+      ontbrak volledig.
+    - **Bewust nog niet meegenomen:** een zichtbare "Beta"-badge in de UI
+      zelf (exacte tekst/plek nog niet afgestemd met de eigenaar), en
+      Cloudflare Web Analytics (moet eerst handmatig aangezet worden in
+      het Cloudflare-dashboard, buiten bereik van de repo).
 
 ## Uit de codereview
 

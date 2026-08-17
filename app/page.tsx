@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { HeritageDetailDialog } from "./HeritageDetailDialog";
 import { SiteHeader } from "./SiteHeader";
+import { SiteFooter } from "./SiteFooter";
 import { SearchHero } from "./SearchHero";
 import { ResultsToolbar } from "./ResultsToolbar";
 import { SearchFilters } from "./SearchFilters";
@@ -284,6 +285,7 @@ export default function Home() {
           onConceptSearch={executeConceptSearch}
         />
       )}
+      <SiteFooter />
     </main>
   );
 }
