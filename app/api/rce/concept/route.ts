@@ -1,5 +1,6 @@
 import { resolveConcept } from "../../../../lib/server/referentienetwerk-adapter.ts";
 import { CACHE_POLICY, sharedCacheControl } from "../../../../lib/server/http-cache.ts";
+import { createRateLimiter, rateLimitedResponse } from "../../../../lib/server/route-rate-limit.ts";
 import { withRceErrorHandling } from "../../../../lib/server/route-error-handling.ts";
 
 export const runtime = "edge";
@@ -17,6 +18,7 @@ export const runtime = "edge";
 // nog een 404 op via déze route (wordt momenteel alleen gebruikt via
 // /api/rce/search?veld=actor, dat wél de juiste graph bevraagt).
 export const CONCEPT_URI_PATTERN = /^https:\/\/data\.cultureelerfgoed\.nl\/term\/id\/(rn\/2|rn|cht|abr)\/[0-9a-fA-F-]+$/;
+const rateLimiter = createRateLimiter(30);
 
 export async function GET(request: Request) {
   return withRceErrorHandling(
@@ -27,6 +29,7 @@ export async function GET(request: Request) {
       if (!CONCEPT_URI_PATTERN.test(uri)) {
         return Response.json({ error: "Ongeldige concept-URI." }, { status: 400 });
       }
+      if (!rateLimiter.consume(request)) return rateLimitedResponse();
 
       const concept = await resolveConcept(uri, request.signal);
       if (!concept) return Response.json({ error: "Concept niet gevonden." }, { status: 404 });

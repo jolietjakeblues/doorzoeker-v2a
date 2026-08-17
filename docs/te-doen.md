@@ -157,6 +157,38 @@ design critique). Wordt maandag verder opgepakt.
    patroonprobleem eerst alle code-plekken met hetzelfde SPARQL-pad
    doorzoeken (`grep heeftType/ceo:heeftTypeNaam/skos:prefLabel`), niet
    alleen de plek uit het eerste voorbeeld.
+7. **Security assessment uitgevoerd (17 augustus 2026)** - red-team-
+   invalshoek plus OWASP/STRIDE, volledig verslag in
+   `docs/security-assessment-2026-08-17.md`. Twee nieuwe bevindingen,
+   beide opgelost in dezelfde sessie:
+   - ~~Site was over onversleuteld `http://` volledig bereikbaar, geen
+     redirect naar `https://`.~~ **Opgelost.** Live geverifieerd met
+     `curl -v` (echte TCP-verbinding, poort 80) op zowel
+     `doorzoekerfgoed.nl` als de workers.dev-URL. Fix: redirect naar
+     `https://` in `worker/index.ts`, als verdedigingslaag naast (niet in
+     plaats van) een eventuele Cloudflare-zone-instelling die niet vanuit
+     de repo te controleren is. **Open vraag aan de eigenaar:** staat
+     "Always Use HTTPS" aan in het Cloudflare-dashboard?
+   - ~~Numeriek zoekpad (`searchByNumber`) had geen fallback bij een
+     falende deelquery.~~ **Opgelost.** Live gereproduceerd tijdens
+     verhoogde RCE-latency (4-15s per aanroep): `?q=36046` faalde met 502,
+     terwijl de zes bijvangst-categorieën in dezelfde `Promise.all` al wél
+     via `optionalSearch` gracieus degradeerden. Hergebruikt dezelfde
+     `SearchPartialFailure`-tracker van vandaag.
+   - ~~Geen minimumlengte op de vrije-tekstzoekterm.~~ **Opgelost.**
+     `?q=a` gaf live herhaaldelijk 502 tijdens RCE-traagheid - de duurst
+     mogelijke CONTAINS/LCASE-scan. Minimaal 2 tekens voor vrije tekst;
+     numerieke zoekopdrachten (ook 1 cijfer) blijven toegestaan, want die
+     gebruiken een goedkope exacte match.
+   - Zie ook punt 7 en 9 hierboven bij "Uit de securityreview" voor de
+     twee al bekende bevindingen die deze assessment opnieuw bevestigde en
+     nu (deels) oploste.
+   - **Twee dingen kon ik niet met zekerheid vaststellen** (staat expliciet
+     zo in het rapport): of vinext's eigen RSC-laag specifiek getoetst is
+     tegen CVE-2025-55182 (React2Shell, CVSS 10.0 - wel gepatcht op
+     versienummer: react-server-dom-webpack 19.2.8 > de 19.2.1-fixgrens),
+     en of de door Vercel/Hacktron gemelde vinext-eigen kwetsbaarheden al
+     zijn opgelost in de hier gebruikte bèta-versie (`1.0.0-beta.5`).
 
 ## Uit de codereview
 
@@ -235,24 +267,40 @@ actie, alleen genoteerd).
 
 ## Uit de securityreview
 
-7. **Securityheaders ontbreken.** `next.config.ts` is vrijwel leeg
-   (bevestigd) - geen CSP, `X-Content-Type-Options: nosniff`,
-   `Referrer-Policy`, `Permissions-Policy`, `frame-ancestors` of HSTS.
-   Een CSP vraagt maatwerk vanwege Leaflet, PDOK-kaarttegels en
-   RCE-afbeeldingen. Cloudflare kan een deel buiten de repo instellen,
-   maar dat is nu niet aantoonbaar in de repo zelf.
+7. ~~**Securityheaders ontbreken.**~~ **Deels opgelost (17 augustus
+   2026).** `next.config.ts` was vrijwel leeg - geen CSP,
+   `X-Content-Type-Options: nosniff`, `X-Frame-Options`/`frame-ancestors`
+   of HSTS. Nu gezet op Worker-niveau (`worker/index.ts`, niet
+   `next.config.ts` - onzeker of vinext's `headers()`-config daadwerkelijk
+   wordt gerespecteerd, dus rechtstreeks op elke respons toegepast):
+   `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
+   `Strict-Transport-Security: max-age=31536000` (bewust zonder
+   `includeSubDomains`, zie code-comment). **Blijft open:** een CSP -
+   vraagt maatwerk vanwege Leaflet, PDOK-kaarttegels en RCE-afbeeldingen,
+   te risicovol om blind toe te voegen zonder live te kunnen testen dat
+   de kaart/afbeeldingen niet breken.
 8. **Rate limiting is niet globaal (al bekend als S-03).** De limiet van
    30/min leeft per Worker-isolate; beschermt niet hard tegen verspreide
    scraping of belasting van de RCE-endpoints. Al vastgelegd in
    `docs/security-en-stabilisatie-review.md` - geen nieuwe blootstelling,
-   blijft desondanks open.
-9. **Niet alle routes hebben een limiter.** Bevestigd: van de 8
-   API-routes heeft alleen `/api/rce/search` rate limiting. De overige
-   zeven (`complex-members`, `concept`, `onderzoeksgebied-verrijking`,
-   `op-deze-dag`, `verras-me`, `vondstlocatie-inhoud`, `terms/suggest`)
-   niet. Voorstel: eerst per route meten (verzoekvolume, cache-hitratio,
-   time-outs, upstreamstatussen, queryduur), dan gericht een
-   platformlimiet toevoegen waar metingen misbruik aantonen.
+   blijft desondanks open. (Dit geldt nu ook voor de vier routes uit punt 9
+   hieronder - zelfde soort limiter, zelfde beperking.)
+9. ~~**Niet alle routes hebben een limiter.**~~ **Deels opgelost (17
+   augustus 2026).** Bevestigd: van de 8 API-routes had alleen
+   `/api/rce/search` rate limiting. `docs/security-assessment-2026-08-17.md`
+   kwantificeerde het amplificatierisico concreet (tot 17x parallelle
+   SPARQL-aanroepen bij vrije tekst, 5+ bij `vondstlocatie-inhoud`) - de
+   eerdere aanname dat exacte URI-validatie voldoende bescherming bood
+   (zie `docs/api-beleid.md`) ging alleen over de *vorm* van de invoer,
+   niet over hoeveel keer een geldig-ogend nummer opgevraagd kan worden.
+   `complex-members`, `concept`, `onderzoeksgebied-verrijking` en
+   `vondstlocatie-inhoud` hebben nu dezelfde 30/min-limiter als
+   `/api/rce/search`, via een nieuwe gedeelde helper
+   (`lib/server/route-rate-limit.ts`, ook de zoekroute zelf hergebruikt
+    'm nu). **Blijft bewust ongelimiteerd:** `/api/rce/op-deze-dag` en
+   `/api/rce/verras-me` (geen gebruikersinvoer, dus geen
+   amplificatie-hendel), `/api/terms/suggest` (eigen 2-80-tekensgrens en
+   gedeelde succescache).
 10. **Externe afbeeldingen en kaarttegels (PDOK, RCE).** Bezoekers-IP en
     mogelijk referrerinformatie gaan naar die derde partijen. Privacy-
     /informatiebeveiligingspunt, geen klassieke kwetsbaarheid.

@@ -10,6 +10,26 @@ test("rejects invalid application API input before contacting RCE", async () => 
   assert.equal(response.status, 400);
 });
 
+test("rejects a 1-teken vrije-tekstzoekopdracht zonder de RCE-dienst te raadplegen (securityassessment 17-08-2026: dit is de duurst mogelijke CONTAINS-scan)", async (context) => {
+  const originalFetch = globalThis.fetch;
+  let fetchCalled = false;
+  context.after(() => { globalThis.fetch = originalFetch; });
+  globalThis.fetch = async () => { fetchCalled = true; return Response.json({ results: { bindings: [] } }); };
+
+  const response = await GET(new Request("https://doorzoeker.test/api/rce/search?q=a", { headers: { "cf-connecting-ip": "test-min-length" } }));
+  assert.equal(response.status, 400);
+  assert.equal(fetchCalled, false);
+});
+
+test("staat een 1-cijferig rijksmonumentnummer nog altijd toe (geen regressie door de nieuwe minimumlengte)", async (context) => {
+  const originalFetch = globalThis.fetch;
+  context.after(() => { globalThis.fetch = originalFetch; });
+  globalThis.fetch = async () => Response.json({ results: { bindings: [] } });
+
+  const response = await GET(new Request("https://doorzoeker.test/api/rce/search?q=7", { headers: { "cf-connecting-ip": "test-min-length-numeric" } }));
+  assert.notEqual(response.status, 400);
+});
+
 test("returns a stable application API contract for a monument number", async (context) => {
   const originalFetch = globalThis.fetch;
   const originalCaches = globalThis.caches;
@@ -76,6 +96,31 @@ test("treats a short but valid rijksmonumentnummer as an exact lookup, not free 
   const document = await response.json();
   assert.equal(document.results.length, 1);
   assert.equal(document.results[0].monumentNumber, "20");
+});
+
+test("een falende exacte-nummerlookup laat een numerieke zoekopdracht niet meer als geheel mislukken, en cachet niet (securityassessment 17-08-2026: searchByNumber miste de optionalSearch-bescherming die de zes bijvangst-categorieën al hadden)", async (context) => {
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalCaches === undefined) delete globalThis.caches;
+    else globalThis.caches = originalCaches;
+  });
+  let cachePutCalls = 0;
+  globalThis.caches = { default: { match() { return undefined; }, put() { cachePutCalls += 1; } } };
+  globalThis.fetch = async (input) => {
+    const url = decodeURIComponent(String(input));
+    if (url.startsWith(BIBLIOTHEEK_SPARQL)) return Response.json({ results: { bindings: [] } });
+    if (url.includes("VALUES ?choi")) return new Response("tijdelijk niet bereikbaar", { status: 503 });
+    return Response.json({ results: { bindings: [] } });
+  };
+
+  const response = await GET(new Request("https://doorzoeker.test/api/rce/search?q=55501&page=1", { headers: { "cf-connecting-ip": "test-number-partial-fail" } }));
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  const document = await response.json();
+  assert.deepEqual(document.results, []);
+  assert.equal(cachePutCalls, 0);
 });
 
 test("finds a Rijksmonument by CHO-nummer when it is not a valid rijksmonumentnummer (P1: 71286)", async (context) => {

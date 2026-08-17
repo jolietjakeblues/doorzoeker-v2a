@@ -2,8 +2,8 @@ import { browseRceObjects, searchByActorConcept, searchByArcheologischeComplexTy
 import { OBJECT_KIND } from "../../../../lib/rce.ts";
 import { CONCEPT_URI_PATTERN } from "../concept/route.ts";
 import { capMapSize, pruneExpiredEntries } from "../../../../lib/server/expiring-map.ts";
-import { consumeFixedWindow, type RateLimitEntry } from "../../../../lib/server/fixed-window-rate-limit.ts";
 import { CACHE_POLICY, NO_STORE, sharedCacheControl } from "../../../../lib/server/http-cache.ts";
+import { createRateLimiter, rateLimitedResponse } from "../../../../lib/server/route-rate-limit.ts";
 import { withRceErrorHandling } from "../../../../lib/server/route-error-handling.ts";
 
 type ConceptVeld = "functie" | "monumentaard" | "waardering" | "gebeurtenis" | "actor" | "vondsttype" | "materiaal" | "toestand" | "archeologischcomplextype" | "stijl" | "bouwkundigestaat" | "verwerving" | "grondspoortype" | "monumenttype";
@@ -25,32 +25,12 @@ function searchByConceptField(veld: ConceptVeld, conceptUri: string, signal?: Ab
 
 export const runtime = "edge";
 
-const RATE_WINDOW_MS = 60_000;
-const RATE_LIMIT = 30;
-// Best-effort per-isolate limiter. Dit is geen globale rate limit: Cloudflare
-// kan verzoeken van dezelfde client over meerdere Worker-isolates en
-// locaties verspreiden, elk met hun eigen lege Map. Een gebruiker kan dus in
-// werkelijkheid ruimschoots boven RATE_LIMIT/minuut komen. Voor een echte
-// globale limiet is Cloudflare Rate Limiting of een Durable Object nodig.
-const requests = new Map<string, RateLimitEntry>();
+const rateLimiter = createRateLimiter(30);
 // Zelfde beperking: dit is een microcache per isolate, geen gedeelde cache.
 // caches.default (readCache/writeCache hieronder) is de laag die dat wél is
 // en blijft leidend; deze Map bespaart alleen een edge-cache-lookup binnen
 // dezelfde isolate.
 const responseCache = new Map<string, { body: string; expiresAt: number }>();
-
-function clientId(request: Request) {
-  return request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-}
-
-function consumeRateLimit(id: string, now = Date.now()) {
-  return consumeFixedWindow(requests, id, {
-    limit: RATE_LIMIT,
-    maxEntries: 5_000,
-    now,
-    windowMs: RATE_WINDOW_MS,
-  });
-}
 
 function cacheStore(): Cache | undefined {
   try {
@@ -108,11 +88,19 @@ export async function GET(request: Request) {
     const page = Number(url.searchParams.get("page") ?? "1");
     const scopeParam = url.searchParams.get("scope");
     const scope = scopeParam === "core" || scopeParam === "heritage" || scopeParam === "archaeology-a" || scopeParam === "archaeology-b" ? scopeParam : "all";
-    if ((!browse && !conceptParam && (!query || query.length > 120)) || !Number.isInteger(page) || page < 1 || page > 20) {
+    // Een numerieke zoekopdracht (rijksmonumentnummer, CHO-nummer) matcht
+    // exact en is dus goedkoop, ook bij 1 cijfer (rijksmonument 20 bestaat
+    // echt korter dan 4 cijfers - zie searchRceMonuments). Vrije tekst
+    // gebruikt CONTAINS/LCASE-scans die bij 1 teken de duurste mogelijke
+    // query zijn; live bevestigd dat dit de upstream-timeout kan raken
+    // (securityassessment 17-08-2026). Minimaal 2 tekens, zoals
+    // /api/terms/suggest al vereist.
+    const isNumericQuery = /^\d+$/.test(query);
+    if ((!browse && !conceptParam && (!query || query.length > 120 || (!isNumericQuery && query.length < 2))) || !Number.isInteger(page) || page < 1 || page > 20) {
       return Response.json({ error: "Ongeldige zoekopdracht." }, { status: 400 });
     }
-    if (!consumeRateLimit(clientId(request))) {
-      return Response.json({ error: "Te veel zoekopdrachten. Probeer het over een minuut opnieuw." }, { status: 429, headers: { "Retry-After": "60" } });
+    if (!rateLimiter.consume(request)) {
+      return rateLimitedResponse();
     }
 
     const cacheKey = new Request(browse

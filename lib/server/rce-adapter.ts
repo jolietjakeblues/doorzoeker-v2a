@@ -781,8 +781,13 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
   // resultaten tot gevolg. Ontdekt via een klik op "Vergelijkbare
   // rijksmonumenten" die op zo'n kort nummer uitkwam.
   if (/^\d{1,6}$/.test(trimmed)) {
+    // searchByNumber was hier bewust niet via optionalSearch gewrapt (in
+    // tegenstelling tot de zes bijvangst-categorieën eronder) - een trage of
+    // tijdelijk onbereikbare RCE-tak liet daardoor de hele Promise.all
+    // falen, ook als de andere zes allang klaar waren. Live gereproduceerd
+    // tijdens verhoogde RCE-latency (securityassessment 17-08-2026).
     const [rijksmonumenten, complexen, terreinen, vondstlocaties, grondsporen, vondsten, archeologischeComplexen] = await Promise.all([
-      searchByNumber(trimmed, signal),
+      optionalSearch("search.rijksmonumenten-op-nummer", () => searchByNumber(trimmed, signal), [], signal, tracker),
       optionalSearch("search.complexen", () => fetchSparql(buildComplexenQuery(trimmed), signal)
         .then(parseComplexenResults)
         .then((items) => items.map((item) => ({ ...item, matchSource: "complexnummer", matchedText: trimmed, matchScore: 0 }))), [], signal, tracker),
