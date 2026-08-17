@@ -220,7 +220,7 @@ test("resultaten zijn te exporteren als CSV en GeoJSON (#34)", async ({ page }) 
   for await (const chunk of csvStream) csvChunks.push(chunk);
   const csv = Buffer.concat(csvChunks).toString("utf-8");
   expect(csv.split("\r\n")[0]).toBe(
-    "monumentnummer,titel,adres,postcode,plaats,provincie,soort object,monumentaard,functie,registratiedatum,matchbron",
+    "monumentnummer,titel,adres,postcode,plaats,provincie,soort object,monumentaard,functie,registratiedatum,matchbron,object_uri,cho_nummer,primaire_identifier,identifier_type",
   );
   expect(csv).toContain("Woonhuis van de architect");
 
@@ -257,6 +257,38 @@ test("resultaatteller en filtertellingen maken duidelijk dat er nog meer te lade
   const filters = page.getByRole("complementary", { name: "Zoekfilters" });
   await expect(filters.locator("label", { hasText: "Alle soorten" })).toContainText("1+");
   await expect(filters).toContainText("\"12+\" betekent dat er nog meer kunnen zijn");
+});
+
+test("export vermeldt onvolledigheid ook ín het bestand zelf, niet alleen op de knop (codereview: context ging verloren zodra het bestand werd doorgestuurd)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: { results: [{ ...records[0] }], page: 1, hasMore: true },
+  }));
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Woonhuis");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(page.getByRole("heading", { name: "1 resultaat voor “Woonhuis”" })).toBeVisible();
+
+  const [csvDownload] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Exporteer 1 resultaat als CSV" }).click(),
+  ]);
+  const csvStream = await csvDownload.createReadStream();
+  const csvChunks: Buffer[] = [];
+  for await (const chunk of csvStream) csvChunks.push(chunk);
+  const csv = Buffer.concat(csvChunks).toString("utf-8");
+  const csvLines = csv.split("\r\n");
+  expect(csvLines[csvLines.length - 1]).toMatch(/^Let op: dit bestand bevat niet alle resultaten/);
+
+  const [geoJsonDownload] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Exporteer 1 resultaat als GeoJSON" }).click(),
+  ]);
+  const geoJsonStream = await geoJsonDownload.createReadStream();
+  const geoJsonChunks: Buffer[] = [];
+  for await (const chunk of geoJsonStream) geoJsonChunks.push(chunk);
+  const geojson = JSON.parse(Buffer.concat(geoJsonChunks).toString("utf-8"));
+  expect(geojson.metadata.compleet).toBe(false);
+  expect(geojson.metadata.opmerking).toMatch(/niet alle resultaten/);
 });
 
 test("resultaatteller en filtertellingen tonen geen '+' zodra alles geladen is (#33)", async ({ page }) => {

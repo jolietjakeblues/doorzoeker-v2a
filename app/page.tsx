@@ -163,8 +163,8 @@ export default function Home() {
   function exportResults(format: "csv" | "geojson") {
     const content =
       format === "csv"
-        ? itemsToCsv(results)
-        : JSON.stringify(itemsToGeoJson(results));
+        ? itemsToCsv(results, hasMore)
+        : JSON.stringify(itemsToGeoJson(results, hasMore));
     const blob = new Blob([content], {
       type: format === "csv" ? "text/csv;charset=utf-8" : "application/geo+json",
     });
