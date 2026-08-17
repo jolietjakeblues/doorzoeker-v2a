@@ -402,12 +402,24 @@ async function searchArcheologischOnderzoek(term: string, signal?: AbortSignal):
 // handvol treffers per zoekterm. Die worden alleen op de eerste pagina
 // meegenomen, vóór de Rijksmonument-discoveryresultaten, zodat "laad meer"
 // op latere pagina's ze niet opnieuw ophaalt of dupliceert.
-async function optionalSearch<T>(event: string, work: () => Promise<T>, fallback: T, signal?: AbortSignal): Promise<T> {
+//
+// Een categorie die hier faalt (bv. een trage RCE-SPARQL-tak) levert stil
+// een lege lijst op in plaats van een zichtbare fout - een tekstzoekopdracht
+// bestaat uit te veel losse categorieën om bij één hapering de hele
+// zoekopdracht te laten mislukken. Zonder de partialFailure-tracker zou de
+// route zo'n onvolledig resultaat (bv. "0 resultaten" terwijl het object
+// alleen in de gefaalde categorie zat) 5 minuten lang als geldig cachen en
+// aan iedereen serveren; zie searchByText/searchRceMonuments en de
+// cache-beslissing in app/api/rce/search/route.ts.
+export type SearchPartialFailure = { partial: boolean };
+
+async function optionalSearch<T>(event: string, work: () => Promise<T>, fallback: T, signal?: AbortSignal, tracker?: SearchPartialFailure): Promise<T> {
   try {
     return await timed(event, work);
   } catch (error) {
     if (signal?.aborted) throw error;
     console.warn(JSON.stringify({ event: `${event}.unavailable`, message: error instanceof Error ? error.message : "unknown" }));
+    if (tracker) tracker.partial = true;
     return fallback;
   }
 }
@@ -600,7 +612,7 @@ export async function searchByArcheologischeComplexTypeConcept(conceptUri: strin
 
 export type TextSearchScope = "all" | "core" | "heritage" | "archaeology-a" | "archaeology-b";
 
-async function searchByText(term: string, signal?: AbortSignal, page = 1, scope: TextSearchScope = "all"): Promise<RceMonument[]> {
+async function searchByText(term: string, signal?: AbortSignal, page = 1, scope: TextSearchScope = "all", tracker?: SearchPartialFailure): Promise<RceMonument[]> {
   const includeCore = scope === "all" || scope === "core";
   const discoveryQueries = includeCore ? buildRceDiscoveryQueries(term) : [];
   const discoverySettled = await timed("search.discovery", () => Promise.allSettled(
@@ -612,6 +624,7 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1, scope:
   const branchResults = discoverySettled.flatMap((result, index) => {
     if (result.status === "fulfilled") return [result.value];
     console.warn(JSON.stringify({ event: "search.discovery.branch.unavailable", source: discoveryQueries[index].bron, message: result.reason instanceof Error ? result.reason.message : "unknown" }));
+    if (tracker) tracker.partial = true;
     return [];
   });
   if (includeCore && branchResults.length === 0) {
@@ -621,31 +634,31 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1, scope:
 
   const [werelderfgoed, gezichten, complexen, onderzoeksgebieden, archeologischeTerreinen, vondstlocaties, grondsporen, vondsten, archeologischeComplexen] = await Promise.all([
     page === 1 && (scope === "all" || scope === "heritage")
-      ? optionalSearch("search.werelderfgoed", () => fetchSparql(buildWerelderfgoedQuery(term), signal).then(parseWerelderfgoedResults), [], signal)
+      ? optionalSearch("search.werelderfgoed", () => fetchSparql(buildWerelderfgoedQuery(term), signal).then(parseWerelderfgoedResults), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
     page === 1 && (scope === "all" || scope === "heritage")
-      ? optionalSearch("search.gezichten", () => fetchSparql(buildGezichtQuery(term), signal).then(parseGezichtResults), [], signal)
+      ? optionalSearch("search.gezichten", () => fetchSparql(buildGezichtQuery(term), signal).then(parseGezichtResults), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
     page === 1 && (scope === "all" || scope === "heritage")
-      ? optionalSearch("search.complexen", () => fetchSparql(buildComplexenQuery(term), signal).then(parseComplexenResults), [], signal)
+      ? optionalSearch("search.complexen", () => fetchSparql(buildComplexenQuery(term), signal).then(parseComplexenResults), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
     page === 1 && (scope === "all" || scope === "archaeology-a")
-      ? optionalSearch("search.onderzoeksgebieden", () => searchArcheologischOnderzoek(term, signal), [], signal)
+      ? optionalSearch("search.onderzoeksgebieden", () => searchArcheologischOnderzoek(term, signal), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
     page === 1 && (scope === "all" || scope === "archaeology-a")
-      ? optionalSearch("search.archeologische-terreinen", () => searchArcheologischeTerreinen(term, signal), [], signal)
+      ? optionalSearch("search.archeologische-terreinen", () => searchArcheologischeTerreinen(term, signal), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
     page === 1 && (scope === "all" || scope === "archaeology-a")
-      ? optionalSearch("search.vondstlocaties", () => searchVondstlocaties(term, signal), [], signal)
+      ? optionalSearch("search.vondstlocaties", () => searchVondstlocaties(term, signal), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
     page === 1 && (scope === "all" || scope === "archaeology-b")
-      ? optionalSearch("search.grondsporen", () => searchGrondsporen(term, signal), [], signal)
+      ? optionalSearch("search.grondsporen", () => searchGrondsporen(term, signal), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
     page === 1 && (scope === "all" || scope === "archaeology-b")
-      ? optionalSearch("search.vondsten", () => searchVondsten(term, signal), [], signal)
+      ? optionalSearch("search.vondsten", () => searchVondsten(term, signal), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
     page === 1 && (scope === "all" || scope === "archaeology-b")
-      ? optionalSearch("search.archeologische-complexen", () => searchArcheologischeComplexen(term, signal), [], signal)
+      ? optionalSearch("search.archeologische-complexen", () => searchArcheologischeComplexen(term, signal), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
   ]);
   const extras = [...werelderfgoed, ...gezichten, ...complexen, ...onderzoeksgebieden, ...archeologischeTerreinen, ...vondstlocaties, ...grondsporen, ...vondsten, ...archeologischeComplexen];
@@ -757,7 +770,7 @@ export async function browseRceObjects(kind: "rijksmonument" | "archeologischter
   return fetchSparql(buildComplexenQuery(""), signal).then(parseComplexenResults);
 }
 
-export async function searchRceMonuments(query: string, signal?: AbortSignal, page = 1, scope: TextSearchScope = "all"): Promise<RceMonument[]> {
+export async function searchRceMonuments(query: string, signal?: AbortSignal, page = 1, scope: TextSearchScope = "all", tracker?: SearchPartialFailure): Promise<RceMonument[]> {
   const trimmed = query.trim();
   // {1,6}, niet {4,6}: sommige rijksmonumentnummers uit vroege registraties
   // zijn korter dan vier cijfers (bv. rijksmonument 20 bestaat echt) - met
@@ -770,16 +783,16 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
       searchByNumber(trimmed, signal),
       optionalSearch("search.complexen", () => fetchSparql(buildComplexenQuery(trimmed), signal)
         .then(parseComplexenResults)
-        .then((items) => items.map((item) => ({ ...item, matchSource: "complexnummer", matchedText: trimmed, matchScore: 0 }))), [], signal),
-      optionalSearch("search.archeologische-terreinen", () => searchArcheologischeTerreinen(trimmed, signal), [], signal),
-      optionalSearch("search.vondstlocaties", () => searchVondstlocaties(trimmed, signal), [], signal),
-      optionalSearch("search.grondsporen", () => searchGrondsporen(trimmed, signal), [], signal),
-      optionalSearch("search.vondsten", () => searchVondsten(trimmed, signal), [], signal),
-      optionalSearch("search.archeologische-complexen", () => searchArcheologischeComplexen(trimmed, signal), [], signal),
+        .then((items) => items.map((item) => ({ ...item, matchSource: "complexnummer", matchedText: trimmed, matchScore: 0 }))), [], signal, tracker),
+      optionalSearch("search.archeologische-terreinen", () => searchArcheologischeTerreinen(trimmed, signal), [], signal, tracker),
+      optionalSearch("search.vondstlocaties", () => searchVondstlocaties(trimmed, signal), [], signal, tracker),
+      optionalSearch("search.grondsporen", () => searchGrondsporen(trimmed, signal), [], signal, tracker),
+      optionalSearch("search.vondsten", () => searchVondsten(trimmed, signal), [], signal, tracker),
+      optionalSearch("search.archeologische-complexen", () => searchArcheologischeComplexen(trimmed, signal), [], signal, tracker),
     ]);
     return [...rijksmonumenten, ...complexen, ...terreinen, ...vondstlocaties, ...grondsporen, ...vondsten, ...archeologischeComplexen];
   }
-  if (!/^\d{4}\s?[A-Za-z]{2}$/.test(trimmed)) return searchByText(trimmed, signal, page, scope);
+  if (!/^\d{4}\s?[A-Za-z]{2}$/.test(trimmed)) return searchByText(trimmed, signal, page, scope, tracker);
   const params = new URLSearchParams({ page: "1", pageSize: "100", postcode: trimmed.replace(/\s/g, "").toUpperCase() });
   const response = await fetch(`${REST_ENDPOINT}?${params}`, {
     headers: { Accept: "application/ld+json" },

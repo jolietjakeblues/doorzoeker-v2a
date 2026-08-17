@@ -336,3 +336,72 @@ test("keeps name search working when another discovery branch is temporarily una
   assert.equal(document.results[0].name, "Kaaspakhuis");
   assert.equal(document.results[0].matchSource, "naam");
 });
+
+test("cachet een tekstzoekopdracht niet als een categorie tijdelijk faalt (gemeld door de eigenaar: doorklik naar CHO 10001066 gaf 0 resultaten)", async (context) => {
+  // Reproductie van het gemelde probleem: een Archeologisch onderzoeksgebied
+  // (CHO 10001066) is alleen vindbaar via de onderzoeksgebieden-categorie.
+  // Als die ene SPARQL-tak tijdelijk hapert (503), valt searchByText terug
+  // op een lege lijst voor die categorie (optionalSearch) - de zoekopdracht
+  // als geheel blijft dus "geldig" 0 resultaten opleveren. Zonder de
+  // partialFailure-tracker zou dat onvolledige antwoord alsnog 5 minuten
+  // gecachet worden en aan iedereen als "geen resultaten" geserveerd worden,
+  // ook nadat de RCE-tak weer bereikbaar is.
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalCaches === undefined) delete globalThis.caches;
+    else globalThis.caches = originalCaches;
+  });
+  let onderzoeksgebiedCalls = 0;
+  let cachePutCalls = 0;
+  globalThis.caches = { default: { match() { return undefined; }, put() { cachePutCalls += 1; } } };
+  globalThis.fetch = async (input) => {
+    const url = decodeURIComponent(String(input));
+    if (url.startsWith(BIBLIOTHEEK_SPARQL)) return Response.json({ results: { bindings: [] } });
+    if (url.includes("ArcheologischOnderzoeksgebied") && url.includes("cultuurhistorischObjectnummer")) {
+      onderzoeksgebiedCalls += 1;
+      return new Response("tijdelijk niet bereikbaar", { status: 503 });
+    }
+    return Response.json({ results: { bindings: [] } });
+  };
+
+  const request = () => GET(new Request("https://doorzoeker.test/api/rce/search?q=10001066&page=1", { headers: { "cf-connecting-ip": "test-partial-fail-no-cache" } }));
+
+  const first = await request();
+  assert.equal(first.status, 200);
+  assert.equal(first.headers.get("cache-control"), "no-store");
+  assert.equal(first.headers.get("x-doorzoeker-cache"), "SKIP");
+  const firstDocument = await first.json();
+  assert.deepEqual(firstDocument.results, []);
+  assert.equal(cachePutCalls, 0);
+  const callsAfterFirst = onderzoeksgebiedCalls;
+  assert.ok(callsAfterFirst > 0);
+
+  // Een tweede, identieke zoekopdracht moet de gefaalde tak opnieuw
+  // proberen - bewijst dat het eerste (onvolledige) antwoord niet in de
+  // in-memory responseCache of de Cloudflare Cache API is beland.
+  const second = await request();
+  assert.equal(second.status, 200);
+  assert.equal(second.headers.get("x-doorzoeker-cache"), "SKIP");
+  assert.ok(onderzoeksgebiedCalls > callsAfterFirst);
+});
+
+test("cachet een geslaagde tekstzoekopdracht nog altijd normaal (geen regressie door de partialFailure-tracker)", async (context) => {
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalCaches === undefined) delete globalThis.caches;
+    else globalThis.caches = originalCaches;
+  });
+  let cachePutCalls = 0;
+  globalThis.caches = { default: { match() { return undefined; }, put() { cachePutCalls += 1; } } };
+  globalThis.fetch = async () => Response.json({ results: { bindings: [] } });
+
+  const response = await GET(new Request("https://doorzoeker.test/api/rce/search?q=geenmatch&page=1", { headers: { "cf-connecting-ip": "test-full-success-still-caches" } }));
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("cache-control") ?? "", /s-maxage=300/);
+  assert.equal(response.headers.get("x-doorzoeker-cache"), "MISS");
+  assert.equal(cachePutCalls, 1);
+});

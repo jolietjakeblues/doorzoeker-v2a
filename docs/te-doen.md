@@ -94,6 +94,44 @@ design critique). Wordt maandag verder opgepakt.
      "Complex {CHO-nummer}" (behoudt TD-33's doel: complexen met hetzelfde
      type onderscheidbaar houden).
 
+5. ~~**"Bekijk bovenliggend object"-verwijzing bij een Vondstlocatie gaf soms
+   0 resultaten, gemeld door de eigenaar (17 augustus 2026, CHO 10001066).**~~
+   **Structurele oorzaak gevonden en opgelost, niet zomaar een toevalstreffer.**
+   Die verwijzing (`onObjectSearch` in `HeritageDetailFacts.tsx`) doet een
+   gewone vrije-tekstzoekopdracht op het CHO-nummer. Zo'n zoekopdracht splitst
+   in `searchByText` (`lib/server/rce-adapter.ts`) in negen losse
+   categoriequery's (Rijksmonument, Werelderfgoed, Vondstlocatie,
+   Onderzoeksgebied, ...) die elk via `optionalSearch` bij een falen stil
+   terugvallen op een lege lijst - één trage of tijdelijk onbereikbare
+   RCE-SPARQL-tak (bv. de onderzoeksgebieden-tak) levert dus gewoon een
+   "geldige" `200 OK` met (te) weinig of 0 resultaten op, zonder foutmelding.
+   `app/api/rce/search/route.ts` cachete elk zulk antwoord vervolgens
+   **onvoorwaardelijk** 5 minuten lang, zowel in de gedeelde Cloudflare
+   Cache API als in de in-memory `responseCache` - dus één transiënte
+   RCE-hapering zette een fout "0 resultaten" 5 minuten lang vast, gedeeld
+   voor alle bezoekers, voor exact die zoekterm. Dit verklaart een reeks
+   eerder moeilijk te reproduceren "0 resultaten"-meldingen. Live bevestigd:
+   CHO 10001066 bestaat écht (Archeologisch onderzoeksgebied, Diemen), de
+   SPARQL-query en de API-laag zelf waren correct - alleen de caching van
+   een onvolledig antwoord was fout. Fix: nieuwe `SearchPartialFailure`-tracker
+   die `optionalSearch()` op `true` zet bij een gefaalde categorie (en bij een
+   gefaalde kern-discoverytak); de route slaat cachen dan over
+   (`Cache-Control: no-store`, geen `responseCache.set`/Cache-API-`put`), zodat
+   een volgende poging de gefaalde tak gewoon opnieuw probeert in plaats van
+   tegen een vastgezette lege cache aan te lopen. Regressietests in
+   `tests/rce-api.test.mjs` bewijzen zowel het probleem (test faalt zonder de
+   fix) als dat een volledig geslaagde zoekopdracht normaal blijft cachen.
+   **Bekende resterende beperking, niet in deze fix meegenomen:** een aantal
+   categoriehelpers (`searchVondstlocaties`, `searchGrondsporen`,
+   `searchVondsten`, `searchArcheologischeComplexen`,
+   `searchArcheologischeTerreinen`) hebben zelf ook een `Promise.allSettled`
+   over hun eigen discoverybronnen (bv. CHO-nummer vs. omschrijving vs.
+   woonplaats) en laten een individueel gefaalde bron eveneens stil vallen
+   zonder dat te melden aan de nieuwe tracker - dat raakt alleen de
+   volledigheid van matches binnen zo'n categorie (niet de hele categorie),
+   maar is dezelfde soort stille-fout-bug op een dieper niveau. Nog niet
+   gefixt.
+
 ## Uit de codereview
 
 1. **Export verliest linked-data-identiteit.** `lib/export.ts` (CSV en
