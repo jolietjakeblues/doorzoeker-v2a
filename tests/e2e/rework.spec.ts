@@ -629,6 +629,48 @@ test("archeologische complexen met hetzelfde type blijven van elkaar te ondersch
   await expect(page.getByText("Ander complex met hetzelfde type")).toBeVisible();
 });
 
+test("archeologische complexen binnen een onderzoeksgebied tonen het type als doorklik naar het rn/2-begrip, niet als CHO-citaat (gemeld door de eigenaar, 17-08-2026)", async ({ page }) => {
+  const brugUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/brug";
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("veld") === "archeologischcomplextype") {
+      return route.fulfill({ json: { results: [{ ...records[0], name: "Ander complex met hetzelfde type", monumentNumber: "888005" }], page: 1, hasMore: false } });
+    }
+    return route.fulfill({ json: { results: [{
+      choNumber: "10030417", monumentNumber: "10030417", registrationDate: "2016-01-01", street: "", houseNumber: "", postalCode: "",
+      sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/10030417", name: "Onderzoeksgebied Zandwetering", place: "Deventer", municipality: "Deventer",
+      description: "Archeologisch onderzoeksgebied.", monumentNature: "archeologischonderzoeksgebied",
+      matchSource: "CHO-nummer (onderzoeksgebied)", matchedText: "10030417", matchScore: 10,
+    }], page: 1, hasMore: false } });
+  });
+  await page.unroute("**/api/rce/onderzoeksgebied-verrijking**");
+  await page.route("**/api/rce/onderzoeksgebied-verrijking**", (route) => route.fulfill({ json: {
+    complexen: [
+      { complexUri: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischcomplex/10038712", choNumber: "10038712",
+        type: { uri: brugUri, label: "brug", schemes: [{ uri: "https://data.cultureelerfgoed.nl/term/id/rn/2/ais", label: "Archeologisch Informatie Systeem" }] } },
+    ],
+    vondstlocaties: [], vondstlocatieTotaal: 0, grondsporenTotaal: 0, vondstenTotaal: 0, complexenViaVondstlocatieTotaal: 0,
+  } }));
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("10030417");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Onderzoeksgebied Zandwetering" }).click();
+  const dialog = page.getByRole("dialog");
+
+  // Voorheen stond het CHO-nummer van de complex-*instantie* misleidend
+  // tussen haakjes naast de typenaam, alsof dat het rn/2-begrip was. De
+  // instantie blijft apart opvraagbaar, duidelijk gelabeld.
+  await expect(dialog.getByRole("button", { name: "Complex 10038712", exact: true })).toBeVisible();
+
+  // Het type zelf is nu een echte doorklik naar het rn/2-begrip.
+  const typeLink = dialog.getByRole("button", { name: "brug", exact: true });
+  await expect(typeLink).toBeVisible();
+  await typeLink.click();
+  await expect(page).toHaveURL(/veld=archeologischcomplextype/);
+  await expect(page).toHaveURL(new RegExp(encodeURIComponent(brugUri).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  await expect(page.getByText("Ander complex met hetzelfde type")).toBeVisible();
+});
+
 test("'Onderdeel van complex' is doorklikbaar binnen Doorzoeker, niet alleen platte tekst", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", (route) => route.fulfill({

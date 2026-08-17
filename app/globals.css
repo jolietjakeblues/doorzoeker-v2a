@@ -198,6 +198,7 @@ header p a {
   margin: 0 0 20px;
   font-size: clamp(28px, 4vw, 40px);
   font-weight: 700;
+  line-height: 1.15;
 }
 .hero-intro {
   max-width: 720px;
@@ -311,6 +312,9 @@ header p a {
   color: var(--muted);
   font-size: 14px;
 }
+/* Volledig ronde hoeken (20px) zijn voorbehouden aan suggestie-chips zoals
+   deze; functionele actieknoppen (Doorzoek RCE, Verras me, weergave-toggle,
+   exportknoppen) blijven scherp (0px, design-critique 15-08-2026). */
 .hero nav button {
   display: inline-flex;
   align-items: center;
@@ -530,7 +534,6 @@ h2 {
   height: 44px;
   padding: 0 22px;
   border: 0;
-  border-radius: 22px;
   background: var(--rce-blue);
   color: #fff;
   font-weight: 700;
@@ -972,6 +975,7 @@ h2 {
   display: inline;
   width: auto;
   padding: 0;
+  color: var(--rce-blue);
 }
 .map-object-list .concept-link:hover,
 .map-object-list .concept-link:focus-visible {
