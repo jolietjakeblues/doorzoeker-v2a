@@ -240,6 +240,37 @@ design critique). Wordt maandag verder opgepakt.
      querygenerator per objectsoort, en het samenvoegen van de 3
      onafhankelijke paginering/LIMIT-schema's. Zie
      `docs/analyse-2026-08-11.md` voor de onderbouwing per punt.
+10. **UX-review opgepakt (17 augustus 2026)**, gebaseerd op een externe
+    review van de live site. Vijf gerichte verbeteringen, in één PR:
+    - `app/SearchHero.tsx`: `DIRECT_SEARCHES` van 9 naar 4 voorbeelden
+      (`36046`, `Utrecht`, `moutmolen`, `Kinderdijk`), elk bewust een eigen
+      zoekingang (nummer/plaats/functie/naam) demonstrerend in plaats van
+      een willekeurige testgeval-greep. Label "Direct zoeken" hernoemd naar
+      "Probeer bijvoorbeeld" - duidelijker dat dit voorbeelden zijn, geen
+      aparte zoekmodus.
+    - `app/SearchFilters.tsx`: de uitleg bij een gedeeltelijk geladen
+      resultatenset ("+"-teken) ingekort van een lange technische zin naar
+      "Filters gelden voor de geladen resultaten. '12+' betekent dat er nog
+      meer kunnen zijn."
+    - `app/HeritageResultCard.tsx`: de matchcontext ("Gevonden via ...")
+      stond verstopt als een generieke kenmerken-chip tussen monumentaard/
+      juridische status/periode - nu een eigen, prominent element direct
+      onder de titel/adresregel, vóór de beschrijving. Beschrijvingslimiet
+      verkort van 300 naar 200 tekens voor een scanbaardere resultatenlijst.
+    - `app/HeritageDetailDialog.tsx`: de generieke uitlegzin "In dit
+      venster: locatie, kenmerken, relaties en bronnen." verwijderd
+      (voegde na de eerste keer lezen niets meer toe) en vervangen door een
+      compacte, consequent aanwezige "Brongegevens"-sectie (dataset,
+      primaire identifier, object-URI) onderaan het detailpaneel - maakt de
+      belofte van de startpagina ("vaste URI's, herleidbare bronnen")
+      tastbaar in plaats van alleen een korte "Bron"-regel tussen de
+      overige kenmerken.
+    - Nadrukkelijk niet meegenomen (expliciet buiten scope van deze review-
+      batch, niet zomaar overgeslagen): visuele identiteit, objecttypen,
+      conceptzoeking, URL-state en lijst/kaartstructuur, de overige
+      startpagina-secties (Ontdek een thema/Bekijk alles), en het bredere
+      "Gemeente/woonplaats"-semantiekpunt uit dezelfde review (vraagt eerst
+      uitzoeken of de onderliggende data beide betekenissen draagt).
 
 ## Uit de codereview
 

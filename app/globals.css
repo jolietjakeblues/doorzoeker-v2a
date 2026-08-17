@@ -380,9 +380,7 @@ header p a {
   font-size: 12px;
   line-height: 1.5;
 }
-.results-help, .detail-guide { color: #52636d; font-size: .92rem; }
-.results-help { margin: 0 0 1rem; }
-.detail-guide { margin: 0 0 1.2rem; }
+.results-help { color: #52636d; font-size: .92rem; margin: 0 0 1rem; }
 .work aside small,
 .results small,
 .detail-copy > small {
@@ -701,6 +699,12 @@ h2 {
   margin: 0;
   color: var(--muted);
 }
+.match-context {
+  margin: 6px 0 0;
+  color: var(--rce-blue);
+  font-size: 13px;
+  font-weight: 700;
+}
 .card-facts {
   display: flex;
   flex-wrap: wrap;
@@ -1017,6 +1021,18 @@ h2 {
   font-size: 13px;
   color: var(--muted);
   border-bottom: 1px solid var(--panel-line);
+}
+.map-object-list dl {
+  margin: 0;
+}
+.map-object-list dl div {
+  padding: 10px 16px;
+}
+.map-object-list dd code {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 400;
+  word-break: break-all;
 }
 .leaflet-container {
   font-family: var(--font);

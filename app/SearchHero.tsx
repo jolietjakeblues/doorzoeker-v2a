@@ -4,17 +4,9 @@ import type { TermSuggestion } from "@/lib/terms-client";
 type RemoteState = "idle" | "loading" | "error" | "success";
 type BrowseKind = "rijksmonument" | "archeologischterrein" | "onderzoeksgebied" | "vondstlocatie" | "archeologischcomplex" | "vondsten" | "grondsporen" | "werelderfgoed" | "gezicht" | "complex";
 
-const DIRECT_SEARCHES = [
-  "36046",
-  "Woonhuis",
-  "Archeologisch",
-  "Collse",
-  "moutmolen",
-  "Utrecht",
-  "Kinderdijk",
-  "517912",
-  "517443",
-] as const;
+// Elk voorbeeld demonstreert bewust een andere zoekingang, niet een
+// willekeurige testgeval-greep: nummer, plaats, functie/type, naam.
+const DIRECT_SEARCHES = ["36046", "Utrecht", "moutmolen", "Kinderdijk"] as const;
 
 // Vaste, live tegen de RCE-endpoint geverifieerde functie-concept-URI's
 // (14 augustus 2026, via het echte buildFunctieConceptQuery-querypatroon
@@ -153,8 +145,8 @@ export function SearchHero({
           </ul>
         )}
       </div>
-      <nav aria-label="Direct zoeken">
-        Direct zoeken:{" "}
+      <nav aria-label="Probeer bijvoorbeeld">
+        Probeer bijvoorbeeld:{" "}
         {DIRECT_SEARCHES.map((term) => (
           <button type="button" key={term} onClick={() => onSearch(term)}>
             {term}

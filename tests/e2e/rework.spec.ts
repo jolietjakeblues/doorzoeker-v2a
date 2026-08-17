@@ -155,10 +155,10 @@ test("belangrijke knoppen halen de WCAG 2.5.5-ondergrens van 44x44 CSS px (acces
   );
 });
 
-test("skip-link laat een toetsenbordgebruiker de 24 knoppen in de zoekintro overslaan (accessibility-review 15-08-2026)", async ({ page }) => {
+test("skip-link laat een toetsenbordgebruiker de knoppen in de zoekintro overslaan (accessibility-review 15-08-2026)", async ({ page }) => {
   // Geen zoekopdracht vooraf: de allereerste Tab-druk op de pagina moet
-  // meteen de skip-link raken, niet een van de 24 knoppen in Direct
-  // zoeken/Ontdek een thema/Bekijk alles.
+  // meteen de skip-link raken, niet een van de knoppen in Probeer
+  // bijvoorbeeld/Ontdek een thema/Bekijk alles.
   const skipLink = page.getByRole("link", { name: "Direct naar resultaten" });
   await page.keyboard.press("Tab");
   await expect(skipLink).toBeFocused();
@@ -232,7 +232,7 @@ test("resultaatteller en filtertellingen maken duidelijk dat er nog meer te lade
 
   const filters = page.getByRole("complementary", { name: "Zoekfilters" });
   await expect(filters.locator("label", { hasText: "Alle soorten" })).toContainText("1+");
-  await expect(filters).toContainText("een \"+\" achter een aantal betekent dat dit een ondergrens is");
+  await expect(filters).toContainText("\"12+\" betekent dat er nog meer kunnen zijn");
 });
 
 test("resultaatteller en filtertellingen tonen geen '+' zodra alles geladen is (#33)", async ({ page }) => {
@@ -270,21 +270,11 @@ test("'Ontdek een thema' laat erfgoed ontdekken zonder zoekterm (#32)", async ({
   await expect(page.getByText("Sint-Jorisbasiliek")).toBeVisible();
 });
 
-test("de startpagina biedt een brede reeks directe zoekvoorbeelden", async ({ page }) => {
+test("de startpagina toont een klein, doelgericht setje zoekvoorbeelden (UX-review 17-08-2026: elk voorbeeld toont een eigen zoekingang - nummer, plaats, functie, naam)", async ({ page }) => {
   await page.goto("/");
 
-  const directZoeken = page.getByRole("navigation", { name: "Direct zoeken" });
-  for (const term of [
-    "36046",
-    "Woonhuis",
-    "Archeologisch",
-    "Collse",
-    "moutmolen",
-    "Utrecht",
-    "Kinderdijk",
-    "517912",
-    "517443",
-  ]) {
+  const directZoeken = page.getByRole("navigation", { name: "Probeer bijvoorbeeld" });
+  for (const term of ["36046", "Utrecht", "moutmolen", "Kinderdijk"]) {
     await expect(directZoeken.getByRole("button", { name: term, exact: true })).toBeVisible();
   }
 
