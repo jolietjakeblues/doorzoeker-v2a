@@ -284,22 +284,33 @@ design critique). Wordt maandag verder opgepakt.
       startpagina-secties (Ontdek een thema/Bekijk alles), en het bredere
       "Gemeente/woonplaats"-semantiekpunt uit dezelfde review (vraagt eerst
       uitzoeken of de onderliggende data beide betekenissen draagt).
-11. **TD-27 (kaarttoegankelijkheid) opgelost, plus een gerelateerde
-    UX-vraag van de eigenaar meteen meegenomen (17 augustus 2026).** Zie
-    item 2 hierboven voor de volledige TD-27-beschrijving. Daarnaast: de
-    eigenaar vroeg of de Kaartweergave-knop uitgegrijsd kan worden als geen
-    van de resultaten een eigen locatie heeft (bv. Archeologisch terrein,
-    Vondstlocatie, Archeologisch complex, Vondst, Grondspoor - deze vijf
-    objectsoorten hebben zelf geen `wkt`/`lat`/`lng` in
-    `lib/rce/archaeology.ts`, geverifieerd door alle parsefuncties na te
-    lopen). In plaats van dit per objectsoort hard te coderen (zou TD-04's
-    eigen les negeren) telt `app/page.tsx` gewoon `mapItems.length` - die
-    array was al gefilterd op `item.lat && item.lng` voor de kaart zelf.
-    `ResultsToolbar.tsx` krijgt een nieuwe `disableMapView`-prop die de
-    knop `disabled` zet met een uitleggende `title`; werkt daardoor ook
-    correct bij gemengde resultaten (bv. een tekstzoekopdracht die toevallig
-    alleen archeologische treffers zonder geometrie oplevert). Live
-    geverifieerd en afgedekt met e2e-tests.
+11. **Voorbereiding bèta-publicatie (17 augustus 2026).** Nieuwe
+    `app/SiteFooter.tsx`, onderaan elke pagina:
+    - Korte, feitelijke privacyvermelding: bezoekers-IP gaat naar PDOK
+      (kaarttegels) en de RCE-beeldbank (afbeeldingen) zodra de kaart of
+      een foto bekeken wordt; Doorzoeker zelf verzamelt geen
+      persoonsgegevens en gebruikt geen tracking-cookies.
+    - Feedbacklink naar een nieuw GitHub-issuetemplate
+      (`.github/ISSUE_TEMPLATE/bug_report.md`), zodat bèta-testers ergens
+      terechtkunnen om een bug of suggestie te melden - die mogelijkheid
+      ontbrak volledig.
+    - ~~Een zichtbare "Beta"-badge in de UI zelf.~~ **Opgelost.** Nieuwe
+      `app/BetaBadge.tsx`: een diagonaal "Bèta"-lint rechtsboven op de
+      pagina (`position: absolute` binnen `main`, `pointer-events: none`
+      zodat het nooit klikken blokkeert), met een kleinere variant onder
+      520px viewportbreedte. Live gecontroleerd op desktop- en
+      mobielformaat.
+    - **Cloudflare Web Analytics: geen actie nodig.** De eigenaar zette
+      het aan in het dashboard en zag geen token - dat klopt: bij een
+      domein dat al via Cloudflare's proxy loopt (noodzakelijk voor een
+      custom domain op een Worker) injecteert Cloudflare de
+      meetscript-tag zelf aan de edge ("automatische installatie"), er is
+      niets in de repo aan te passen. Data verschijnt pas in het
+      dashboard na wat echte paginabezoeken.
+    - Concept-introbericht voor de eerste bèta-testers vastgelegd in
+      `docs/beta-intro-bericht.md` (wat Doorzoeker is, waar feedback op
+      gewenst is, hoe te melden, bekende beperkingen) - door de eigenaar
+      zelf te versturen naar wie hij uitnodigt.
 
 ## Uit de codereview
 

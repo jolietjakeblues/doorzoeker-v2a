@@ -129,6 +129,30 @@ test("zoeken toont verschillende erfgoedtypen", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("de footer noemt de bèta-status, een feedbacklink naar GitHub en de privacyvermelding over PDOK/RCE-beeldbank", async ({ page }) => {
+  const footer = page.locator("footer.site-footer");
+  await expect(footer).toContainText("PDOK");
+  await expect(footer).toContainText("RCE-beeldbank");
+  await expect(footer).toContainText("bèta");
+  const feedbackLink = footer.getByRole("link", { name: "Bug gevonden of suggestie? Meld het op GitHub" });
+  await expect(feedbackLink).toHaveAttribute(
+    "href",
+    "https://github.com/jolietjakeblues/doorzoeker-v2a/issues/new?template=bug_report.md",
+  );
+});
+
+test("de bèta-badge staat rechtsboven, ook nog na een zoekopdracht", async ({ page }) => {
+  const badge = page.locator(".beta-badge");
+  await expect(badge).toContainText("Bèta");
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(
+    page.getByRole("heading", { name: "3 resultaten voor “Goirle”" }),
+  ).toBeVisible();
+  await expect(badge).toContainText("Bèta");
+});
+
 test("belangrijke knoppen halen de WCAG 2.5.5-ondergrens van 44x44 CSS px (accessibility-review 15-08-2026)", async ({ page }) => {
   await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
   await page.getByRole("button", { name: "Doorzoek RCE" }).click();
