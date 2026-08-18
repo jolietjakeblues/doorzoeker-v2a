@@ -532,11 +532,33 @@ kreeg.
   geen thesaurus-synoniemexpansie** ("kerk" ook laten matchen op
   "kerkhof") - dat was een eerdere, onjuiste aanname bij het vastleggen
   van dit idee; expliciet gecorrigeerd door de eigenaar.
-- **Tekst toevoegen over het belang van Linked Open Data voor Doorzoeker.**
-  Ergens (README en/of in de app zelf) uitleggen waaróm Doorzoeker op
-  linked data draait en waarom dat waarde heeft - nu wordt het gebruikt
-  (URI's, herleidbare bronnen) maar nergens uitgelegd waaróm dat ertoe
-  doet.
+- ~~**Tekst toevoegen over het belang van Linked Open Data voor
+  Doorzoeker.**~~ **Opgelost (18 augustus 2026).** Nieuwe, publieke
+  `public/achtergrond.html` - een losstaande, statische pagina (geen deel
+  van de React-app), bereikbaar via een nieuwe "Achtergrond"-link in de
+  gele balk (ook op mobiel, waar de rest van die regel al verborgen was).
+  Op B2-niveau: wat Linked Open Data is en waarom Doorzoeker het gebruikt,
+  wat de RCE Linked Data Voorziening en de CEO-ontologie zijn, hoe
+  Doorzoeker zoekt (vrije tekst vs. exact op begrip), de rol van de MCP
+  tijdens het bouwen (nadrukkelijk geen runtime-onderdeel), en de
+  geschiedenis van Doorzoeker 1 (Fubineva, 2013-2014, interactieontwerp
+  door Enference, in opdracht van RCE; RNA = Referentienetwerk
+  Architectuur als toenmalige linked-data-achtige infrastructuur voor
+  thesauri, rijksmonumenten en Archis) - met vier historische
+  screenshots die de eigenaar zelf aanleverde. Een dankwoord en links naar
+  andere documenten (GitHub) sluiten de pagina af. Voldoet aan WCAG 2.1:
+  skip-link, correcte kopjeshiërarchie, landmarks, alt-tekst op elke
+  afbeelding, focus-zichtbaarheid, geen horizontale overflow op mobiel -
+  stuk voor stuk live gecontroleerd, niet aangenomen. Opmaak hergebruikt
+  bewust dezelfde klassen/kleurtokens als `app/globals.css` (govbar,
+  header, skip-link, site-footer) voor visuele consistentie met de rest
+  van de site. Regressietests in `tests/e2e/rework.spec.ts`.
+- **Kleine extra (18 augustus 2026, "gimmick"):** de blauwe bullet bij
+  "Live gekoppeld aan RCE Linked Data" in `app/SiteHeader.tsx` is nu groen
+  (`var(--success)`) met een zachte, herhalende puls
+  (`header-live-pulse`) in plaats van een statische stip - bevroren onder
+  `prefers-reduced-motion` (WCAG 2.2.2/2.3.1: geen harde knipper, wel een
+  pauzeerbare/onderdrukbare animatie).
 - **Nog te verkennen RCE-graphs als mogelijke nieuwe databronnen** - nog
   helemaal niet onderzocht wat erin zit, dat is de eerstvolgende stap
   (niet vandaag) vóór er iets over gebouwd wordt:

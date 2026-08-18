@@ -9,7 +9,10 @@ export function SiteHeader({ onReset }: { onReset: () => void }) {
         <b>D</b>
         <span><strong>Doorzoeker</strong><small>Erfgoed digitaal</small></span>
       </button>
-      <p><i />Live gekoppeld aan RCE Linked Data <a href="https://linkeddata.cultureelerfgoed.nl/rce/cho" target="_blank" rel="noreferrer">Bronverantwoording</a></p>
+      <div className="header-links">
+        <p><i aria-hidden="true" />Live gekoppeld aan RCE Linked Data <a href="https://linkeddata.cultureelerfgoed.nl/rce/cho" target="_blank" rel="noreferrer">Bronverantwoording</a></p>
+        <a className="achtergrond-link" href="/achtergrond.html">Achtergrond</a>
+      </div>
     </header>
   </>;
 }
