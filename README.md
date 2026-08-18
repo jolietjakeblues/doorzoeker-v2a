@@ -156,8 +156,9 @@ en de licentiekeuze.
 
 ## Nog niet gebouwd
 
-- ruimtelijke `ligt in`-relaties tussen Rijksmonumenten en
-  Werelderfgoed/Gezichten;
+- ruimtelijke `ligt in`-relaties tussen Rijksmonumenten en Gezichten
+  (Rijksmonument ↔ Werelderfgoed is wel gebouwd, zie
+  [006-werelderfgoed-ligt-in.md](docs/vertical-slices/006-werelderfgoed-ligt-in.md));
 - de geometrie van historische groenaanleg als aparte kaartlaag;
 - de functies uit verticale slices die uitdrukkelijk de status `Plan` hebben.
 

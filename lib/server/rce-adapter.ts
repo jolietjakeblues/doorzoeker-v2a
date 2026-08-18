@@ -97,6 +97,7 @@ import {
 import { fetchLiteratuur } from "./bibliotheek-adapter.ts";
 import { resolveConcepts } from "./referentienetwerk-adapter.ts";
 import { fetchSparql, requestSignal, timed } from "./sparql-client.ts";
+import { lookupWerelderfgoedLidmaatschap } from "../rce/werelderfgoed-relaties.ts";
 
 const REST_ENDPOINT = "https://api.linkeddata.cultureelerfgoed.nl/queries/rce/rest-api-rijksmonumenten/run";
 
@@ -113,6 +114,14 @@ type SparqlBinding = Record<string, { value?: string } | undefined>;
 // but cheap enough to just ask for all of them). None of these is a
 // parallel search - all seven just attach extra facts to Rijksmonument
 // records already found.
+//
+// Werelderfgoed-lidmaatschap (006-werelderfgoed-ligt-in.md) is een achtste,
+// maar geen SPARQL-aanroep: het is een synchrone lookup in een statisch,
+// vooraf offline berekend bestand (lookupWerelderfgoedLidmaatschap), dus
+// hoort niet bij de Promise.all hierboven. Bewust hier in enrichMonuments
+// en niet in heritage-view-model.ts's toItem() gedaan: toItem() draait ook
+// client-side (zie bv. hooks/useVerrasMe.ts), en dat statische bestand is
+// >1MB - dat hoort niet in de clientbundel terecht te komen.
 async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): Promise<RceMonument[]> {
   const choUris = monuments.map((monument) => monument.sourceUrl).filter(Boolean);
   if (!choUris.length) return monuments;
@@ -145,7 +154,8 @@ async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): 
     const msp = mspNumbers.has(monument.monumentNumber);
     const literature = literatuurByNumber.get(monument.monumentNumber);
     const gebeurtenissen = gebeurtenissenByMonument.get(monument.sourceUrl);
-    if (!archaeologicalSites && !complexes && !image && !groenaanleg && !msp && !literature && !gebeurtenissen) return monument;
+    const ligtInWerelderfgoed = lookupWerelderfgoedLidmaatschap(monument.monumentNumber);
+    if (!archaeologicalSites && !complexes && !image && !groenaanleg && !msp && !literature && !gebeurtenissen && !ligtInWerelderfgoed) return monument;
     return {
       ...monument,
       ...(archaeologicalSites ? { archaeologicalSites } : {}),
@@ -155,6 +165,7 @@ async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): 
       ...(msp ? { msp } : {}),
       ...(literature ? { literature } : {}),
       ...(gebeurtenissen ? { gebeurtenissen } : {}),
+      ...(ligtInWerelderfgoed ? { ligtInWerelderfgoed } : {}),
     };
   });
 }

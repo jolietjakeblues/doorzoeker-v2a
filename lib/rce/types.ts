@@ -1,5 +1,6 @@
 import type { ArchaeologyConcept, ArcheologischTerrein } from "./archaeology.ts";
 import type { ComplexMembership, RceParcel } from "./monuments.ts";
+import type { WerelderfgoedLidmaatschap } from "./werelderfgoed-relaties.ts";
 
 // `RceMonument.monumentNature` heeft twee rollen: voor een Rijksmonument
 // bevat het het echte SKOS-`monumentaard`-label (bv. "onroerend gebouwd"),
@@ -58,6 +59,7 @@ export type RceMonument = {
   matchScore?: number;
   archaeologicalSites?: ArcheologischTerrein[];
   complexes?: ComplexMembership[];
+  ligtInWerelderfgoed?: WerelderfgoedLidmaatschap[];
   officialUrl?: string;
   complexMemberCount?: number;
   image?: MonumentImage;

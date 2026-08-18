@@ -2,15 +2,34 @@
 
 ## Status
 
-Plan compleet, nog niet gebouwd. Opgesteld na verkenning
-(`docs/reference/rce-linked-data-graphs.md`, "Ruimtelijke 'ligt
-in'-relatie") die aantoonde dat er geen gemodelleerde eigenschap bestaat,
-maar dat de relatie wel geometrisch te berekenen is - alleen niet live.
-Alle drie de eerder openstaande vragen (bbox-optimalisatie, regeneratie-
-trigger, overlap tussen gebieden) zijn op 2026-08-10 uitgezocht en
-beantwoord, zie "Openstaande vragen" hieronder - inclusief een
-implementatie-relevante bijvangst (sommige Werelderfgoed-geometrieën zijn
-te groot voor een GET-verzoek, het script moet POST gebruiken).
+Gebouwd en gedraaid (2026-08-18). Tijdens implementatie bleek stap 2 van
+het regeneratiescript (de exacte polygoon-check als tweede SPARQL-
+aanroep) in de praktijk niet houdbaar voor de grootste Werelderfgoed-
+polygonen: de Hollandse Waterlinies-WKT (71.000+ coördinaten) liet de
+SPARQL-service zelf vastlopen op een `"Maximum call stack size
+exceeded"`-parserfout, en na het verkorten van de coördinaatprecisie
+alsnog op een 504 Gateway Timeout - de `sfWithin`-berekening zelf bleek
+te duur voor de service, niet alleen de query-tekst te lang. De exacte
+check is daarom client-side in JS gedaan (een eigen even-odd
+point-in-polygon-test op het representatieve punt van elke bbox-
+kandidaat), niet als tweede SPARQL-round-trip zoals hieronder in
+"Voorgestelde eerste verticale schijf" beschreven staat. De bbox-stap
+(stap 1) is wel ongewijzigd SPARQL gebleven.
+
+Twee bevindingen die het plan niet voorzag:
+- Van de 18 Werelderfgoed-CHO-instanties delen 6 werelderfgoednummers
+  zich over twee afzonderlijke geometrieën (waarschijnlijk kernzone en
+  bufferzone) - het script dedupliceert dit tot één lidmaatschap per
+  werelderfgoednummer per rijksmonument.
+- Het Kinderdijk-testgeval gaf 22 rijksmonumenten, niet de 23 uit de
+  eerdere handmatige telling hieronder - hetzelfde, al bij het opstellen
+  van dit plan geaccepteerde 22-vs-23-verschil (zie "Openstaande vragen"),
+  nu bevestigd met de daadwerkelijke einduitvoer.
+
+Resultaat: 10.933 rijksmonumenten met een Werelderfgoed-relatie, in
+`data/werelderfgoed-rijksmonumenten.json`. Zie de code-comments in
+`scripts/generate-werelderfgoed-relaties.mjs` voor de volledige
+onderbouwing van de client-side aanpak.
 
 ## Aanleiding
 
@@ -201,8 +220,9 @@ dan één Werelderfgoed-gebied zou vallen.
 
 1. Het regeneratiescript bestaat, is minstens één keer succesvol
    uitgevoerd, en het resultaat is geverifieerd tegen het
-   Kinderdijk-testgeval (23 rijksmonumenten, inclusief de bekende
-   molen-reeks en het Wisboomgemaal).
+   Kinderdijk-testgeval (22 rijksmonumenten, inclusief de bekende
+   molen-reeks en het Wisboomgemaal - zie "Status" voor het
+   geaccepteerde 22-vs-23-verschil met de handmatige telling).
 2. Een Rijksmonument dat in het gegenereerde bestand voorkomt toont een
    "Onderdeel van Werelderfgoed"-rij op de detailpagina, met naam en
    doorklikmogelijkheid naar dat Werelderfgoed.

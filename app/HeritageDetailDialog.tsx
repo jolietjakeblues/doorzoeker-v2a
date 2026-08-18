@@ -242,6 +242,24 @@ export function HeritageDetailDialog({
                 </dd>
               </div>
             ) : null}
+            {selected.ligtInWerelderfgoed?.length ? (
+              <div>
+                <dt>Onderdeel van Werelderfgoed</dt>
+                <dd>
+                  {selected.ligtInWerelderfgoed.map((werelderfgoed, index) => (
+                    <span key={werelderfgoed.werelderfgoednummer ?? index}>
+                      <button
+                        type="button"
+                        className="concept-link"
+                        onClick={() => void onSearch(werelderfgoed.naam)}
+                      >
+                        {werelderfgoed.naam}
+                      </button>
+                    </span>
+                  ))}
+                </dd>
+              </div>
+            ) : null}
             {selected.groenaanleg &&
             (selected.groenaanleg.typeAanleg ||
               selected.groenaanleg.categorie ||
