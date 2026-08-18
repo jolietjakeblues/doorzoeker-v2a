@@ -141,6 +141,31 @@ test("de footer noemt de bèta-status, een feedbacklink naar GitHub en de privac
   );
 });
 
+test("de gele balk linkt naar de achtergrondpagina, ook op mobiel waar de rest van de regel verborgen is", async ({ page }) => {
+  await expect(page.getByRole("link", { name: "Achtergrond" })).toHaveAttribute("href", "/achtergrond.html");
+
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect(page.getByRole("link", { name: "Achtergrond" })).toBeVisible();
+});
+
+test("de achtergrondpagina laadt met de verwachte inhoud, skip-link en afbeeldingen", async ({ page }) => {
+  await page.goto("/achtergrond.html");
+  await expect(page.getByRole("heading", { level: 1, name: "Achtergrond" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "De geschiedenis: Doorzoeker 1 (2013-2014)" })).toBeVisible();
+  await expect(page.getByText("Fubineva").first()).toBeVisible();
+  await expect(page.getByText("in opdracht van de Rijksdienst voor het Cultureel Erfgoed")).toBeVisible();
+  await expect(page.getByText("Dirk, Kees, Hans en Joppe")).toBeVisible();
+
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("link", { name: "Direct naar de inhoud" })).toBeFocused();
+
+  const images = page.locator("main img");
+  await expect(images).toHaveCount(4);
+  for (const image of await images.all()) {
+    await expect(image).toHaveAttribute("alt", /.+/);
+  }
+});
+
 test("de bèta-badge staat rechtsboven, ook nog na een zoekopdracht", async ({ page }) => {
   const badge = page.locator(".beta-badge");
   await expect(badge).toContainText("Bèta");

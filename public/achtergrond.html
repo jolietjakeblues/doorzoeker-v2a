@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Achtergrond - Doorzoeker</title>
+<meta name="description" content="De achtergrond van Doorzoeker: waarom Linked Open Data, hoe de zoekmachine werkt, en de geschiedenis van Doorzoeker 1 (2013-2014)." />
+<style>
+  :root {
+    --rce-blue: #154273;
+    --rce-blue-hover: #01689b;
+    --rce-link: #007bc7;
+    --rce-yellow: #ffb612;
+    --ink: #000;
+    --muted: #595959;
+    --paper: #fff;
+    --panel: #f1f5f9;
+    --panel-line: #dde3e8;
+    --line: #d5d5d5;
+    --font: Calibri, Verdana, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.65;
+  }
+  a { color: var(--rce-link); }
+  a:focus-visible,
+  button:focus-visible {
+    outline: 3px solid var(--rce-blue);
+    outline-offset: 2px;
+  }
+
+  /* Zelfde patroon als .skip-link in app/globals.css: onzichtbaar tot een
+     toetsenbordgebruiker 'm focust. */
+  .skip-link {
+    position: absolute;
+    top: -100%;
+    left: 12px;
+    z-index: 2000;
+    padding: 10px 16px;
+    background: var(--rce-blue);
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .skip-link:focus {
+    top: 12px;
+  }
+
+  .govbar {
+    height: 96px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    border-bottom: 1px solid var(--panel-line);
+  }
+  .govbar img {
+    display: block;
+    width: 420px;
+    max-width: 90vw;
+    height: 60px;
+    object-fit: contain;
+    object-position: center;
+  }
+  header {
+    height: 75px;
+    padding-inline: clamp(20px, 6vw, 90px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--rce-yellow);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  header a.brand {
+    display: flex;
+    gap: 13px;
+    align-items: center;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  header a.brand b {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    background: var(--rce-blue);
+    color: #fff;
+    font-size: 20px;
+    border-radius: 2px;
+  }
+  header a.brand strong { display: block; font-size: 18px; }
+  header a.brand small { display: block; color: #222; font-size: 12px; font-weight: 400; }
+  header nav a {
+    color: var(--rce-blue);
+    font-weight: 700;
+    text-decoration: underline;
+  }
+
+  main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+  h1 {
+    font-size: clamp(28px, 4vw, 36px);
+    line-height: 1.15;
+    margin: 0 0 8px;
+  }
+  .intro {
+    color: var(--muted);
+    font-size: 17px;
+    margin: 0 0 40px;
+  }
+  h2 {
+    font-size: 22px;
+    color: var(--rce-blue);
+    margin: 48px 0 14px;
+    padding-top: 8px;
+    border-top: 3px solid var(--rce-yellow);
+  }
+  h3 {
+    font-size: 17px;
+    margin: 24px 0 8px;
+  }
+  p { margin: 0 0 16px; }
+  ul { margin: 0 0 16px; padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  figure {
+    margin: 24px 0;
+    padding: 12px;
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+  }
+  figure img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--line);
+  }
+  figcaption {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .links-lijst {
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    padding: 20px 24px;
+  }
+  .links-lijst h2 { margin-top: 0; border-top: 0; padding-top: 0; }
+  .terug {
+    display: inline-block;
+    margin-top: 40px;
+    padding: 12px 20px;
+    min-height: 44px;
+    background: var(--rce-blue);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 700;
+    line-height: 20px;
+  }
+  .terug:hover { background: var(--rce-blue-hover); }
+
+  .site-footer {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 24px 40px;
+    border-top: 1px solid var(--line);
+  }
+  .site-footer p {
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .site-footer p:first-child { margin-top: 0; }
+  .site-footer a { color: var(--rce-blue); }
+
+  @media (max-width: 800px) {
+    .govbar { height: 76px; }
+    .govbar img { width: 300px; height: 46px; }
+    header { height: auto; padding-block: 12px; }
+  }
+</style>
+</head>
+<body>
+  <a href="#inhoud" class="skip-link">Direct naar de inhoud</a>
+
+  <div class="govbar">
+    <img src="/logo-rce.gif" alt="Rijksdienst voor het Cultureel Erfgoed, Ministerie van Onderwijs, Cultuur en Wetenschap" />
+  </div>
+  <header>
+    <a class="brand" href="/">
+      <b aria-hidden="true">D</b>
+      <span><strong>Doorzoeker</strong><small>Erfgoed digitaal</small></span>
+    </a>
+    <nav aria-label="Paginanavigatie">
+      <a href="/">&larr; Terug naar Doorzoeker</a>
+    </nav>
+  </header>
+
+  <main id="inhoud">
+    <h1>Achtergrond</h1>
+    <p class="intro">
+      Waarom Doorzoeker op Linked Open Data draait, hoe het zoeken werkt,
+      en waar Doorzoeker vandaan komt.
+    </p>
+
+    <h2>Wat is Linked Open Data, en waarom gebruikt Doorzoeker het?</h2>
+    <p>
+      De meeste zoekmachines werken met tekst: je typt een woord in, en de
+      machine zoekt naar pagina's waar dat woord in staat. Doorzoeker doet
+      dat ook, maar heeft daarnaast een tweede, sterkere laag: <strong>Linked
+      Open Data</strong>.
+    </p>
+    <p>
+      Het idee is simpel. Elk erfgoedobject en elk begrip krijgt een eigen,
+      unieke webadres (een <strong>URI</strong>) als identiteit. Een label
+      zoals "kerk" of "Woonhuis" is alleen de presentatie ervan - de tekst
+      die je op het scherm ziet. De URI erachter verandert niet, ook niet
+      als het label ooit wordt aangepast. Objecten en begrippen kunnen
+      bovendien naar elkaar verwijzen via die URI's: een rijksmonument
+      "heeft functie" een bepaald begrip, "ligt in" een bepaalde plaats,
+      "is gemaakt door" een bepaalde persoon. Zo ontstaat een netwerk van
+      gegevens in plaats van losse teksten.
+    </p>
+    <p>
+      Het voordeel voor jou als bezoeker: als je op een begrip klikt -
+      bijvoorbeeld een functie, een bouwstijl of een materiaal - zoekt
+      Doorzoeker niet op de tekst "kerk", maar op de exacte URI van het
+      begrip <em>kerk</em>. Dat vindt echt alleen objecten die met dat
+      begrip zijn geclassificeerd, in plaats van toevallig hetzelfde woord
+      te bevatten.
+    </p>
+    <p>
+      De data komt rechtstreeks uit de
+      <a href="https://linkeddata.cultureelerfgoed.nl/" target="_blank" rel="noreferrer">RCE Linked Data Voorziening</a>
+      (afgekort de <strong>LDV</strong>) - de officiële, publieke gegevensdienst
+      van de Rijksdienst voor het Cultureel Erfgoed. Doorzoeker verzint of
+      kopieert niets: elk resultaat is een actuele weergave van wat de RCE
+      zelf publiceert, met een link naar de bron erbij.
+    </p>
+    <p>
+      Om al die objecten en begrippen op een consistente manier te kunnen
+      beschrijven, gebruikt de RCE een gedeeld begrippenkader: de
+      <strong><a href="https://linkeddata.cultureelerfgoed.nl/def/ceo" target="_blank" rel="noreferrer">CEO-ontologie</a></strong>
+      (Cultureel Erfgoed Ontologie). Dat is in feite een woordenboek van
+      relaties: het legt vast wat een "Rijksmonument" is, wat een
+      "functie" is, en hoe die twee met elkaar verbonden mogen worden.
+      Doordat alle RCE-data hetzelfde begrippenkader gebruikt, kan
+      Doorzoeker heel verschillende soorten erfgoed - gebouwen,
+      archeologische vondsten, terreinen, gezichten - op een uniforme
+      manier doorzoeken.
+    </p>
+
+    <h2>Hoe Doorzoeker zoekt</h2>
+    <p>
+      Er zijn in Doorzoeker eigenlijk twee soorten zoeken tegelijk actief:
+    </p>
+    <ul>
+      <li>
+        <strong>Vrij tekstzoeken.</strong> Je typt een woord, nummer of
+        plaatsnaam in, en Doorzoeker doorzoekt de relevante velden van elk
+        objecttype. Dit werkt zoals je van een gewone zoekmachine gewend
+        bent.
+      </li>
+      <li>
+        <strong>Exact zoeken op begrip.</strong> Klik je op een begrip -
+        bijvoorbeeld een functie, monumentaard, materiaal of bouwstijl -
+        dan zoekt Doorzoeker op de URI van dat begrip, niet op de tekst.
+        Dat begrip komt uit <strong>Referentienetwerk 2</strong>, de
+        thesaurus die de RCE gebruikt om functies, materialen, types en
+        andere classificaties eenduidig vast te leggen. Doorzoeker
+        controleert daarbij altijd eerst of een begrip ook echt aan een
+        object gekoppeld is, voordat het als klikbaar wordt getoond -
+        een begrip dat toevallig hetzelfde woord bevat maar nergens
+        gekoppeld is, wordt niet als suggestie voorgesteld.
+      </li>
+    </ul>
+    <p>
+      Op de detailpagina van een object zie je vervolgens alle gekoppelde
+      begrippen bij elkaar, elk weer klikbaar naar alle andere objecten met
+      precies datzelfde begrip. Zo kun je van het ene object naar
+      verwante objecten navigeren zonder zelf een nieuwe zoekterm te
+      hoeven bedenken.
+    </p>
+
+    <h3>De MCP: een hulpmiddel achter de schermen</h3>
+    <p>
+      Tijdens het bouwen van Doorzoeker is gebruikgemaakt van een
+      <strong>MCP-server</strong> voor de RCE-data - een hulpmiddel waarmee
+      wijzelf vragen aan de Linked Data Voorziening konden stellen om te
+      ontdekken hoe alles precies gemodelleerd is: welke velden bestaan er,
+      hoe hangen objecten en begrippen samen, welke thesaurus hoort bij
+      welk veld. Dat hulpmiddel hoort niet bij wat jij als bezoeker
+      gebruikt. De website zelf praat rechtstreeks met de RCE Linked Data
+      Voorziening, zonder tussenkomst van dat ontwikkelhulpmiddel.
+    </p>
+
+    <h2>De geschiedenis: Doorzoeker 1 (2013-2014)</h2>
+    <p>
+      Doorzoeker bestond al eerder. De oorspronkelijke <strong>RCE
+      Doorzoeker</strong> is in 2013-2014 gebouwd door <strong>Fubineva</strong>,
+      in opdracht van de Rijksdienst voor het Cultureel Erfgoed, met
+      interactieontwerp door <strong>Enference</strong>.
+    </p>
+    <p>
+      Doorzoeker 1 werkte niet met de huidige Linked Data Voorziening -
+      die bestond toen nog niet in deze vorm. In plaats daarvan draaide de
+      applicatie op de <strong>RNA</strong> (Referentienetwerk Architectuur):
+      het systeem dat destijds diende als onderliggende, linked-data-achtige
+      infrastructuur voor thesauri, rijksmonumenten, archeologische data
+      (Archis) en meer.
+    </p>
+
+    <figure>
+      <img src="/achtergrond/doorzoeker-v1-rijksmonument10.jpg" alt="Screenshot van de oorspronkelijke Doorzoeker-website uit 2013-2014, met het cursieve blauw-rode logo en de detailpagina van Rijksmonument 10." loading="lazy" width="903" height="933" />
+      <figcaption>
+        Doorzoeker 1: de publieke website, hier met de detailpagina van
+        Rijksmonument 10.
+      </figcaption>
+    </figure>
+
+    <p>
+      Achter die publieke website zat een uitgebreid beheersysteem, de RNA
+      Toolset, waarmee medewerkers van de RCE de gegevens invoerden en
+      onderhielden:
+    </p>
+
+    <figure>
+      <img src="/achtergrond/rna-toolset-editor.jpg" alt="Screenshot van de RNA Toolset-editor, met invoervelden voor een rijksmonument zoals plaats, adres, coördinaten en redengevende omschrijving." loading="lazy" width="1447" height="968" />
+      <figcaption>
+        De RNA Toolset: het beheersysteem waarmee RCE-medewerkers de
+        gegevens achter Doorzoeker 1 invoerden en bijhielden.
+      </figcaption>
+    </figure>
+
+    <p>
+      Diezelfde RNA-omgeving had een eigen, uitgebreide thesaurusstructuur -
+      van archeologische begrippen tot molenonderdelen, elk met eigen
+      relaties en, voor sommige begrippen, vertalingen in meerdere talen:
+    </p>
+
+    <figure>
+      <img src="/achtergrond/rna-thesaurusboom.jpg" alt="Screenshot van een uitklapbare thesaurusboom in RNA Zoeken, met categorieën als landschapselementen, gebouwde omgeving en communicatieobjecten." loading="lazy" width="1512" height="895" />
+      <figcaption>
+        Een deel van de thesaurusboom uit RNA Zoeken - de interne
+        zoekomgeving waarmee de rijkdom van de RNA-classificaties
+        doorzocht kon worden.
+      </figcaption>
+    </figure>
+
+    <figure>
+      <img src="/achtergrond/rna-molenonderdeel-meertalig.jpg" alt="Screenshot van het begrip 'aandrijfas' als molenonderdeel, met vertalingen in het Nederlands, Engels, Duits en Frans." loading="lazy" width="1024" height="574" />
+      <figcaption>
+        Een molenonderdeel-begrip ("aandrijfas") met vertalingen in vier
+        talen - een voorbeeld van hoe gedetailleerd de RNA-thesaurus was.
+      </figcaption>
+    </figure>
+
+    <p>
+      Conceptueel bood Doorzoeker 1 al veel van wat een goede
+      erfgoedzoekmachine nodig heeft: vrij zoeken, facetten om resultaten
+      te verfijnen, groepering van resultaten, een kaartweergave, navigatie
+      door de thesaurus, en onderscheid tussen een begrip en een concreet
+      bronrecord. Die uitgangspunten zijn de reden dat Doorzoeker 1 het
+      overwegen waard bleef toen er een nieuwe versie gebouwd werd.
+    </p>
+
+    <h2>Van Doorzoeker 1 naar Doorzoeker</h2>
+    <p>
+      Deze Doorzoeker is een <strong>schone herbouw</strong>: er is geen
+      regel code uit Doorzoeker 1 overgenomen. De technische stack van
+      destijds (.NET, AngularJS, de RNA-koppeling) is inmiddels verouderd
+      en niet meer geschikt om op voort te bouwen. Wat wél is overgenomen,
+      is het productconcept - vrij zoeken, facetten, kaartweergave,
+      thesaurusnavigatie en het onderscheid tussen begrippen en
+      bronrecords - opnieuw gebouwd op de huidige RCE Linked Data
+      Voorziening.
+    </p>
+
+    <h2>Dank</h2>
+    <p>
+      Met dank aan <strong>Fubineva</strong> en <strong>Enference</strong>,
+      de oorspronkelijke bouwers van Doorzoeker 1.
+    </p>
+    <p>
+      En met dank aan Dirk, Kees, Hans en Joppe voor de ideeën en
+      inspiratie. En natuurlijk Patrick en Rob zonder wiens hulp we nooit zover waren gekomen.
+    </p>
+
+    <div class="links-lijst">
+      <h2>Meer lezen</h2>
+      <ul>
+        <li><a href="https://github.com/jolietjakeblues/doorzoeker-v2a/blob/main/README.md" target="_blank" rel="noreferrer">README - wat Doorzoeker doet en hoe het gebouwd is</a></li>
+        <li><a href="https://github.com/jolietjakeblues/doorzoeker-v2a/blob/main/docs/functionele-dekking.md" target="_blank" rel="noreferrer">Functionele dekking - precies wat er te doorzoeken is</a></li>
+        <li><a href="https://github.com/jolietjakeblues/doorzoeker-v2a/blob/main/docs/security-assessment-2026-08-17.md" target="_blank" rel="noreferrer">Security-assessment</a></li>
+        <li><a href="https://github.com/Joppe-A/rce-doorzoeker" target="_blank" rel="noreferrer">De originele Doorzoeker 1-broncode (Fubineva, 2013-2014)</a></li>
+        <li><a href="https://linkeddata.cultureelerfgoed.nl/" target="_blank" rel="noreferrer">RCE Linked Data Voorziening</a></li>
+      </ul>
+    </div>
+
+    <a class="terug" href="/">&larr; Terug naar Doorzoeker</a>
+  </main>
+
+  <footer class="site-footer">
+    <p>Doorzoeker is in bèta. <a href="/">Terug naar de startpagina</a>.</p>
+  </footer>
+</body>
+</html>
