@@ -186,8 +186,9 @@ design critique). Wordt maandag verder opgepakt.
      `doorzoekerfgoed.nl` als de workers.dev-URL. Fix: redirect naar
      `https://` in `worker/index.ts`, als verdedigingslaag naast (niet in
      plaats van) een eventuele Cloudflare-zone-instelling die niet vanuit
-     de repo te controleren is. **Open vraag aan de eigenaar:** staat
-     "Always Use HTTPS" aan in het Cloudflare-dashboard?
+     de repo te controleren is. ~~**Open vraag aan de eigenaar:** staat
+     "Always Use HTTPS" aan in het Cloudflare-dashboard?~~ **Bevestigd
+     door de eigenaar (18 augustus 2026): ja.**
    - ~~Numeriek zoekpad (`searchByNumber`) had geen fallback bij een
      falende deelquery.~~ **Opgelost.** Live gereproduceerd tijdens
      verhoogde RCE-latency (4-15s per aanroep): `?q=36046` faalde met 502,
@@ -349,11 +350,18 @@ design critique). Wordt maandag verder opgepakt.
    voor, met regressietests voor `=HYPERLINK(...)`, `+SUM(1,1)`,
    `-2+3`, `@command`, en een controle dat een streepje ergens *midden*
    in de tekst (niet leidend) onaangeroerd blijft.
-4. **Drie hoge npm-audit-meldingen** (bevestigd via `npm audit`): twee
+4. ~~**Drie hoge npm-audit-meldingen** (bevestigd via `npm audit`): twee
    DoS-advisories in `image-size` (via `vinext`), één in `nanoid`. Niet
    blind `npm audit fix --force` gebruiken - npm stelt een oudere
    `vinext`-versie voor. Gerichte upgrade of override onderzoeken en
-   daarna build, beeldoptimalisatie en deployment controleren.
+   daarna build, beeldoptimalisatie en deployment controleren.~~
+   **Documentatiedrift, geen echt openstaand punt (gevonden 18 augustus
+   2026).** Dit was al opgelost in PR #76 ("Los 3 hoge npm-audit-
+   meldingen op: gerichte vinext/plugin-rsc-upgrade i.p.v. npm audit fix
+   --force"), maar deze regel bleef als open item in dit document staan.
+   Herbevestigd: `npm audit` geeft nu 0 kwetsbaarheden, `image-size`
+   komt niet meer voor in de dependency-boom (`npm ls image-size --all`
+   is leeg), `nanoid` staat op de veilige `3.3.18`. Geen actie nodig.
 5. ~~**Kaarttoegankelijkheid (TD-27).**~~ **Opgelost (17 augustus 2026).**
    Zie item 2 hierboven onder "Kwaliteit en toegankelijkheid" voor de
    volledige beschrijving van de fix.
