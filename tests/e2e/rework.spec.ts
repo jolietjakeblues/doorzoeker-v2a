@@ -788,6 +788,43 @@ test("'Onderdeel van complex' is doorklikbaar binnen Doorzoeker, niet alleen pla
   await expect(page).toHaveURL(/q=519470/);
 });
 
+test("'Onderdeel van Werelderfgoed' en 'Ligt in Rijksbeschermd gezicht' zijn live, lazy opgehaald en beide zichtbaar (006-werelderfgoed-ligt-in)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: { page: 1, hasMore: false, results: [records[0]] },
+  }));
+  await page.unroute("**/api/rce/ligt-in**");
+  await page.route("**/api/rce/ligt-in**", (route) => route.fulfill({
+    json: {
+      gezicht: [{ gezichtsnummer: "1489", naam: "Kinderdijk - Elshout" }],
+      werelderfgoed: [{ werelderfgoednummer: "818", naam: "Molens bij Kinderdijk-Elshout" }],
+    },
+  }));
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("architect");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("button", { name: "Molens bij Kinderdijk-Elshout" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Kinderdijk - Elshout" })).toBeVisible();
+});
+
+test("'Onderdeel van Werelderfgoed' is doorklikbaar (006-werelderfgoed-ligt-in)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: { page: 1, hasMore: false, results: [records[0]] },
+  }));
+  await page.unroute("**/api/rce/ligt-in**");
+  await page.route("**/api/rce/ligt-in**", (route) => route.fulfill({
+    json: { gezicht: [], werelderfgoed: [{ werelderfgoednummer: "818", naam: "Molens bij Kinderdijk-Elshout" }] },
+  }));
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("architect");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Molens bij Kinderdijk-Elshout" }).click();
+  await expect(page).toHaveURL(/q=Molens\+bij\+Kinderdijk-Elshout/);
+});
+
 test("stijl & cultuur, bouwkundige staat, type en overige functies worden getoond", async ({ page }) => {
   const kantoorUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/kantoor";
   const stijlUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/478ca85b-ecb3-4a38-8b97-ba78deeba3dd";

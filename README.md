@@ -156,8 +156,6 @@ en de licentiekeuze.
 
 ## Nog niet gebouwd
 
-- ruimtelijke `ligt in`-relaties tussen Rijksmonumenten en
-  Werelderfgoed/Gezichten;
 - de geometrie van historische groenaanleg als aparte kaartlaag;
 - de functies uit verticale slices die uitdrukkelijk de status `Plan` hebben.
 

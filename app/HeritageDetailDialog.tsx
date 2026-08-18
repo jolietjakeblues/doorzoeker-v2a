@@ -32,7 +32,8 @@ export function HeritageDetailDialog({
   onSearch,
   onConceptSearch,
 }: HeritageDetailDialogProps) {
-  const { complexMembers } = enrichment;
+  const { complexMembers, ligtIn } = enrichment;
+  const ligtInLoaded = ligtIn && ligtIn.monumentNumber === selected.monumentNumber ? ligtIn : undefined;
   const allLinkedConcepts = linkedConcepts(selected);
   const selectedIdentifier = primaryIdentifier(selected);
   const selectedIdentifierRepeatsTitle = Boolean(
@@ -237,6 +238,42 @@ export function HeritageDetailDialog({
                       {complex.role === "hoofdobject"
                         ? " — hoofdobject"
                         : ""}
+                    </span>
+                  ))}
+                </dd>
+              </div>
+            ) : null}
+            {ligtInLoaded?.werelderfgoed.length ? (
+              <div>
+                <dt>Onderdeel van Werelderfgoed</dt>
+                <dd>
+                  {ligtInLoaded.werelderfgoed.map((werelderfgoed, index) => (
+                    <span key={werelderfgoed.werelderfgoednummer ?? index}>
+                      <button
+                        type="button"
+                        className="concept-link"
+                        onClick={() => void onSearch(werelderfgoed.naam)}
+                      >
+                        {werelderfgoed.naam}
+                      </button>
+                    </span>
+                  ))}
+                </dd>
+              </div>
+            ) : null}
+            {ligtInLoaded?.gezicht.length ? (
+              <div>
+                <dt>Ligt in Rijksbeschermd gezicht</dt>
+                <dd>
+                  {ligtInLoaded.gezicht.map((gezicht, index) => (
+                    <span key={gezicht.gezichtsnummer ?? index}>
+                      <button
+                        type="button"
+                        className="concept-link"
+                        onClick={() => void onSearch(gezicht.naam)}
+                      >
+                        {gezicht.naam}
+                      </button>
                     </span>
                   ))}
                 </dd>

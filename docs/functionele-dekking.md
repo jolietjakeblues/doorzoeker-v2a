@@ -153,8 +153,12 @@ eigen brondata; dat maakt CHT niet automatisch een algemene CHO-zoekindex.
   eigen `ceo:heeftGeometrie/geo:asWKT`. Doorzoeker verzint daarom geen vorm of
   coördinaat. Een gekoppeld Rijksmonument kan wel zijn eigen geometrie hebben,
   maar die is niet automatisch de geometrie van het terrein.
-- Er is nog geen ruimtelijke `ligt in`-relatie tussen Rijksmonumenten en
-  Werelderfgoed of Gezichten; de bron bevat daarvoor geen directe relatie.
+- De ruimtelijke `ligt in`-relatie tussen een Rijksmonument en Werelderfgoed/
+  Gezicht (de bron bevat daarvoor geen directe relatie, alleen geometrie) is
+  live berekend zodra een Rijksmonument-detail geopend wordt, niet vooraf
+  voor de hele resultatenlijst en niet in de omgekeerde richting (een
+  Werelderfgoed- of Gezicht-detail toont niet zijn eigen leden) - zie
+  [006-werelderfgoed-ligt-in.md](vertical-slices/006-werelderfgoed-ligt-in.md).
 - De afzonderlijke geometrie van een historische groenaanleg is nog geen
   aparte kaartlaag.
 - Geplande functies staan alleen in de verticale slice met status `Plan` en
