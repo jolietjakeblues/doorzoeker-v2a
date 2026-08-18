@@ -1,19 +1,22 @@
 import { useEffect, useState } from "react";
-import { fetchComplexMembers, fetchOnderzoeksgebiedVerrijking, fetchVondstlocatieInhoud, searchByFunctieConcept } from "@/lib/rce-client";
-import type { ComplexMember, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, VondstlocatieInhoud } from "@/lib/rce";
+import { fetchComplexMembers, fetchLigtIn, fetchOnderzoeksgebiedVerrijking, fetchVondstlocatieInhoud, searchByFunctieConcept } from "@/lib/rce-client";
+import type { ComplexMember, GezichtLidmaatschap, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, VondstlocatieInhoud, WerelderfgoedLidmaatschap } from "@/lib/rce";
 import { pickVergelijkbareRijksmonumenten, toItem, type Item } from "@/lib/heritage-view-model";
 
-// Complexleden, de archeologische verrijking van een Onderzoeksgebied en
-// vergelijkbare rijksmonumenten (docs/vertical-slices/008) zijn geen
-// onderdeel van de gewone zoekresultaten (dat zou de resultatenlijst
-// overspoelen) - pas ophalen zodra een gebruiker zo'n record daadwerkelijk
-// opent. Ze hangen alle drie aan hetzelfde `selected`-record en horen
-// daarom bij elkaar in één hook, ook al zijn het losse lazy-lookups.
+// Complexleden, de archeologische verrijking van een Onderzoeksgebied,
+// vergelijkbare rijksmonumenten (docs/vertical-slices/008) en Werelderfgoed/
+// Gezicht-lidmaatschap (docs/vertical-slices/006) zijn geen onderdeel van de
+// gewone zoekresultaten (dat zou de resultatenlijst overspoelen of, voor
+// ligt-in, te traag zijn als batch) - pas ophalen zodra een gebruiker zo'n
+// record daadwerkelijk opent. Ze hangen alle vier aan hetzelfde
+// `selected`-record en horen daarom bij elkaar in één hook, ook al zijn het
+// losse lazy-lookups.
 export function useSelectedDetailEnrichment(selected: Item | null) {
   const [complexMembers, setComplexMembers] = useState<{ complexUri: string; members: ComplexMember[]; error?: boolean } | null>(null);
   const [onderzoeksgebiedVerrijking, setOnderzoeksgebiedVerrijking] = useState<({ gebiedUri: string; complexen: OnderzoeksgebiedComplex[]; vondstlocaties: OnderzoeksgebiedVondstlocatie[]; error?: boolean } & OnderzoeksgebiedAggregaten) | null>(null);
   const [vondstlocatieInhoud, setVondstlocatieInhoud] = useState<({ locatieUri: string; error?: boolean } & VondstlocatieInhoud) | null>(null);
   const [vergelijkbareRijksmonumenten, setVergelijkbareRijksmonumenten] = useState<{ conceptUri: string; conceptLabel: string; items: Item[]; error?: boolean } | null>(null);
+  const [ligtIn, setLigtIn] = useState<{ monumentNumber: string; gezicht: GezichtLidmaatschap[]; werelderfgoed: WerelderfgoedLidmaatschap[]; error?: boolean } | null>(null);
 
   // `error: true` houdt een mislukte aanvraag onderscheidbaar van een echt
   // lege-maar-geldige respons (bv. een complex zonder leden) - zonder dit
@@ -64,5 +67,15 @@ export function useSelectedDetailEnrichment(selected: Item | null) {
     return () => controller.abort();
   }, [selected]);
 
-  return { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten };
+  useEffect(() => {
+    if (selected?.objectType !== "Rijksmonument" || !selected.monumentNumber) return;
+    const monumentNumber = selected.monumentNumber;
+    const controller = new AbortController();
+    fetchLigtIn(monumentNumber, controller.signal)
+      .then((data) => { if (!controller.signal.aborted) setLigtIn({ monumentNumber, ...data }); })
+      .catch(() => { if (!controller.signal.aborted) setLigtIn({ monumentNumber, gezicht: [], werelderfgoed: [], error: true }); });
+    return () => controller.abort();
+  }, [selected]);
+
+  return { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten, ligtIn };
 }

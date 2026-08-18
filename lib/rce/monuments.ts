@@ -643,6 +643,77 @@ export function parseComplexenResults(document: unknown): RceMonument[] {
   });
 }
 
+export type GezichtLidmaatschap = { gezichtsnummer: string; naam: string };
+export type WerelderfgoedLidmaatschap = { werelderfgoednummer: string; naam: string };
+
+// Live, per-Rijksmonument "ligt in"-check (006-werelderfgoed-ligt-in.md): de
+// RCE-brondata modelleert geen directe relatie tussen Rijksmonument en
+// Werelderfgoed/Gezicht, maar geof:sfWithin berekent 'm. Tegen alle ~62.000
+// Rijksmonumenten voor één gebied kost dat 14+s - te traag. In de ANDERE
+// richting - één Rijksmonument tegen de kleine, vaste kandidatenset (18
+// Werelderfgoed, 472 rijksbeschermde Gezichten) - is het ~0,3-0,7s, dus lazy
+// per geopend detail prima haalbaar (zie lib/server/rce-adapter.ts's
+// fetchLigtIn en hooks/useSelectedDetailEnrichment.ts, dezelfde aanpak als
+// complexleden).
+//
+// Bewust TWEE losse queries, geen combinerende UNION: een UNION van
+// dezelfde, los prima werkende geof:sfWithin-patronen gaf op dit endpoint
+// leeg terug (empirisch getest, ook met volledig losse variabelenamen per
+// tak) - een endpoint-eigenaardigheid in hoe de custom GeoSPARQL-functie
+// binnen een UNION-tak wordt geëvalueerd, geen fout in de query zelf. Twee
+// losse aanroepen, parallel via Promise.all, is dus zowel correct als snel.
+export function buildGezichtLidmaatschapQuery(monumentNumber: string) {
+  const number = escapeSparqlString(monumentNumber);
+  return `PREFIX ceo: <${CEO}>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+PREFIX geof: <http://www.opengis.net/def/function/geosparql/>
+SELECT ?gnr (SAMPLE(STR(?naamValue)) AS ?naam) WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?rm a ceo:Rijksmonument ; ceo:rijksmonumentnummer "${number}" ; ceo:heeftGeometrie/geo:asWKT ?rmWkt .
+    ?ge a ceo:Gezicht ; ceo:gezichtsnummer ?gnr ; ceo:heeftGezichtsstatus <${GEZICHT_STATUS}> ; ceo:heeftGeometrie/geo:asWKT ?geWkt .
+    OPTIONAL { ?ge ceo:heeftNaam/ceo:naam ?naamValue . }
+    FILTER(geof:sfWithin(?rmWkt, ?geWkt))
+  }
+}
+GROUP BY ?gnr`;
+}
+
+export function parseGezichtLidmaatschapResults(document: unknown): GezichtLidmaatschap[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.flatMap((binding) => {
+    const gezichtsnummer = binding.gnr?.value;
+    if (!gezichtsnummer) return [];
+    return [{ gezichtsnummer, naam: binding.naam?.value || `Gezicht ${gezichtsnummer}` }];
+  });
+}
+
+export function buildWerelderfgoedLidmaatschapQuery(monumentNumber: string) {
+  const number = escapeSparqlString(monumentNumber);
+  return `PREFIX ceo: <${CEO}>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+PREFIX geof: <http://www.opengis.net/def/function/geosparql/>
+SELECT ?wenr (SAMPLE(STR(?naamValue)) AS ?naam) WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?rm a ceo:Rijksmonument ; ceo:rijksmonumentnummer "${number}" ; ceo:heeftGeometrie/geo:asWKT ?rmWkt .
+    ?wh a ceo:Werelderfgoed ; ceo:werelderfgoednummer ?wenr ; ceo:heeftGeometrie/geo:asWKT ?whWkt .
+    OPTIONAL { ?wh ceo:heeftNaam/ceo:naam ?naamValue . }
+    FILTER(geof:sfWithin(?rmWkt, ?whWkt))
+  }
+}
+GROUP BY ?wenr`;
+}
+
+export function parseWerelderfgoedLidmaatschapResults(document: unknown): WerelderfgoedLidmaatschap[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.flatMap((binding) => {
+    const werelderfgoednummer = binding.wenr?.value;
+    if (!werelderfgoednummer) return [];
+    return [{ werelderfgoednummer, naam: binding.naam?.value || `Werelderfgoed ${werelderfgoednummer}` }];
+  });
+}
+
 // ArcheologischOnderzoeksgebied heeft geen naam- of registernummerveld zoals
 // Rijksmonument, Werelderfgoed of Gezicht, en is met 112K instanties te groot
 // voor het "hele collectie in één CONTAINS-query"-patroon van die drie. Wel

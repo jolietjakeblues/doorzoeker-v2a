@@ -16,6 +16,7 @@ import {
   buildGebeurtenisConceptQuery,
   buildFunctieConceptQuery,
   buildGebeurtenissenQuery,
+  buildGezichtLidmaatschapQuery,
   buildGroenaanlegQuery,
   buildGrondsporenDetailsQuery,
   buildGrondsporenDiscoveryQueries,
@@ -38,6 +39,7 @@ import {
   buildRijksmonumentenBrowseQuery,
   buildGezichtQuery,
   buildRceParcelsQuery,
+  buildWerelderfgoedLidmaatschapQuery,
   buildWerelderfgoedQuery,
   buildVondstlocatieDetailsQuery,
   buildVondstlocatieDiscoveryQueries,
@@ -63,6 +65,7 @@ import {
   parseDiscoveryBranchResults,
   parseFacetResults,
   parseGebeurtenissenResults,
+  parseGezichtLidmaatschapResults,
   parseGezichtResults,
   parseGroenaanlegResults,
   parseGrondsporenDiscoveryResults,
@@ -77,6 +80,7 @@ import {
   parseRceMonuments,
   parseRijksmonumentenBrowseNumbers,
   parseSparqlResults,
+  parseWerelderfgoedLidmaatschapResults,
   parseWerelderfgoedResults,
   parseVondstlocatieDiscoveryResults,
   parseVondstlocatieInhoudResults,
@@ -90,14 +94,15 @@ import {
   type ArcheologischTerrein,
   type ComplexMember,
   type DiscoveryMatch,
+  type GezichtLidmaatschap,
   type OpDezeDagCandidate,
   type RceMonument,
   type VondstenConceptField,
+  type WerelderfgoedLidmaatschap,
 } from "../rce.ts";
 import { fetchLiteratuur } from "./bibliotheek-adapter.ts";
 import { resolveConcepts } from "./referentienetwerk-adapter.ts";
 import { fetchSparql, requestSignal, timed } from "./sparql-client.ts";
-import { lookupWerelderfgoedLidmaatschap } from "../rce/werelderfgoed-relaties.ts";
 
 const REST_ENDPOINT = "https://api.linkeddata.cultureelerfgoed.nl/queries/rce/rest-api-rijksmonumenten/run";
 
@@ -115,13 +120,14 @@ type SparqlBinding = Record<string, { value?: string } | undefined>;
 // parallel search - all seven just attach extra facts to Rijksmonument
 // records already found.
 //
-// Werelderfgoed-lidmaatschap (006-werelderfgoed-ligt-in.md) is een achtste,
-// maar geen SPARQL-aanroep: het is een synchrone lookup in een statisch,
-// vooraf offline berekend bestand (lookupWerelderfgoedLidmaatschap), dus
-// hoort niet bij de Promise.all hierboven. Bewust hier in enrichMonuments
-// en niet in heritage-view-model.ts's toItem() gedaan: toItem() draait ook
-// client-side (zie bv. hooks/useVerrasMe.ts), en dat statische bestand is
-// >1MB - dat hoort niet in de clientbundel terecht te komen.
+// Werelderfgoed/Gezicht-lidmaatschap (006-werelderfgoed-ligt-in.md) is
+// bewust GEEN achtste enrichment hier: geof:sfWithin tegen alle geladen
+// monumenten tegelijk (een VALUES-batch van 25) bleek ~9,7s te kosten -
+// veruit boven het budget van deze batch-enrichments. Per rijksmonument
+// tegen de kleine, vaste kandidatenset (18 Werelderfgoed + 472 Gezicht) is
+// wel snel (~0,3-0,7s), dus dat gebeurt lazy, alleen voor het ene record dat
+// een gebruiker daadwerkelijk opent - zie fetchLigtIn hieronder en
+// hooks/useSelectedDetailEnrichment.ts, dezelfde aanpak als complexleden.
 async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): Promise<RceMonument[]> {
   const choUris = monuments.map((monument) => monument.sourceUrl).filter(Boolean);
   if (!choUris.length) return monuments;
@@ -154,8 +160,7 @@ async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): 
     const msp = mspNumbers.has(monument.monumentNumber);
     const literature = literatuurByNumber.get(monument.monumentNumber);
     const gebeurtenissen = gebeurtenissenByMonument.get(monument.sourceUrl);
-    const ligtInWerelderfgoed = lookupWerelderfgoedLidmaatschap(monument.monumentNumber);
-    if (!archaeologicalSites && !complexes && !image && !groenaanleg && !msp && !literature && !gebeurtenissen && !ligtInWerelderfgoed) return monument;
+    if (!archaeologicalSites && !complexes && !image && !groenaanleg && !msp && !literature && !gebeurtenissen) return monument;
     return {
       ...monument,
       ...(archaeologicalSites ? { archaeologicalSites } : {}),
@@ -165,7 +170,6 @@ async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): 
       ...(msp ? { msp } : {}),
       ...(literature ? { literature } : {}),
       ...(gebeurtenissen ? { gebeurtenissen } : {}),
-      ...(ligtInWerelderfgoed ? { ligtInWerelderfgoed } : {}),
     };
   });
 }
@@ -175,6 +179,24 @@ async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): 
 // gebruiker een complex daadwerkelijk opent.
 export async function fetchComplexMembers(complexUri: string, signal?: AbortSignal): Promise<ComplexMember[]> {
   return fetchSparql(buildComplexMembersQuery(complexUri), signal).then(parseComplexMembersResults);
+}
+
+// Zelfde lazy-aanpak als complexleden: pas opgehaald zodra een gebruiker een
+// Rijksmonument daadwerkelijk opent, niet vooraf voor elk zoekresultaat (zie
+// docs/vertical-slices/006-werelderfgoed-ligt-in.md - de batch-variant van
+// deze check, tegen alle 25 geladen resultaten tegelijk, bleek ~9,7s te
+// kosten; per record los is elke aanroep ~0,3-0,7s). Twee losse aanroepen in
+// plaats van één UNION-query, zie de toelichting bij de query-builders in
+// monuments.ts.
+export async function fetchLigtIn(monumentNumber: string, signal?: AbortSignal): Promise<{ gezicht: GezichtLidmaatschap[]; werelderfgoed: WerelderfgoedLidmaatschap[] }> {
+  const [gezichtDocument, werelderfgoedDocument] = await Promise.all([
+    fetchSparql(buildGezichtLidmaatschapQuery(monumentNumber), signal),
+    fetchSparql(buildWerelderfgoedLidmaatschapQuery(monumentNumber), signal),
+  ]);
+  return {
+    gezicht: parseGezichtLidmaatschapResults(gezichtDocument),
+    werelderfgoed: parseWerelderfgoedLidmaatschapResults(werelderfgoedDocument),
+  };
 }
 
 // Zelfde lazy-aanpak als complexleden, maar dan voor de archeologische

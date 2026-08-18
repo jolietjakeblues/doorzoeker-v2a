@@ -464,8 +464,6 @@ actie, alleen genoteerd).
   minimaal een totaalaantal) via server-side aggregatie - de #33-stap
   loste alleen de eerlijkheid over per-batch tellingen op, niet de
   onderliggende beperking zelf.
-- **Verticale slice 006**: ruimtelijke relatie Rijksmonument en
-  Werelderfgoed/Gezichten - plan, niet gebouwd.
 - **Verticale slice 011**: "In de buurt" (geolocatie-gebaseerd ontdekken)
   - plan, niet gebouwd.
 - **TD-04, TD-05**: gedeeltelijk opgelost op 17 augustus 2026 (gedeelde

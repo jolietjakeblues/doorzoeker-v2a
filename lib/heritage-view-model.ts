@@ -11,7 +11,6 @@ import {
   type RceMonument,
   type RceParcel,
 } from "./rce.ts";
-import type { WerelderfgoedLidmaatschap } from "./rce/werelderfgoed-relaties.ts";
 
 // Rijksmonument, Werelderfgoed, Gezicht en Complex zijn geen smaken van
 // hetzelfde ding: het zijn verschillende soorten cultuurhistorisch object.
@@ -69,7 +68,6 @@ export type Item = {
   archaeologicalSites?: ArcheologischTerrein[];
   complexes?: ComplexMembership[];
   complexMemberCount?: number;
-  ligtInWerelderfgoed?: WerelderfgoedLidmaatschap[];
   image?: MonumentImage;
   groenaanleg?: Groenaanleg;
   msp?: boolean;
@@ -460,7 +458,6 @@ export function toItem(record: RceMonument): Item {
     archaeologicalSites: record.archaeologicalSites,
     complexes: record.complexes,
     complexMemberCount: record.complexMemberCount,
-    ligtInWerelderfgoed: record.ligtInWerelderfgoed,
     image: record.image,
     groenaanleg: record.groenaanleg,
     msp: record.msp,

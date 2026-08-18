@@ -1,9 +1,10 @@
-import type { ComplexMember, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, RceMonument, VondstlocatieInhoud } from "@/lib/rce";
+import type { ComplexMember, GezichtLidmaatschap, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, RceMonument, VondstlocatieInhoud, WerelderfgoedLidmaatschap } from "@/lib/rce";
 import type { ConceptField } from "@/lib/heritage-view-model";
 
 export type SearchResponse = { results: RceMonument[]; page?: number; pageSize?: number; hasMore?: boolean };
 export type BrowseKind = "rijksmonument" | "archeologischterrein" | "onderzoeksgebied" | "vondstlocatie" | "archeologischcomplex" | "vondsten" | "grondsporen" | "werelderfgoed" | "gezicht" | "complex";
 type ComplexMembersResponse = { members: ComplexMember[] };
+type LigtInResponse = { gezicht: GezichtLidmaatschap[]; werelderfgoed: WerelderfgoedLidmaatschap[] };
 type OnderzoeksgebiedVerrijkingResponse = OnderzoeksgebiedAggregaten & { complexen: OnderzoeksgebiedComplex[]; vondstlocaties: OnderzoeksgebiedVondstlocatie[] };
 type OpDezeDagResponse = { monument: RceMonument | null };
 type VerrasMeResponse = { monument: RceMonument | null };
@@ -109,6 +110,17 @@ export async function fetchComplexMembers(complexUri: string, signal?: AbortSign
   if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
   const document = await response.json() as ComplexMembersResponse;
   return document.members;
+}
+
+// Zelfde lazy-aanpak als complexleden: pas opgehaald zodra een gebruiker een
+// Rijksmonument daadwerkelijk opent - zie docs/vertical-slices/006-werelderfgoed-ligt-in.md.
+export async function fetchLigtIn(monumentNumber: string, signal?: AbortSignal) {
+  const response = await fetch(`/api/rce/ligt-in?rijksmonumentnummer=${encodeURIComponent(monumentNumber)}`, {
+    headers: { Accept: "application/json" },
+    signal,
+  });
+  if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
+  return await response.json() as LigtInResponse;
 }
 
 // Zelfde lazy-aanpak als complexleden: pas opgehaald zodra een gebruiker een
