@@ -354,9 +354,15 @@ export function HeritageMap({
         const { lat, lng, zoom } = initialViewportRef.current;
         leafletMap.setView([lat, lng], zoom);
       } else if (combinedBounds?.isValid()) {
+        // De gewone resultatenkaart houdt maxZoom laag: die toont soms
+        // honderden verspreide markers, en mag bij een klein clustertje niet
+        // tot straatniveau inzoomen. Een compacte kaart toont altijd een
+        // klein, doelbewust setje items (zie hierboven) - vaak juist kleine
+        // polygonen (bv. een archeologisch onderzoeksgebied naast een
+        // rijksmonument) die bij maxZoom 14 onzichtbaar blijven.
         leafletMap.fitBounds(combinedBounds, {
           padding: [45, 45],
-          maxZoom: 14,
+          maxZoom: compact ? 19 : 14,
         });
       }
       renderMarkers();
