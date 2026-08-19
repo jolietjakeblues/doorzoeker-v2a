@@ -479,7 +479,10 @@ actie, alleen genoteerd).
   rijksmonument 14948 in Elst dat boven een Romeins tempelcomplex staat) -
   knop + waarschuwing + doorklikbare lijst, dezelfde dag uitgebreid met een
   kaart die het Rijksmonument en de gevonden Onderzoeksgebieden samen als
-  polygonen toont. Live geverifieerd, zie
+  polygonen toont. Een layoutbug direct na oplevering (de kaart rende als
+  een smalle verticale streep - stond per ongeluk in een dt/dd-veldrij die
+  voor korte tekstwaarden is ontworpen) is dezelfde dag ook al gevonden en
+  opgelost. Live geverifieerd, zie
   `docs/vertical-slices/017-archeologische-context-onderzoeksgebied.md`.
 - **TD-04, TD-05**: gedeeltelijk opgelost op 17 augustus 2026 (gedeelde
   `runDiscoveryBranches`-helper + `CONCEPT_FIELDS`-bron van waarheid, met

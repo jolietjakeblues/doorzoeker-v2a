@@ -270,6 +270,21 @@ tekstlijst. Volledige checksuite (typecheck/lint/229 unit tests/59 e2e-
 tests, inclusief twee bijgewerkte/nieuwe e2e-assertions voor de kaart)
 groen.
 
+**Tweede bug gevonden, direct na oplevering: de kaart rendert als een
+smalle verticale streep.** Live gemeld door de eigenaar met een
+screenshot. Oorzaak: de kaart+lijst stonden binnen een `<dt>/<dd>`-veldrij
+van de bestaande definitielijst (`.detail-copy dl div`, CSS
+`grid-template-columns: 1fr 1.25fr`) - een layout die prima werkt voor
+korte tekstwaarden, maar de kaart perste in de 1.25fr-waardekolom in
+plaats van de volle dialoogbreedte te geven. Opgelost door de kaart+lijst
+te verplaatsen naar een eigen `.map-object-list`-blok ná de `</dl>` -
+hetzelfde patroon dat "Literatuur" en "Bouwgeschiedenis" al gebruiken voor
+content die niet in een dt/dd-rij past. De knop/waarschuwing/laadstatus
+blijven een gewone dt/dd-rij (die tekst past daar prima); alleen het
+kaart+lijst-resultaat verhuisde. Live herverifieerd: beide kaarten
+(bovenaan en de nieuwe) renderen nu op gelijke breedte (~425×220px),
+polygonen en aria-labels ongewijzigd correct.
+
 ## Acceptatiecriteria
 
 1. Een knop ("Zoek archeologische context"), alleen zichtbaar bij
