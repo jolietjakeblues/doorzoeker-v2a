@@ -137,6 +137,7 @@ export function HeritageMap({
   useEffect(() => {
     let cancelled = false;
     let map: Leaflet.Map | undefined;
+    let resizeObserver: ResizeObserver | undefined;
     // Een nieuwe kaartopbouw begint na deze effect-run. De microtask houdt de
     // laadstatus gelijk aan dat moment, zonder tijdens het effect zelf een
     // tweede render af te dwingen.
@@ -153,6 +154,18 @@ export function HeritageMap({
         scrollWheelZoom: !compact,
       }).setView([52.09, 5.08], 11);
       map = leafletMap;
+      // Deze kaart kan pas lang na de eerste render mounten (bv. de
+      // archeologische-contextkaart, die pas verschijnt zodra een async
+      // zoekopdracht klaar is) - op dat moment kan het omliggende
+      // dialoogpaneel nog aan het herschikken zijn. Leaflet meet zijn
+      // containergrootte precies één keer bij aanmaak (`getSize()`, gebruikt
+      // door fitBounds hieronder) en onthoudt die tot een expliciete
+      // invalidateSize() - zonder deze observer bleef de kaart op zo'n
+      // moment permanent op een te kleine, foutief gemeten grootte staan
+      // (live gevonden op productie, 19-08-2026: 46×220px in plaats van de
+      // volle 425×220px).
+      resizeObserver = new ResizeObserver(() => leafletMap.invalidateSize());
+      resizeObserver.observe(element.current);
       L.tileLayer(
         "https://service.pdok.nl/kadaster/brt-achtergrondkaart/wmts/v2_0?service=WMTS&request=GetTile&version=1.0.0&layer=grijs&style=default&tilematrixset=EPSG:3857&format=image/png&tilematrix={z}&tilerow={y}&tilecol={x}",
         {
@@ -363,6 +376,7 @@ export function HeritageMap({
 
     return () => {
       cancelled = true;
+      resizeObserver?.disconnect();
       map?.remove();
     };
   }, [compact, items]);

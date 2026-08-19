@@ -479,8 +479,22 @@ actie, alleen genoteerd).
   rijksmonument 14948 in Elst dat boven een Romeins tempelcomplex staat) -
   knop + waarschuwing + doorklikbare lijst, dezelfde dag uitgebreid met een
   kaart die het Rijksmonument en de gevonden Onderzoeksgebieden samen als
-  polygonen toont. Live geverifieerd, zie
+  polygonen toont. Twee layout-/renderbugs direct ná oplevering (kaart als
+  smalle verticale streep; daarna een Leaflet-race die de kaart soms alsnog
+  te klein liet renderen op productie) zijn dezelfde dag ook gevonden en
+  opgelost. Live geverifieerd, zie
   `docs/vertical-slices/017-archeologische-context-onderzoeksgebied.md`.
+- ~~**Zes archeologie-zoekcategorieën cachen "0 resultaten" na een volledig
+  gefaalde RCE-tak.**~~ **Opgelost (19 augustus 2026), live gevonden via
+  een doorklik op Vondstlocatie "Oude Hoeven" die bleef 0 resultaten
+  tonen ondanks een correct CHO-nummer.** Restgat in de fix uit de
+  securityreview van 17-08-2026 (punt 4): de zes bijvangst-categorieën
+  gaven hun `partialFailure`-tracker wel door aan `optionalSearch` op hun
+  aanroepplek, maar niet aan hun eigen interne `runDiscoveryBranches`-
+  aanroep, dus een categorie die op *alle* brontakken faalde (RCE 503)
+  werd stilletjes en 5 minuten lang als geldig leeg resultaat gecachet.
+  Zie `docs/security-assessment-2026-08-17.md` (update 19-08) en
+  [PR #90](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/90).
 - **TD-04, TD-05**: gedeeltelijk opgelost op 17 augustus 2026 (gedeelde
   `runDiscoveryBranches`-helper + `CONCEPT_FIELDS`-bron van waarheid, met
   twee echte bugs onderweg gevonden en gefixt) - zie item 9 hierboven en

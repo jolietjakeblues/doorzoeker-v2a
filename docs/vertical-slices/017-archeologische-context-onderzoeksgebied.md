@@ -270,6 +270,45 @@ tekstlijst. Volledige checksuite (typecheck/lint/229 unit tests/59 e2e-
 tests, inclusief twee bijgewerkte/nieuwe e2e-assertions voor de kaart)
 groen.
 
+**Tweede bug gevonden, direct na oplevering: de kaart rendert als een
+smalle verticale streep.** Live gemeld door de eigenaar met een
+screenshot. Oorzaak: de kaart+lijst stonden binnen een `<dt>/<dd>`-veldrij
+van de bestaande definitielijst (`.detail-copy dl div`, CSS
+`grid-template-columns: 1fr 1.25fr`) - een layout die prima werkt voor
+korte tekstwaarden, maar de kaart perste in de 1.25fr-waardekolom in
+plaats van de volle dialoogbreedte te geven. Opgelost door de kaart+lijst
+te verplaatsen naar een eigen `.map-object-list`-blok ná de `</dl>` -
+hetzelfde patroon dat "Literatuur" en "Bouwgeschiedenis" al gebruiken voor
+content die niet in een dt/dd-rij past. De knop/waarschuwing/laadstatus
+blijven een gewone dt/dd-rij (die tekst past daar prima); alleen het
+kaart+lijst-resultaat verhuisde.
+
+**Derde bug gevonden, ná de layoutfix: de kaart bleef op productie soms
+alsnog een klein, verkeerd geproportioneerd streepje (46×220px in plaats
+van 425×220px), ook al was de wrapper zelf al volle breedte.** Opnieuw
+live gemeld door de eigenaar, dit keer op `doorzoekerfgoed.nl` zelf.
+Oorzaak: Leaflet meet de grootte van zijn container precies één keer bij
+aanmaak (`getSize()`, gebruikt door `fitBounds`) en onthoudt die tot een
+expliciete `invalidateSize()`-aanroep. De bovenste kaart mount synchroon
+zodra de dialoog opent (layout allang stabiel); deze kaart mount pas ná
+een geslaagde async zoekopdracht, op een moment dat het dialoogpaneel
+door de net toegevoegde content nog kan herschikken - een klassieke
+Leaflet-race die op productie (echte netwerklatency) vaker toesloeg dan
+lokaal (vaak al warm gecachet). Opgelost in `app/HeritageMap.tsx` met een
+`ResizeObserver` op de kaartcontainer die `invalidateSize()` aanroept bij
+elke groottewijziging - dekt deze race en elke toekomstige variant ervan,
+in plaats van een gok naar de precieze timing. Live herverifieerd onder
+realistische, koude netwerklatency (~32s, cache leeggemaakt): beide
+kaarten renderen correct op volle breedte.
+
+*Documentatienotitie:* de layoutfix en de invalidateSize-fix zijn
+oorspronkelijk vastgelegd in twee losse commits die ná het mergen van
+PR #89 per ongeluk nog naar diezelfde (inmiddels gesloten) branch zijn
+gepusht - die docs-commits kwamen daardoor nooit in `main` terecht, alleen
+de bijbehorende codefixes wél (apart, eerder gepusht, wél vóór het
+mergen). Deze sectie is achteraf op `main` gereconstrueerd om dat gat te
+dichten.
+
 ## Acceptatiecriteria
 
 1. Een knop ("Zoek archeologische context"), alleen zichtbaar bij
