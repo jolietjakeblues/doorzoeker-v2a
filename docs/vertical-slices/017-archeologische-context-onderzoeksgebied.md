@@ -2,14 +2,13 @@
 
 ## Status
 
-Plan compleet, nog niet gebouwd. Uitgeschreven na een verkenning met de
-eigenaar (19 augustus 2026), aanleiding: een concreet voorbeeld uit de
-RCE's eigen
+Gebouwd en live geverifieerd (19 augustus 2026), na expliciete opdracht van
+de eigenaar. Uitgeschreven na een verkenning naar aanleiding van een
+concreet voorbeeld uit de RCE's eigen
 ["Zoeken door de Knowledge Graph"-story](https://linkeddata.cultureelerfgoed.nl/RCE-Knowledge-Graph/-/stories/Zoeken-door-de-Knowledge-Graph).
-Alle zes eerder openstaande vragen zijn dezelfde dag met de eigenaar
-doorgesproken en beantwoord, zie "Beslissingen" hieronder. Nadrukkelijk
-**niet** bouwen zonder een expliciete opdracht daartoe - de eigenaar vroeg
-eerst alleen om een plan.
+Alle zes openstaande vragen zijn dezelfde dag met de eigenaar doorgesproken
+en beantwoord, zie "Beslissingen" hieronder; het "Gebouwd"-blok daaronder
+beschrijft wat er tijdens de bouw nog bijkwam.
 
 ## Aanleiding
 
@@ -166,10 +165,18 @@ Alle zes eerder openstaande vragen zijn dezelfde dag beantwoord:
 3. **Bbox-voorfilter versnellen via woonplaats/gemeente: niet nu
    onderzoeken.** Pas de moeite waard als beslissing 4 laat zien dat
    15s+ typisch is voor veel locaties, niet alleen dit ene Elst-geval.
-4. **Typische duur voor een "gemiddeld" Rijksmonument: meten tijdens de
-   bouw**, met 5-10 rijksmonumenten uit verschillende provincies/
-   dichtheden, vóór de uiteindelijke waarschuwingstekst en
-   timeout-instellingen vastliggen. Geen aanname vooraf.
+4. **Typische duur voor een "gemiddeld" Rijksmonument: gemeten tijdens de
+   bouw.** Rijksmonument 14948 (Elst) koud (eerste keer, geen enkele cache
+   warm): **~21,5 seconden** end-to-end - grotendeels de bbox-voorfilterstap
+   (zelfde orde van grootte als de eerder gemeten 15,4s). Een tweede,
+   identieke aanvraag kort daarna: **~1,2 seconden** - niet via
+   Doorzoekers eigen `caches.default` (die was op dat moment nog niet
+   gevuld door een geslaagde aanroep), maar vermoedelijk doordat de RCE-
+   SPARQL-dienst zelf de identieke bbox-query al had gecachet. Bevestigt
+   de ~20s-waarschuwingstekst uit beslissing 1 voor een koude aanvraag;
+   beslissing 3 (bbox-optimalisatie) blijft daarmee terecht ongebouwd voor
+   nu - één meting is geen trend, maar geeft geen aanleiding om er nu al
+   in te investeren.
 5. **Knop alleen bij gebouwde Rijksmonumenten, niet bij archeologische.**
    Een archeologisch Rijksmonument heeft al zijn eigen terrein-relatie
    (slice 002) - nog een "ligt dit ook op archeologie"-knop zou daar
@@ -180,6 +187,25 @@ Alle zes eerder openstaande vragen zijn dezelfde dag beantwoord:
    sub-seconde van de andere lazy-routes - een aantrekkelijkere
    misbruikvector, in combinatie met de caching uit beslissing 2 (herhaalde
    aanvragen voor hetzelfde monument raken RCE dan sowieso niet opnieuw).
+
+## Gebouwd - wat er tijdens de bouw nog bijkwam
+
+- **Nieuwe bug gevonden en opgelost: 414 Request-URI Too Large op de
+  exacte-overlap-query.** Live tegengekomen bij Rijksmonument 14948 zelf.
+  De exacte-overlap-query embedt het volledige Rijksmonument-WKT (de
+  kerk-plattegrond) plús alle bbox-kandidaten in een `VALUES`-clausule -
+  samen soms te lang voor een GET-URL. Exact dezelfde les als het
+  oorspronkelijke, inmiddels verwijderde Werelderfgoed-offlinescript.
+  Opgelost door `lib/server/sparql-client.ts`'s `fetchSparql` een
+  optionele `method: "POST"` te geven (bestaande GET-aanroepers
+  ongewijzigd) en alleen deze ene query via POST te sturen.
+- **`readCache`/`writeCache`/`cacheStore` uitgetrokken naar
+  `lib/server/edge-cache.ts`**, zodat deze route dezelfde `caches.default`-
+  laag hergebruikt in plaats van dupliceert (was voorheen lokaal in
+  `app/api/rce/search/route.ts`).
+- **`fetchSparql` kreeg ook een optionele `timeoutMs`**, want de bestaande
+  standaardtimeout (20s) lag te dicht op de gemeten 15,4s van de
+  bbox-stap. De bbox-query gebruikt nu 40s, de exacte-overlap-query 30s.
 
 ## Acceptatiecriteria
 
@@ -202,6 +228,8 @@ Alle zes eerder openstaande vragen zijn dezelfde dag beantwoord:
 
 ## Klaar wanneer
 
-Alle zes beslissingen liggen vast (zie "Beslissingen" hierboven). Het
-plan is nu compleet en bouwklaar, maar wordt **niet gebouwd zonder een
-expliciete opdracht daartoe** van de eigenaar.
+Gehaald: alle zes beslissingen liggen vast, de knop is gebouwd en live
+geverifieerd tegen rijksmonument 14948 (Elst) - beide gevonden
+Onderzoeksgebieden (waaronder het Gallo-Romeinse tempelcomplex) tonen
+correct en zijn doorklikbaar, met een gemeten koude duur van ~21,5
+seconden die de waarschuwingstekst bevestigt.

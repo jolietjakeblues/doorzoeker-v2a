@@ -1,6 +1,10 @@
 import {
+  ARCHEOLOGISCHE_CONTEXT_BBOX_PADDING_DEGREES,
+  boundingBoxWktLiteral,
   buildActorConceptQuery,
   buildArchaeologyBrowseQuery,
+  buildArcheologischeContextExacteQuery,
+  buildArcheologischeContextKandidatenQuery,
   buildArcheologischeWaarderingConceptQuery,
   buildArcheologischOnderzoekDetailsQuery,
   buildArcheologischOnderzoekDiscoveryQueries,
@@ -37,6 +41,7 @@ import {
   buildRceDiscoveryQueries,
   buildRceFacetsQuery,
   buildRijksmonumentenBrowseQuery,
+  buildRijksmonumentGeometrieQuery,
   buildGezichtQuery,
   buildRceParcelsQuery,
   buildWerelderfgoedLidmaatschapQuery,
@@ -50,6 +55,8 @@ import {
   buildVondstenDiscoveryQueries,
   mergeDiscoveryMatches,
   mergeVondstlocatieInhoud,
+  parseArcheologischeContextKandidaten,
+  parseArcheologischeContextResults,
   parseArcheologischOnderzoekDiscoveryResults,
   parseArcheologischOnderzoekResults,
   parseArchaeologyBrowseNumbers,
@@ -79,6 +86,7 @@ import {
   parseParcelResults,
   parseRceMonuments,
   parseRijksmonumentenBrowseNumbers,
+  parseRijksmonumentGeometrieResult,
   parseSparqlResults,
   parseWerelderfgoedLidmaatschapResults,
   parseWerelderfgoedResults,
@@ -91,6 +99,7 @@ import {
   pickOpDezeDagCandidate,
   pickRandomCandidate,
   VONDSTLOCATIE_INHOUD_KLASSEN,
+  type ArcheologischeContext,
   type ArcheologischTerrein,
   type ComplexMember,
   type DiscoveryMatch,
@@ -197,6 +206,39 @@ export async function fetchLigtIn(monumentNumber: string, signal?: AbortSignal):
     gezicht: parseGezichtLidmaatschapResults(gezichtDocument),
     werelderfgoed: parseWerelderfgoedLidmaatschapResults(werelderfgoedDocument),
   };
+}
+
+// On-demand "ligt dit gebouwde Rijksmonument op archeologie"-check
+// (017-archeologische-context-onderzoeksgebied.md). In tegenstelling tot
+// fetchLigtIn hierboven is dit BEWUST niet lazy-bij-openen: de bbox-stap
+// alleen al kost ~15,4s (112.184 ArcheologischOnderzoeksgebied-instanties,
+// geen kleine vaste kandidatenset zoals bij Werelderfgoed/Gezicht), dus dit
+// wordt alleen aangeroepen als een gebruiker er expliciet op klikt (zie de
+// knop-en-waarschuwing-UX in het plan). Drie stappen, elk een eigen
+// SPARQL-round-trip:
+//   1. het Rijksmonument-WKT ophalen (nodig voor zowel de bbox als de
+//      exacte overlap-toets);
+//   2. een goedkope bbox-voorfilter (langere timeout dan de standaard 20s -
+//      gemeten 15,4s, dus 40s marge);
+//   3. de dure exacte geof:sfOverlaps-toets, maar dan alleen op de kleine,
+//      overgebleven kandidatenset uit stap 2 (~0,3-0,8s gemeten).
+export async function fetchArcheologischeContext(monumentNumber: string, signal?: AbortSignal): Promise<ArcheologischeContext[]> {
+  const rmGeometrieDocument = await fetchSparql(buildRijksmonumentGeometrieQuery(monumentNumber), signal);
+  const rmWkt = parseRijksmonumentGeometrieResult(rmGeometrieDocument);
+  if (!rmWkt) return [];
+
+  const bboxWkt = boundingBoxWktLiteral(rmWkt, ARCHEOLOGISCHE_CONTEXT_BBOX_PADDING_DEGREES);
+  if (!bboxWkt) return [];
+
+  const kandidatenDocument = await fetchSparql(buildArcheologischeContextKandidatenQuery(bboxWkt), signal, undefined, 40_000);
+  const kandidaten = parseArcheologischeContextKandidaten(kandidatenDocument);
+  if (kandidaten.length === 0) return [];
+
+  // POST: het Rijksmonument-WKT + de kandidaten-VALUES kunnen samen de
+  // GET-URL-lengtelimiet raken (414 Request-URI Too Large, live geraakt
+  // tijdens het bouwen van deze slice - zie sparql-client.ts).
+  const exacteDocument = await fetchSparql(buildArcheologischeContextExacteQuery(rmWkt, kandidaten), signal, undefined, 30_000, "POST");
+  return parseArcheologischeContextResults(exacteDocument);
 }
 
 // Zelfde lazy-aanpak als complexleden, maar dan voor de archeologische

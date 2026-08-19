@@ -825,6 +825,51 @@ test("'Onderdeel van Werelderfgoed' is doorklikbaar (006-werelderfgoed-ligt-in)"
   await expect(page).toHaveURL(/q=Molens\+bij\+Kinderdijk-Elshout/);
 });
 
+test("'Archeologische context'-knop toont een waarschuwing, laadstatus en doorklikbaar resultaat (017-archeologische-context-onderzoeksgebied)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: { page: 1, hasMore: false, results: [records[0]] },
+  }));
+  await page.unroute("**/api/rce/archeologische-context**");
+  await page.route("**/api/rce/archeologische-context**", (route) => route.fulfill({
+    json: {
+      gebieden: [{
+        onderzoeksgebiedUri: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2051204",
+        choNummer: "2051204",
+        omschrijving: "Gallo-Romeins Tempelcomplex 1e en 2e eeuw",
+      }],
+    },
+  }));
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("architect");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+  const dialog = page.getByRole("dialog");
+  // Alleen zichtbaar bij een gebouwd Rijksmonument (017-Beslissingen nr. 5),
+  // met de waarschuwing vóórdat er geklikt wordt.
+  await expect(dialog.getByText("kan tot ~20 seconden duren")).toBeVisible();
+  await dialog.getByRole("button", { name: "Zoek archeologische context" }).click();
+  const resultaat = dialog.getByRole("button", { name: "Onderzoeksgebied 2051204" });
+  await expect(resultaat).toBeVisible();
+  await expect(dialog.getByText("Gallo-Romeins Tempelcomplex")).toBeVisible();
+  await resultaat.click();
+  await expect(page).toHaveURL(/q=2051204/);
+});
+
+test("'Archeologische context'-knop toont geen resultaten-melding als er niets overlapt (017-archeologische-context-onderzoeksgebied)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: { page: 1, hasMore: false, results: [records[0]] },
+  }));
+  await page.unroute("**/api/rce/archeologische-context**");
+  await page.route("**/api/rce/archeologische-context**", (route) => route.fulfill({ json: { gebieden: [] } }));
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("architect");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Zoek archeologische context" }).click();
+  await expect(dialog.getByText("Geen archeologische context gevonden")).toBeVisible();
+});
+
 test("stijl & cultuur, bouwkundige staat, type en overige functies worden getoond", async ({ page }) => {
   const kantoorUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/kantoor";
   const stijlUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/478ca85b-ecb3-4a38-8b97-ba78deeba3dd";

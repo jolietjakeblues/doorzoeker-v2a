@@ -6,6 +6,7 @@ import { capMapSize, pruneExpiredEntries } from "../../../../lib/server/expiring
 import { CACHE_POLICY, NO_STORE, sharedCacheControl } from "../../../../lib/server/http-cache.ts";
 import { createRateLimiter, rateLimitedResponse } from "../../../../lib/server/route-rate-limit.ts";
 import { withRceErrorHandling } from "../../../../lib/server/route-error-handling.ts";
+import { readCache, writeCache } from "../../../../lib/server/edge-cache.ts";
 
 function searchByConceptField(veld: ConceptField, conceptUri: string, signal?: AbortSignal) {
   if (veld === "functie") return searchByFunctieConcept(conceptUri, signal);
@@ -30,39 +31,6 @@ const rateLimiter = createRateLimiter(30);
 // en blijft leidend; deze Map bespaart alleen een edge-cache-lookup binnen
 // dezelfde isolate.
 const responseCache = new Map<string, { body: string; expiresAt: number }>();
-
-function cacheStore(): Cache | undefined {
-  try {
-    return typeof caches !== "undefined" && "default" in caches ? (caches as CacheStorage & { default: Cache }).default : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-async function readCache(key: Request) {
-  try {
-    const cached = await cacheStore()?.match(key);
-    if (!cached) return undefined;
-    // Responses uit Cloudflare Cache API hebben immutable headers. Vinext
-    // voegt na de route nog eigen headers toe; geef het daarom een nieuwe
-    // Response met een vrij te wijzigen Headers-object.
-    return new Response(cached.body, {
-      status: cached.status,
-      statusText: cached.statusText,
-      headers: new Headers(cached.headers),
-    });
-  } catch {
-    return undefined;
-  }
-}
-
-async function writeCache(key: Request, response: Response) {
-  try {
-    await cacheStore()?.put(key, response);
-  } catch {
-    // Cache availability must never block live RCE searches.
-  }
-}
 
 export async function GET(request: Request) {
   return withRceErrorHandling({ event: "rce.search.error" }, async (startedAt) => {

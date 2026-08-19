@@ -28,6 +28,97 @@ SELECT DISTINCT ?rm ?terrein ?archisNummer ?waarderingLabel ?waarderingConcept W
 }`;
 }
 
+const GEO = "http://www.opengis.net/ont/geosparql#";
+const GEOF = "http://www.opengis.net/def/function/geosparql/";
+// ~1,1km bij deze breedtegraad - ruim genoeg voor een lokaal opgravings-/
+// onderzoeksgebied rond een gebouw, maar mist in theorie een zeldzaam,
+// regionaal onderzoeksgebied dat zelf groter is dan deze marge (017-
+// archeologische-context-onderzoeksgebied.md, bekende beperking: de eerste
+// schijf optimaliseert niet verder dan dit).
+export const ARCHEOLOGISCHE_CONTEXT_BBOX_PADDING_DEGREES = 0.01;
+
+export type ArcheologischeContext = { onderzoeksgebiedUri: string; choNummer: string; omschrijving?: string };
+
+// Live, on-demand "ligt dit gebouwde Rijksmonument op archeologie"-check
+// (017-archeologische-context-onderzoeksgebied.md). Geen gemodelleerde
+// relatie in de brondata (net als bij 006-werelderfgoed-ligt-in.md), wel
+// geometrisch af te leiden - maar ArcheologischOnderzoeksgebied telt 112.184
+// instanties met geometrie, te veel om als vaste kandidatenset per
+// Rijksmonument te toetsen (dat werkte voor Werelderfgoed/Gezicht, 18/472
+// instanties). Daarom hier wél een bounding-box-voorfilter nodig, net als
+// het oorspronkelijke (later verworpen) offline ontwerp van slice 006: eerst
+// een goedkope bbox-toets tegen alle 112.184 instanties (~15s, gemeten),
+// dan een dure exacte geof:sfOverlaps-toets alleen op die kleine
+// kandidatenset (~0,3-0,8s, gemeten). Vandaar de knop-en-wachttijd-UX in
+// plaats van een lazy aanroep zoals bij Werelderfgoed/Gezicht.
+export function buildRijksmonumentGeometrieQuery(monumentNumber: string) {
+  const number = escapeSparqlString(monumentNumber);
+  return `PREFIX ceo: <${CEO}>
+PREFIX geo: <${GEO}>
+SELECT ?wkt WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?rm a ceo:Rijksmonument ; ceo:rijksmonumentnummer "${number}" ; ceo:heeftGeometrie/geo:asWKT ?wkt .
+  }
+}`;
+}
+
+export function parseRijksmonumentGeometrieResult(document: unknown): string | undefined {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  return bindings?.[0]?.wkt?.value;
+}
+
+// Fase 1: goedkope bbox-voorfilter. Alleen de URI - geometrie en omschrijving
+// worden pas in fase 2 opgehaald, voor de kleine, overgebleven kandidatenset.
+export function buildArcheologischeContextKandidatenQuery(bboxWkt: string) {
+  return `PREFIX ceo: <${CEO}>
+PREFIX geo: <${GEO}>
+PREFIX geof: <${GEOF}>
+SELECT ?og WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    ?og a ceo:ArcheologischOnderzoeksgebied ; ceo:heeftGeometrie/geo:asWKT ?ogWkt .
+    FILTER(geof:sfWithin(?ogWkt, "${bboxWkt}"^^geo:wktLiteral))
+  }
+}`;
+}
+
+export function parseArcheologischeContextKandidaten(document: unknown): string[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.flatMap((binding) => (binding.og?.value ? [binding.og.value] : []));
+}
+
+// Fase 2: exacte overlap-toets, alleen op de kandidaten uit fase 1. Het
+// Rijksmonument-WKT wordt direct als literal ingebed (net als bij de
+// Werelderfgoed-query's voor 006) - een gebouwvoetafdruk is klein genoeg om
+// dat veilig te doen, in tegenstelling tot de megabytes-grote
+// Werelderfgoed-polygonen die daar destijds wél problemen gaven.
+export function buildArcheologischeContextExacteQuery(rmWkt: string, kandidaatUris: string[]) {
+  const values = kandidaatUris.map((uri) => `<${uri}>`).join(" ");
+  return `PREFIX ceo: <${CEO}>
+PREFIX geo: <${GEO}>
+PREFIX geof: <${GEOF}>
+SELECT ?og (SAMPLE(STR(?choiValue)) AS ?choi) (SAMPLE(STR(?omschrijvingValue)) AS ?omschrijving) WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    VALUES ?og { ${values} }
+    ?og ceo:cultuurhistorischObjectnummer ?choiValue ; ceo:heeftGeometrie/geo:asWKT ?ogWkt .
+    OPTIONAL { ?og ceo:heeftOmschrijving/ceo:omschrijving ?omschrijvingValue . }
+    FILTER(geof:sfOverlaps("${rmWkt}"^^geo:wktLiteral, ?ogWkt))
+  }
+}
+GROUP BY ?og`;
+}
+
+export function parseArcheologischeContextResults(document: unknown): ArcheologischeContext[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.flatMap((binding) => {
+    const onderzoeksgebiedUri = binding.og?.value;
+    const choNummer = binding.choi?.value;
+    if (!onderzoeksgebiedUri || !choNummer) return [];
+    return [{ onderzoeksgebiedUri, choNummer, omschrijving: binding.omschrijving?.value }];
+  });
+}
+
 export type ArcheologischTerrein = {
   archisMonumentnummer?: string;
   waardering?: string;

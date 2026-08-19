@@ -1,11 +1,13 @@
 import type { RefObject } from "react";
 import type { useSelectedDetailEnrichment } from "@/hooks/useSelectedDetailEnrichment";
+import type { ArcheologischeContextState, useArcheologischeContext } from "@/hooks/useArcheologischeContext";
 import type { useSearchState } from "@/hooks/useSearchState";
 import {
   linkedConcepts,
   MONUMENT_REGISTER_BASE_URL,
   primaryIdentifier,
   statusLabel,
+  truncateAtWordBoundary,
   typeBadge,
   type Item,
 } from "@/lib/heritage-view-model";
@@ -19,6 +21,7 @@ type HeritageDetailDialogProps = {
   selected: Item;
   dialogRef: RefObject<HTMLElement | null>;
   enrichment: DetailEnrichment;
+  archeologischeContext: ReturnType<typeof useArcheologischeContext>;
   onClose: () => void;
   onSearch: ReturnType<typeof useSearchState>["executeSearch"];
   onConceptSearch: ReturnType<typeof useSearchState>["executeConceptSearch"];
@@ -28,12 +31,18 @@ export function HeritageDetailDialog({
   selected,
   dialogRef: detailDialogRef,
   enrichment,
+  archeologischeContext,
   onClose,
   onSearch,
   onConceptSearch,
 }: HeritageDetailDialogProps) {
   const { complexMembers, ligtIn } = enrichment;
   const ligtInLoaded = ligtIn && ligtIn.monumentNumber === selected.monumentNumber ? ligtIn : undefined;
+  const archeologischeContextState: ArcheologischeContextState =
+    archeologischeContext.state.status !== "idle" &&
+    archeologischeContext.state.monumentNumber !== selected.monumentNumber
+      ? { status: "idle" }
+      : archeologischeContext.state;
   const allLinkedConcepts = linkedConcepts(selected);
   const selectedIdentifier = primaryIdentifier(selected);
   const selectedIdentifierRepeatsTitle = Boolean(
@@ -276,6 +285,78 @@ export function HeritageDetailDialog({
                       </button>
                     </span>
                   ))}
+                </dd>
+              </div>
+            ) : null}
+            {selected.objectType === "Rijksmonument" &&
+            selected.monumentAard === "Gebouwd" ? (
+              <div>
+                <dt>Archeologische context</dt>
+                <dd>
+                  {archeologischeContextState.status === "idle" ? (
+                    <>
+                      <button
+                        type="button"
+                        className="concept-link"
+                        onClick={archeologischeContext.zoek}
+                      >
+                        Zoek archeologische context
+                      </button>
+                      <br />
+                      <small>
+                        Dit doorzoekt 112.000+ archeologische
+                        onderzoeksgebieden en kan tot ~20 seconden duren.
+                      </small>
+                    </>
+                  ) : null}
+                  {archeologischeContextState.status === "loading" ? (
+                    <small>
+                      Doorzoekt 112.000+ archeologische
+                      onderzoeksgebieden... Dit kan tot ~20 seconden duren.
+                    </small>
+                  ) : null}
+                  {archeologischeContextState.status === "error" ? (
+                    <>
+                      <small>
+                        Archeologische context kon niet worden geladen.
+                      </small>
+                      <br />
+                      <button
+                        type="button"
+                        className="concept-link"
+                        onClick={archeologischeContext.zoek}
+                      >
+                        Probeer opnieuw
+                      </button>
+                    </>
+                  ) : null}
+                  {archeologischeContextState.status === "done" &&
+                  archeologischeContextState.gebieden.length ? (
+                    archeologischeContextState.gebieden.map((gebied) => (
+                      <span key={gebied.onderzoeksgebiedUri}>
+                        <button
+                          type="button"
+                          className="concept-link"
+                          onClick={() =>
+                            void onSearch(gebied.choNummer)
+                          }
+                        >
+                          {`Onderzoeksgebied ${gebied.choNummer}`}
+                        </button>
+                        {gebied.omschrijving ? (
+                          <>
+                            {" — "}
+                            {truncateAtWordBoundary(gebied.omschrijving, 150)}
+                          </>
+                        ) : null}
+                      </span>
+                    ))
+                  ) : archeologischeContextState.status === "done" ? (
+                    <small>
+                      Geen archeologische context gevonden in de directe
+                      omgeving.
+                    </small>
+                  ) : null}
                 </dd>
               </div>
             ) : null}
