@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeWaarderingConceptQuery, buildBouwkundigeStaatConceptQuery, buildStijlConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildChtTermSuggestQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtLidmaatschapQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildGrondspoorTypeConceptQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMonumentTypeConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceChoNumberQuery, buildRceDetailsQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceParcelsQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVerwervingConceptQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedLidmaatschapQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, mergeVondstlocatieInhoud, parseAbrTermSuggestResults, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtLidmaatschapResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedLidmaatschapResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS, VONDSTLOCATIE_INHOUD_KLASSEN, wktToLatLng } from "../lib/rce.ts";
+import { boundingBoxWktLiteral, buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeContextExacteQuery, buildArcheologischeContextKandidatenQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildBouwkundigeStaatConceptQuery, buildChtTermSuggestQuery, buildRijksmonumentGeometrieQuery, buildStijlConceptQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtLidmaatschapQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildGrondspoorTypeConceptQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMonumentTypeConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceChoNumberQuery, buildRceDetailsQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceParcelsQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVerwervingConceptQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedLidmaatschapQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, mergeVondstlocatieInhoud, parseAbrTermSuggestResults, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischeContextKandidaten, parseArcheologischeContextResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtLidmaatschapResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseRijksmonumentGeometrieResult, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedLidmaatschapResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS, VONDSTLOCATIE_INHOUD_KLASSEN, wktToLatLng } from "../lib/rce.ts";
 import { buildArchaeologyBrowseQuery, buildRijksmonumentenBrowseQuery, parseArchaeologyBrowseNumbers, parseRijksmonumentenBrowseNumbers } from "../lib/rce.ts";
 import { buildFunctieConceptQuery, buildTermUsageQuery, parseFacetResults, parseTermUsageResults } from "../lib/rce.ts";
 
@@ -462,6 +462,86 @@ test("groups multiple archaeological terreinen under the same monument", () => {
     { archisMonumentnummer: "1037", waardering: "zeer hoge archeologische waarde beschermd", waarderingConceptUri: undefined },
   ]);
   assert.equal(byMonument.get("rm:2").length, 1);
+});
+
+test("computes a padded bounding-box WKT literal around a Polygon", () => {
+  // Elst-testgeval uit 017-archeologische-context-onderzoeksgebied.md.
+  const wkt = "POLYGON((5.849 51.919, 5.850 51.919, 5.850 51.920, 5.849 51.920, 5.849 51.919))";
+  const bbox = boundingBoxWktLiteral(wkt, 0.01);
+  assert.match(bbox, /^POLYGON\(\(/);
+  // Marge zit erin: de bbox-grenzen liggen buiten de oorspronkelijke 5.849-5.850.
+  const numbers = [...bbox.matchAll(/(-?\d+\.\d+)/g)].map((m) => Number(m[1]));
+  assert.ok(Math.min(...numbers) < 5.849);
+  assert.ok(Math.max(...numbers) > 5.850);
+});
+
+test("computes a bounding-box WKT literal around a Point without crashing on zero-area", () => {
+  const bbox = boundingBoxWktLiteral("Point (5.85 51.92)", 0.01);
+  assert.match(bbox, /^POLYGON\(\(/);
+  const numbers = [...bbox.matchAll(/(-?\d+\.\d+)/g)].map((m) => Number(m[1]));
+  const lngs = numbers.filter((_, index) => index % 2 === 0);
+  assert.ok(Math.min(...lngs) < 5.85 && Math.max(...lngs) > 5.85);
+});
+
+test("returns undefined for an unparseable WKT profile", () => {
+  assert.equal(boundingBoxWktLiteral("not wkt", 0.01), undefined);
+});
+
+test("builds a query for a Rijksmonument's own geometry, by rijksmonumentnummer", () => {
+  const query = buildRijksmonumentGeometrieQuery("14948");
+  assert.match(query, /ceo:rijksmonumentnummer "14948"/);
+  assert.match(query, /ceo:heeftGeometrie\/geo:asWKT \?wkt/);
+});
+
+test("parses the Rijksmonument-geometrie result", () => {
+  const document = { results: { bindings: [{ wkt: { value: "Point (5.85 51.92)" } }] } };
+  assert.equal(parseRijksmonumentGeometrieResult(document), "Point (5.85 51.92)");
+  assert.equal(parseRijksmonumentGeometrieResult({ results: { bindings: [] } }), undefined);
+});
+
+test("builds the bbox-voorfilter query for ArcheologischOnderzoeksgebied-kandidaten", () => {
+  const query = buildArcheologischeContextKandidatenQuery("POLYGON((5 51, 6 51, 6 52, 5 52, 5 51))");
+  assert.match(query, /a ceo:ArcheologischOnderzoeksgebied/);
+  assert.match(query, /geof:sfWithin\(\?ogWkt, "POLYGON/);
+});
+
+test("parses ArcheologischOnderzoeksgebied-kandidaten as a plain URI list", () => {
+  const document = { results: { bindings: [
+    { og: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2051204" } },
+    { og: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2038140" } },
+  ] } };
+  assert.deepEqual(parseArcheologischeContextKandidaten(document), [
+    "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2051204",
+    "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2038140",
+  ]);
+});
+
+test("builds the exacte-overlap query with the Rijksmonument-WKT embedded and kandidaten in een VALUES-clausule", () => {
+  const query = buildArcheologischeContextExacteQuery("Point (5.85 51.92)", [
+    "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2051204",
+  ]);
+  assert.match(query, /geof:sfOverlaps\("Point \(5\.85 51\.92\)"\^\^geo:wktLiteral, \?ogWkt\)/);
+  assert.match(query, /VALUES \?og \{ <https:\/\/linkeddata\.cultureelerfgoed\.nl\/cho-kennis\/id\/archeologischonderzoeksgebied\/2051204> \}/);
+  assert.match(query, /ceo:cultuurhistorischObjectnummer/);
+  assert.match(query, /ceo:heeftOmschrijving\/ceo:omschrijving/);
+});
+
+test("parses archeologische-context results, met omschrijving als optioneel veld", () => {
+  const document = { results: { bindings: [
+    {
+      og: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2051204" },
+      choi: { value: "2051204" },
+      omschrijving: { value: "Gallo-Romeins Tempelcomplex 1e en 2e eeuw" },
+    },
+    {
+      og: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2038140" },
+      choi: { value: "2038140" },
+    },
+  ] } };
+  assert.deepEqual(parseArcheologischeContextResults(document), [
+    { onderzoeksgebiedUri: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2051204", choNummer: "2051204", omschrijving: "Gallo-Romeins Tempelcomplex 1e en 2e eeuw" },
+    { onderzoeksgebiedUri: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2038140", choNummer: "2038140", omschrijving: undefined },
+  ]);
 });
 
 test("looks up complex membership by the monument's own CHO subject URI", () => {

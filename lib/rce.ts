@@ -1,4 +1,5 @@
 export {
+  boundingBoxWktLiteral,
   parseWktGeometry,
   wktToLatLng,
   type WktGeometry,

@@ -72,6 +72,32 @@ function boundingBoxFootprint(ring: WktRing): number {
   return (maxLng - minLng) * (maxLat - minLat);
 }
 
+// Bounding-box-rechthoek rond een WKT-geometrie, met optionele marge in
+// graden - gebruikt als goedkope GeoSPARQL-voorfilter (017-archeologische-
+// context-onderzoeksgebied.md) voordat een dure exacte overlap-toets op een
+// kleine kandidatenset draait. Zelfde no-spread-lus-discipline als
+// boundingBoxFootprint hierboven: een enkele geometrie kan duizenden punten
+// hebben.
+export function boundingBoxWktLiteral(wkt: string, paddingDegrees = 0): string | undefined {
+  const geometry = parseWktGeometry(wkt);
+  if (!geometry) return undefined;
+  const points: WktRing =
+    geometry.kind === "point" ? [[geometry.lng, geometry.lat]] : geometry.kind === "polygon" ? geometry.rings.flat() : geometry.polygons.flat(2);
+  let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+  for (const [lng, lat] of points) {
+    if (lng < minLng) minLng = lng;
+    if (lng > maxLng) maxLng = lng;
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+  }
+  if (!Number.isFinite(minLng)) return undefined;
+  minLng -= paddingDegrees;
+  maxLng += paddingDegrees;
+  minLat -= paddingDegrees;
+  maxLat += paddingDegrees;
+  return `POLYGON((${minLng} ${minLat}, ${maxLng} ${minLat}, ${maxLng} ${maxLat}, ${minLng} ${maxLat}, ${minLng} ${minLat}))`;
+}
+
 // Een multipolygon kan uit ver uit elkaar liggende delen bestaan. Kies voor
 // een representatief kaartpunt de ring met de grootste bounding box en middel
 // alleen de coördinaten van die dominante vorm.

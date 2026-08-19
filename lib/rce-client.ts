@@ -1,10 +1,11 @@
-import type { ComplexMember, GezichtLidmaatschap, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, RceMonument, VondstlocatieInhoud, WerelderfgoedLidmaatschap } from "@/lib/rce";
+import type { ArcheologischeContext, ComplexMember, GezichtLidmaatschap, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, RceMonument, VondstlocatieInhoud, WerelderfgoedLidmaatschap } from "@/lib/rce";
 import type { ConceptField } from "@/lib/heritage-view-model";
 
 export type SearchResponse = { results: RceMonument[]; page?: number; pageSize?: number; hasMore?: boolean };
 export type BrowseKind = "rijksmonument" | "archeologischterrein" | "onderzoeksgebied" | "vondstlocatie" | "archeologischcomplex" | "vondsten" | "grondsporen" | "werelderfgoed" | "gezicht" | "complex";
 type ComplexMembersResponse = { members: ComplexMember[] };
 type LigtInResponse = { gezicht: GezichtLidmaatschap[]; werelderfgoed: WerelderfgoedLidmaatschap[] };
+type ArcheologischeContextResponse = { gebieden: ArcheologischeContext[] };
 type OnderzoeksgebiedVerrijkingResponse = OnderzoeksgebiedAggregaten & { complexen: OnderzoeksgebiedComplex[]; vondstlocaties: OnderzoeksgebiedVondstlocatie[] };
 type OpDezeDagResponse = { monument: RceMonument | null };
 type VerrasMeResponse = { monument: RceMonument | null };
@@ -121,6 +122,20 @@ export async function fetchLigtIn(monumentNumber: string, signal?: AbortSignal) 
   });
   if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
   return await response.json() as LigtInResponse;
+}
+
+// In tegenstelling tot fetchLigtIn hierboven NIET lazy-bij-openen: dit kan
+// 15+ seconden duren (112.184 ArcheologischOnderzoeksgebied-instanties, geen
+// kleine vaste kandidatenset), dus wordt alleen aangeroepen op een expliciete
+// knopklik van de gebruiker - zie docs/vertical-slices/017-archeologische-context-onderzoeksgebied.md.
+export async function fetchArcheologischeContext(monumentNumber: string, signal?: AbortSignal) {
+  const response = await fetch(`/api/rce/archeologische-context?rijksmonumentnummer=${encodeURIComponent(monumentNumber)}`, {
+    headers: { Accept: "application/json" },
+    signal,
+  });
+  if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
+  const document = await response.json() as ArcheologischeContextResponse;
+  return document.gebieden;
 }
 
 // Zelfde lazy-aanpak als complexleden: pas opgehaald zodra een gebruiker een

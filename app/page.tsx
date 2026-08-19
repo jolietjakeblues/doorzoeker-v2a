@@ -15,6 +15,7 @@ import { exportFileName, itemsToCsv, itemsToGeoJson } from "@/lib/export";
 import { useTermSuggestions } from "@/hooks/useTermSuggestions";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { useSelectedDetailEnrichment } from "@/hooks/useSelectedDetailEnrichment";
+import { useArcheologischeContext } from "@/hooks/useArcheologischeContext";
 import { useSearchState } from "@/hooks/useSearchState";
 import { useOpDezeDag } from "@/hooks/useOpDezeDag";
 import { useVerrasMe } from "@/hooks/useVerrasMe";
@@ -87,6 +88,7 @@ export default function Home() {
   });
   const { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten, ligtIn } =
     useSelectedDetailEnrichment(selected);
+  const archeologischeContext = useArcheologischeContext(selected);
   const opDezeDag = useOpDezeDag();
   const verrasMe = useVerrasMe();
   useBodyScrollLock(Boolean(selected));
@@ -283,6 +285,7 @@ export default function Home() {
           selected={selected}
           dialogRef={detailDialogRef}
           enrichment={{ complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten, ligtIn }}
+          archeologischeContext={archeologischeContext}
           onClose={() => setSelected(null)}
           onSearch={executeSearch}
           onConceptSearch={executeConceptSearch}
