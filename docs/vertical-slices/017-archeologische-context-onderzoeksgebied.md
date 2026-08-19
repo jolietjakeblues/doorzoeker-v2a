@@ -8,7 +8,10 @@ concreet voorbeeld uit de RCE's eigen
 ["Zoeken door de Knowledge Graph"-story](https://linkeddata.cultureelerfgoed.nl/RCE-Knowledge-Graph/-/stories/Zoeken-door-de-Knowledge-Graph).
 Alle zes openstaande vragen zijn dezelfde dag met de eigenaar doorgesproken
 en beantwoord, zie "Beslissingen" hieronder; het "Gebouwd"-blok daaronder
-beschrijft wat er tijdens de bouw nog bijkwam.
+beschrijft wat er tijdens de bouw nog bijkwam. Dezelfde dag nog uitgebreid
+met een kaart die het Rijksmonument en de gevonden Onderzoeksgebieden
+gezamenlijk als polygonen toont - zie "Vervolg: kaart met polygonen"
+hieronder.
 
 ## Aanleiding
 
@@ -118,13 +121,14 @@ middenweg: alleen berekend voor Rijksmonumenten die daadwerkelijk bekeken
 wórden, met dezelfde staleness-afweging als slice 006 al maakte (de
 onderliggende geometrie verandert vrijwel nooit).
 
-## Data-model (voorstel, nog niet vastgesteld)
+## Data-model
 
 ```ts
 type ArcheologischeContext = {
   onderzoeksgebiedUri: string;
   choNummer: string;
   omschrijving?: string;
+  wkt: string;
 };
 // GET /api/rce/archeologische-context?rijksmonumentnummer=...
 type ArcheologischeContextResponse = { gebieden: ArcheologischeContext[] };
@@ -133,6 +137,11 @@ type ArcheologischeContextResponse = { gebieden: ArcheologischeContext[] };
 Array, niet een los object - een Rijksmonument kan in theorie meerdere
 overlappende Onderzoeksgebieden hebben (bij Elst waren dat er al twee van
 de vijf kandidaten binnen de bbox).
+
+`wkt` is toegevoegd tijdens het kaart-vervolg (zie hieronder): de
+exacte-overlap-query haalt `?ogWkt` toch al op om `geof:sfOverlaps` zelf
+te kunnen toetsen, dus meegeven in de SELECT kost geen extra round-trip -
+alleen een groter antwoord.
 
 ## Scope-afbakening voor deze slice
 
@@ -206,6 +215,60 @@ Alle zes eerder openstaande vragen zijn dezelfde dag beantwoord:
 - **`fetchSparql` kreeg ook een optionele `timeoutMs`**, want de bestaande
   standaardtimeout (20s) lag te dicht op de gemeten 15,4s van de
   bbox-stap. De bbox-query gebruikt nu 40s, de exacte-overlap-query 30s.
+
+## Vervolg: kaart met polygonen (19 augustus 2026)
+
+Na oplevering van de knop+lijst-versie stelde de eigenaar voor om, ná de
+klik, ook een kaart te tonen met het Rijksmonument en de gevonden
+Onderzoeksgebieden samen als polygonen - "alsof na de knop een nieuwe
+slow-load is met een nieuw kaartblad". Afgestemd in gesprek (niet eerst
+gedocumenteerd) voordat er iets gebouwd werd; beslissingen:
+
+1. **Eigen, nieuwe laag** op de bestaande `HeritageMap`, niet de kaart
+   bovenaan de detailpagina hergebruiken - die toont alleen het
+   Rijksmonument zelf.
+2. **Bestaande Doorzoeker-kleuren hergebruiken**, geen nieuwe kleur
+   verzinnen: `markerColor()` in `app/HeritageMap.tsx` kreeg een
+   `Onderzoeksgebied`-tak (`#6b4226`, bruin) naast de al bestaande vaste
+   kleuren per objectsoort.
+3. **`forceArea` hergebruiken** (bestond al voor complexleden op hun eigen
+   detailkaart) om het Rijksmonument zelf als polygoon te tonen in plaats
+   van als punt, zodat de "gebouwd bovenop"-relatie visueel klopt.
+4. **`wkt` in de API-respons**, zonder extra round-trip (zie
+   "Data-model" hierboven) - de geometrie werd server-side toch al
+   opgehaald voor de `geof:sfOverlaps`-toets.
+5. **Kaart als aanvulling op de bestaande doorklikbare tekstlijst**, niet
+   als vervanging - beide blijven zichtbaar.
+
+Gebouwd: `boundingBoxWktLiteral`/`wktToLatLng` (`lib/rce/geometry.ts`)
+hergebruikt om per Onderzoeksgebied een representatief kaartpunt en de
+volledige polygoonvorm te leveren; `HeritageDetailDialog.tsx` rendert een
+tweede, compacte `HeritageMap` met het Rijksmonument (`forceArea`, blauw)
+en elk gevonden Onderzoeksgebied (bruin) als eigen item.
+
+**Bug gevonden tijdens live verificatie: geen crash in de nieuwe code
+zelf, maar een ontbrekende defensieve check op data die van buiten komt.**
+`ArcheologischeContext.wkt` is een verplicht TS-veld, maar het is data die
+over het netwerk binnenkomt (en, zoals hier gebeurde, uit een browser-
+cache van vóór dit veld bestond kan stammen - `Cache-Control: max-age=3600`
+op deze route betekent dat de browser een oud antwoord tot een uur kan
+hergebruiken zonder de server opnieuw te raken). Toen `gebied.wkt`
+`undefined` bleek, crashte `wktToLatLng` → `parseWktGeometry` op
+`wkt.trim()`. Opgelost met een expliciete guard vóór die aanroep in
+`HeritageDetailDialog.tsx` (`if (!gebied.wkt) return [];`) - dezelfde
+grenscontrole-discipline als hierboven al gold voor user input, nu ook
+toegepast op een eigen API-respons omdat die de grens van het netwerk
+oversteekt. Live geverifieerd met een cache-vrije aanroep
+(`fetch(url, { cache: "no-store" })`) dat de server zelf altijd een
+geldige `wkt` teruggeeft; de guard vangt alleen de theoretische
+oud-cache-situatie op.
+
+Live geverifieerd voor Rijksmonument 14948 (Elst): de kaart toont het
+Rijksmonument (blauw, als polygoon dankzij `forceArea`) samen met beide
+gevonden Onderzoeksgebieden (bruin), naast de al bestaande doorklikbare
+tekstlijst. Volledige checksuite (typecheck/lint/229 unit tests/59 e2e-
+tests, inclusief twee bijgewerkte/nieuwe e2e-assertions voor de kaart)
+groen.
 
 ## Acceptatiecriteria
 
