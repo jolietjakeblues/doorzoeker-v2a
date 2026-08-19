@@ -283,31 +283,50 @@ content die niet in een dt/dd-rij past. De knop/waarschuwing/laadstatus
 blijven een gewone dt/dd-rij (die tekst past daar prima); alleen het
 kaart+lijst-resultaat verhuisde.
 
-**Derde bug gevonden, ná de layoutfix: de kaart bleef op productie soms
-alsnog een klein, verkeerd geproportioneerd streepje (46×220px in plaats
-van 425×220px), ook al was de wrapper zelf al volle breedte.** Opnieuw
-live gemeld door de eigenaar, dit keer op `doorzoekerfgoed.nl` zelf.
-Oorzaak: Leaflet meet de grootte van zijn container precies één keer bij
-aanmaak (`getSize()`, gebruikt door `fitBounds`) en onthoudt die tot een
-expliciete `invalidateSize()`-aanroep. De bovenste kaart mount synchroon
-zodra de dialoog opent (layout allang stabiel); deze kaart mount pas ná
-een geslaagde async zoekopdracht, op een moment dat het dialoogpaneel
-door de net toegevoegde content nog kan herschikken - een klassieke
-Leaflet-race die op productie (echte netwerklatency) vaker toesloeg dan
-lokaal (vaak al warm gecachet). Opgelost in `app/HeritageMap.tsx` met een
-`ResizeObserver` op de kaartcontainer die `invalidateSize()` aanroept bij
-elke groottewijziging - dekt deze race en elke toekomstige variant ervan,
-in plaats van een gok naar de precieze timing. Live herverifieerd onder
-realistische, koude netwerklatency (~32s, cache leeggemaakt): beide
-kaarten renderen correct op volle breedte.
+**Derde bug: de "tweede bug"-fix hierboven bleek op productie helemaal
+niet actief - de kaart stond daar dus nog steeds letterlijk in de oude
+`<dt>/<dd>`-rij.** Live opnieuw gemeld door de eigenaar op
+`doorzoekerfgoed.nl`, met de expliciete, terechte vraag "als jij vindt
+dat de kaart nu goed is... serieus." Wat er echt gebeurde: net als de
+docs-commits (zie de notitie hieronder) was ook de **code**-commit van de
+layoutfix ná het mergen van PR #89 nog naar diezelfde, inmiddels gesloten
+branch gepusht - die kwam dus óók nooit in `main` terecht. Alleen de
+allereerste commit van PR #89 (de kaart zelf, nog mét de dt/dd-bug) was
+echt live.
 
-*Documentatienotitie:* de layoutfix en de invalidateSize-fix zijn
-oorspronkelijk vastgelegd in twee losse commits die ná het mergen van
-PR #89 per ongeluk nog naar diezelfde (inmiddels gesloten) branch zijn
-gepusht - die docs-commits kwamen daardoor nooit in `main` terecht, alleen
-de bijbehorende codefixes wél (apart, eerder gepusht, wél vóór het
-mergen). Deze sectie is achteraf op `main` gereconstrueerd om dat gat te
-dichten.
+Dat werd in eerste instantie verkeerd geïnterpreteerd als een derde,
+nieuw probleem: de kaart-wrapper leek al volle breedte (`.detail-map`
+mat lokaal correct), dus de aanname was een Leaflet-timingrace
+(`getSize()`/`fitBounds()` die de containergrootte precies één keer bij
+aanmaak meten en cachen tot een expliciete `invalidateSize()`-aanroep) -
+gefixt met een `ResizeObserver` in `app/HeritageMap.tsx` (PR #91, wél
+correct gemerged). Die fix is onschuldig en blijft een zinnige
+defense-in-depth-maatregel voor toekomstige, vergelijkbare timingissues,
+maar loste dit specifieke probleem niet op: een live DOM-inspectie op
+productie (de volledige ouderketen van de kaartcontainer opvragen) liet
+zien dat de kaart daar nog steeds binnen een `<dd>` zat, met exact de
+1.25fr-breedte die de oorspronkelijke bug voorspelde
+(424,667px × 1,25/2,25 ≈ 235,9px) - de container was dus geen slachtoffer
+van een race, hij was gewoon écht zo smal, precies zoals vóór de beoogde
+fix.
+
+Herstel: de orphaned layoutfix-commit stond nog lokaal bereikbaar via
+zijn commit-SHA en is alsnog gecherry-pickt bovenop een correct
+geverifieerde, actuele `main` (`git fetch` + expliciet op `origin/main`
+baseren - de eerdere orphaned-commits ontstonden precies doordat dat niet
+gebeurde). Twee keer onafhankelijk live herverifieerd onder realistische,
+koude netwerklatency (~33-34s, cache leeggemaakt, telkens vanaf nul): de
+kaart zit aantoonbaar buiten elke `<dd>`, binnen `.map-object-list`, op
+volle, gelijke breedte met de bovenste kaart.
+
+*Documentatienotitie:* de layoutfix (code én docs) en de docs voor de
+partialFailure-fix (PR #90) zijn destijds per ongeluk pas ná het mergen
+van hun PR's naar diezelfde, toen al gesloten branches gepusht en kwamen
+daardoor nooit in `main` terecht - dit gebeurde tot twee keer toe in
+dezelfde sessie. Vanaf nu wordt vóór elke push naar een bestaande branch
+eerst de PR-status gecontroleerd (`gh pr view <nr> --json state`), en
+wordt een nieuwe branch altijd expliciet op `origin/<basis>` gebaseerd,
+nooit op een lokale branch-ref die stil achter kan lopen.
 
 ## Acceptatiecriteria
 
