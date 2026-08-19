@@ -11,6 +11,7 @@ import {
   typeBadge,
   type Item,
 } from "@/lib/heritage-view-model";
+import { wktToLatLng } from "@/lib/rce";
 import { HeritageDetailFacts } from "./HeritageDetailFacts";
 import { HeritageMap } from "./HeritageMap";
 import { HeritageRelationSections } from "./HeritageRelationSections";
@@ -332,25 +333,75 @@ export function HeritageDetailDialog({
                   ) : null}
                   {archeologischeContextState.status === "done" &&
                   archeologischeContextState.gebieden.length ? (
-                    archeologischeContextState.gebieden.map((gebied) => (
-                      <span key={gebied.onderzoeksgebiedUri}>
-                        <button
-                          type="button"
-                          className="concept-link"
-                          onClick={() =>
-                            void onSearch(gebied.choNummer)
-                          }
-                        >
-                          {`Onderzoeksgebied ${gebied.choNummer}`}
-                        </button>
-                        {gebied.omschrijving ? (
-                          <>
-                            {" — "}
-                            {truncateAtWordBoundary(gebied.omschrijving, 150)}
-                          </>
-                        ) : null}
-                      </span>
-                    ))
+                    <>
+                      <div className="detail-map">
+                        <HeritageMap
+                          items={[
+                            {
+                              id: selected.id,
+                              title: selected.title,
+                              address: selected.address,
+                              place: selected.place,
+                              objectType: "Rijksmonument",
+                              monumentAard: selected.monumentAard,
+                              lat: selected.lat,
+                              lng: selected.lng,
+                              wkt: selected.wkt,
+                              forceArea: true,
+                            },
+                            ...archeologischeContextState.gebieden.flatMap(
+                              (gebied) => {
+                                // gebied.wkt komt over het netwerk binnen (en kan uit een
+                                // oudere cache-periode stammen waarin dit veld nog niet
+                                // bestond) - dus ondanks het TS-type hier defensief
+                                // controleren voordat wktToLatLng erop los gaat.
+                                if (!gebied.wkt) return [];
+                                const coords = wktToLatLng(gebied.wkt);
+                                if (!coords) return [];
+                                return [
+                                  {
+                                    id: gebied.onderzoeksgebiedUri,
+                                    title: `Onderzoeksgebied ${gebied.choNummer}`,
+                                    address: "",
+                                    place: gebied.omschrijving
+                                      ? truncateAtWordBoundary(
+                                          gebied.omschrijving,
+                                          80,
+                                        )
+                                      : "",
+                                    objectType: "Onderzoeksgebied" as const,
+                                    lat: coords.lat,
+                                    lng: coords.lng,
+                                    wkt: gebied.wkt,
+                                  },
+                                ];
+                              },
+                            ),
+                          ]}
+                          onSelect={() => {}}
+                          compact
+                        />
+                      </div>
+                      {archeologischeContextState.gebieden.map((gebied) => (
+                        <span key={gebied.onderzoeksgebiedUri}>
+                          <button
+                            type="button"
+                            className="concept-link"
+                            onClick={() =>
+                              void onSearch(gebied.choNummer)
+                            }
+                          >
+                            {`Onderzoeksgebied ${gebied.choNummer}`}
+                          </button>
+                          {gebied.omschrijving ? (
+                            <>
+                              {" — "}
+                              {truncateAtWordBoundary(gebied.omschrijving, 150)}
+                            </>
+                          ) : null}
+                        </span>
+                      ))}
+                    </>
                   ) : archeologischeContextState.status === "done" ? (
                     <small>
                       Geen archeologische context gevonden in de directe

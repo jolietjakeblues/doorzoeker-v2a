@@ -37,7 +37,7 @@ const GEOF = "http://www.opengis.net/def/function/geosparql/";
 // schijf optimaliseert niet verder dan dit).
 export const ARCHEOLOGISCHE_CONTEXT_BBOX_PADDING_DEGREES = 0.01;
 
-export type ArcheologischeContext = { onderzoeksgebiedUri: string; choNummer: string; omschrijving?: string };
+export type ArcheologischeContext = { onderzoeksgebiedUri: string; choNummer: string; omschrijving?: string; wkt: string };
 
 // Live, on-demand "ligt dit gebouwde Rijksmonument op archeologie"-check
 // (017-archeologische-context-onderzoeksgebied.md). Geen gemodelleerde
@@ -92,12 +92,18 @@ export function parseArcheologischeContextKandidaten(document: unknown): string[
 // Werelderfgoed-query's voor 006) - een gebouwvoetafdruk is klein genoeg om
 // dat veilig te doen, in tegenstelling tot de megabytes-grote
 // Werelderfgoed-polygonen die daar destijds wél problemen gaven.
+//
+// ?ogWkt wordt hier al opgehaald om geof:sfOverlaps zelf te kunnen toetsen -
+// dus ook meegeven in de SELECT kost geen extra aanroep. Nodig om de
+// gevonden Onderzoeksgebieden straks als polygoon op een kaart te tonen
+// i.p.v. alleen als tekst (vervolg op 017, zie de kaart-toevoeging in
+// HeritageDetailDialog.tsx).
 export function buildArcheologischeContextExacteQuery(rmWkt: string, kandidaatUris: string[]) {
   const values = kandidaatUris.map((uri) => `<${uri}>`).join(" ");
   return `PREFIX ceo: <${CEO}>
 PREFIX geo: <${GEO}>
 PREFIX geof: <${GEOF}>
-SELECT ?og (SAMPLE(STR(?choiValue)) AS ?choi) (SAMPLE(STR(?omschrijvingValue)) AS ?omschrijving) WHERE {
+SELECT ?og (SAMPLE(STR(?choiValue)) AS ?choi) (SAMPLE(STR(?omschrijvingValue)) AS ?omschrijving) (SAMPLE(STR(?ogWkt)) AS ?wkt) WHERE {
   GRAPH <${INSTANCES_GRAPH}> {
     VALUES ?og { ${values} }
     ?og ceo:cultuurhistorischObjectnummer ?choiValue ; ceo:heeftGeometrie/geo:asWKT ?ogWkt .
@@ -114,8 +120,9 @@ export function parseArcheologischeContextResults(document: unknown): Archeologi
   return bindings.flatMap((binding) => {
     const onderzoeksgebiedUri = binding.og?.value;
     const choNummer = binding.choi?.value;
-    if (!onderzoeksgebiedUri || !choNummer) return [];
-    return [{ onderzoeksgebiedUri, choNummer, omschrijving: binding.omschrijving?.value }];
+    const wkt = binding.wkt?.value;
+    if (!onderzoeksgebiedUri || !choNummer || !wkt) return [];
+    return [{ onderzoeksgebiedUri, choNummer, omschrijving: binding.omschrijving?.value, wkt }];
   });
 }
 

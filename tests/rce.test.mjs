@@ -524,23 +524,35 @@ test("builds the exacte-overlap query with the Rijksmonument-WKT embedded and ka
   assert.match(query, /VALUES \?og \{ <https:\/\/linkeddata\.cultureelerfgoed\.nl\/cho-kennis\/id\/archeologischonderzoeksgebied\/2051204> \}/);
   assert.match(query, /ceo:cultuurhistorischObjectnummer/);
   assert.match(query, /ceo:heeftOmschrijving\/ceo:omschrijving/);
+  // De geometrie is al nodig voor de geof:sfOverlaps-toets zelf; ook
+  // teruggeven kost geen extra aanroep en is nodig om de gevonden
+  // Onderzoeksgebieden als polygoon op een kaart te tonen.
+  assert.match(query, /\(SAMPLE\(STR\(\?ogWkt\)\) AS \?wkt\)/);
 });
 
-test("parses archeologische-context results, met omschrijving als optioneel veld", () => {
+test("parses archeologische-context results, met omschrijving als optioneel veld maar wkt als verplicht veld", () => {
   const document = { results: { bindings: [
     {
       og: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2051204" },
       choi: { value: "2051204" },
       omschrijving: { value: "Gallo-Romeins Tempelcomplex 1e en 2e eeuw" },
+      wkt: { value: "Point (5.85 51.92)" },
     },
     {
       og: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2038140" },
       choi: { value: "2038140" },
+      wkt: { value: "Point (5.86 51.93)" },
+    },
+    {
+      // Geen wkt (zou niet moeten voorkomen, want ceo:heeftGeometrie/geo:asWKT
+      // is verplicht in de query - defensief toch overgeslagen).
+      og: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/9999999" },
+      choi: { value: "9999999" },
     },
   ] } };
   assert.deepEqual(parseArcheologischeContextResults(document), [
-    { onderzoeksgebiedUri: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2051204", choNummer: "2051204", omschrijving: "Gallo-Romeins Tempelcomplex 1e en 2e eeuw" },
-    { onderzoeksgebiedUri: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2038140", choNummer: "2038140", omschrijving: undefined },
+    { onderzoeksgebiedUri: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2051204", choNummer: "2051204", omschrijving: "Gallo-Romeins Tempelcomplex 1e en 2e eeuw", wkt: "Point (5.85 51.92)" },
+    { onderzoeksgebiedUri: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2038140", choNummer: "2038140", omschrijving: undefined, wkt: "Point (5.86 51.93)" },
   ]);
 });
 

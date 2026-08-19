@@ -27,7 +27,7 @@ Romeins tempelcomplex).
 | 014 | "Verras me"-knop | Gebouwd, unit- en contracttests groen |
 | 015 | "Alle gekoppelde begrippen"-overzicht | Gebouwd, unit- en e2e-tests groen |
 | 016 | "Ontdek een thema" (ontdekken zonder zoekterm, fase 1) | Gebouwd, e2e-test groen |
-| 017 | Archeologische context bij een Rijksmonument (overlap met Onderzoeksgebied) | Gebouwd (knop + waarschuwing, geen lazy-patroon zoals slice 006), live geverifieerd |
+| 017 | Archeologische context bij een Rijksmonument (overlap met Onderzoeksgebied) | Gebouwd (knop + waarschuwing, geen lazy-patroon zoals slice 006) inclusief kaart met polygonen, live geverifieerd |
 
 ## Aandachtspunten
 

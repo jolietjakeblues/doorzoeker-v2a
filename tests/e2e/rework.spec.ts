@@ -837,6 +837,7 @@ test("'Archeologische context'-knop toont een waarschuwing, laadstatus en doorkl
         onderzoeksgebiedUri: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2051204",
         choNummer: "2051204",
         omschrijving: "Gallo-Romeins Tempelcomplex 1e en 2e eeuw",
+        wkt: "Point (5.83 51.93)",
       }],
     },
   }));
@@ -847,10 +848,19 @@ test("'Archeologische context'-knop toont een waarschuwing, laadstatus en doorkl
   // Alleen zichtbaar bij een gebouwd Rijksmonument (017-Beslissingen nr. 5),
   // met de waarschuwing vóórdat er geklikt wordt.
   await expect(dialog.getByText("kan tot ~20 seconden duren")).toBeVisible();
+  // Vóór het resultaat is er maar één kaart (de gewone overzichtskaart
+  // bovenaan); pas ná een geslaagde zoekopdracht komt de aparte
+  // archeologische-contextkaart erbij (017-Beslissingen nr. 1: nieuwe,
+  // losse laag, niet de bovenste kaart vervangen).
+  await expect(dialog.getByLabel("Kaart met gevonden erfgoedobjecten")).toHaveCount(1);
   await dialog.getByRole("button", { name: "Zoek archeologische context" }).click();
-  const resultaat = dialog.getByRole("button", { name: "Onderzoeksgebied 2051204" });
+  // exact: true - de nieuwe kaart maakt de polygoon ook een focusbare knop,
+  // met een langere aria-label ("Onderzoeksgebied 2051204, Gallo-Romeins ...")
+  // die anders ook op deze naam zou matchen.
+  const resultaat = dialog.getByRole("button", { name: "Onderzoeksgebied 2051204", exact: true });
   await expect(resultaat).toBeVisible();
   await expect(dialog.getByText("Gallo-Romeins Tempelcomplex")).toBeVisible();
+  await expect(dialog.getByLabel("Kaart met gevonden erfgoedobjecten")).toHaveCount(2);
   await resultaat.click();
   await expect(page).toHaveURL(/q=2051204/);
 });
