@@ -479,11 +479,25 @@ actie, alleen genoteerd).
   rijksmonument 14948 in Elst dat boven een Romeins tempelcomplex staat) -
   knop + waarschuwing + doorklikbare lijst, dezelfde dag uitgebreid met een
   kaart die het Rijksmonument en de gevonden Onderzoeksgebieden samen als
-  polygonen toont. Twee layout-/renderbugs direct ná oplevering (kaart als
-  smalle verticale streep; daarna een Leaflet-race die de kaart soms alsnog
-  te klein liet renderen op productie) zijn dezelfde dag ook gevonden en
-  opgelost. Live geverifieerd, zie
+  polygonen toont. De kaart rende direct ná oplevering als een smalle
+  verticale streep (in een dt/dd-veldrij voor korte tekstwaarden); de
+  eerste fix daarvoor bleek per ongeluk nooit gemerged (zie de
+  procesnotitie hieronder) en het probleem werd daardoor eerst verkeerd
+  gediagnosticeerd als een Leaflet-timingrace. Uiteindelijk hersteld door
+  de echte, orphaned fix alsnog te cherry-picken op een correct
+  geverifieerde `main`. Live tweemaal onafhankelijk geverifieerd onder
+  koude netwerklatency, zie
   `docs/vertical-slices/017-archeologische-context-onderzoeksgebied.md`.
+- **Procesnotitie: twee keer een orphaned commit door na een PR-merge nog
+  naar diezelfde branch te pushen (19 augustus 2026).** Zowel de
+  layoutfix-code+docs (na PR #89) als de partialFailure-fixdocs (na
+  PR #90) werden gepusht ná het mergen van hun PR, en kwamen daardoor
+  nooit in `main` terecht - de PR-status was niet gecontroleerd vóór het
+  pushen. Vanaf nu: vóór elke push naar een bestaande branch eerst
+  `gh pr view <nr> --json state` checken, en een nieuwe branch altijd
+  expliciet op `origin/<basis>` baseren (niet op een lokale branch-ref,
+  die stil achter kan lopen - exact dit gebeurde ook nog eens bij het
+  herstellen van de layoutfix zelf).
 - ~~**Zes archeologie-zoekcategorieën cachen "0 resultaten" na een volledig
   gefaalde RCE-tak.**~~ **Opgelost (19 augustus 2026), live gevonden via
   een doorklik op Vondstlocatie "Oude Hoeven" die bleef 0 resultaten
