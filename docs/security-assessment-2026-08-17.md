@@ -27,6 +27,27 @@ commitmessage en in `docs/te-doen.md`; de statuskolom hieronder is
 bijgewerkt, de rest van dit document is het oorspronkelijke, ongewijzigde
 onderzoeksverslag.
 
+**Update, 19 augustus 2026 — restgat in punt 4 alsnog gevonden en
+gefixt.** De 17-08-fix voor `searchByNumber` was correct, maar de tekst
+bij punt 4 (regels 182-193 hieronder) claimt daarbij dat de zes
+bijvangst-categorieën (`onderzoeksgebieden`, `archeologische-terreinen`,
+`vondstlocaties`, `grondsporen`, `vondsten`, `archeologische-complexen`)
+via `optionalSearch` al "gracefully degraderen" - dat klopt op hun
+aanroepplek, maar niet volledig: geen van de zes gaf de
+`partialFailure`-tracker door aan hun eigen interne
+`runDiscoveryBranches`-aanroep. Faalden *alle* brontakken van zo'n
+categorie (bv. een RCE 503), dan gaf de functie stil een lege lijst terug
+zonder te throwen - `optionalSearch`'s catch werd nooit bereikt, de
+tracker bleef op `partial:false`, en dat foute lege resultaat werd
+vervolgens nog 5 minuten als geldig gecachet. Live gevonden via een
+doorklik op een Vondstlocatie ("Oude Hoeven", CHO 6111048) die bleef
+"0 resultaten" tonen ondanks een aantoonbaar correct en rechtstreeks
+vindbaar CHO-nummer. Opgelost in
+[PR #90](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/90) door
+`tracker` alsnog door te geven aan alle zes functies en hun eigen
+`runDiscoveryBranches`-aanroep, met een regressietest in
+`tests/rce-api.test.mjs`.
+
 ---
 
 ## Samenvatting — bevindingen op prioriteit
@@ -36,7 +57,7 @@ onderzoeksverslag.
 | 1 | Geen HTTPS-afdwinging: site volledig bereikbaar over onversleuteld `http://` | **Hoog** | Live bevestigd. **Opgelost 17-08:** redirect op Workerniveau (`worker/index.ts`) - los van een eventuele Cloudflare-zone-instelling, die nog gecontroleerd moet worden (zie open vraag 1). |
 | 2 | Geen securityheaders (CSP, X-Content-Type-Options, X-Frame-Options/HSTS) op de eigen pagina's | **Middel-Hoog** | Al eerder bekend (securityreview 11-08-2026). **Deels opgelost 17-08:** X-Content-Type-Options, X-Frame-Options en HSTS toegevoegd op Workerniveau. CSP blijft open (vraagt maatwerk, te risicovol om blind toe te voegen). |
 | 3 | Rate limiting alleen op `/api/rce/search`; 7 van 8 routes onbeperkt, met tot 5x SPARQL-amplificatie per request | **Middel** | Al eerder bekend. **Deels opgelost 17-08:** `complex-members`, `concept`, `onderzoeksgebied-verrijking` en `vondstlocatie-inhoud` hebben nu dezelfde limiter. Blijft per-isolate (niet globaal, zie punt 3 in het rapport) en `op-deze-dag`/`verras-me`/`terms/suggest` blijven bewust ongelimiteerd. |
-| 4 | Numerieke zoekpad (`searchByNumber`) heeft geen fallback bij een falende deelquery — cascadeert naar een volledige 502 | **Middel** | Nieuw, vandaag ontdekt tijdens live testen. **Opgelost 17-08.** |
+| 4 | Numerieke zoekpad (`searchByNumber`) heeft geen fallback bij een falende deelquery — cascadeert naar een volledige 502 | **Middel** | Nieuw, vandaag ontdekt tijdens live testen. **Opgelost 17-08.** Restgat in de zes bijvangst-categorieën (tracker niet doorgegeven aan hun eigen `runDiscoveryBranches`) live gevonden en **opgelost 19-08** ([PR #90](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/90)). |
 | 5 | Geen minimumlengte op vrije-tekstzoekterm — 1-teken zoekopdrachten zijn duur en kunnen de time-out raken | **Laag-Middel** | Nieuw, vandaag ontdekt tijdens live testen. **Opgelost 17-08.** |
 | 6 | `leaflet@1.9.4` heeft een gepubliceerde XSS (CVE-2025-69993) in `bindPopup()` | Kwetsbare dependency aanwezig, **niet exploiteerbaar in dit gebruik** | Geverifieerd veilig door codelezing |
 | 7 | 3 hoge `npm audit`-meldingen (`image-size`, `nanoid`, via `vinext`) | Kwetsbare dependency aanwezig, **vermoedelijk alleen build-time bereikbaar** | Al eerder bekend, nu verder onderzocht. Geen veilige non-breaking fix beschikbaar, nog open. |
