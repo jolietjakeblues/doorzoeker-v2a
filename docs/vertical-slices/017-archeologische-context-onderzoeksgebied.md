@@ -2,11 +2,14 @@
 
 ## Status
 
-Plan, niet gebouwd. Uitgeschreven na een verkenning met de eigenaar
-(19 augustus 2026), aanleiding: een concreet voorbeeld uit de RCE's eigen
+Plan compleet, nog niet gebouwd. Uitgeschreven na een verkenning met de
+eigenaar (19 augustus 2026), aanleiding: een concreet voorbeeld uit de
+RCE's eigen
 ["Zoeken door de Knowledge Graph"-story](https://linkeddata.cultureelerfgoed.nl/RCE-Knowledge-Graph/-/stories/Zoeken-door-de-Knowledge-Graph).
-Nadrukkelijk **niet** bouwen voordat dit document is doorgesproken - de
-eigenaar vroeg expliciet om alleen een plan.
+Alle zes eerder openstaande vragen zijn dezelfde dag met de eigenaar
+doorgesproken en beantwoord, zie "Beslissingen" hieronder. Nadrukkelijk
+**niet** bouwen zonder een expliciete opdracht daartoe - de eigenaar vroeg
+eerst alleen om een plan.
 
 ## Aanleiding
 
@@ -70,12 +73,14 @@ detail opent) past hier niet: bij 15+ seconden voelt een automatische,
 onzichtbare aanroep aan als een kapotte pagina. Voorgestelde aanpak, in
 lijn met wat de eigenaar zelf voorstelde:
 
-1. **Een knop op de Rijksmonument-detailpagina**, bv. "Archeologische
-   context bekijken" of - voorstel van de eigenaar - "Deep seek" (letterlijk
-   bedoeld: dieper/verder zoeken, niet een verwijzing naar het AI-bedrijf
-   met dezelfde naam), met een zichtbare waarschuwing dat dit tot enkele
-   tientallen seconden kan duren (exacte tekst nog te bepalen, zie
-   "Openstaande vragen").
+1. **Een knop op de Rijksmonument-detailpagina, alleen bij gebouwde
+   Rijksmonumenten** (`heeftMonumentAard` = gebouwd - zie "Beslissingen"),
+   met labeltekst **"Zoek archeologische context"** en een ondertitel/
+   tooltip die de wachttijd vooraf noemt (bv. "Dit doorzoekt 112.000+
+   archeologische onderzoeksgebieden en kan tot ~20 seconden duren.").
+   Gewoon Nederlands en letterlijk, geen woordspeling als knoplabel zelf
+   (de eigenaar opperde "Deep seek"/"deep dive" als sfeeraanduiding, niet
+   als letterlijk te gebruiken tekst - zie "Beslissingen").
 2. **Pas bij klikken** een aanroep naar een nieuwe route (bv.
    `/api/rce/archeologische-context`), die zelf het bekende tweefasenpatroon
    uitvoert (bbox-voorfilter, dan exacte `geof:sfOverlaps`-check op de
@@ -91,19 +96,17 @@ lijn met wat de eigenaar zelf voorstelde:
    (zie `hooks/useSelectedDetailEnrichment.ts`) - een falende of trage
    aanroep moet zichtbaar anders zijn dan "niets gevonden".
 4. **Resultaat cachen na de eerste berekening**, zodat niemand twee keer
-   voor dezelfde rijksmonumentnummer betaalt. De app heeft al een
-   herbruikbare laag hiervoor: `caches.default` (Cloudflare Workers Cache
-   API, `readCache`/`writeCache`/`cacheStore` in
-   `app/api/rce/search/route.ts`) plus een in-memory per-isolate `Map` als
-   microcache. Voor deze route is een lange `s-maxage` gerechtvaardigd
-   (een rijksmonument-locatie en de archeologie eronder veranderen
-   vrijwel nooit) - zie "Openstaande vragen" voor de vraag of
-   `caches.default` (best-effort, kan verdwijnen) duurzaam genoeg is of dat
-   dit een steviger laag verdient.
-5. **Eigen, strikte rate limiter** op de nieuwe route (zelfde discipline
-   als de andere routes, `createRateLimiter`) - een knop die een dure
-   112.000-instanties-scan triggert per klik is een aantrekkelijker
-   misbruikvector dan de bestaande lazy-detailroutes.
+   voor dezelfde rijksmonumentnummer betaalt. Hergebruikt `caches.default`
+   (Cloudflare Workers Cache API, `readCache`/`writeCache`/`cacheStore` in
+   `app/api/rce/search/route.ts`) - geen nieuwe infrastructuur, zie
+   "Beslissingen". Lange `s-maxage` (bv. een maand), want een
+   rijksmonument-locatie en de archeologie eronder veranderen vrijwel
+   nooit.
+5. **Eigen, strengere rate limiter** op de nieuwe route dan de bestaande
+   30/min (`createRateLimiter`) - **5-10 per minuut per client**, zie
+   "Beslissingen". Een knop die een dure 112.000-instanties-scan triggert
+   per klik is een aantrekkelijker misbruikvector dan de bestaande
+   lazy-detailroutes.
 
 **Bewust niet gekozen: een volledige offline batchprecomputatie voor alle
 Rijksmonumenten** (zoals slice 006's eerste, later verworpen aanpak).
@@ -141,65 +144,64 @@ de vijf kandidaten binnen de bbox).
 - Geen poging om dit automatisch/lazy te laten lopen zoals slice 006 - de
   schaal laat dat niet toe zonder een fundamenteel ander
   precomputatiemodel (zie "Voorgestelde aanpak").
-- Geen poging om dit te bouwen vóór dit plan is doorgesproken en akkoord
-  is - expliciete opdracht van de eigenaar.
+- Alleen gebouwde Rijksmonumenten tonen de knop, geen archeologische (zie
+  "Beslissingen").
+- Geen poging om dit te bouwen vóór er een expliciete opdracht daartoe is
+  - eerst alleen dit plan, op verzoek van de eigenaar.
 
-## Openstaande vragen
+## Beslissingen (19 augustus 2026, na overleg met de eigenaar)
 
-- **Exacte knoptekst en waarschuwingstekst.** Nog te bepalen samen met de
-  eigenaar - de gebruiker moet vooraf weten dat dit kan duren, zonder
-  overdreven alarmerend te klinken. "Deep seek" is een leuke, letterlijke
-  vondst (diep zoeken), maar botst qua spelling met het bekende
-  AI-bedrijf DeepSeek - overwegen of dat verwarrend is voor een bezoeker
-  die de naam ergens anders al kent, of dat de context (een knop op een
-  erfgoedsite, geen AI-functie) dat voldoende wegneemt.
-- **Is `caches.default` duurzaam genoeg, of is een steviger cachelaag
-  nodig?** Cloudflare's Cache API is best-effort per edge-node (kan
-  verdwijnen bij geheugendruk of tussen deployments); er is nu geen
-  KV/D1-binding in dit project. Voor een resultaat dat vrijwel nooit
-  verandert en 15+ seconden kost om te berekenen, is de vraag of
-  "meestal snel, af en toe opnieuw 15s" acceptabel is, of dat dit een
-  duurzamere opslag rechtvaardigt (nieuwe infrastructuurkeuze, buiten de
-  huidige architectuur).
-- **Kan de bbox-voorfilter zelf sneller, bv. door eerst op
-  woonplaats/gemeente te filteren voordat de geometrische toets
-  draait?** Niet onderzocht. Zou de 15,4s mogelijk verlagen, maar
-  `ArcheologischOnderzoeksgebied` heeft niet per se een makkelijk
-  bevraagbaar plaatsnaamveld - moet eerst uitgezocht worden of zo'n
-  voorfilter (a) bestaat in de data en (b) daadwerkelijk sneller is dan de
-  geometrische bbox-toets zelf.
-- **Hoe lang duurt de aanroep werkelijk voor een "gemiddeld" Rijksmonument
-  (niet alleen dit ene Elst-voorbeeld)?** Alleen deze ene meting is
-  gedaan. Dichtbevolkte gebieden met veel Onderzoeksgebieden in de buurt
-  zouden trager kunnen zijn dan een afgelegen locatie.
-- **Toon de knop bij elk Rijksmonument, of alleen bij "gebouwd"?** Een
-  archeologisch Rijksmonument heeft al zijn eigen terrein-koppeling (zie
-  "Aanleiding") - is een extra "ligt dit ook nog ergens anders op
-  archeologie"-check daar nuttig, of overbodig/verwarrend naast de
-  bestaande relatie?
-- **Rate-limit-budget**: hoe streng moet de limiter zijn gezien de
-  aanroepkosten (zowel tijd als serverbelasting bij RCE) veel hoger liggen
-  dan bij de bestaande lazy-detailroutes?
+Alle zes eerder openstaande vragen zijn dezelfde dag beantwoord:
 
-## Acceptatiecriteria (voorstel, nog niet vastgesteld)
+1. **Knoptekst: "Zoek archeologische context", gewoon Nederlands en
+   letterlijk.** "Deep seek"/"deep dive" was bedoeld als sfeer/inspiratie
+   voor het idee (letterlijk "diep zoeken"), niet als daadwerkelijk over
+   te nemen knoptekst - bevestigd door de eigenaar. Afgewogen tegen de
+   botsing met het gelijknamige AI-bedrijf en de wens om de rest van de
+   app consequent Nederlands en direct te houden.
+2. **Cachelaag: `caches.default` hergebruiken, geen nieuwe
+   infrastructuur.** Pas heroverwegen (bv. een duurzamere laag) als in de
+   praktijk blijkt dat de edge-cache te vaak leeg is - niet vooraf op
+   aanname bouwen.
+3. **Bbox-voorfilter versnellen via woonplaats/gemeente: niet nu
+   onderzoeken.** Pas de moeite waard als beslissing 4 laat zien dat
+   15s+ typisch is voor veel locaties, niet alleen dit ene Elst-geval.
+4. **Typische duur voor een "gemiddeld" Rijksmonument: meten tijdens de
+   bouw**, met 5-10 rijksmonumenten uit verschillende provincies/
+   dichtheden, vóór de uiteindelijke waarschuwingstekst en
+   timeout-instellingen vastliggen. Geen aanname vooraf.
+5. **Knop alleen bij gebouwde Rijksmonumenten, niet bij archeologische.**
+   Een archeologisch Rijksmonument heeft al zijn eigen terrein-relatie
+   (slice 002) - nog een "ligt dit ook op archeologie"-knop zou daar
+   overbodig/verwarrend zijn. Bij een gebouwd monument voegt het wél iets
+   toe dat niet voor de hand ligt (zoals bij Elst).
+6. **Rate-limit: 5-10 per minuut per client, strenger dan de bestaande
+   30/min.** Dit is 15+ seconden RCE-belasting per klik, niet de
+   sub-seconde van de andere lazy-routes - een aantrekkelijkere
+   misbruikvector, in combinatie met de caching uit beslissing 2 (herhaalde
+   aanvragen voor hetzelfde monument raken RCE dan sowieso niet opnieuw).
 
-1. Een knop op de Rijksmonument-detailpagina, met zichtbare waarschuwing
-   over de verwachte wachttijd, triggert pas bij klikken een aanroep.
+## Acceptatiecriteria
+
+1. Een knop ("Zoek archeologische context"), alleen zichtbaar bij
+   gebouwde Rijksmonumenten, met zichtbare waarschuwing over de verwachte
+   wachttijd, triggert pas bij klikken een aanroep.
 2. Tijdens het wachten een concrete, geruststellende laadstatus - geen
    kale spinner zonder uitleg.
 3. Rijksmonument 14948 (Elst) toont na de klik het overlappende
    Onderzoeksgebied (Gallo-Romeins Tempelcomplex), doorklikbaar.
-4. Een tweede bezoek aan hetzelfde Rijksmonument profiteert van caching -
-   niet opnieuw 15+ seconden wachten voor hetzelfde antwoord.
-5. Een eigen, strikte rate limiter voorkomt misbruik van deze duurdere
-   route.
+4. Een tweede bezoek aan hetzelfde Rijksmonument profiteert van caching
+   via `caches.default` - niet opnieuw 15+ seconden wachten voor hetzelfde
+   antwoord.
+5. Een eigen rate limiter (5-10/min per client) voorkomt misbruik van deze
+   duurdere route.
 6. Typecheck/lint/test blijven groen; unit tests dekken de query-builders
    en parsers met een kleine voorbeeld-respons (net als bij slice 006/
-   Werelderfgoed en Gezicht).
+   Werelderfgoed en Gezicht); de gemeten typische duur (beslissing 4) is
+   vastgelegd in dit document zodra bekend.
 
 ## Klaar wanneer
 
-Dit plan is doorgesproken met de eigenaar en er is een concreet akkoord
-over: de knop-en-waarschuwing-aanpak, de cachestrategie (of het antwoord
-op de open vraag daarover), en welke Rijksmonumenten de knop tonen.
-**Niet eerder bouwen dan dat akkoord er is.**
+Alle zes beslissingen liggen vast (zie "Beslissingen" hierboven). Het
+plan is nu compleet en bouwklaar, maar wordt **niet gebouwd zonder een
+expliciete opdracht daartoe** van de eigenaar.

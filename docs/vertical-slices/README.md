@@ -25,7 +25,7 @@ slice 017 is op 19 augustus 2026 als plan vastgelegd.
 | 014 | "Verras me"-knop | Gebouwd, unit- en contracttests groen |
 | 015 | "Alle gekoppelde begrippen"-overzicht | Gebouwd, unit- en e2e-tests groen |
 | 016 | "Ontdek een thema" (ontdekken zonder zoekterm, fase 1) | Gebouwd, e2e-test groen |
-| 017 | Archeologische context bij een Rijksmonument (overlap met Onderzoeksgebied) | Plan, niet gebouwd - nadrukkelijk pas bouwen na akkoord |
+| 017 | Archeologische context bij een Rijksmonument (overlap met Onderzoeksgebied) | Plan compleet, niet gebouwd - nadrukkelijk pas bouwen na expliciete opdracht |
 
 ## Aandachtspunten
 
@@ -35,9 +35,10 @@ slice 017 is op 19 augustus 2026 als plan vastgelegd.
 - Slice 008 moet eerst bepalen welke semantische dimensies “vergelijkbaar”
   maken en hoe diversiteit en uitlegbaarheid worden bewaakt.
 - Slice 011 vereist een expliciete straal, maximum en prestatiemeting.
-- Slice 017 vereist een product- en cachekeuze vóór bouwen (zie het
-  document zelf): de onderliggende scan is te traag (15+s) voor het
-  lazy-patroon dat slice 006 gebruikt, dus vraagt een bewust andere
-  UX (knop + waarschuwing) en cachestrategie.
+- Slice 017: de onderliggende scan is te traag (15+s) voor het lazy-patroon
+  dat slice 006 gebruikt, dus een bewust andere UX (knop + waarschuwing)
+  en cachestrategie. Alle productkeuzes zijn inmiddels vastgelegd in het
+  document zelf ("Beslissingen"); wacht nog op een expliciete opdracht om
+  te bouwen.
 
 Deze index is documentatie. Hij stelt geen nieuwe uitvoervolgorde vast.

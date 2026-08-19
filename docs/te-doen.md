@@ -476,9 +476,10 @@ actie, alleen genoteerd).
   - plan, niet gebouwd.
 - **Verticale slice 017** (19 augustus 2026): archeologische context bij
   een Rijksmonument (overlap met een Onderzoeksgebied, bv. rijksmonument
-  14948 in Elst dat boven een Romeins tempelcomplex staat) - plan, niet
-  gebouwd. Nadrukkelijk pas bouwen na akkoord van de eigenaar over de
-  voorgestelde knop-en-waarschuwing-UX en de cachestrategie, zie
+  14948 in Elst dat boven een Romeins tempelcomplex staat) - plan
+  compleet (alle zes openstaande vragen dezelfde dag beantwoord: knoptekst,
+  cachestrategie, rate-limit, scope tot gebouwde monumenten, etc.), nog
+  niet gebouwd. Nadrukkelijk pas bouwen na een expliciete opdracht, zie
   `docs/vertical-slices/017-archeologische-context-onderzoeksgebied.md`.
 - **TD-04, TD-05**: gedeeltelijk opgelost op 17 augustus 2026 (gedeelde
   `runDiscoveryBranches`-helper + `CONCEPT_FIELDS`-bron van waarheid, met
