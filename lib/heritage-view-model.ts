@@ -289,6 +289,11 @@ export const EMPTY_URL_STATE = {
 };
 export const MONUMENT_REGISTER_BASE_URL =
   "https://monumentenregister.cultureelerfgoed.nl/monumenten/";
+// Vervangt de dode archisarchief.cultureelerfgoed.nl-link (zie
+// hasOwnOfficialUrl hieronder) - per gezichtsnummer bevestigd live
+// (bv. .../1325 -> Orvelte, .../1734 -> Radio Kootwijk).
+export const GEZICHT_KENNISBANK_BASE_URL =
+  "https://kennis.cultureelerfgoed.nl/index.php/Gezicht/";
 
 export function displayFunctionName(value: string) {
   return value.replace(/\s*\([^()]*\)\s*$/, "").trim();
@@ -469,13 +474,17 @@ export function toItem(record: RceMonument): Item {
       "Actueel record uit de Linked Data Voorziening van de Rijksdienst voor het Cultureel Erfgoed.",
     registrationDate: record.registrationDate,
     official: true,
-    sourceUrl: hasOwnOfficialUrl
-      ? (record.officialUrl ?? record.sourceUrl)
-      : isComplex || isOnderzoeksgebied || isArcheologischTerrein || isVondstlocatie || isGrondspoor || isVondst || isArcheologischComplex || isGezicht
-        ? record.sourceUrl
-        : record.monumentNumber
-          ? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(record.monumentNumber)}`
-          : record.sourceUrl,
+    sourceUrl: isGezicht
+      ? record.monumentNumber
+        ? `${GEZICHT_KENNISBANK_BASE_URL}${encodeURIComponent(record.monumentNumber)}`
+        : record.sourceUrl
+      : hasOwnOfficialUrl
+        ? (record.officialUrl ?? record.sourceUrl)
+        : isComplex || isOnderzoeksgebied || isArcheologischTerrein || isVondstlocatie || isGrondspoor || isVondst || isArcheologischComplex
+          ? record.sourceUrl
+          : record.monumentNumber
+            ? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(record.monumentNumber)}`
+            : record.sourceUrl,
     linkedDataUrl: record.sourceUrl,
     wkt: record.wkt,
     parcels: record.parcels,

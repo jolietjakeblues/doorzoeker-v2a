@@ -51,11 +51,22 @@ test("matchedText via andere matchbronnen (bv. woonplaats) blijft ongemoeid", ()
   assert.equal(item.matchedText, "Utrecht");
 });
 
-test("een Gezicht linkt naar de RCE Linked Data-URI, niet naar het dode Archis-archiefdomein (archisarchief.cultureelerfgoed.nl gaf 403/404 op elk pad, ook de root)", () => {
+test("een Gezicht linkt naar de RCE Kennisbank op gezichtsnummer, niet naar het dode Archis-archiefdomein (archisarchief.cultureelerfgoed.nl gaf 403/404 op elk pad, ook de root)", () => {
   const item = toItem({
     ...baseRecord,
+    monumentNumber: "1325",
     monumentNature: "gezicht",
     officialUrl: "https://archisarchief.cultureelerfgoed.nl/Beschermde_Gezichten/BG1325",
+  });
+  assert.equal(item.sourceUrl, "https://kennis.cultureelerfgoed.nl/index.php/Gezicht/1325");
+  assert.equal(item.linkedDataUrl, baseRecord.sourceUrl);
+});
+
+test("een Gezicht zonder gezichtsnummer valt terug op de RCE Linked Data-URI", () => {
+  const item = toItem({
+    ...baseRecord,
+    monumentNumber: "",
+    monumentNature: "gezicht",
   });
   assert.equal(item.sourceUrl, baseRecord.sourceUrl);
 });
