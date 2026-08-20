@@ -184,6 +184,21 @@ export function HeritageDetailFacts({
         {item.objectType === "Archeologisch complex" && item.archaeologicalContexts?.length ? (
           <div><dt>Hoort bij</dt><dd>{item.archaeologicalContexts.map((context, index) => <span key={context.uri}>{index ? ", " : ""}<button type="button" className="concept-link" onClick={() => onObjectSearch(context.choNumber)}>{context.label}</button> ({context.type})</span>)}</dd></div>
         ) : null}
+        {item.objectType === "Gezicht" && item.oppervlakteInHectare ? (
+          <div><dt>Oppervlakte</dt><dd>{item.oppervlakteInHectare.toLocaleString("nl-NL", { maximumFractionDigits: 1 })} ha</dd></div>
+        ) : null}
+        {item.objectType === "Gezicht" && item.inProceduredatumGezicht ? (
+          <div><dt>In procedure sinds</dt><dd>{item.inProceduredatumGezicht}</dd></div>
+        ) : null}
+        {item.objectType === "Gezicht" && item.begrenzingsdatumGezicht ? (
+          <div><dt>Begrenzing vastgesteld</dt><dd>{item.begrenzingsdatumGezicht}</dd></div>
+        ) : null}
+        {item.objectType === "Gezicht" && item.intrekkingsdatumGezicht ? (
+          <div><dt>Ingetrokken op</dt><dd>{item.intrekkingsdatumGezicht}</dd></div>
+        ) : null}
+        {item.objectType === "Werelderfgoed" && item.oppervlakteInHectare ? (
+          <div><dt>Oppervlakte</dt><dd>{item.oppervlakteInHectare.toLocaleString("nl-NL", { maximumFractionDigits: 1 })} ha</dd></div>
+        ) : null}
         {item.objectType === "Scheepswrak" && item.scheepstype ? (
           <div><dt>Scheepstype</dt><dd>{item.scheepstype}</dd></div>
         ) : null}
@@ -350,6 +365,12 @@ export function HeritageDetailFacts({
         <div>
           <dt>Inschrijving of datering</dt>
           <dd>{dating}</dd>
+        </div>
+      ) : null}
+      {item.omschrijvingOnderwerpConcepten?.length ? (
+        <div>
+          <dt>Onderwerp (uit omschrijving)</dt>
+          <dd>{item.omschrijvingOnderwerpConcepten.map((concept) => concept.label).join(", ")}</dd>
         </div>
       ) : null}
     </>

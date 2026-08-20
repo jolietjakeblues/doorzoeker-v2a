@@ -7,6 +7,8 @@ const RM_TYPE = `${CEO}Rijksmonument`;
 const INSTANCES_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce";
 const WERELDERFGOED_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/werelderfgoed_hvdl";
 const GEZICHT_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/gezicht_hvdl";
+const ARCHIEFDAGEN_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/archiefdagen";
+const CEOX = "https://linkeddata.cultureelerfgoed.nl/def/ceox#";
 const RIJKSMONUMENT_STATUS = "https://data.cultureelerfgoed.nl/term/id/rn/2/b2d9a59a-fe1e-4552-9a05-3c2acddff864";
 const GEZICHT_STATUS = "https://data.cultureelerfgoed.nl/term/id/rn/2/fd968529-bf70-4afa-8564-7c6c2fcfcc54";
 
@@ -132,6 +134,10 @@ export function parseSparqlResults(document: unknown): RceMonument[] {
       typeNames: binding.typen?.value?.split("||").filter(Boolean) ?? [],
       legalStatus: binding.juridischeStatus?.value ?? "rijksmonument",
       description: binding.omschrijving?.value,
+      omschrijvingOnderwerpConcepten: binding.onderwerpConcepten?.value?.split("||").flatMap((value) => {
+        const [uri, label] = value.split("~~");
+        return uri && label ? [{ uri, label }] : [];
+      }),
       monumentNature: binding.monumentaard?.value,
       monumentAardConceptUri: binding.monumentaardConcept?.value,
       fullAddress: binding.volledigAdres?.value,
@@ -169,14 +175,24 @@ export function parseParcelResults(document: unknown): RceParcel[] {
 // (VALUES op ?choi): zelfde velden, alleen andere identifier om op te matchen.
 // Eén WHERE-body zodat een toekomstig extra veld niet per ongeluk alleen bij
 // de ene variant terechtkomt.
+// De ceox:heeftOmschrijvingOnderwerp-join (onderaan de WHERE) staat bewust
+// als los, zusterblok op het hoogste WHERE-niveau, niet genest in de
+// heeftOmschrijving-OPTIONAL hierboven: een GRAPH-blok genest in een
+// OPTIONAL die zelf weer in de buitenste GRAPH <INSTANCES_GRAPH>-blok zit,
+// gaf op dit endpoint stil 0 resultaten terug (empirisch getest tegen
+// rijksmonumentnummer 395952, dat wel degelijk 14 onderwerpconcepten
+// heeft) - dezelfde soort endpoint-eigenaardigheid als de
+// geof:sfWithin-in-UNION-quirk verderop bij buildGezichtLidmaatschapQuery.
 function buildRceDetailsQueryBody(bindVariable: "rmnr" | "choi", values: string) {
   return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
+PREFIX ceox: <${CEOX}>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX geo: <http://www.opengis.net/ont/geosparql#>
 SELECT ?cho ?choi ?rmnr
   (SAMPLE(STR(?naamValue)) AS ?naam)
   (SAMPLE(STR(?functieValue)) AS ?functie)
   (SAMPLE(STR(?omschrijvingValue)) AS ?omschrijving)
+  (GROUP_CONCAT(DISTINCT CONCAT(STR(?onderwerpConceptValue), "~~", STR(?onderwerpLabelValue)); separator="||") AS ?onderwerpConcepten)
   (SAMPLE(STR(?monumentaardValue)) AS ?monumentaard)
   (SAMPLE(STR(?monumentaardConceptValue)) AS ?monumentaardConcept)
   (SAMPLE(STR(?adresValue)) AS ?volledigAdres)
@@ -232,6 +248,12 @@ WHERE {
     ?kwaliteitNode ceo:formeelStandpunt true ; ceo:heeftBouwkundigeStaat ?bouwkundigeStaatConceptValue .
     ?bouwkundigeStaatConceptValue skos:prefLabel ?bouwkundigeStaatValue .
   }
+ }
+ OPTIONAL {
+   GRAPH <${ARCHIEFDAGEN_GRAPH}> {
+     ?omschrijvingNode ceox:heeftOmschrijvingOnderwerp ?onderwerpConceptValue .
+   }
+   ?onderwerpConceptValue skos:prefLabel ?onderwerpLabelValue .
  }
 }
 GROUP BY ?cho ?choi ?rmnr
@@ -473,6 +495,7 @@ SELECT ?cho ?choi ?wenr
   (SAMPLE(STR(?jaarValue)) AS ?jaar)
   (SAMPLE(STR(?urlValue)) AS ?url)
   (SAMPLE(STR(?wktValue)) AS ?wkt)
+  (SAMPLE(STR(?oppervlakteValue)) AS ?oppervlakte)
 WHERE {
   GRAPH <${INSTANCES_GRAPH}> {
     ?cho a ceo:Werelderfgoed ; ceo:cultuurhistorischObjectnummer ?choi ; ceo:werelderfgoednummer ?wenr .
@@ -484,6 +507,7 @@ WHERE {
     OPTIONAL { ?cho ceo:heeftWerelderfgoedType/skos:prefLabel ?typeValue . }
     OPTIONAL { ?cho ceo:jaarVanInschrijving ?jaarValue . }
     OPTIONAL { ?cho ceo:wordtGetoondOp ?urlValue . }
+    OPTIONAL { ?cho ceo:heeftGeometrie/ceo:oppervlakteInHectare ?oppervlakteValue . }
   }
   ${filter}
 }
@@ -513,6 +537,7 @@ export function parseWerelderfgoedResults(document: unknown): RceMonument[] {
         jaar ? `Op de Werelderfgoedlijst sinds ${jaar}.` : undefined,
       ].filter(Boolean).join(". "),
       officialUrl: binding.url?.value,
+      oppervlakteInHectare: binding.oppervlakte?.value ? Number(binding.oppervlakte.value) : undefined,
       lng: coordinates?.lng,
       lat: coordinates?.lat,
       wkt: wkt || undefined,
@@ -535,6 +560,10 @@ SELECT ?cho ?choi ?gnr
   (SAMPLE(STR(?registratiedatumValue)) AS ?registratiedatum)
   (SAMPLE(STR(?urlValue)) AS ?url)
   (SAMPLE(STR(?wktValue)) AS ?wkt)
+  (SAMPLE(STR(?oppervlakteValue)) AS ?oppervlakte)
+  (SAMPLE(STR(?inProcedureValue)) AS ?inProcedure)
+  (SAMPLE(STR(?begrenzingValue)) AS ?begrenzing)
+  (SAMPLE(STR(?intrekkingValue)) AS ?intrekking)
 WHERE {
   GRAPH <${INSTANCES_GRAPH}> {
     ?cho a ceo:Gezicht ; ceo:cultuurhistorischObjectnummer ?choi ; ceo:gezichtsnummer ?gnr ;
@@ -545,6 +574,10 @@ WHERE {
   }
   GRAPH <${GEZICHT_GRAPH}> {
     OPTIONAL { ?cho ceo:wordtGetoondOp ?urlValue . }
+    OPTIONAL { ?cho ceo:heeftGeometrie/ceo:oppervlakteInHectare ?oppervlakteValue . }
+    OPTIONAL { ?cho ceo:inProceduredatumGezicht ?inProcedureValue . }
+    OPTIONAL { ?cho ceo:begrenzingsdatumGezicht ?begrenzingValue . }
+    OPTIONAL { ?cho ceo:intrekkingsdatumGezicht ?intrekkingValue . }
   }
   ${filter}
 }
@@ -569,6 +602,10 @@ export function parseGezichtResults(document: unknown): RceMonument[] {
       monumentNature: OBJECT_KIND.Gezicht,
       description: "Rijksbeschermd stads- of dorpsgezicht.",
       officialUrl: binding.url?.value,
+      oppervlakteInHectare: binding.oppervlakte?.value ? Number(binding.oppervlakte.value) : undefined,
+      inProceduredatumGezicht: binding.inProcedure?.value,
+      begrenzingsdatumGezicht: binding.begrenzing?.value,
+      intrekkingsdatumGezicht: binding.intrekking?.value,
       lng: coordinates?.lng,
       lat: coordinates?.lat,
       wkt: wkt || undefined,

@@ -455,8 +455,10 @@ actie, alleen genoteerd).
     ~~Voorstel: een beperkte `Referrer-Policy` instellen~~ **opgelost
     (17 augustus 2026)** - `metadata.referrer` in `app/layout.tsx` staat nu
     expliciet op `strict-origin-when-cross-origin` (was voorheen impliciet
-    de browserdefault, nergens vastgelegd). **Blijft open:** externe
-    bronnen vastleggen in de privacyinformatie (geen code-taak).
+    de browserdefault, nergens vastgelegd). **Opgelost** - de externe
+    bronnen (PDOK, RCE-beeldbank) staan al expliciet genoemd in
+    `app/SiteFooter.tsx`; deze todo-regel liep achter op de code (gecheckt
+    20 augustus 2026).
 11. **Logging bewaken bij toekomstige uitbreiding.** Nu beheerst (de
     zoekroute logt alleen de lengte van de zoekterm, niet de inhoud).
     Aandachtspunt voor later: als volledige zoekvragen, URI's of
@@ -605,5 +607,33 @@ kreeg.
   (niet vandaag) vóór er iets over gebouwd wordt:
   - los van `rce/cho`: `Archaeological-Knowledge-Bank`, `histgeo`,
     `Bebouwde-omgeving-referentienetwerk`;
-  - binnen `rce/cho`: `actorenrol`, `gezicht_hvdl`, `werelderfgoed_hvdl`,
-    `archiefdagen`, `linies`, `buitenplaatsen`, `OmschrijvingenOnderwerp`.
+  - binnen `rce/cho`: `actorenrol`, `linies`, `buitenplaatsen`.
+  - **`gezicht_hvdl` en `werelderfgoed_hvdl` onderzocht en uitgebreid (20
+    augustus 2026):** beide graphs waren al deels aangesloten (alleen
+    `wordtGetoondOp`/type/jaar). Toegevoegd: `oppervlakteInHectare` voor
+    beide (blijkt bij empirische controle NIET rechtstreeks op het
+    Gezicht/Werelderfgoed-subject te staan maar op de gekoppelde
+    Geometrie-node - vandaar het pad
+    `ceo:heeftGeometrie/ceo:oppervlakteInHectare`, niet
+    `ceo:oppervlakteInHectare`), en voor Gezicht ook
+    `inProceduredatumGezicht`, `begrenzingsdatumGezicht`,
+    `intrekkingsdatumGezicht` (rechtstreeks op het Gezicht-subject, wel
+    correct zoals eerst aangenomen). Zie `lib/rce/monuments.ts`
+    (`buildGezichtQuery`/`buildWerelderfgoedQuery`).
+  - **`archiefdagen` en "OmschrijvingenOnderwerp" onderzocht en aangesloten
+    (20 augustus 2026):** `OmschrijvingenOnderwerp` is geen eigen graph
+    maar de property `ceox:heeftOmschrijvingOnderwerp` (namespace
+    `https://linkeddata.cultureelerfgoed.nl/def/ceox#`) binnen de
+    `archiefdagen`-graph, die de bestaande formele omschrijving
+    (`ceo:heeftOmschrijving`, al opgehaald voor elk Rijksmonument) koppelt
+    aan één of meer ABR-conceptlabels (sparse: 1.166 van alle
+    omschrijvingen, 67% daarvan met precies 1 concept, tot 14 bij één
+    record). Toegevoegd aan `buildRceDetailsQuery` als display-only veld
+    "Onderwerp (uit omschrijving)" (nog geen doorklikbaar concept-zoekveld
+    zoals de andere `CONCEPT_FIELDS` - dat is een goedkope, mechanische
+    vervolgstap mocht daar behoefte aan blijken). **Endpoint-eigenaardigheid
+    empirisch gevonden:** een `GRAPH`-blok genest in een `OPTIONAL` die zelf
+    weer in de buitenste `GRAPH <instanties-rce>` zit gaf stil 0 resultaten
+    terug; als los zusterblok op het hoogste `WHERE`-niveau werkt de join
+    wel (zelfde soort quirk als de bestaande `geof:sfWithin`-in-UNION-notitie
+    bij `buildGezichtLidmaatschapQuery`, zie code-comment).

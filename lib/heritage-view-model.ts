@@ -93,6 +93,11 @@ export type Item = {
   archaeologicalCondition?: ArchaeologyConcept;
   archaeologicalComplexType?: ArchaeologyConcept;
   archaeologicalContexts?: { uri: string; choNumber: string; label: string; type: "Vondstlocatie" | "Archeologisch terrein" | "Onderzoeksgebied" }[];
+  oppervlakteInHectare?: number;
+  inProceduredatumGezicht?: string;
+  begrenzingsdatumGezicht?: string;
+  intrekkingsdatumGezicht?: string;
+  omschrijvingOnderwerpConcepten?: { uri: string; label: string }[];
   scheepstype?: string;
   omschrijvingHtml?: string;
   ontdekt?: string;
@@ -495,6 +500,11 @@ export function toItem(record: RceMonument): Item {
     archaeologicalCondition: record.archaeologicalCondition,
     archaeologicalComplexType: record.archaeologicalComplexType,
     archaeologicalContexts: record.archaeologicalContexts,
+    oppervlakteInHectare: record.oppervlakteInHectare,
+    inProceduredatumGezicht: record.inProceduredatumGezicht,
+    begrenzingsdatumGezicht: record.begrenzingsdatumGezicht,
+    intrekkingsdatumGezicht: record.intrekkingsdatumGezicht,
+    omschrijvingOnderwerpConcepten: record.omschrijvingOnderwerpConcepten,
     scheepstype: record.scheepstype,
     omschrijvingHtml: record.omschrijvingHtml,
     ontdekt: record.ontdekt,

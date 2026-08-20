@@ -20,7 +20,7 @@ test("parses rich SPARQL results", () => {
   // the parenthesis. A stricter regex silently dropped lat/lng for every
   // result, which emptied the map without ever failing a request.
   const document = { results: { bindings: [{ cho: { value: "rm:38342" }, choi: { value: "38342" }, rmnr: { value: "36046" }, functie: { value: "Woonhuis(K)" }, omschrijving: { value: "Pand met 17e eeuwse lijstgevel." }, monumentaard: { value: "onroerend gebouwd" }, volledigAdres: { value: "Brigittenstraat 18" }, postcode: { value: "3512KM" }, woonplaats: { value: "Utrecht" }, wkt: { value: "Point (5.1267842049703 52.088895166661)" }, inschrijving: { value: "1967-06-20" } }] } };
-  assert.deepEqual(parseSparqlResults(document), [{ choNumber: "38342", monumentNumber: "36046", registrationDate: "1967-06-20", street: "", houseNumber: "", postalCode: "3512KM", sourceUrl: "rm:38342", name: undefined, functionName: "Woonhuis(K)", originalFunctionNames: [], currentFunctionNames: [], typeNames: [], legalStatus: "rijksmonument", description: "Pand met 17e eeuwse lijstgevel.", monumentNature: "onroerend gebouwd", monumentAardConceptUri: undefined, fullAddress: "Brigittenstraat 18", place: "Utrecht", municipality: undefined, provinceCode: undefined, lng: 5.1267842049703, lat: 52.088895166661, wkt: "Point (5.1267842049703 52.088895166661)", stijlEnCultuur: undefined, stijlEnCultuurConceptUri: undefined, bouwkundigeStaat: undefined, bouwkundigeStaatConceptUri: undefined }]);
+  assert.deepEqual(parseSparqlResults(document), [{ choNumber: "38342", monumentNumber: "36046", registrationDate: "1967-06-20", street: "", houseNumber: "", postalCode: "3512KM", sourceUrl: "rm:38342", name: undefined, functionName: "Woonhuis(K)", originalFunctionNames: [], currentFunctionNames: [], typeNames: [], legalStatus: "rijksmonument", description: "Pand met 17e eeuwse lijstgevel.", omschrijvingOnderwerpConcepten: undefined, monumentNature: "onroerend gebouwd", monumentAardConceptUri: undefined, fullAddress: "Brigittenstraat 18", place: "Utrecht", municipality: undefined, provinceCode: undefined, lng: 5.1267842049703, lat: 52.088895166661, wkt: "Point (5.1267842049703 52.088895166661)", stijlEnCultuur: undefined, stijlEnCultuurConceptUri: undefined, bouwkundigeStaat: undefined, bouwkundigeStaatConceptUri: undefined }]);
 });
 
 test("captures the monumentaard concept-URI alongside its label", () => {
@@ -281,6 +281,33 @@ test("leaves stijl en cultuur / bouwkundige staat undefined when a Rijksmonument
   const [monument] = parseSparqlResults(document);
   assert.equal(monument.stijlEnCultuur, undefined);
   assert.equal(monument.bouwkundigeStaat, undefined);
+});
+
+test("joins the archiefdagen-graph onderwerpconcept onto the formele omschrijving", () => {
+  // OmschrijvingenOnderwerp (ceox:heeftOmschrijvingOnderwerp) koppelt de
+  // formele omschrijving aan ABR-conceptlabels, sparse (1.166 records).
+  const query = buildRceDetailsQuery(["36046"]);
+  assert.match(query, /GRAPH <https:\/\/linkeddata\.cultureelerfgoed\.nl\/graph\/archiefdagen>/);
+  assert.match(query, /\?omschrijvingNode ceox:heeftOmschrijvingOnderwerp \?onderwerpConceptValue/);
+  assert.match(query, /\?onderwerpConceptValue skos:prefLabel \?onderwerpLabelValue/);
+});
+
+test("parses one or more onderwerpconcepten from the GROUP_CONCAT'ed URI~~label pairs", () => {
+  const document = { results: { bindings: [{
+    rmnr: { value: "36046" },
+    onderwerpConcepten: { value: "https://data.cultureelerfgoed.nl/term/id/abr/1~~kanaal||https://data.cultureelerfgoed.nl/term/id/abr/2~~sluis" },
+  }] } };
+  const [monument] = parseSparqlResults(document);
+  assert.deepEqual(monument.omschrijvingOnderwerpConcepten, [
+    { uri: "https://data.cultureelerfgoed.nl/term/id/abr/1", label: "kanaal" },
+    { uri: "https://data.cultureelerfgoed.nl/term/id/abr/2", label: "sluis" },
+  ]);
+});
+
+test("leaves onderwerpconcepten undefined when a Rijksmonument has none", () => {
+  const document = { results: { bindings: [{ rmnr: { value: "36046" } }] } };
+  const [monument] = parseSparqlResults(document);
+  assert.equal(monument.omschrijvingOnderwerpConcepten, undefined);
 });
 
 test("looks up a Rijksmonument by CHO-nummer, not just rijksmonumentnummer (P1: 71286 gaf 0 resultaten)", () => {
@@ -581,6 +608,7 @@ test("looks up Werelderfgoed across both the instanties-rce and werelderfgoed_hv
   assert.match(query, /a ceo:Werelderfgoed/);
   assert.match(query, new RegExp(`GRAPH <${RCE_SEMANTICS.instancesGraph}>`));
   assert.match(query, /GRAPH <https:\/\/linkeddata\.cultureelerfgoed\.nl\/graph\/werelderfgoed_hvdl>/);
+  assert.match(query, /ceo:heeftGeometrie\/ceo:oppervlakteInHectare \?oppervlakteValue/);
   assert.match(query, /ceo:heeftWerelderfgoedType\/skos:prefLabel/);
   assert.match(query, /ceo:jaarVanInschrijving/);
   assert.match(query, /ceo:wordtGetoondOp/);
@@ -615,6 +643,7 @@ test("parses Werelderfgoed results into RceMonument-shaped records", () => {
     jaar: { value: "1995" },
     url: { value: "https://whc.unesco.org/en/list/739" },
     wkt: { value: "Point (5.75 52.65)" },
+    oppervlakte: { value: "1305.6" },
   }] } };
   const [werelderfgoed] = parseWerelderfgoedResults(document);
   assert.equal(werelderfgoed.choNumber, "10134679");
@@ -623,6 +652,7 @@ test("parses Werelderfgoed results into RceMonument-shaped records", () => {
   assert.equal(werelderfgoed.monumentNature, "werelderfgoed");
   assert.equal(werelderfgoed.description, "Archeologie. Op de Werelderfgoedlijst sinds 1995.");
   assert.equal(werelderfgoed.officialUrl, "https://whc.unesco.org/en/list/739");
+  assert.equal(werelderfgoed.oppervlakteInHectare, 1305.6);
   assert.equal(werelderfgoed.lat, 52.65);
   assert.equal(werelderfgoed.lng, 5.75);
 });
@@ -637,6 +667,10 @@ test("looks up Gezicht across both graphs, filtered to the rijksbeschermd status
   assert.match(query, new RegExp(`GRAPH <${RCE_SEMANTICS.instancesGraph}>`));
   assert.match(query, /GRAPH <https:\/\/linkeddata\.cultureelerfgoed\.nl\/graph\/gezicht_hvdl>/);
   assert.match(query, /ceo:wordtGetoondOp/);
+  assert.match(query, /ceo:heeftGeometrie\/ceo:oppervlakteInHectare \?oppervlakteValue/);
+  assert.match(query, /ceo:inProceduredatumGezicht \?inProcedureValue/);
+  assert.match(query, /ceo:begrenzingsdatumGezicht \?begrenzingValue/);
+  assert.match(query, /ceo:intrekkingsdatumGezicht \?intrekkingValue/);
   assert.match(query, /orvelte/);
 });
 
@@ -662,6 +696,9 @@ test("parses Gezicht results into RceMonument-shaped records", () => {
     registratiedatum: { value: "1967-08-07" },
     url: { value: "https://archisarchief.cultureelerfgoed.nl/Beschermde_Gezichten/BG1325" },
     wkt: { value: "Point (6.65 52.85)" },
+    oppervlakte: { value: "11.2" },
+    inProcedure: { value: "" },
+    begrenzing: { value: "2003-05-06" },
   }] } };
   const [gezicht] = parseGezichtResults(document);
   assert.equal(gezicht.choNumber, "10134178");
@@ -670,6 +707,9 @@ test("parses Gezicht results into RceMonument-shaped records", () => {
   assert.equal(gezicht.monumentNature, "gezicht");
   assert.equal(gezicht.description, "Rijksbeschermd stads- of dorpsgezicht.");
   assert.equal(gezicht.officialUrl, "https://archisarchief.cultureelerfgoed.nl/Beschermde_Gezichten/BG1325");
+  assert.equal(gezicht.oppervlakteInHectare, 11.2);
+  assert.equal(gezicht.begrenzingsdatumGezicht, "2003-05-06");
+  assert.equal(gezicht.intrekkingsdatumGezicht, undefined);
   assert.equal(gezicht.lat, 52.85);
   assert.equal(gezicht.lng, 6.65);
 });
