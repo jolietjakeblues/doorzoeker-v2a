@@ -19,7 +19,7 @@ test("returns a built monument with an image from the constrained candidate quer
       ] } });
     }
     if (url.includes("perceelnummer")) return Response.json({ results: { bindings: [] } });
-    if (url.includes("GROUP_CONCAT")) return Response.json({ results: { bindings: [{ rmnr: { value: "36046" } }] } });
+    if (url.includes("functieConcepten")) return Response.json({ results: { bindings: [{ rmnr: { value: "36046" } }] } });
     if (url.includes("foaf:depiction") || url.includes("depictionValue")) {
       return Response.json({ results: { bindings: [{ rmnr: { value: "36046" }, depiction: { value: "https://images.memorix.nl/rce/thumb/640x480/x.jpg" } }] } });
     }
@@ -72,7 +72,7 @@ test("uses the nearest previous calendar day when today has no built monument wi
       return Response.json({ results: { bindings: maandDag === "08-10" ? [{ rmnr: { value: "517443" } }] : [] } });
     }
     if (url.includes("perceelnummer")) return Response.json({ results: { bindings: [] } });
-    if (url.includes("GROUP_CONCAT")) return Response.json({ results: { bindings: [{ rmnr: { value: "517443" } }] } });
+    if (url.includes("functieConcepten")) return Response.json({ results: { bindings: [{ rmnr: { value: "517443" } }] } });
     if (url.includes("foaf:depiction") || url.includes("depictionValue")) {
       return Response.json({ results: { bindings: [{ rmnr: { value: "517443" }, depiction: { value: "https://images.memorix.nl/rce/thumb/640x480/kaaspakhuis.jpg" } }] } });
     }

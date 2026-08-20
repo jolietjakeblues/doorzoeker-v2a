@@ -84,6 +84,21 @@ export type RceMonument = {
   archaeologicalCondition?: ArchaeologyConcept;
   archaeologicalComplexType?: ArchaeologyConcept;
   archaeologicalContexts?: { uri: string; choNumber: string; label: string; type: "Vondstlocatie" | "Archeologisch terrein" | "Onderzoeksgebied" }[];
+  // Gezicht/Werelderfgoed-velden uit de aparte gezicht_hvdl/werelderfgoed_hvdl-
+  // graphs, aanvullend op de naam/geometrie/registratiedatum die al uit
+  // instanties-rce kwamen (zie buildGezichtQuery/buildWerelderfgoedQuery in
+  // lib/rce/monuments.ts). oppervlakteInHectare geldt voor beide types;
+  // de drie datumvelden alleen voor Gezicht.
+  oppervlakteInHectare?: number;
+  inProceduredatumGezicht?: string;
+  begrenzingsdatumGezicht?: string;
+  intrekkingsdatumGezicht?: string;
+  // Alleen gevuld voor Rijksmonument, via de archiefdagen-graph
+  // (ceox:heeftOmschrijvingOnderwerp) op de formele omschrijving. Sparse
+  // (1.166 van de omschrijvingen), bewust alleen op de hoofd-detailquery
+  // aangesloten. Display-only voor nu (geen apart concept-zoekveld) - dat
+  // is een goedkope, mechanische vervolgstap als daar behoefte aan blijkt.
+  omschrijvingOnderwerpConcepten?: { uri: string; label: string }[];
   // MASS-scheepswrakken (018-mass-scheepswrakken.md) - eigen, losstaande
   // dataset (rce/mass i.p.v. rce/cho), vandaar een klein, apart veldensetje
   // i.p.v. hergebruik van bv. functionName/description.

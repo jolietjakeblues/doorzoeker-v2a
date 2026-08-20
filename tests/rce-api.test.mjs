@@ -51,7 +51,7 @@ test("returns a stable application API contract for a monument number", async (c
     if (url.includes("perceelnummer")) {
       return Response.json({ results: { bindings: [{ rmnr: { value: "36046" }, gemeente: { value: "Utrecht" }, sectie: { value: "B" }, perceel: { value: "358" } }] } });
     }
-    if (url.includes("GROUP_CONCAT")) {
+    if (url.includes("functieConcepten")) {
       return Response.json({ results: { bindings: [{ rmnr: { value: "36046" }, oorspronkelijkeFuncties: { value: "Woonhuis(K)" } }] } });
     }
     return Response.json({ results: { bindings: [{ cho: { value: "rm:38342" }, choi: { value: "38342" }, rmnr: { value: "36046" }, functie: { value: "Woonhuis(K)" }, omschrijving: { value: "Pand met lijstgevel." }, volledigAdres: { value: "Brigittenstraat 18" }, woonplaats: { value: "Utrecht" } }] } });
@@ -165,7 +165,7 @@ test("finds a Rijksmonument by CHO-nummer when it is not a valid rijksmonumentnu
   globalThis.fetch = async (input) => {
     const url = decodeURIComponent(String(input));
     if (url.startsWith(BIBLIOTHEEK_SPARQL)) return Response.json({ results: { bindings: [] } });
-    if (url.includes("GROUP_CONCAT")) return Response.json({ results: { bindings: [] } });
+    if (url.includes("functieConcepten")) return Response.json({ results: { bindings: [] } });
     if (url.includes("perceelnummer")) return Response.json({ results: { bindings: [] } });
     const monument = { cho: { value: "rm:71286" }, choi: { value: "71286" }, rmnr: { value: "519471" }, naam: { value: "Herenhuis Tolsedijk" } };
     if (url.includes("VALUES ?choi")) return Response.json({ results: { bindings: [monument] } });
@@ -215,7 +215,7 @@ test("does not require q when a valid concept-URI is present", async (context) =
       return Response.json({ results: { bindings: [{ rmnr: { value: "36046" } }] } });
     }
     if (url.includes("perceelnummer")) return Response.json({ results: { bindings: [] } });
-    if (url.includes("GROUP_CONCAT")) return Response.json({ results: { bindings: [{ rmnr: { value: "36046" } }] } });
+    if (url.includes("functieConcepten")) return Response.json({ results: { bindings: [{ rmnr: { value: "36046" } }] } });
     return Response.json({ results: { bindings: [{ cho: { value: "rm:38342" }, choi: { value: "38342" }, rmnr: { value: "36046" }, monumentaard: { value: "onroerend gebouwd" }, monumentaardConcept: { value: conceptUri } }] } });
   };
 
@@ -283,7 +283,7 @@ test("dispatches to the gebeurtenis concept search when veld=gebeurtenis", async
       return Response.json({ results: { bindings: [{ rmnr: { value: "10047" } }] } });
     }
     if (url.includes("perceelnummer")) return Response.json({ results: { bindings: [] } });
-    if (url.includes("GROUP_CONCAT")) return Response.json({ results: { bindings: [{ rmnr: { value: "10047" } }] } });
+    if (url.includes("functieConcepten")) return Response.json({ results: { bindings: [{ rmnr: { value: "10047" } }] } });
     return Response.json({ results: { bindings: [{ cho: { value: "rm:10047" }, choi: { value: "10047" }, rmnr: { value: "10047" } }] } });
   };
 
@@ -310,7 +310,7 @@ test("dispatches to the actor concept search when veld=actor", async (context) =
       return Response.json({ results: { bindings: [{ rmnr: { value: "10047" } }] } });
     }
     if (url.includes("perceelnummer")) return Response.json({ results: { bindings: [] } });
-    if (url.includes("GROUP_CONCAT")) return Response.json({ results: { bindings: [{ rmnr: { value: "10047" } }] } });
+    if (url.includes("functieConcepten")) return Response.json({ results: { bindings: [{ rmnr: { value: "10047" } }] } });
     return Response.json({ results: { bindings: [{ cho: { value: "rm:10047" }, choi: { value: "10047" }, rmnr: { value: "10047" } }] } });
   };
 
@@ -343,7 +343,7 @@ test("attaches gekoppelde literatuur from the separate rce/bibliotheek dataset o
       }] } });
     }
     if (url.includes("perceelnummer")) return Response.json({ results: { bindings: [] } });
-    if (url.includes("GROUP_CONCAT")) return Response.json({ results: { bindings: [{ rmnr: { value: "18073" } }] } });
+    if (url.includes("functieConcepten")) return Response.json({ results: { bindings: [{ rmnr: { value: "18073" } }] } });
     return Response.json({ results: { bindings: [{ cho: { value: "rm:18073" }, choi: { value: "18073" }, rmnr: { value: "18073" } }] } });
   };
 
@@ -398,7 +398,7 @@ test("keeps name search working when another discovery branch is temporarily una
     if (url.includes("a ceo:Werelderfgoed") || url.includes("a ceo:Gezicht") || url.includes("a ceo:Complex") || url.includes("a ceo:ArcheologischOnderzoeksgebied")) {
       return Response.json({ results: { bindings: [] } });
     }
-    if (url.includes("perceelnummer") || url.includes("GROUP_CONCAT")) return Response.json({ results: { bindings: [] } });
+    if (url.includes("perceelnummer") || url.includes("functieConcepten")) return Response.json({ results: { bindings: [] } });
     if (url.includes("SELECT ?cho ?choi ?rmnr")) {
       return Response.json({ results: { bindings: [{ cho: { value: "rm:517443" }, choi: { value: "cho-517443" }, rmnr: { value: "517443" }, naam: { value: "Kaaspakhuis" } }] } });
     }

@@ -32,7 +32,7 @@ test("returns a built monument with an image, never cached", async (context) => 
       ] } });
     }
     if (url.includes("perceelnummer")) return Response.json({ results: { bindings: [] } });
-    if (url.includes("GROUP_CONCAT")) return Response.json({ results: { bindings: [{ rmnr: { value: "36046" } }] } });
+    if (url.includes("functieConcepten")) return Response.json({ results: { bindings: [{ rmnr: { value: "36046" } }] } });
     if (url.includes("foaf:depiction") || url.includes("depictionValue")) {
       return Response.json({ results: { bindings: [{ rmnr: { value: "36046" }, depiction: { value: "https://images.memorix.nl/rce/thumb/640x480/x.jpg" } }] } });
     }
