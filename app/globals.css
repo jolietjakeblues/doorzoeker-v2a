@@ -1094,6 +1094,40 @@ h2 {
   font-weight: 400;
   word-break: break-all;
 }
+/* Gesaneerde MASS-scheepswrakomschrijving (018-mass-scheepswrakken.md) - dit
+   is de enige plek in Doorzoeker die vrije, meerdere-alinea's-lange HTML uit
+   een bron rendert i.p.v. platte tekst, vandaar wat meer basisopmaak dan de
+   rest van .map-object-list nodig heeft. */
+.scheepswrak-omschrijving {
+  padding: 10px 16px;
+  line-height: 1.6;
+}
+.scheepswrak-omschrijving h1,
+.scheepswrak-omschrijving h2,
+.scheepswrak-omschrijving h3 {
+  font-size: 14px;
+  color: var(--rce-blue);
+  margin: 16px 0 6px;
+}
+.scheepswrak-omschrijving h1:first-child {
+  margin-top: 0;
+}
+.scheepswrak-omschrijving img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 8px 0;
+}
+.scheepswrak-omschrijving table {
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.scheepswrak-omschrijving th,
+.scheepswrak-omschrijving td {
+  border: 1px solid var(--line);
+  padding: 4px 8px;
+  text-align: left;
+}
 .leaflet-container {
   font-family: var(--font);
   font-size: 14px;

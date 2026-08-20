@@ -19,6 +19,7 @@ export const OBJECT_KIND = {
   Grondsporen: "grondsporen",
   Vondsten: "vondsten",
   ArcheologischComplex: "archeologischcomplex",
+  Scheepswrak: "scheepswrak",
 } as const;
 export type ObjectKind = (typeof OBJECT_KIND)[keyof typeof OBJECT_KIND];
 
@@ -83,6 +84,14 @@ export type RceMonument = {
   archaeologicalCondition?: ArchaeologyConcept;
   archaeologicalComplexType?: ArchaeologyConcept;
   archaeologicalContexts?: { uri: string; choNumber: string; label: string; type: "Vondstlocatie" | "Archeologisch terrein" | "Onderzoeksgebied" }[];
+  // MASS-scheepswrakken (018-mass-scheepswrakken.md) - eigen, losstaande
+  // dataset (rce/mass i.p.v. rce/cho), vandaar een klein, apart veldensetje
+  // i.p.v. hergebruik van bv. functionName/description.
+  scheepstype?: string;
+  omschrijvingHtml?: string;
+  ontdekt?: string;
+  licentieNaam?: string;
+  licentieUrl?: string;
 };
 
 export type MonumentImage = { url: string; title?: string; license?: string; sourceUrl?: string };

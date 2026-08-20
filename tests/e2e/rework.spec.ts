@@ -1584,3 +1584,58 @@ test("een groenaanleg-foto wordt getoond met bron en rechten", async ({ page }) 
     "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/afbeelding/groenaanleg-1",
   );
 });
+
+test("een scheepswrak (MASS) toont scheepstype, gesaneerde omschrijving met afbeelding en de vaste bronvermelding (018-mass-scheepswrakken)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: {
+      page: 1,
+      hasMore: false,
+      results: [{
+        choNumber: "1",
+        monumentNumber: "1",
+        registrationDate: "",
+        street: "",
+        houseNumber: "",
+        postalCode: "",
+        sourceUrl: "https://mass.cultureelerfgoed.nl/id/1",
+        officialUrl: "https://mass.cultureelerfgoed.nl/hendrika",
+        name: "Hendrika",
+        description: "Fregat",
+        monumentNature: "scheepswrak",
+        lat: 51.717,
+        lng: 3.646,
+        scheepstype: "Fregat",
+        // Al server-side gesaneerd vóór verzending (net als de echte API) -
+        // de e2e-test controleert alleen het clientgedrag, niet de
+        // sanitatie zelf (die heeft tests/html-sanitize.test.mjs).
+        omschrijvingHtml: '<h1>Historie</h1><p>Gezonken in 1850 op de Banjaard.</p><img src="https://mass.cultureelerfgoed.nl/photos/l/00000001.jpg" alt="Enige afbeelding van de Hendrika">',
+        ontdekt: "2004",
+        licentieNaam: "Creative Commons Attribution-ShareAlike 4.0 International License (CC BY-SA 4.0)",
+        licentieUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+      }],
+    },
+  }));
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("hendrika");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(page.getByText("Scheepswrak (MASS)").first()).toBeVisible();
+  await page.getByRole("button", { name: "Bekijk gegevens van Hendrika" }).click();
+
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Scheepswrak (MASS)", { exact: true }).first()).toBeVisible();
+  await expect(dialog.getByText("Fregat", { exact: true }).first()).toBeVisible();
+  await expect(dialog.getByText("Ontdekt")).toBeVisible();
+  await expect(dialog.getByText("2004", { exact: true })).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "Historie" })).toBeVisible();
+  await expect(dialog.getByText("Gezonken in 1850 op de Banjaard.")).toBeVisible();
+  const photo = dialog.getByRole("img", { name: "Enige afbeelding van de Hendrika" });
+  await expect(photo).toHaveAttribute("src", "https://mass.cultureelerfgoed.nl/photos/l/00000001.jpg");
+  await expect(dialog.getByText("Bron: MASS (RCE), stand per 31-12-2025.")).toBeVisible();
+  const licentieLink = dialog.getByRole("link", { name: "CC BY-SA 4.0" });
+  await expect(licentieLink).toHaveAttribute("href", "https://creativecommons.org/licenses/by-sa/4.0/");
+  await expect(dialog.getByRole("link", { name: /Bekijk op MASS \(RCE\)/ })).toHaveAttribute(
+    "href",
+    "https://mass.cultureelerfgoed.nl/hendrika",
+  );
+});

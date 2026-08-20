@@ -2,11 +2,12 @@
 
 ## Status
 
-Plan, nog niet gebouwd. Onderzocht op verzoek van de eigenaar (19 augustus
-2026): "Wat vind je ervan om deze data toe te voegen (met restrictie stand
-tot 31-12-2025) - met locaties, afbeeldingen, verwijzingen, rapporten, etc.
-de hele mikmak." Volgorde expliciet afgesproken: eerst onderzoek, dan plan,
-dan pas bouwen.
+Gebouwd en live geverifieerd (19 augustus 2026). Onderzocht op verzoek van
+de eigenaar: "Wat vind je ervan om deze data toe te voegen (met restrictie
+stand tot 31-12-2025) - met locaties, afbeeldingen, verwijzingen, rapporten,
+etc. de hele mikmak." Volgorde expliciet afgesproken: eerst onderzoek, dan
+plan, dan pas bouwen - alle vier openstaande vragen zijn beantwoord vóór het
+bouwen begon (zie "Beslissingen" hieronder).
 
 ## Aanleiding
 
@@ -164,20 +165,17 @@ type Scheepswrak = {
   omgezet naar een eigen gestructureerde lijst (zou verzinnen zijn wat de
   brondata niet als zodanig aanbiedt).
 
-## Openstaande vragen voor de eigenaar
+## Beslissingen (19 augustus 2026, na overleg met de eigenaar)
 
-1. **Categorienaam.** "Scheepswrak(ken)" of iets anders (bv. "Maritiem
-   erfgoed")?
-2. **HTML-sanitatie: welke tags/attributen toestaan?** Voorstel:
-   `h1-h3, p, ul, ol, li, a[href], img[src|alt], figure, figcaption,
-   strong, em, br, table, tbody, tr, th, td` - verder niets (geen
-   `style`, geen `script`, geen willekeurige attributen). Akkoord, of wil
-   je dit strenger/ruimer?
-3. **Scheepstype als los, doorklikbaar facet in "Soort object"-achtige
-   filters**, of liever alleen zichtbaar in het detail (minder
-   filter-complexiteit, sneller te bouwen)?
-4. **Bronvermeldingstekst**, letterlijk voorstel: "Bron: MASS (RCE),
-   stand per 31-12-2025. Licentie: CC BY-SA 4.0." - akkoord?
+1. **Categorienaam: "Scheepswrak(ken)"**, geen alternatief nodig.
+2. **HTML-sanitatie-whitelist: akkoord**, ongewijzigd gebouwd zoals
+   voorgesteld (`h1-h3, p, ul, ol, li, a[href], img[src|alt], figure,
+   figcaption, strong, em, br, table, tbody, tr, th, td`).
+3. **Scheepstype: eerst alleen in het detail, geen los filter-facet.**
+   "Beginnen met detail" - een eigen "Soort object"-achtig facet is een
+   latere uitbreiding als daar behoefte aan blijkt.
+4. **Bronvermeldingstekst: akkoord**, letterlijk gebouwd zoals
+   voorgesteld.
 
 ## Acceptatiecriteria
 
@@ -196,8 +194,47 @@ type Scheepswrak = {
 5. Live geverifieerd tegen minstens één bekend wrak (bv. "Hendrika") vóór
    opleveren.
 
+## Gebouwd - wat er tijdens de bouw nog bijkwam
+
+- **`lib/rce/scheepswrakken.ts`**: eigen, losstaande module (discoveryquery
+  op naam + exacte MASS-ID-kortsluiting bij een numerieke term,
+  detailquery, parser) - analoog aan `lib/rce/archaeology.ts`, geen
+  hergebruik van CEO-gerichte code.
+- **`runDiscoveryBranches` kreeg een optionele `endpoint`-parameter**
+  (`lib/server/rce-adapter.ts`), doorgegeven aan zijn interne
+  `fetchSparql`-aanroep - nodig omdat scheepswrakken-discovery tegen
+  `MASS_ENDPOINT` moet, niet de standaard rce/cho-dienst die elke andere
+  categorie gebruikt. Bestaande aanroepers blijven ongewijzigd (optioneel
+  argument).
+- **Scheepswrakken delen de "archaeology-b"-scopebucket** (grondsporen/
+  vondsten/archeologische complexen) i.p.v. een eigen scope-waarde te
+  krijgen - zelfde kostenprofiel (klein, snel), en voorkomt dat de
+  client-side parallelle scope-fetches (`lib/rce-client.ts`) aangepast
+  moesten worden.
+- **`lib/server/html-sanitize.ts`**: een echte karakter-voor-karakter
+  tokenizer (geen regex-op-de-hele-string, geen dependency) - zie de
+  uitgebreide toelichting in het bestand zelf. Saniteert server-side,
+  vóór de client de HTML ooit ziet. 17 unit tests, inclusief expliciete
+  XSS-vectoren (`<script>`, `onclick=`, `javascript:`/`data:`-URL's,
+  geneste strip-tags, `>` binnen aanhalingstekens).
+- **Browse-all ("Bekijk alles: Scheepswrakken") bewust niet gebouwd** -
+  buiten scope van deze slice (alleen zoeken op naam was gevraagd/
+  afgesproken); een latere uitbreiding als daar behoefte aan blijkt.
+- **"Bekijk in het Monumentenregister"-link had een aparte labeltekst
+  nodig** (`app/HeritageDetailDialog.tsx`) - de generieke fallbacktekst
+  paste niet bij een scheepswrak (geen monumentenregister-entry). Nu
+  "Bekijk op MASS (RCE)", wijzend naar de eigen MASS-pagina van het wrak.
+
+Live geverifieerd tegen "Hendrika" (MASS-ID 1): zoeken op naam,
+scheepstype-facetteksten, kaartmarker (eigen teal kleur `#0a5c66`),
+gesaneerde omschrijving met afbeelding (relatief `/photos/...`-pad correct
+opgelost tegen `https://mass.cultureelerfgoed.nl`), referenties-sectie, en
+de bronvermelding "Bron: MASS (RCE), stand per 31-12-2025. Licentie:
+CC BY-SA 4.0." - allemaal zoals bedoeld. Volledige checksuite
+(typecheck/lint/256 unit tests/60 e2e-tests, inclusief een nieuwe
+e2e-test) groen.
+
 ## Klaar wanneer
 
-Nog niet gehaald - dit document is het plan. Bouwen start pas na expliciete
-"ja bouwen"-bevestiging van de eigenaar, en het liefst na antwoord op de
-vier openstaande vragen hierboven.
+Gehaald: alle vier beslissingen liggen vast, de categorie is gebouwd en
+live geverifieerd tegen een bekend wrak ("Hendrika").

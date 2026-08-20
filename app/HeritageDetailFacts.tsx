@@ -184,6 +184,12 @@ export function HeritageDetailFacts({
         {item.objectType === "Archeologisch complex" && item.archaeologicalContexts?.length ? (
           <div><dt>Hoort bij</dt><dd>{item.archaeologicalContexts.map((context, index) => <span key={context.uri}>{index ? ", " : ""}<button type="button" className="concept-link" onClick={() => onObjectSearch(context.choNumber)}>{context.label}</button> ({context.type})</span>)}</dd></div>
         ) : null}
+        {item.objectType === "Scheepswrak" && item.scheepstype ? (
+          <div><dt>Scheepstype</dt><dd>{item.scheepstype}</dd></div>
+        ) : null}
+        {item.objectType === "Scheepswrak" && item.ontdekt ? (
+          <div><dt>Ontdekt</dt><dd>{item.ontdekt}</dd></div>
+        ) : null}
       </>
     );
   }

@@ -404,6 +404,32 @@ export function HeritageDetailDialog({
               </div>
             ) : null}
           </dl>
+          {selected.objectType === "Scheepswrak" && selected.omschrijvingHtml ? (
+            <div className="map-object-list">
+              <h3>Over dit scheepswrak</h3>
+              {/* omschrijvingHtml is server-side gesaneerd (lib/server/
+                  html-sanitize.ts) vóórdat het ooit de client bereikt - hier
+                  alleen nog renderen, niet nogmaals vertrouwen als veilig
+                  zonder die stap. */}
+              <div
+                className="scheepswrak-omschrijving"
+                dangerouslySetInnerHTML={{ __html: selected.omschrijvingHtml }}
+              />
+              <p className="detail-image-credit">
+                <small>
+                  Bron: MASS (RCE), stand per 31-12-2025. Licentie:{" "}
+                  {selected.licentieUrl ? (
+                    <a href={selected.licentieUrl} target="_blank" rel="noreferrer">
+                      CC BY-SA 4.0
+                    </a>
+                  ) : (
+                    "CC BY-SA 4.0"
+                  )}
+                  .
+                </small>
+              </p>
+            </div>
+          ) : null}
           {archeologischeContextState.status === "done" &&
           archeologischeContextState.gebieden.length ? (
             <div className="map-object-list">
@@ -685,7 +711,9 @@ export function HeritageDetailDialog({
                 ? "Bekijk op de UNESCO Werelderfgoedlijst"
                 : selected.objectType === "Gezicht"
                   ? "Bekijk in het Archis-archief"
-                  : selected.objectType === "Complex" ||
+                  : selected.objectType === "Scheepswrak"
+                    ? "Bekijk op MASS (RCE)"
+                    : selected.objectType === "Complex" ||
                       selected.objectType === "Archeologisch terrein" ||
                       selected.objectType === "Vondstlocatie" ||
                       selected.objectType === "Grondspoor" ||

@@ -39,7 +39,8 @@ export type Item = {
     | "Grondspoor"
     | "Vondst"
     | "Archeologisch complex"
-    | "Onderzoeksgebied";
+    | "Onderzoeksgebied"
+    | "Scheepswrak";
   monumentAard?: "Gebouwd" | "Archeologisch";
   period: string;
   description: string;
@@ -92,6 +93,11 @@ export type Item = {
   archaeologicalCondition?: ArchaeologyConcept;
   archaeologicalComplexType?: ArchaeologyConcept;
   archaeologicalContexts?: { uri: string; choNumber: string; label: string; type: "Vondstlocatie" | "Archeologisch terrein" | "Onderzoeksgebied" }[];
+  scheepstype?: string;
+  omschrijvingHtml?: string;
+  ontdekt?: string;
+  licentieNaam?: string;
+  licentieUrl?: string;
 };
 
 export const EMPTY_ITEMS: Item[] = [];
@@ -310,6 +316,7 @@ export function typeBadge(item: {
   if (item.objectType === "Grondspoor") return { letter: "S", modifier: "dig" };
   if (item.objectType === "Vondst") return { letter: "V", modifier: "sand" };
   if (item.objectType === "Archeologisch complex") return { letter: "A", modifier: "complex" };
+  if (item.objectType === "Scheepswrak") return { letter: "S", modifier: "wreck" };
   if (item.monumentAard === "Archeologisch")
     return { letter: "A", modifier: "sand" };
   return { letter: "M", modifier: "" };
@@ -331,6 +338,7 @@ export function statusLabel(objectType: Item["objectType"]) {
   if (objectType === "Grondspoor") return "Archeologisch grondspoor";
   if (objectType === "Vondst") return "Archeologische vondst";
   if (objectType === "Archeologisch complex") return "Archeologisch complex";
+  if (objectType === "Scheepswrak") return "Scheepswrak (MASS)";
   return "Rijksmonument";
 }
 
@@ -349,6 +357,7 @@ export function primaryIdentifier(
   if (item.objectType === "Grondspoor") return { label: "CHO", value };
   if (item.objectType === "Vondst") return { label: item.monumentNumber !== item.objectNumber ? "Archis" : "CHO", value };
   if (item.objectType === "Archeologisch complex") return { label: "CHO", value };
+  if (item.objectType === "Scheepswrak") return { label: "MASS", value };
   return { label: "Onderzoeksgebied", value };
 }
 
@@ -376,7 +385,8 @@ export function toItem(record: RceMonument): Item {
   const isGrondspoor = record.monumentNature === OBJECT_KIND.Grondsporen;
   const isVondst = record.monumentNature === OBJECT_KIND.Vondsten;
   const isArcheologischComplex = record.monumentNature === OBJECT_KIND.ArcheologischComplex;
-  const hasOwnOfficialUrl = isWerelderfgoed || isGezicht;
+  const isScheepswrak = record.monumentNature === OBJECT_KIND.Scheepswrak;
+  const hasOwnOfficialUrl = isWerelderfgoed || isGezicht || isScheepswrak;
   const objectType: Item["objectType"] = isWerelderfgoed
     ? "Werelderfgoed"
     : isGezicht
@@ -395,6 +405,8 @@ export function toItem(record: RceMonument): Item {
                 ? "Vondst"
               : isArcheologischComplex
                 ? "Archeologisch complex"
+              : isScheepswrak
+                ? "Scheepswrak"
               : "Rijksmonument";
   const monumentAard: Item["monumentAard"] =
     objectType === "Rijksmonument"
@@ -423,6 +435,8 @@ export function toItem(record: RceMonument): Item {
             ? `Vondst ${record.monumentNumber}`
           : isArcheologischComplex
             ? `Archeologisch complex ${record.monumentNumber}`
+          : isScheepswrak
+            ? `Scheepswrak ${record.monumentNumber}`
           : `Rijksmonument ${record.monumentNumber}`),
     kind: functionName || "Functie niet opgenomen",
     address:
@@ -481,6 +495,11 @@ export function toItem(record: RceMonument): Item {
     archaeologicalCondition: record.archaeologicalCondition,
     archaeologicalComplexType: record.archaeologicalComplexType,
     archaeologicalContexts: record.archaeologicalContexts,
+    scheepstype: record.scheepstype,
+    omschrijvingHtml: record.omschrijvingHtml,
+    ontdekt: record.ontdekt,
+    licentieNaam: record.licentieNaam,
+    licentieUrl: record.licentieUrl,
     matchSource: record.matchSource,
     matchedText,
     matchScore: record.matchScore,
@@ -578,7 +597,8 @@ export function parseUrlState(search: string) {
       objectType === "Grondspoor" ||
       objectType === "Vondst" ||
       objectType === "Archeologisch complex" ||
-      objectType === "Onderzoeksgebied"
+      objectType === "Onderzoeksgebied" ||
+      objectType === "Scheepswrak"
         ? objectType
         : "Alle",
     monumentAard:
