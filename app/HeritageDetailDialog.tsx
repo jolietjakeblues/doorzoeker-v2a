@@ -709,19 +709,18 @@ export function HeritageDetailDialog({
             >
               {selected.objectType === "Werelderfgoed"
                 ? "Bekijk op de UNESCO Werelderfgoedlijst"
-                : selected.objectType === "Gezicht"
-                  ? "Bekijk in het Archis-archief"
-                  : selected.objectType === "Scheepswrak"
-                    ? "Bekijk op MASS (RCE)"
-                    : selected.objectType === "Complex" ||
-                      selected.objectType === "Archeologisch terrein" ||
-                      selected.objectType === "Vondstlocatie" ||
-                      selected.objectType === "Grondspoor" ||
-                      selected.objectType === "Vondst" ||
-                      selected.objectType === "Archeologisch complex" ||
-                      selected.objectType === "Onderzoeksgebied"
-                    ? "Bekijk in de RCE Linked Data"
-                    : "Bekijk in het Monumentenregister"}{" "}
+                : selected.objectType === "Scheepswrak"
+                  ? "Bekijk op MASS (RCE)"
+                  : selected.objectType === "Complex" ||
+                    selected.objectType === "Gezicht" ||
+                    selected.objectType === "Archeologisch terrein" ||
+                    selected.objectType === "Vondstlocatie" ||
+                    selected.objectType === "Grondspoor" ||
+                    selected.objectType === "Vondst" ||
+                    selected.objectType === "Archeologisch complex" ||
+                    selected.objectType === "Onderzoeksgebied"
+                  ? "Bekijk in de RCE Linked Data"
+                  : "Bekijk in het Monumentenregister"}{" "}
               <b>→</b>
             </a>
             {selected.linkedDataUrl &&

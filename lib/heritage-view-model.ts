@@ -391,7 +391,12 @@ export function toItem(record: RceMonument): Item {
   const isVondst = record.monumentNature === OBJECT_KIND.Vondsten;
   const isArcheologischComplex = record.monumentNature === OBJECT_KIND.ArcheologischComplex;
   const isScheepswrak = record.monumentNature === OBJECT_KIND.Scheepswrak;
-  const hasOwnOfficialUrl = isWerelderfgoed || isGezicht || isScheepswrak;
+  // Gezicht bewust NIET hier: ceo:wordtGetoondOp wijst voor alle 472
+  // rijksbeschermde gezichten naar archisarchief.cultureelerfgoed.nl, een
+  // domein dat inmiddels zelf op de root al 403/404 geeft (leeg
+  // archief, geen tijdelijke storing - empirisch gecontroleerd op
+  // meerdere gezichtsnummers). De link viel dus voor iedereen dood.
+  const hasOwnOfficialUrl = isWerelderfgoed || isScheepswrak;
   const objectType: Item["objectType"] = isWerelderfgoed
     ? "Werelderfgoed"
     : isGezicht
@@ -466,7 +471,7 @@ export function toItem(record: RceMonument): Item {
     official: true,
     sourceUrl: hasOwnOfficialUrl
       ? (record.officialUrl ?? record.sourceUrl)
-      : isComplex || isOnderzoeksgebied || isArcheologischTerrein || isVondstlocatie || isGrondspoor || isVondst || isArcheologischComplex
+      : isComplex || isOnderzoeksgebied || isArcheologischTerrein || isVondstlocatie || isGrondspoor || isVondst || isArcheologischComplex || isGezicht
         ? record.sourceUrl
         : record.monumentNumber
           ? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(record.monumentNumber)}`
