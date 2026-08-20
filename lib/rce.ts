@@ -37,3 +37,4 @@ export * from "./rce/archaeology.ts";
 export * from "./rce/monuments.ts";
 export * from "./rce/enrichment.ts";
 export * from "./rce/types.ts";
+export * from "./rce/scheepswrakken.ts";

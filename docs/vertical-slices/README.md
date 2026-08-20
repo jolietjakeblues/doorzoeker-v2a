@@ -28,6 +28,7 @@ Romeins tempelcomplex).
 | 015 | "Alle gekoppelde begrippen"-overzicht | Gebouwd, unit- en e2e-tests groen |
 | 016 | "Ontdek een thema" (ontdekken zonder zoekterm, fase 1) | Gebouwd, e2e-test groen |
 | 017 | Archeologische context bij een Rijksmonument (overlap met Onderzoeksgebied) | Gebouwd (knop + waarschuwing, geen lazy-patroon zoals slice 006) inclusief kaart met polygonen, live geverifieerd |
+| 018 | Scheepswrakken (MASS-dataset) | Gebouwd en live geverifieerd (nieuwe, losstaande dataset/vocabulaire, met server-side HTML-sanitatie) |
 
 ## Aandachtspunten
 

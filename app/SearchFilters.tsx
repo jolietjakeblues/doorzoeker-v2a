@@ -79,12 +79,14 @@ export function SearchFilters({
           <summary>Wat betekent dit?</summary>
           <p>
             Rijksmonument, Werelderfgoed, Gezicht, Complex, Archeologisch
-            terrein, Vondstlocatie, Grondspoor, Vondst, Archeologisch complex en Onderzoeksgebied zijn losse soorten object, geen varianten
-            van hetzelfde. Werelderfgoed en Gezicht zijn gebieden waar de
-            RCE verantwoordelijk voor is en die rijksmonumenten kunnen
-            bevatten. Een Complex is zelf geen monument, maar een samenhang
-            tussen meerdere rijksmonumenten. Een Onderzoeksgebied staat los
-            van het monumentenregister.
+            terrein, Vondstlocatie, Grondspoor, Vondst, Archeologisch complex,
+            Onderzoeksgebied en Scheepswrak zijn losse soorten object, geen
+            varianten van hetzelfde. Werelderfgoed en Gezicht zijn gebieden
+            waar de RCE verantwoordelijk voor is en die rijksmonumenten
+            kunnen bevatten. Een Complex is zelf geen monument, maar een
+            samenhang tussen meerdere rijksmonumenten. Een Onderzoeksgebied
+            staat los van het monumentenregister. Een Scheepswrak komt uit
+            een aparte RCE-dataset (MASS), niet uit het monumentenregister.
           </p>
         </details>
         {[
@@ -99,6 +101,7 @@ export function SearchFilters({
           "Vondst",
           "Archeologisch complex",
           "Onderzoeksgebied",
+          "Scheepswrak",
         ].map((option) => (
           <label key={option}>
             <input

@@ -53,7 +53,11 @@ import {
   buildVondstenConceptQuery,
   buildVondstenDetailsQuery,
   buildVondstenDiscoveryQueries,
+  buildScheepswrakDetailsQuery,
+  buildScheepswrakDiscoveryQueries,
+  MASS_ENDPOINT,
   mergeDiscoveryMatches,
+  OBJECT_KIND,
   mergeVondstlocatieInhoud,
   parseArcheologischeContextKandidaten,
   parseArcheologischeContextResults,
@@ -96,6 +100,8 @@ import {
   parseVondstlocatieResults,
   parseVondstenDiscoveryResults,
   parseVondstenResults,
+  parseScheepswrakDiscoveryResults,
+  parseScheepswrakResults,
   pickOpDezeDagCandidate,
   pickRandomCandidate,
   VONDSTLOCATIE_INHOUD_KLASSEN,
@@ -112,6 +118,9 @@ import {
 import { fetchLiteratuur } from "./bibliotheek-adapter.ts";
 import { resolveConcepts } from "./referentienetwerk-adapter.ts";
 import { fetchSparql, requestSignal, timed } from "./sparql-client.ts";
+import { sanitizeMassDescriptionHtml } from "./html-sanitize.ts";
+
+const MASS_IMAGE_BASE_URL = "https://mass.cultureelerfgoed.nl";
 
 const REST_ENDPOINT = "https://api.linkeddata.cultureelerfgoed.nl/queries/rce/rest-api-rijksmonumenten/run";
 
@@ -523,9 +532,10 @@ async function runDiscoveryBranches(
   parse: (document: unknown, bron: string, term: string) => DiscoveryMatch[],
   signal?: AbortSignal,
   tracker?: SearchPartialFailure,
+  endpoint?: string,
 ): Promise<DiscoveryMatch[][]> {
   const settled = await Promise.allSettled(
-    branches.map(({ bron, query }) => fetchSparql(query, signal).then((document) => parse(document, bron, term))),
+    branches.map(({ bron, query }) => fetchSparql(query, signal, endpoint).then((document) => parse(document, bron, term))),
   );
   if (signal?.aborted) throw signal.reason;
   const branchResults = settled.flatMap((result, index) => {
@@ -716,6 +726,56 @@ export async function searchByArcheologischeComplexTypeConcept(conceptUri: strin
   return buildArcheologischeComplexenFromDiscovery(matches, signal);
 }
 
+// MASS-scheepswrakken (018-mass-scheepswrakken.md) leven op een volledig
+// losstaande SPARQL-dienst (rce/mass i.p.v. rce/cho) - vandaar de expliciete
+// endpoint-override op zowel de discovery- als de detailquery, in
+// tegenstelling tot elke andere categorie hier die stilzwijgend de
+// standaard-CHO-dienst gebruikt.
+async function searchScheepswrakken(term: string, signal?: AbortSignal, tracker?: SearchPartialFailure): Promise<RceMonument[]> {
+  const branches = await runDiscoveryBranches(
+    "search.scheepswrakken",
+    buildScheepswrakDiscoveryQueries(term),
+    term,
+    parseScheepswrakDiscoveryResults,
+    signal,
+    tracker,
+    MASS_ENDPOINT,
+  );
+  const discovery = mergeDiscoveryMatches(branches).slice(0, 25);
+  if (!discovery.length) return [];
+  const details = await fetchSparql(buildScheepswrakDetailsQuery(discovery.map((match) => match.monumentNumber)), signal, MASS_ENDPOINT);
+  const byId = new Map(parseScheepswrakResults(details).map((wrak) => [wrak.id, wrak]));
+  return discovery.flatMap((match) => {
+    const wrak = byId.get(match.monumentNumber);
+    if (!wrak) return [];
+    const monument: RceMonument = {
+      choNumber: wrak.id,
+      registrationDate: "",
+      street: "",
+      houseNumber: "",
+      postalCode: "",
+      sourceUrl: wrak.uri,
+      officialUrl: wrak.bronUrl,
+      name: wrak.naam,
+      description: wrak.scheepstype,
+      monumentNature: OBJECT_KIND.Scheepswrak,
+      lat: wrak.lat,
+      lng: wrak.lng,
+      scheepstype: wrak.scheepstype,
+      // Saniteren gebeurt hier, server-side, vóór het ooit de client
+      // bereikt - de client mag nooit ruwe HTML uit een externe bron
+      // krijgen om te renderen (018-mass-scheepswrakken.md).
+      omschrijvingHtml: wrak.omschrijvingHtml ? sanitizeMassDescriptionHtml(wrak.omschrijvingHtml, MASS_IMAGE_BASE_URL) : undefined,
+      ontdekt: wrak.ontdekt,
+      licentieNaam: wrak.licentieNaam,
+      licentieUrl: wrak.licentieUrl,
+      ...match,
+      monumentNumber: wrak.id,
+    };
+    return [monument];
+  });
+}
+
 export type TextSearchScope = "all" | "core" | "heritage" | "archaeology-a" | "archaeology-b";
 
 async function searchByText(term: string, signal?: AbortSignal, page = 1, scope: TextSearchScope = "all", tracker?: SearchPartialFailure): Promise<RceMonument[]> {
@@ -725,7 +785,7 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1, scope:
     runDiscoveryBranches("search.discovery", discoveryQueries, term, parseDiscoveryBranchResults, signal, tracker),
   );
 
-  const [werelderfgoed, gezichten, complexen, onderzoeksgebieden, archeologischeTerreinen, vondstlocaties, grondsporen, vondsten, archeologischeComplexen] = await Promise.all([
+  const [werelderfgoed, gezichten, complexen, onderzoeksgebieden, archeologischeTerreinen, vondstlocaties, grondsporen, vondsten, archeologischeComplexen, scheepswrakken] = await Promise.all([
     page === 1 && (scope === "all" || scope === "heritage")
       ? optionalSearch("search.werelderfgoed", () => fetchSparql(buildWerelderfgoedQuery(term), signal).then(parseWerelderfgoedResults), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
@@ -753,8 +813,15 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1, scope:
     page === 1 && (scope === "all" || scope === "archaeology-b")
       ? optionalSearch("search.archeologische-complexen", () => searchArcheologischeComplexen(term, signal, tracker), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
+    // Scheepswrakken zijn geen archeologie in de CEO-zin, maar delen het
+    // kostenprofiel (klein, snel) van deze bucket - zie 018-mass-
+    // scheepswrakken.md. Geen eigen scope-waarde om de client-side
+    // parallelle scope-fetches (lib/rce-client.ts) niet te hoeven uitbreiden.
+    page === 1 && (scope === "all" || scope === "archaeology-b")
+      ? optionalSearch("search.scheepswrakken", () => searchScheepswrakken(term, signal, tracker), [], signal, tracker)
+      : Promise.resolve<RceMonument[]>([]),
   ]);
-  const extras = [...werelderfgoed, ...gezichten, ...complexen, ...onderzoeksgebieden, ...archeologischeTerreinen, ...vondstlocaties, ...grondsporen, ...vondsten, ...archeologischeComplexen];
+  const extras = [...werelderfgoed, ...gezichten, ...complexen, ...onderzoeksgebieden, ...archeologischeTerreinen, ...vondstlocaties, ...grondsporen, ...vondsten, ...archeologischeComplexen, ...scheepswrakken];
   const start = Math.max(0, page - 1) * 25;
   const discovery = mergeDiscoveryMatches(branchResults).slice(start, start + 25);
   if (!discovery.length) return extras;
@@ -877,7 +944,7 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
     // tijdelijk onbereikbare RCE-tak liet daardoor de hele Promise.all
     // falen, ook als de andere zes allang klaar waren. Live gereproduceerd
     // tijdens verhoogde RCE-latency (securityassessment 17-08-2026).
-    const [rijksmonumenten, complexen, terreinen, vondstlocaties, grondsporen, vondsten, archeologischeComplexen] = await Promise.all([
+    const [rijksmonumenten, complexen, terreinen, vondstlocaties, grondsporen, vondsten, archeologischeComplexen, scheepswrakken] = await Promise.all([
       optionalSearch("search.rijksmonumenten-op-nummer", () => searchByNumber(trimmed, signal), [], signal, tracker),
       optionalSearch("search.complexen", () => fetchSparql(buildComplexenQuery(trimmed), signal)
         .then(parseComplexenResults)
@@ -887,8 +954,9 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
       optionalSearch("search.grondsporen", () => searchGrondsporen(trimmed, signal, tracker), [], signal, tracker),
       optionalSearch("search.vondsten", () => searchVondsten(trimmed, signal, tracker), [], signal, tracker),
       optionalSearch("search.archeologische-complexen", () => searchArcheologischeComplexen(trimmed, signal, tracker), [], signal, tracker),
+      optionalSearch("search.scheepswrakken", () => searchScheepswrakken(trimmed, signal, tracker), [], signal, tracker),
     ]);
-    return [...rijksmonumenten, ...complexen, ...terreinen, ...vondstlocaties, ...grondsporen, ...vondsten, ...archeologischeComplexen];
+    return [...rijksmonumenten, ...complexen, ...terreinen, ...vondstlocaties, ...grondsporen, ...vondsten, ...archeologischeComplexen, ...scheepswrakken];
   }
   if (!/^\d{4}\s?[A-Za-z]{2}$/.test(trimmed)) return searchByText(trimmed, signal, page, scope, tracker);
   const params = new URLSearchParams({ page: "1", pageSize: "100", postcode: trimmed.replace(/\s/g, "").toUpperCase() });
