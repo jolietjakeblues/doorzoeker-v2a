@@ -710,7 +710,7 @@ export function HeritageDetailDialog({
               {selected.objectType === "Werelderfgoed"
                 ? "Bekijk op de UNESCO Werelderfgoedlijst"
                 : selected.objectType === "Gezicht"
-                  ? "Bekijk in het Archis-archief"
+                  ? "Bekijk in de RCE Kennisbank"
                   : selected.objectType === "Scheepswrak"
                     ? "Bekijk op MASS (RCE)"
                     : selected.objectType === "Complex" ||

@@ -85,7 +85,12 @@ worden getoond.
 - een foto uit de RCE beeldbank met licentie- en bronvermelding, en
   historische tuin-/parkaanleg (groenaanleg), waar beschikbaar;
 - canonieke URI en zichtbare bronvermelding: Monumentenregister, UNESCO
-  Werelderfgoedlijst of Archis-archief, plus altijd de RCE Linked Data-link.
+  Werelderfgoedlijst of RCE Kennisbank (Gezicht), plus altijd de RCE Linked
+  Data-link. Een Gezicht linkte aanvankelijk naar het Archis-archief
+  (`ceo:wordtGetoondOp`), maar dat hele domein
+  (`archisarchief.cultureelerfgoed.nl`) bleek dood (403/404 op elk pad, ook
+  de root) - vervangen door `https://kennis.cultureelerfgoed.nl/index.php/
+  Gezicht/{gezichtsnummer}`, live bevestigd werkend (20 augustus 2026).
 
 ### Termen
 

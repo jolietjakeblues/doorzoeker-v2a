@@ -289,6 +289,11 @@ export const EMPTY_URL_STATE = {
 };
 export const MONUMENT_REGISTER_BASE_URL =
   "https://monumentenregister.cultureelerfgoed.nl/monumenten/";
+// Vervangt de dode archisarchief.cultureelerfgoed.nl-link (zie
+// hasOwnOfficialUrl hieronder) - per gezichtsnummer bevestigd live
+// (bv. .../1325 -> Orvelte, .../1734 -> Radio Kootwijk).
+export const GEZICHT_KENNISBANK_BASE_URL =
+  "https://kennis.cultureelerfgoed.nl/index.php/Gezicht/";
 
 export function displayFunctionName(value: string) {
   return value.replace(/\s*\([^()]*\)\s*$/, "").trim();
@@ -391,7 +396,12 @@ export function toItem(record: RceMonument): Item {
   const isVondst = record.monumentNature === OBJECT_KIND.Vondsten;
   const isArcheologischComplex = record.monumentNature === OBJECT_KIND.ArcheologischComplex;
   const isScheepswrak = record.monumentNature === OBJECT_KIND.Scheepswrak;
-  const hasOwnOfficialUrl = isWerelderfgoed || isGezicht || isScheepswrak;
+  // Gezicht bewust NIET hier: ceo:wordtGetoondOp wijst voor alle 472
+  // rijksbeschermde gezichten naar archisarchief.cultureelerfgoed.nl, een
+  // domein dat inmiddels zelf op de root al 403/404 geeft (leeg
+  // archief, geen tijdelijke storing - empirisch gecontroleerd op
+  // meerdere gezichtsnummers). De link viel dus voor iedereen dood.
+  const hasOwnOfficialUrl = isWerelderfgoed || isScheepswrak;
   const objectType: Item["objectType"] = isWerelderfgoed
     ? "Werelderfgoed"
     : isGezicht
@@ -464,13 +474,17 @@ export function toItem(record: RceMonument): Item {
       "Actueel record uit de Linked Data Voorziening van de Rijksdienst voor het Cultureel Erfgoed.",
     registrationDate: record.registrationDate,
     official: true,
-    sourceUrl: hasOwnOfficialUrl
-      ? (record.officialUrl ?? record.sourceUrl)
-      : isComplex || isOnderzoeksgebied || isArcheologischTerrein || isVondstlocatie || isGrondspoor || isVondst || isArcheologischComplex
-        ? record.sourceUrl
-        : record.monumentNumber
-          ? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(record.monumentNumber)}`
-          : record.sourceUrl,
+    sourceUrl: isGezicht
+      ? record.monumentNumber
+        ? `${GEZICHT_KENNISBANK_BASE_URL}${encodeURIComponent(record.monumentNumber)}`
+        : record.sourceUrl
+      : hasOwnOfficialUrl
+        ? (record.officialUrl ?? record.sourceUrl)
+        : isComplex || isOnderzoeksgebied || isArcheologischTerrein || isVondstlocatie || isGrondspoor || isVondst || isArcheologischComplex
+          ? record.sourceUrl
+          : record.monumentNumber
+            ? `${MONUMENT_REGISTER_BASE_URL}${encodeURIComponent(record.monumentNumber)}`
+            : record.sourceUrl,
     linkedDataUrl: record.sourceUrl,
     wkt: record.wkt,
     parcels: record.parcels,
