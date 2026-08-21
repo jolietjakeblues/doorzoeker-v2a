@@ -70,7 +70,9 @@ niet zelf een monument of een archeologisch waardevol terrein.
 
 De archeologische termen voor CHO-data komen uit het Archeologisch Informatie
 Systeem binnen Referentienetwerk 2. Het losse ABR-endpoint wordt niet gebruikt
-voor deze interne CHO-koppelingen.
+voor deze interne CHO-koppelingen - dat geldt specifiek voor deze directe
+veldkoppelingen (vondsttype, materiaal, ...); voor de zoekbalksuggesties
+hieronder ligt dat sinds 21 augustus 2026 anders.
 
 Dat geldt niet voor iedere eigenschap op dezelfde manier. De objecten zelf
 hebben een CHO-URI, bijvoorbeeld
@@ -126,18 +128,18 @@ gekoppeld object over alsof die bij het bronobject zelf hoort.
 ## Begrippen en zoeken
 
 De algemene CHO-zoekbalk zoekt tekst in de werkelijk aangesloten velden. De
-woordsuggesties komen alleen uit vier relevante schema's van
-Referentienetwerk 2:
+woordsuggesties komen sinds 21 augustus 2026 uit twee bronnen. Ten eerste twee
+CHO-relevante schema's van Referentienetwerk 2:
 
 - Archeologisch Informatie Systeem;
-- Cultuurhistorische Object Informatie;
-- Kennisregistratie;
 - Monumenten Registratie Systeem.
 
-De suggestiedienst controleert in CHO of een concept werkelijk als functie,
-monumentaard, vondsttype, materiaal, toestand of archeologisch complextype is
-gekoppeld. Bij zo'n term toont de GUI het gemeten aantal objecten en zoekt een
-klik exact op de concept-URI. Zonder aangetoonde koppeling staat er expliciet
+(Cultuurhistorische Object Informatie en Kennisregistratie leverden geen
+bruikbare CHO-suggesties op en zijn eruit gehaald.) De suggestiedienst
+controleert in CHO of zo'n RN2-concept werkelijk als functie, monumentaard,
+vondsttype, materiaal, toestand of archeologisch complextype is gekoppeld.
+Bij zo'n term toont de GUI het gemeten aantal objecten en zoekt een klik
+exact op de concept-URI. Zonder aangetoonde koppeling staat er expliciet
 `zoekt op tekst`. Zo wekt een bruikbaar thesauruswoord geen onterechte indruk
 dat alle CHO-objecten ermee zijn geclassificeerd. Archeologische waardering,
 verwervingswijze, gebeurtenistype, actor, stijl en cultuur, bouwkundige
@@ -145,8 +147,17 @@ staat, het type van een grondspoor en het type van een Rijksmonument
 (bv. "Bovenkruier") zijn daarnaast vanuit records exact doorzoekbaar; het
 detailpaneel verzamelt al deze en de eerdergenoemde begrippen ook in één
 gegroepeerd "Alle gekoppelde begrippen"-overzicht.
-Bibliotheek en Beeldbank gebruiken CHT in hun
-eigen brondata; dat maakt CHT niet automatisch een algemene CHO-zoekindex.
+
+Ten tweede CHT- en ABR-begrippen die daadwerkelijk aan een formele
+Rijksmonument-omschrijving gekoppeld zijn via `ceox:heeftOmschrijvingOnderwerp`
+(de archiefdagen- en OmschrijvingenOnderwerp-graphs samen, niet de volledige
+thesaurus - dat zou duizenden termen zonder zoekresultaat suggereren). Zo'n
+suggestie toont zijn bron (Cultuurhistorische Thesaurus of Archeologisch
+Basisregister) en zoekt, net als een niet-gekoppelde RN2-term, op tekst.
+Dezelfde koppeling levert op de Rijksmonument-detailpagina het veld
+"Onderwerp (uit omschrijving)" op, met per concept zijn herkomstthesaurus
+(CHT, ABR of RN) naast het label. Bibliotheek en Beeldbank gebruiken CHT
+daarnaast in hun eigen brondata, los van deze CHO-koppeling.
 
 ## Bewuste grenzen
 
