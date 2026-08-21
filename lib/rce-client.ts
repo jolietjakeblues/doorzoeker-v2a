@@ -14,7 +14,7 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
   const requestScope = async (scope: string) => {
     const params = new URLSearchParams({ q: query, page: String(page), scope });
     const response = await fetch(`/api/rce/search?${params}`, { headers: { Accept: "application/json" }, signal });
-    if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
+    if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`, { cause: response.status });
     return await response.json() as SearchResponse;
   };
   const core = await requestScope("core");
@@ -42,7 +42,7 @@ async function searchByConcept(conceptUri: string, veld: ConceptField, signal?: 
     headers: { Accept: "application/json" },
     signal,
   });
-  if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
+  if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`, { cause: response.status });
   const document = await response.json() as SearchResponse;
   return document.results;
 }

@@ -226,6 +226,31 @@ test("does not require q when a valid concept-URI is present", async (context) =
   assert.equal(document.results[0].monumentAardConceptUri, conceptUri);
 });
 
+test("een breed RN2-begrip dat de conceptmatch-timeout raakt geeft 504 met een eerlijker bericht dan een echte connectiviteitsfout", async (context) => {
+  // Live geraakt 21-08-2026: het RN2-functiebegrip "Kerken" (2310 gekoppelde
+  // rijksmonumenten) raakte de standaard 20s-timeout terwijl RCE zelf
+  // gewoon bereikbaar was. searchByConceptMatchQuery geeft de match-query nu
+  // een langere timeout (CONCEPT_MATCH_TIMEOUT_MS, rce-adapter.ts), maar bij
+  // aanhoudende traagheid moet de gebruiker een eerlijk bericht zien in
+  // plaats van de generieke "niet bereikbaar".
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalCaches === undefined) delete globalThis.caches;
+    else globalThis.caches = originalCaches;
+  });
+  globalThis.caches = { default: { match() { throw new Error("cache unavailable"); }, put() { throw new Error("cache unavailable"); } } };
+  const conceptUri = "https://data.cultureelerfgoed.nl/term/id/rn/2/6fa5f251-cd84-4f3a-acb7-7c219df2540f";
+  globalThis.fetch = async () => { throw new DOMException("signal timed out", "TimeoutError"); };
+
+  const response = await GET(new Request(`https://doorzoeker.test/api/rce/search?concept=${encodeURIComponent(conceptUri)}&veld=functie`, { headers: { "cf-connecting-ip": "test-concept-timeout" } }));
+  assert.equal(response.status, 504);
+  assert.deepEqual(await response.json(), {
+    error: "Deze zoekopdracht duurt op dit moment ongewoon lang bij de RCE-bron. Probeer het over een paar seconden opnieuw.",
+  });
+});
+
 test("dispatches to the archeologische-waardering concept search when veld=waardering, matching op het eigen CHO-nummer van het terrein (P1: niet via ligtInObject)", async (context) => {
   // Fase 2 (2026-08-10): veld bepaalt expliciet via welke eigenschap
   // gezocht wordt - zonder deze parameter zou de route niet kunnen weten

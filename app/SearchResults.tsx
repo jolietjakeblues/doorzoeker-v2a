@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import type { Item, MapViewport } from "@/lib/heritage-view-model";
+import type { RemoteState } from "@/hooks/useSearchRequest";
 import { HeritageMap } from "./HeritageMap";
 import { HeritageResultCard } from "./HeritageResultCard";
 
 type SearchResultsProps = {
-  remoteState: "idle" | "loading" | "error" | "success";
+  remoteState: RemoteState;
   results: Item[];
   mapItems: Item[];
   mapViewport?: MapViewport;
