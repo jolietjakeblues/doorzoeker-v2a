@@ -1,7 +1,18 @@
 import type { ArcheologischeContext, ComplexMember, GezichtLidmaatschap, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, RceMonument, VondstlocatieInhoud, WerelderfgoedLidmaatschap } from "@/lib/rce";
 import type { ConceptField } from "@/lib/heritage-view-model";
 
-export type SearchResponse = { results: RceMonument[]; page?: number; pageSize?: number; hasMore?: boolean };
+export type SearchResponse = { results: RceMonument[]; page?: number; pageSize?: number; hasMore?: boolean; failedCategories?: string[] };
+// Welke "Soort object"-categorieën (SearchFilters.tsx) in elke scope zitten -
+// alleen gebruikt als een hele scope-aanroep hieronder afwijst (bv. een
+// netwerkfout, geen 200), want dan levert de server zelf geen
+// failedCategories mee. Bij een gewone 200 met een deels mislukte categorie
+// (het gebruikelijke geval, zie de "schoener"/Scheepswrak-melding 21-08-2026)
+// noemt de server de categorie al zelf preciezer.
+const SCOPE_CATEGORIES: Record<string, string[]> = {
+  heritage: ["Werelderfgoed", "Gezicht", "Complex"],
+  "archaeology-a": ["Onderzoeksgebied", "Archeologisch terrein", "Vondstlocatie"],
+  "archaeology-b": ["Grondspoor", "Vondst", "Archeologisch complex", "Scheepswrak"],
+};
 export type BrowseKind = "rijksmonument" | "archeologischterrein" | "onderzoeksgebied" | "vondstlocatie" | "archeologischcomplex" | "vondsten" | "grondsporen" | "werelderfgoed" | "gezicht" | "complex";
 type ComplexMembersResponse = { members: ComplexMember[] };
 type LigtInResponse = { gezicht: GezichtLidmaatschap[]; werelderfgoed: WerelderfgoedLidmaatschap[] };
@@ -19,18 +30,21 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
   };
   const core = await requestScope("core");
   if (page !== 1 || /^\d{1,6}$/.test(query.trim()) || /^\d{4}\s?[A-Za-z]{2}$/.test(query.trim()))
-    return { results: core.results, hasMore: core.hasMore ?? false, page: core.page ?? page };
-  const additions = await Promise.allSettled([
-    requestScope("heritage"),
-    requestScope("archaeology-a"),
-    requestScope("archaeology-b"),
-  ]);
+    return { results: core.results, hasMore: core.hasMore ?? false, page: core.page ?? page, failedCategories: core.failedCategories };
+  const scopes = ["heritage", "archaeology-a", "archaeology-b"] as const;
+  const additions = await Promise.allSettled(scopes.map((scope) => requestScope(scope)));
   const byId = new Map(core.results.map((item) => [item.sourceUrl || `${item.monumentNature}:${item.monumentNumber}`, item]));
-  for (const addition of additions)
-    if (addition.status === "fulfilled")
+  const failedCategories = new Set(core.failedCategories ?? []);
+  additions.forEach((addition, index) => {
+    if (addition.status === "fulfilled") {
       for (const item of addition.value.results)
         byId.set(item.sourceUrl || `${item.monumentNature}:${item.monumentNumber}`, item);
-  return { results: [...byId.values()], hasMore: core.hasMore ?? false, page: core.page ?? page };
+      for (const category of addition.value.failedCategories ?? []) failedCategories.add(category);
+    } else {
+      for (const category of SCOPE_CATEGORIES[scopes[index]]) failedCategories.add(category);
+    }
+  });
+  return { results: [...byId.values()], hasMore: core.hasMore ?? false, page: core.page ?? page, failedCategories: [...failedCategories] };
 }
 
 // Exact zoeken op een concept-URI uit het Referentienetwerk in plaats van

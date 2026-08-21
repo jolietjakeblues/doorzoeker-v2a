@@ -573,6 +573,27 @@ test("'laad meer' bij tekstzoekopdracht stopt niet als het laatst geladen item t
   await expect(page.getByRole("button", { name: "Laad 25 volgende resultaten" })).toHaveCount(0);
 });
 
+test("een categorie die stil faalt (bv. Scheepswrak via de losstaande MASS-dienst) toont een waarschuwing i.p.v. onopgemerkt te verdwijnen (gemeld door de eigenaar, 21-08-2026: 'schoener' toonde 0 scheepswrakken zonder signaal)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const url = new URL(route.request().url());
+    const scope = url.searchParams.get("scope");
+    if (scope === "core") {
+      return route.fulfill({ json: { results: [{ ...records[0] }], page: 1, hasMore: false } });
+    }
+    if (scope === "archaeology-b") {
+      return route.fulfill({ json: { results: [], failedCategories: ["Scheepswrak"] } });
+    }
+    return route.fulfill({ json: { results: [] } });
+  });
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("schoener");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(page.getByText("Scheepswrak kon niet worden geladen.")).toBeVisible();
+  // De wél geladen resultaten blijven gewoon zichtbaar naast de waarschuwing.
+  await expect(page.getByText("Woonhuis van de architect")).toBeVisible();
+});
+
 test("een nieuwe zoekopdracht overschrijft resultaten van een nog lopende 'laad meer' (TD-12 regressie)", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", async (route) => {

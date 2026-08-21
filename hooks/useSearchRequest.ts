@@ -11,6 +11,13 @@ export type RemoteState = "idle" | "loading" | "error" | "timeout" | "success";
 export function useSearchRequest() {
   const [remoteResults, setRemoteResults] = useState<Item[] | null>(null);
   const [remoteState, setRemoteState] = useState<RemoteState>("idle");
+  // Welke "Soort object"-categorieën bij een overigens succesvolle
+  // zoekopdracht niet geladen konden worden (bv. Scheepswrak via de
+  // losstaande MASS-dienst) - apart van remoteState, want de zoekopdracht
+  // zelf is wél gelukt, alleen onvolledig. Zonder dit signaal is "0
+  // scheepswrakken" niet te onderscheiden van "geen enkel scheepswrak kon
+  // geladen worden" (gemeld door de eigenaar, 21-08-2026).
+  const [failedCategories, setFailedCategories] = useState<string[]>([]);
   const [resultPage, setResultPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -36,6 +43,8 @@ export function useSearchRequest() {
     setRemoteResults,
     remoteState,
     setRemoteState,
+    failedCategories,
+    setFailedCategories,
     resultPage,
     setResultPage,
     hasMore,

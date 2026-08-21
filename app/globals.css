@@ -434,6 +434,15 @@ header p a,
   line-height: 1.5;
 }
 .results-help { color: #52636d; font-size: .92rem; margin: 0 0 1rem; }
+.partial-warning {
+  margin: 0 0 1rem;
+  padding: 10px 14px;
+  border: 1px solid var(--warning);
+  border-radius: 4px;
+  background: #fdf6e8;
+  color: var(--warning);
+  font-size: .92rem;
+}
 .work aside small,
 .results small,
 .detail-copy > small {

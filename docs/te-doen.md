@@ -711,3 +711,24 @@ kreeg.
   De client kreeg een nieuwe `RemoteState`-waarde `"timeout"` (apart van
   `"error"`, `hooks/useSearchRequest.ts`) met een eigen, minder alarmerende
   amberkleur (`--warning`, `app/globals.css`) i.p.v. rood.
+- ~~**Een gefaalde zoekcategorie (bv. Scheepswrak via de losstaande
+  MASS-dienst) was volledig stil - "0 scheepswrakken" was niet te
+  onderscheiden van "geen enkel scheepswrak kon geladen worden".**~~
+  **Opgelost (21 augustus 2026).** Gemeld door de eigenaar bij het zoeken op
+  "schoener": 11 vondsten wél zichtbaar, 0 scheepswrakken, geen enkel
+  signaal dat de MASS-dienst tijdelijk had gefaald terwijl de andere 9
+  categorieën gewoon doorkwamen. De server hield dit al bij
+  (`SearchPartialFailure.partial`, gebruikt om zo'n onvolledig antwoord niet
+  te cachen) maar stuurde het nooit naar de client door. `SearchPartialFailure`
+  in `lib/server/rce-adapter.ts` kreeg er `failedCategories: string[]` bij -
+  `optionalSearch` vertaalt zijn event-label (bv. `"search.scheepswrakken"`)
+  naar de naam zoals die al in het "Soort object"-filter staat (`"Scheepswrak"`)
+  via `FAILED_CATEGORY_LABELS`. De route (`app/api/rce/search/route.ts`)
+  stuurt dit mee in de respons; `searchRceMonuments` in `lib/rce-client.ts`
+  voegt de categorieën van alle vier parallelle scope-aanroepen (core/
+  heritage/archaeology-a/archaeology-b) samen, met een category-per-scope-
+  fallback (`SCOPE_CATEGORIES`) voor het zeldzamere geval dat een hele
+  scope-aanroep afwijst in plaats van gewoon 200 met een deels lege
+  categorie. `SearchResults.tsx` toont dit als een amberkleurige melding
+  boven de (verder complete) resultaten: "Scheepswrak kon niet worden
+  geladen. Andere resultaten hierbeneden zijn wel compleet."

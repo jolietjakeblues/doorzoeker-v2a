@@ -6,6 +6,7 @@ import { HeritageResultCard } from "./HeritageResultCard";
 
 type SearchResultsProps = {
   remoteState: RemoteState;
+  failedCategories: string[];
   results: Item[];
   mapItems: Item[];
   mapViewport?: MapViewport;
@@ -24,6 +25,7 @@ type SearchResultsProps = {
 
 export function SearchResults({
   remoteState,
+  failedCategories,
   results,
   mapItems,
   mapViewport,
@@ -41,6 +43,14 @@ export function SearchResults({
 }: SearchResultsProps) {
   return (
     <>
+      {remoteState === "success" && failedCategories.length > 0 ? (
+        <p className="partial-warning" role="status">
+          {failedCategories.length === 1
+            ? `${failedCategories[0]} kon niet worden geladen.`
+            : `${failedCategories.join(", ")} konden niet worden geladen.`}
+          {" "}Andere resultaten hierbeneden zijn wel compleet. Probeer het later opnieuw.
+        </p>
+      ) : null}
       {remoteState === "idle" ? (
         idleContent
       ) : remoteState === "loading" ? (

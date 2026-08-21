@@ -55,6 +55,7 @@ export default function Home() {
     filters,
     setFilters,
     remoteState,
+    failedCategories,
     retry,
     hasMore,
     loadingMore,
@@ -255,6 +256,7 @@ export default function Home() {
 
           <SearchResults
             remoteState={remoteState}
+            failedCategories={failedCategories}
             results={results}
             mapItems={mapItems}
             mapViewport={mapViewport}
