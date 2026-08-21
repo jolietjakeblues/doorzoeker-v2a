@@ -1,9 +1,5 @@
 export function SiteHeader({ onReset }: { onReset: () => void }) {
-  return <>
-    <div className="govbar">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/logo-rce.gif" alt="Rijksdienst voor het Cultureel Erfgoed, Ministerie van Onderwijs, Cultuur en Wetenschap" />
-    </div>
+  return (
     <header>
       <button className="brand brand-button" type="button" onClick={onReset} aria-label="Terug naar de startpagina">
         <b>D</b>
@@ -14,5 +10,5 @@ export function SiteHeader({ onReset }: { onReset: () => void }) {
         <a className="achtergrond-link" href="/achtergrond.html">Achtergrond</a>
       </div>
     </header>
-  </>;
+  );
 }
