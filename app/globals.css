@@ -26,6 +26,7 @@
   --line: #d5d5d5;
   --success: #176b3a;
   --error: #b3261e;
+  --warning: #8a5a00;
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -218,6 +219,9 @@ header p a,
 .source-status.error {
   color: var(--error);
 }
+.source-status.timeout {
+  color: var(--warning);
+}
 .source-status .retry {
   margin-left: 8px;
   border: 1px solid var(--error);
@@ -231,6 +235,14 @@ header p a,
 }
 .source-status .retry:hover {
   background: var(--error);
+  color: #fff;
+}
+.source-status.timeout .retry {
+  border-color: var(--warning);
+  color: var(--warning);
+}
+.source-status.timeout .retry:hover {
+  background: var(--warning);
   color: #fff;
 }
 .source-status.success {

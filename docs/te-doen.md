@@ -688,3 +688,26 @@ kreeg.
   (`buildRceDiscoveryQueries`). "Schoener" (42) en "Logger" (30, zie de
   badge-letter-melding hierboven) zijn allebei ruim vertegenwoordigd.
   Nog niet gebouwd, staat op de lijst.
+- ~~**Klik op "Kerken" (Ontdek een thema) faalde met "De RCE Linked
+  Data-service is momenteel niet bereikbaar".**~~ **Opgelost (21 augustus
+  2026).** Gemeld door de eigenaar tijdens live gebruik. Met `wrangler
+  tail` op productie meegekeken: de conceptzoekopdracht naar het brede
+  RN2-functiebegrip "Kerken" (2310 gekoppelde rijksmonumenten) raakte de
+  standaard 20s-timeout (`TimeoutError`, "The operation was aborted due to
+  timeout") terwijl de RCE-bron zelf gewoon bereikbaar was - dezelfde
+  tail-sessie ving ook een ongerelateerde zoekopdracht ("vuurijzer") met
+  deelquery's van 9-13 seconden in plaats van milliseconden, wat op
+  tijdelijke trage RCE-respons wijst, niet op een codefout. Twee
+  maatregelen: (1) `searchByConceptMatchQuery` en de vier losstaande
+  concept-match-functies (verwerving, waardering, grondspoortype, vondsten,
+  archeologisch-complextype) krijgen nu een langere timeout
+  (`CONCEPT_MATCH_TIMEOUT_MS`, 35s, `lib/server/rce-adapter.ts`) voor hun
+  eerste, mogelijk brede matchquery - de vervolgquery's blijven op de
+  standaardtimeout, want die werken altijd op een begrensde slice van
+  maximaal 25 nummers. (2) `withRceErrorHandling` onderscheidt nu een
+  `TimeoutError` van een echte connectiviteitsfout: 504 in plaats van 502,
+  met "Deze zoekopdracht duurt op dit moment ongewoon lang bij de RCE-bron"
+  in plaats van "niet bereikbaar" (`lib/server/route-error-handling.ts`).
+  De client kreeg een nieuwe `RemoteState`-waarde `"timeout"` (apart van
+  `"error"`, `hooks/useSearchRequest.ts`) met een eigen, minder alarmerende
+  amberkleur (`--warning`, `app/globals.css`) i.p.v. rood.

@@ -318,8 +318,16 @@ async function buildMonumentsFromNumbers(numbers: string[], signal?: AbortSignal
   return enrichMonuments(monuments, signal);
 }
 
+// Een breed RN2-begrip (bv. functie "Kerken", 2310 gekoppelde
+// rijksmonumenten) kan de standaard 20s-timeout raken - live geraakt
+// 21-08-2026 ("The operation was aborted due to timeout" na ruim 20s), ook al
+// is de query zelf goedkoop gebleken bij losstaand testen. De vervolgquery's
+// hieronder blijven op de standaardtimeout: die werken altijd op een
+// begrensde slice van maximaal 25 nummers, ongeacht hoe breed het begrip is.
+const CONCEPT_MATCH_TIMEOUT_MS = 35_000;
+
 async function searchByConceptMatchQuery(matchQuery: string, signal?: AbortSignal): Promise<RceMonument[]> {
-  const matchDocument = await fetchSparql(matchQuery, signal);
+  const matchDocument = await fetchSparql(matchQuery, signal, undefined, CONCEPT_MATCH_TIMEOUT_MS);
   const numbers = parseConceptSearchMatches(matchDocument).slice(0, 25);
   return buildMonumentsFromNumbers(numbers, signal);
 }
@@ -348,7 +356,7 @@ export async function searchByMonumentTypeConcept(conceptUri: string, signal?: A
 // nummers dus ten onrechte als rijksmonumentnummer opzoeken. Haalt daarom,
 // net als searchVondstlocaties, de Vondstlocatie-eigen detailquery op.
 export async function searchByVerwervingConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
-  const document = await fetchSparql(buildVerwervingConceptQuery(conceptUri), signal);
+  const document = await fetchSparql(buildVerwervingConceptQuery(conceptUri), signal, undefined, CONCEPT_MATCH_TIMEOUT_MS);
   const numbers = parseConceptSearchMatches(document).slice(0, 25);
   if (!numbers.length) return [];
   const details = await fetchSparql(buildVondstlocatieDetailsQuery(numbers), signal);
@@ -361,7 +369,7 @@ export async function searchByVerwervingConcept(conceptUri: string, signal?: Abo
 // met een waardering heeft zo'n koppeling). Haalt daarom de terrein-eigen
 // detailquery op, net als searchByVerwervingConcept voor Vondstlocatie.
 export async function searchByArcheologischeWaarderingConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
-  const document = await fetchSparql(buildArcheologischeWaarderingConceptQuery(conceptUri), signal);
+  const document = await fetchSparql(buildArcheologischeWaarderingConceptQuery(conceptUri), signal, undefined, CONCEPT_MATCH_TIMEOUT_MS);
   const numbers = parseConceptSearchMatches(document).slice(0, 25);
   if (!numbers.length) return [];
   const details = await fetchSparql(buildArcheologischTerreinDetailsQuery(numbers), signal);
@@ -371,7 +379,7 @@ export async function searchByArcheologischeWaarderingConcept(conceptUri: string
 // Matcht op het eigen CHO-nummer van het grondspoor, zelfde patroon als
 // verwerving/waardering hierboven.
 export async function searchByGrondspoorTypeConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
-  const document = await fetchSparql(buildGrondspoorTypeConceptQuery(conceptUri), signal);
+  const document = await fetchSparql(buildGrondspoorTypeConceptQuery(conceptUri), signal, undefined, CONCEPT_MATCH_TIMEOUT_MS);
   const numbers = parseConceptSearchMatches(document).slice(0, 25);
   if (!numbers.length) return [];
   const details = await fetchSparql(buildGrondsporenDetailsQuery(numbers), signal);
@@ -688,7 +696,7 @@ async function searchVondsten(term: string, signal?: AbortSignal, tracker?: Sear
 }
 
 export async function searchByVondstenConcept(conceptUri: string, field: VondstenConceptField, signal?: AbortSignal): Promise<RceMonument[]> {
-  const document = await fetchSparql(buildVondstenConceptQuery(conceptUri, field), signal);
+  const document = await fetchSparql(buildVondstenConceptQuery(conceptUri, field), signal, undefined, CONCEPT_MATCH_TIMEOUT_MS);
   const matches = parseConceptSearchMatches(document).map((number) => ({ monumentNumber: number, matchSource: field === "vondsttype" ? "type vondst" : field === "materiaal" ? "materiaal vondst" : "toestand vondst", matchedText: "", matchScore: 0 }));
   return buildVondstenFromDiscovery(matches, signal);
 }
@@ -721,7 +729,7 @@ async function searchArcheologischeComplexen(term: string, signal?: AbortSignal,
 }
 
 export async function searchByArcheologischeComplexTypeConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
-  const document = await fetchSparql(buildArcheologischeComplexConceptQuery(conceptUri), signal);
+  const document = await fetchSparql(buildArcheologischeComplexConceptQuery(conceptUri), signal, undefined, CONCEPT_MATCH_TIMEOUT_MS);
   const matches = parseConceptSearchMatches(document).map((number) => ({ monumentNumber: number, matchSource: "type archeologisch complex", matchedText: "", matchScore: 0 }));
   return buildArcheologischeComplexenFromDiscovery(matches, signal);
 }

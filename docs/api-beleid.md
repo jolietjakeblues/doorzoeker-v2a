@@ -8,7 +8,15 @@ routes die na 11 augustus zijn gebouwd (`ligt-in`, `archeologische-context`,
 `/api/rce/verras-me` als enige route zonder rate limiter en zonder cache -
 bewust aanvaard, zie de tabel. Nogmaals bijgewerkt 21 augustus 2026:
 `/api/terms/suggest` doet nu twee parallelle thesaurusquery's in plaats van
-één (CHT/ABR-suggesties uit gekoppelde begrippen toegevoegd).
+één (CHT/ABR-suggesties uit gekoppelde begrippen toegevoegd). Nogmaals
+bijgewerkt 21 augustus 2026: een breed RN2-conceptbegrip (bv. functie
+"Kerken", 2310 koppelingen) raakte live de standaard 20s-timeout terwijl RCE
+zelf bereikbaar was. `/api/rce/search` geeft de eerste matchquery van een
+conceptzoekopdracht nu 35s (`CONCEPT_MATCH_TIMEOUT_MS`,
+`lib/server/rce-adapter.ts`), en elke route via `withRceErrorHandling`
+onderscheidt een `TimeoutError` voortaan van een echte connectiviteitsfout:
+504 met een eerlijker bericht in plaats van 502 "niet bereikbaar" (zie
+`lib/server/route-error-handling.ts`).
 
 ## Doel
 

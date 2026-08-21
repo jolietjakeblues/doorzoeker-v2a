@@ -1435,6 +1435,29 @@ test("'Probeer opnieuw' herhaalt de laatst mislukte zoekopdracht (P1)", async ({
   await expect(page.getByText("Woonhuis van de architect")).toBeVisible();
 });
 
+test("een 504 (RCE-timeout) toont een eerlijker bericht dan een echte verbindingsfout, met werkende 'Probeer opnieuw'", async ({ page }) => {
+  // Live geraakt 21-08-2026: een breed RN2-begrip raakte de standaard
+  // 20s-timeout terwijl RCE zelf gewoon bereikbaar was. withRceErrorHandling
+  // (lib/server/route-error-handling.ts) geeft zo'n timeout nu 504 i.p.v.
+  // 502, met een minder alarmerend bericht dan "niet bereikbaar".
+  let shouldFail = true;
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    if (shouldFail) return route.fulfill({ status: 504, json: { error: "Deze zoekopdracht duurt op dit moment ongewoon lang bij de RCE-bron. Probeer het over een paar seconden opnieuw." } });
+    return route.fulfill({ json: { page: 1, hasMore: false, results: [{ ...records[0] }] } });
+  });
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("architect");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  const timeoutMessage = page.getByText("Deze zoekopdracht duurt op dit moment ongewoon lang bij de RCE-bron.");
+  await expect(timeoutMessage).toBeVisible();
+  await expect(page.getByText("De RCE Linked Data-service is momenteel niet bereikbaar.")).toHaveCount(0);
+  shouldFail = false;
+  await page.getByRole("button", { name: "Probeer opnieuw" }).click();
+  await expect(timeoutMessage).toHaveCount(0);
+  await expect(page.getByText("Woonhuis van de architect")).toBeVisible();
+});
+
 test("groenaanleg wordt uitgevinkt (maar blijft zichtbaar) wanneer de overige filters geen keuze meer overlaten", async ({
   page,
 }) => {

@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Item } from "@/lib/heritage-view-model";
 
-export type RemoteState = "idle" | "loading" | "error" | "success";
+// "timeout" is een apart, minder alarmerend geval dan "error": de RCE-bron
+// zelf is bereikbaar maar antwoordde niet binnen de serverzijdige limiet (zie
+// isTimeoutError in lib/server/route-error-handling.ts, live nodig geworden
+// 21-08-2026 na een 20s-timeout op een breed RN2-begrip). Een gewone "error"
+// blijft voor een echte connectiviteitsfout.
+export type RemoteState = "idle" | "loading" | "error" | "timeout" | "success";
 
 export function useSearchRequest() {
   const [remoteResults, setRemoteResults] = useState<Item[] | null>(null);

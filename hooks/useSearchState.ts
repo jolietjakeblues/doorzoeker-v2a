@@ -203,7 +203,7 @@ export function useSearchState() {
   function editQuery(value: string) {
     setQuery(value);
     if (selectedTerm?.label !== value) setSelectedTerm(undefined);
-    if (remoteState === "error") {
+    if (remoteState === "error" || remoteState === "timeout") {
       setActive("");
       setRemoteResults(null);
       setRemoteState("idle");
@@ -255,11 +255,11 @@ export function useSearchState() {
       applyPendingSelection(items);
       setHasMore(response.hasMore);
       setRemoteState("success");
-    } catch {
+    } catch (error) {
       if (request.isAborted() || !request.isCurrent())
         return;
       setRemoteResults([]);
-      setRemoteState("error");
+      setRemoteState(error instanceof Error && error.cause === 504 ? "timeout" : "error");
     }
   }
   // Exacte match op een concept-URI uit het Referentienetwerk in plaats van
@@ -335,11 +335,11 @@ export function useSearchState() {
       applyPendingSelection(items);
       setHasMore(false);
       setRemoteState("success");
-    } catch {
+    } catch (error) {
       if (request.isAborted() || !request.isCurrent())
         return;
       setRemoteResults([]);
-      setRemoteState("error");
+      setRemoteState(error instanceof Error && error.cause === 504 ? "timeout" : "error");
     }
   }
   // Werelderfgoed en Gezicht zijn anders te vinden dan Rijksmonumenten: er is

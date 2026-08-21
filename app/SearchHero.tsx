@@ -1,7 +1,7 @@
 import type { FormEvent, KeyboardEventHandler } from "react";
 import type { TermSuggestion } from "@/lib/terms-client";
+import type { RemoteState } from "@/hooks/useSearchRequest";
 
-type RemoteState = "idle" | "loading" | "error" | "success";
 type BrowseKind = "rijksmonument" | "archeologischterrein" | "onderzoeksgebied" | "vondstlocatie" | "archeologischcomplex" | "vondsten" | "grondsporen" | "werelderfgoed" | "gezicht" | "complex";
 
 // Elk voorbeeld demonstreert bewust een andere zoekingang, niet een
@@ -203,10 +203,12 @@ export function SearchHero({
           ? "De actuele RCE-data wordt doorzocht…"
           : remoteState === "error"
             ? "De RCE Linked Data-service is momenteel niet bereikbaar."
-            : remoteState === "success"
-              ? "Resultaten rechtstreeks uit de actuele RCE Linked Data"
-              : "Actuele brondata · vaste URI's · herleidbare bronnen"}
-        {remoteState === "error" ? (
+            : remoteState === "timeout"
+              ? "Deze zoekopdracht duurt op dit moment ongewoon lang bij de RCE-bron."
+              : remoteState === "success"
+                ? "Resultaten rechtstreeks uit de actuele RCE Linked Data"
+                : "Actuele brondata · vaste URI's · herleidbare bronnen"}
+        {remoteState === "error" || remoteState === "timeout" ? (
           <button type="button" className="retry" onClick={onRetry}>
             Probeer opnieuw
           </button>
