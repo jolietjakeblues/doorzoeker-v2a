@@ -658,20 +658,16 @@ kreeg.
   lijst") - komt terug zodra de RCE-huisstijl wordt losgelaten (zie
   hierboven), aangezien dan toch alle tegel-/badgekleuren opnieuw worden
   vastgesteld.
-- **Scheepstype nog niet doorzoekbaar op tekst (gemeld door de eigenaar,
-  20 augustus 2026: "schoener ed. dat zou toch moeten lukken op
-  'tekst'").** `SCHEEPSWRAK_SOURCES` in `lib/rce/scheepswrakken.ts` heeft
-  maar één discovery-branch (`sdo:name`) plus de exacte MASS-ID-kortsluiting
-  bij een numerieke term - een bewuste scope-keuze uit
-  018-mass-scheepswrakken.md ("beslissing 3: eerst alleen het detail
-  bouwen, geen apart scheepstype-facet"). Een zoekterm als "schoener" of
-  "logger" matcht dus nu alleen als dat woord toevallig in de náám van het
-  wrak staat, niet als het het `schema:additionalType` is.
-  Empirisch gecontroleerd (20 augustus 2026): `schema:additionalType` is
-  gevuld voor 2.483 van de 2.587 scheepswrakken (96%), over 134
-  verschillende typen - ruim voldoende gevuld om als volwaardige
-  discovery-bron toe te voegen, zelfde patroon als de bestaande
-  `DISCOVERY_SOURCES`-branches bij Rijksmonumenten
-  (`buildRceDiscoveryQueries`). "Schoener" (42) en "Logger" (30, zie de
-  badge-letter-melding hierboven) zijn allebei ruim vertegenwoordigd.
-  Nog niet gebouwd, staat op de lijst.
+- ~~**Scheepstype nog niet doorzoekbaar op tekst.**~~ **Opgelost (21
+  augustus 2026).** Gemeld door de eigenaar op 20 augustus 2026:
+  "schoener ed. dat zou toch moeten lukken op 'tekst'".
+  `SCHEEPSWRAK_SOURCES` in `lib/rce/scheepswrakken.ts` had maar één
+  discovery-branch (`sdo:name`) - een zoekterm als "schoener" of "logger"
+  matchte dus alleen als dat woord toevallig in de náám van het wrak
+  stond, niet als het `schema:additionalType` was. Toegevoegd: een tweede
+  discovery-branch op `schema:additionalType` (rang 2, na naam op rang 1),
+  zelfde patroon als de bestaande `DISCOVERY_SOURCES`-branches bij
+  Rijksmonumenten. Live geverifieerd tegen de MASS-endpoint: "schoener"
+  en "logger" leveren nu elk 25 scheepswrakken op via
+  `matchSource: "scheepstype"`, bv. "Belgisch Loodsschip nr. 5" (type
+  Schoener) - eerder onvindbaar op die term.
