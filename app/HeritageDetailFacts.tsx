@@ -370,7 +370,11 @@ export function HeritageDetailFacts({
       {item.omschrijvingOnderwerpConcepten?.length ? (
         <div>
           <dt>Onderwerp (uit omschrijving)</dt>
-          <dd>{item.omschrijvingOnderwerpConcepten.map((concept) => concept.label).join(", ")}</dd>
+          <dd>
+            {item.omschrijvingOnderwerpConcepten
+              .map((concept) => (concept.bron ? `${concept.label} (${concept.bron})` : concept.label))
+              .join(", ")}
+          </dd>
         </div>
       ) : null}
     </>
