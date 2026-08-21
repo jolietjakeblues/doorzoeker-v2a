@@ -154,9 +154,14 @@ export function HeritageMap({
     import("leaflet").then((L) => {
       if (cancelled || !element.current) return;
       // Compact maps zitten ingebed in een scrollbaar detailpaneel; scrollwheel-zoom
-      // zou daar de paneelscroll kapen zodra de muis over de kaart komt.
+      // zou daar de paneelscroll kapen zodra de muis over de kaart komt. De
+      // +/--zoomknoppen hebben dat risico niet en blijven daarom altijd aan -
+      // zonder die knoppen (en zonder scrollwheel) had een compacte kaart
+      // (monument, complex, archeologische context) helemaal geen manier om
+      // in of uit te zoomen (gemeld door de eigenaar, 21-08-2026: "Ik moet
+      // toch de omgeving van een monument of complex kunnen zien").
       const leafletMap = L.map(element.current, {
-        zoomControl: !compact,
+        zoomControl: true,
         scrollWheelZoom: !compact,
       }).setView([52.09, 5.08], 11);
       map = leafletMap;

@@ -732,3 +732,15 @@ kreeg.
   categorie. `SearchResults.tsx` toont dit als een amberkleurige melding
   boven de (verder complete) resultaten: "Scheepswrak kon niet worden
   geladen. Andere resultaten hierbeneden zijn wel compleet."
+- ~~**Een compacte kaart (monument, complex, archeologische context) had
+  geen enkele manier om uit te zoomen.**~~ **Opgelost (21 augustus 2026).**
+  Gemeld door de eigenaar: "Ik moet toch de omgeving van een monument of
+  complex kunnen zien." Oorzaak gevonden in `app/HeritageMap.tsx`:
+  `zoomControl: !compact` zette de +/--knoppen helemaal uit voor elke
+  compacte kaart, bovenop scrollwheel-zoom die daar al bewust uitstond (om
+  paneelscroll niet te kapen). Een compacte kaart met één punt (`fitBounds`
+  op een punt zonder oppervlak) opent bovendien al op maxZoom (19) - zonder
+  zoomknoppen was er dus letterlijk geen enkele manier om uit te zoomen en
+  de omgeving te zien. `zoomControl` staat nu altijd aan; scrollwheel-zoom
+  blijft bewust uit voor compacte kaarten. Nieuwe e2e-test controleert dat
+  de uitzoomknop op een detailkaart zichtbaar en bruikbaar is.
