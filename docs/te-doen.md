@@ -467,9 +467,18 @@ actie, alleen genoteerd).
 
 ## Nog openstaand uit eerdere sessies (niet uit deze review, ter herinnering)
 
-- **#22**: analyseren van de verwarring tussen de horizontale "Bekijk
-  alles"-balk en het verticale filterpaneel (productbeslissing, nog niet
-  besproken).
+- ~~**#22**: analyseren van de verwarring tussen de horizontale "Bekijk
+  alles"-balk en het verticale filterpaneel.~~ **Bleek al opgelost (21
+  augustus 2026), ontdekt tijdens het bespreken ervan met de eigenaar.**
+  Mentaal model bevestigd: boven bepaalt de zoekopdracht/collectie, links
+  filtert binnen wat al geladen is. Live gecontroleerd vóór er iets
+  gebouwd werd: `browseType()` in `hooks/useSearchState.ts` zet bij een
+  klik op bv. "Rijksmonumenten" in de balk al `setObjectType(...)` mee,
+  dus het "Soort object"-filter in het paneel toont meteen "Rijksmonument"
+  geselecteerd, inclusief de bijbehorende Monumentaard/Kenmerken
+  (msp/groenaanleg)-velden - precies het gedrag dat de oorspronkelijke
+  melding wilde. Deze regel liep gewoon achter op de code (TD-09 in
+  het echt, ontdekt tijdens hetzelfde gesprek over TD-08/TD-09).
 - **TD-06, resterend deel**: echte globale tellingen per facet (of
   minimaal een totaalaantal) via server-side aggregatie - de #33-stap
   loste alleen de eerlijkheid over per-batch tellingen op, niet de
