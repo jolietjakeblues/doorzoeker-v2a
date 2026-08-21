@@ -36,12 +36,18 @@ function idFromUri(uri: string): string {
 
 const SCHEEPSWRAK_SOURCES: { bron: string; rang: number; pattern: string }[] = [
   { bron: "naam", rang: 1, pattern: `?v <${SDO}name> ?match .` },
+  // Toegevoegd 21 augustus 2026 (gemeld door de eigenaar: "schoener ed. dat
+  // zou toch moeten lukken op 'tekst'"). schema:additionalType is voor 2.483
+  // van de 2.587 scheepswrakken gevuld (96%), over 134 verschillende typen -
+  // ruim voldoende om als volwaardige discovery-bron te dienen, zelfde
+  // patroon als DISCOVERY_SOURCES bij Rijksmonumenten.
+  { bron: "scheepstype", rang: 2, pattern: `?v <${SCHEMA}additionalType> ?match .` },
 ];
 
-// Alleen zoeken op naam (018-mass-scheepswrakken.md, beslissing 3: eerst
-// alleen het detail bouwen, geen apart scheepstype-facet) plus een exacte
-// MASS-ID-lookup wanneer de zoekterm puur numeriek is - zelfde patroon als
-// de exacte-CHO-nummer-kortsluiting bij de andere objectsoorten.
+// Naam (rang 1, meestal de primaire zoekintentie) en scheepstype (rang 2,
+// bv. "schoener" of "logger") plus een exacte MASS-ID-lookup wanneer de
+// zoekterm puur numeriek is - zelfde patroon als de exacte-CHO-nummer-
+// kortsluiting bij de andere objectsoorten.
 export function buildScheepswrakDiscoveryQueries(term: string): { bron: string; query: string }[] {
   const trimmed = term.trim();
   const needle = escapeSparqlString(trimmed);

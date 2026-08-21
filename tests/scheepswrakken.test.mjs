@@ -12,22 +12,47 @@ test("MASS_ENDPOINT wijst naar de losstaande mass-SPARQL-dienst, niet rce/cho", 
   assert.equal(MASS_ENDPOINT, "https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/mass/sparql");
 });
 
-test("bouwt een naam-discoveryquery en, bij een numerieke term, ook een exacte MASS-ID-lookup", () => {
+test("bouwt naam- en scheepstype-discoveryqueries en, bij een numerieke term, ook een exacte MASS-ID-lookup", () => {
   const queries = buildScheepswrakDiscoveryQueries("hendrika");
-  assert.equal(queries.length, 1);
+  assert.equal(queries.length, 2);
   assert.equal(queries[0].bron, "naam");
   assert.match(queries[0].query, /sdo:Vehicle/);
   assert.match(queries[0].query, /CONTAINS\(LCASE\(STR\(\?match\)\), LCASE\("hendrika"\)\)/);
+  assert.equal(queries[1].bron, "scheepstype");
+  assert.match(queries[1].query, /schema\.org\/additionalType/);
+  assert.match(queries[1].query, /CONTAINS\(LCASE\(STR\(\?match\)\), LCASE\("hendrika"\)\)/);
 
   const numeriek = buildScheepswrakDiscoveryQueries("1");
-  assert.equal(numeriek.length, 2);
-  assert.equal(numeriek[1].bron, "MASS-nummer");
-  assert.match(numeriek[1].query, /mass\.cultureelerfgoed\.nl\/id\/", "1"/);
+  assert.equal(numeriek.length, 3);
+  assert.equal(numeriek[2].bron, "MASS-nummer");
+  assert.match(numeriek[2].query, /mass\.cultureelerfgoed\.nl\/id\/", "1"/);
 });
 
 test("een niet-numerieke term triggert geen exacte MASS-ID-tak", () => {
   const queries = buildScheepswrakDiscoveryQueries("hendrika1850");
-  assert.equal(queries.length, 1);
+  assert.equal(queries.length, 2);
+});
+
+test("scheepstype-discovery matcht op een scheepstype zoals 'schoener', niet alleen op naam", () => {
+  const document = {
+    results: {
+      bindings: [
+        { v: { value: "https://mass.cultureelerfgoed.nl/id/42" }, match: { value: "Schoener" } },
+      ],
+    },
+  };
+  const matches = parseScheepswrakDiscoveryResults(document, "scheepstype", "schoener");
+  assert.equal(matches.length, 1);
+  assert.equal(matches[0].monumentNumber, "42");
+  assert.equal(matches[0].matchSource, "scheepstype");
+  // Naam (rang 1) is de primaire zoekintentie en moet dus een beter (lager)
+  // getal krijgen dan scheepstype (rang 2) bij een verder identieke match.
+  const naamMatch = parseScheepswrakDiscoveryResults(
+    { results: { bindings: [{ v: { value: "https://mass.cultureelerfgoed.nl/id/42" }, match: { value: "Schoener" } }] } },
+    "naam",
+    "schoener",
+  )[0];
+  assert.ok(naamMatch.matchScore < matches[0].matchScore, "naam-match moet beter scoren dan scheepstype-match");
 });
 
 test("aanhalingstekens in de zoekterm blijven binnen de stringliteral (SPARQL-injectie voorkomen)", () => {

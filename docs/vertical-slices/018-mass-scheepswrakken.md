@@ -173,7 +173,11 @@ type Scheepswrak = {
    figcaption, strong, em, br, table, tbody, tr, th, td`).
 3. **Scheepstype: eerst alleen in het detail, geen los filter-facet.**
    "Beginnen met detail" - een eigen "Soort object"-achtig facet is een
-   latere uitbreiding als daar behoefte aan blijkt.
+   latere uitbreiding als daar behoefte aan blijkt. **Deels herzien (21
+   augustus 2026):** scheepstype is nu wél een tekst-discoverybron
+   (`schema:additionalType`, zoeken op bv. "schoener" vindt nu ook
+   scheepswrakken van dat type), maar nog steeds geen apart filter-facet
+   in de zijbalk - dat blijft de latere uitbreiding.
 4. **Bronvermeldingstekst: akkoord**, letterlijk gebouwd zoals
    voorgesteld.
 
