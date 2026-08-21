@@ -7,12 +7,10 @@ export {
 } from "./rce/geometry.ts";
 export { escapeSparqlString } from "./rce/sparql.ts";
 export {
-  buildAbrTermSuggestQuery,
-  buildChtTermSuggestQuery,
+  buildOnderwerpTermSuggestQuery,
   buildReferentienetwerkTermSuggestQuery,
   buildTermUsageQuery,
-  parseAbrTermSuggestResults,
-  parseChtTermSuggestResults,
+  parseOnderwerpTermSuggestResults,
   parseReferentienetwerkTermSuggestResults,
   parseTermUsageResults,
   type TermSuggestion,
