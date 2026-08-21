@@ -327,8 +327,12 @@ export function typeBadge(item: {
   if (item.objectType === "Vondst") return { letter: "V", modifier: "sand" };
   if (item.objectType === "Archeologisch complex") return { letter: "A", modifier: "complex" };
   if (item.objectType === "Scheepswrak") return { letter: "R", modifier: "wreck" };
+  // Archeologisch Rijksmonument krijgt geen eigen letter (gemeld door de
+  // eigenaar, 21 augustus 2026: "Het zijn Rijksmonumenten -> M") - alleen
+  // de tegelkleur ("sand") maakt het onderscheid met gebouwd. Bijkomend
+  // voordeel: "A" was hierdoor eerder dubbel met Archeologisch complex.
   if (item.monumentAard === "Archeologisch")
-    return { letter: "A", modifier: "sand" };
+    return { letter: "M", modifier: "sand" };
   return { letter: "M", modifier: "" };
 }
 
