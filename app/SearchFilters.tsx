@@ -19,7 +19,7 @@ type SearchFiltersProps = {
   municipality: string;
   functionFilter: string;
   matchSourceFilter: string;
-  excludedStatuses: string[];
+  excludedCategories: string[];
   onlyGroenaanleg: boolean;
   onlyMsp: boolean;
   includesRijksmonumenten: boolean;
@@ -27,7 +27,7 @@ type SearchFiltersProps = {
   contextMunicipalities: string[];
   contextFunctions: string[];
   contextMatchSources: string[];
-  contextStatuses: string[];
+  contextCategories: string[];
   groenaanlegCount: number;
   mspCount: number;
   onClose: () => void;
@@ -37,8 +37,8 @@ type SearchFiltersProps = {
   onMunicipalityChange: (value: string) => void;
   onFunctionChange: (value: string) => void;
   onMatchSourceChange: (value: string) => void;
-  onToggleStatus: (value: string) => void;
-  onClearStatuses: () => void;
+  onToggleCategory: (value: string) => void;
+  onClearCategories: () => void;
   onOnlyGroenaanlegChange: (value: boolean) => void;
   onOnlyMspChange: (value: boolean) => void;
   onReset: () => void;
@@ -46,12 +46,12 @@ type SearchFiltersProps = {
 
 export function SearchFilters({
   open, baseResults, objectTypeResults, hasMore, objectType, monumentAard, province,
-  municipality, functionFilter, matchSourceFilter, excludedStatuses,
+  municipality, functionFilter, matchSourceFilter, excludedCategories,
   onlyGroenaanleg, onlyMsp, includesRijksmonumenten, contextProvinces,
-  contextMunicipalities, contextFunctions, contextMatchSources, contextStatuses,
+  contextMunicipalities, contextFunctions, contextMatchSources, contextCategories,
   groenaanlegCount, mspCount, onClose, onObjectTypeChange,
   onMonumentAardChange, onProvinceChange, onMunicipalityChange,
-  onFunctionChange, onMatchSourceChange, onToggleStatus, onClearStatuses,
+  onFunctionChange, onMatchSourceChange, onToggleCategory, onClearCategories,
   onOnlyGroenaanlegChange, onOnlyMspChange, onReset,
 }: SearchFiltersProps) {
   return (
@@ -112,7 +112,7 @@ export function SearchFilters({
                 onObjectTypeChange(option);
                 onProvinceChange("Alle");
                 onMunicipalityChange("Alle");
-                onClearStatuses();
+                onClearCategories();
                 if (option !== "Alle" && option !== "Rijksmonument") {
                   onMonumentAardChange("Alle");
                   onFunctionChange("Alle");
@@ -311,26 +311,28 @@ export function SearchFilters({
           </label>
         </fieldset>
       )}
-      {objectType === "Alle" && contextStatuses.length > 1 && (
+      {objectType === "Alle" && contextCategories.length > 1 && (
         <fieldset>
-          <legend>Juridische status</legend>
+          <legend>Objectsoort uitsluiten</legend>
           <details className="hint">
             <summary>Wat betekent dit?</summary>
             <p>
-              De status verschilt per soort object. Een Rijksmonument heeft
-              de status &ldquo;rijksmonument&rdquo;, Werelderfgoed en
-              Gezicht hebben hun eigen status. Een archeologisch terrein
-              heeft een archeologische waardering; dat is niet automatisch
-              een wettelijke bescherming. Een Complex of Onderzoeksgebied
-              is zelf geen aangewezen monument.
+              Dit is geen juridische status - Doorzoeker toont hier alleen
+              een preciezere naam per objectsoort (bijvoorbeeld
+              &ldquo;Archeologisch onderzoeksgebied&rdquo; in plaats van
+              &ldquo;Onderzoeksgebied&rdquo;). De echte juridische status
+              van de RCE kent maar drie waarden - rijksmonument,
+              voorbeschermd en geen rijksmonument - en wordt hier niet
+              getoond. Vink een soort uit om die uit de resultaten te
+              verbergen.
             </p>
           </details>
-          {contextStatuses.map((label) => (
+          {contextCategories.map((label) => (
             <label key={label}>
               <input
                 type="checkbox"
-                checked={!excludedStatuses.includes(label)}
-                onChange={() => onToggleStatus(label)}
+                checked={!excludedCategories.includes(label)}
+                onChange={() => onToggleCategory(label)}
               />
               <span>{label}</span>
               <em>

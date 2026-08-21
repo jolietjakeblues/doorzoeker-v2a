@@ -8,7 +8,7 @@ type FilterState = {
   province: string;
   municipality: string;
   matchSourceFilter: string;
-  excludedStatuses: string[];
+  excludedCategories: string[];
   onlyGroenaanleg: boolean;
   onlyMsp: boolean;
 };
@@ -23,7 +23,7 @@ export function useFilteredResults(baseResults: Item[], filters: FilterState) {
       (filters.province === "Alle" || item.province === filters.province) &&
       (filters.municipality === "Alle" || item.municipality === filters.municipality) &&
       (filters.matchSourceFilter === "Alle" || item.matchSource === filters.matchSourceFilter) &&
-      !filters.excludedStatuses.includes(statusLabel(item.objectType)) &&
+      !filters.excludedCategories.includes(statusLabel(item.objectType)) &&
       (skip === "groenaanleg" || !filters.onlyGroenaanleg || Boolean(item.groenaanleg)) &&
       (skip === "msp" || !filters.onlyMsp || item.msp === true),
     [filters],

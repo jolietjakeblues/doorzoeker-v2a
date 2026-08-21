@@ -281,7 +281,7 @@ export const EMPTY_URL_STATE = {
   municipality: "Alle",
   functionFilter: "Alle",
   matchSourceFilter: "Alle",
-  excludedStatuses: [] as string[],
+  excludedCategories: [] as string[],
   onlyGroenaanleg: false,
   onlyMsp: false,
   view: "list" as const,
@@ -656,7 +656,7 @@ export function parseUrlState(search: string) {
     municipality: municipality || "Alle",
     functionFilter: params.get("functie") ?? "Alle",
     matchSourceFilter: params.get("bron") ?? "Alle",
-    excludedStatuses:
+    excludedCategories:
       params.get("uitgesloten")?.split(",").filter(Boolean) ?? [],
     onlyGroenaanleg: params.get("groenaanleg") === "1",
     onlyMsp: params.get("msp") === "1",

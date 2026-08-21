@@ -16,7 +16,7 @@ Doorzoeker filtert op twee plekken, met verschillende aard:
 2. **Client-side, ná ontvangst**: `hooks/useFilteredResults.ts` filtert de
    al opgehaalde `baseResults` verder op basis van de UI-filters (Soort
    object, Monumentaard, Provincie, Gemeente, Functie, Gevonden via,
-   Juridische status, Historische aanleg, MSP). Dit bepaalt wat er
+   Objectsoort uitsluiten, Historische aanleg, MSP). Dit bepaalt wat er
    daadwerkelijk zichtbaar wordt van wat al binnen is.
 
 Deze twee lagen hebben geen weet van elkaar. Laag 2 kan nooit iets tonen dat
@@ -35,7 +35,7 @@ voorwaarden:
 | Gemeente | exact `item.municipality` |
 | Functie | `filters.functionFilter` moet voorkomen in `[item.kind, ...originalFunctionNames, ...currentFunctionNames]` — **tekstlabel**, geen concept-URI |
 | Gevonden via (matchbron) | exact `item.matchSource` |
-| Juridische status | `statusLabel(item.objectType)` mag niet in `excludedStatuses` staan (dit is een uitsluitlijst, geen insluitlijst) |
+| Objectsoort uitsluiten | `statusLabel(item.objectType)` mag niet in `excludedCategories` staan (dit is een uitsluitlijst, geen insluitlijst). **Hernoemd 21-08-2026** (was "Juridische status", terecht gemeld door de eigenaar als misleidend): `statusLabel()` geeft een preciezere objectsoort-naam, geen echte RCE-juridische-status (die kent maar drie waarden: rijksmonument, voorbeschermd, geen rijksmonument - en wordt nergens in dit filter getoond) |
 | Historische aanleg | alleen als `onlyGroenaanleg` aan staat: `item.groenaanleg` moet waar zijn |
 | MSP | alleen als `onlyMsp` aan staat: `item.msp === true` |
 
@@ -47,7 +47,7 @@ waarde — zie "Openstaande vragen".
 Dit is de plek waar het non-triviaal wordt: **niet elk aantal gaat over
 dezelfde deelverzameling.**
 
-- **Soort object** en **Juridische status**: geteld over `baseResults`
+- **Soort object** en **Objectsoort uitsluiten**: geteld over `baseResults`
   (alles wat is opgehaald), **zonder rekening te houden met enig ander
   actief filter**. Het aantal naast "Rijksmonument" verandert dus niet als
   je ook op Provincie filtert.
