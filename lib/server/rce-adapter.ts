@@ -509,7 +509,31 @@ async function searchArcheologischOnderzoek(term: string, signal?: AbortSignal, 
 // alleen in de gefaalde categorie zat) 5 minuten lang als geldig cachen en
 // aan iedereen serveren; zie searchByText/searchRceMonuments en de
 // cache-beslissing in app/api/rce/search/route.ts.
-export type SearchPartialFailure = { partial: boolean };
+export type SearchPartialFailure = { partial: boolean; failedCategories: string[] };
+
+// Vertaalt het interne event-label van een optionalSearch-aanroep naar de
+// naam zoals die al in het "Soort object"-filter staat (SearchFilters.tsx),
+// zodat een gefaalde categorie herkenbaar is voor de gebruiker - "0
+// scheepswrakken" en "scheepswrakken konden niet geladen worden" zagen er
+// tot 21-08-2026 identiek uit (gemeld door de eigenaar bij "schoener": de
+// MASS-dienst faalde stil, zonder enig signaal). Alleen categorieën die
+// hier één-op-één op een hele optionalSearch-aanroep in searchByText/
+// searchRceMonuments staan komen hierin - een falende losse discovery-tak
+// binnen bv. Rijksmonument-tekstzoeken (runDiscoveryBranches) blijft alleen
+// tracker.partial zetten, want die categorie zelf faalt daarbij niet heus.
+const FAILED_CATEGORY_LABELS: Record<string, string> = {
+  "search.werelderfgoed": "Werelderfgoed",
+  "search.gezichten": "Gezicht",
+  "search.complexen": "Complex",
+  "search.onderzoeksgebieden": "Onderzoeksgebied",
+  "search.archeologische-terreinen": "Archeologisch terrein",
+  "search.vondstlocaties": "Vondstlocatie",
+  "search.grondsporen": "Grondspoor",
+  "search.vondsten": "Vondst",
+  "search.archeologische-complexen": "Archeologisch complex",
+  "search.scheepswrakken": "Scheepswrak",
+  "search.rijksmonumenten-op-nummer": "Rijksmonument",
+};
 
 async function optionalSearch<T>(event: string, work: () => Promise<T>, fallback: T, signal?: AbortSignal, tracker?: SearchPartialFailure): Promise<T> {
   try {
@@ -517,7 +541,11 @@ async function optionalSearch<T>(event: string, work: () => Promise<T>, fallback
   } catch (error) {
     if (signal?.aborted) throw error;
     console.warn(JSON.stringify({ event: `${event}.unavailable`, message: error instanceof Error ? error.message : "unknown" }));
-    if (tracker) tracker.partial = true;
+    if (tracker) {
+      tracker.partial = true;
+      const label = FAILED_CATEGORY_LABELS[event];
+      if (label && !tracker.failedCategories.includes(label)) tracker.failedCategories.push(label);
+    }
     return fallback;
   }
 }

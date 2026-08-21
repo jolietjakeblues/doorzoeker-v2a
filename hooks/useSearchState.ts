@@ -93,6 +93,8 @@ export function useSearchState() {
     setRemoteResults,
     remoteState,
     setRemoteState,
+    failedCategories,
+    setFailedCategories,
     resultPage,
     setResultPage,
     hasMore,
@@ -241,6 +243,7 @@ export function useSearchState() {
     setOnlyMsp(false);
     setResultPage(1);
     setHasMore(false);
+    setFailedCategories([]);
     if (!term) {
       setRemoteResults(null);
       setRemoteState("idle");
@@ -254,6 +257,7 @@ export function useSearchState() {
       setRemoteResults(items);
       applyPendingSelection(items);
       setHasMore(response.hasMore);
+      setFailedCategories(response.failedCategories ?? []);
       setRemoteState("success");
     } catch (error) {
       if (request.isAborted() || !request.isCurrent())
@@ -293,6 +297,7 @@ export function useSearchState() {
     setOnlyMsp(false);
     setResultPage(1);
     setHasMore(false);
+    setFailedCategories([]);
     setRemoteState("loading");
     try {
       const records =
@@ -408,6 +413,7 @@ export function useSearchState() {
     setOnlyMsp(false);
     setResultPage(1);
     setHasMore(false);
+    setFailedCategories([]);
     setRemoteState("loading");
     try {
       const response = await browseRceObjects(kind, request.signal);
@@ -504,6 +510,7 @@ export function useSearchState() {
     setRemoteState("idle");
     setResultPage(1);
     setHasMore(false);
+    setFailedCategories([]);
   }
 
   // Herhaalt de laatst geprobeerde actie (tekstzoekopdracht, conceptzoekopdracht
@@ -551,6 +558,7 @@ export function useSearchState() {
     filters,
     setFilters,
     remoteState,
+    failedCategories,
     resultPage,
     hasMore,
     loadingMore,

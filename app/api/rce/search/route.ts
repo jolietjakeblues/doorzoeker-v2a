@@ -95,7 +95,7 @@ export async function GET(request: Request) {
     // onvolledig resultaat - bv. "0 resultaten" terwijl het object alleen in
     // de gefaalde categorie zat - hierna alsnog 5 minuten lang gecachet en
     // aan alle bezoekers geserveerd worden, alsof het een geldig antwoord was.
-    const partialFailure: SearchPartialFailure = { partial: false };
+    const partialFailure: SearchPartialFailure = { partial: false, failedCategories: [] };
     const results = browse
       ? await browseRceObjects(browse, request.signal, page)
       : conceptParam
@@ -111,6 +111,7 @@ export async function GET(request: Request) {
       page: isPagedTextSearch || isPagedBrowse ? page : 1,
       pageSize,
       hasMore: isPagedBrowse ? results.length >= pageSize : isPagedTextSearch && pagedResultCount >= pageSize,
+      failedCategories: partialFailure.failedCategories.length ? partialFailure.failedCategories : undefined,
     });
     const response = new Response(body, {
       headers: {
