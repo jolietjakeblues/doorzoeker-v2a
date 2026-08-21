@@ -1,8 +1,17 @@
 # Thesaurusmatrix en navigatiefasen
 
-Datum: 11 augustus 2026.
+Datum: 11 augustus 2026. Conceptveldentabel bijgewerkt op 21 augustus 2026
+(documentatie-audit): `stijl`, `bouwkundigestaat`, `verwerving`,
+`grondspoortype` en `monumenttype` zijn na 11 augustus toegevoegd als
+CONCEPT_FIELDS maar stonden nog niet in deze tabel. Live gecontroleerd
+(niet aangenomen) welke van de vijf een `skos:inScheme`-koppeling naar een
+van de vier suggestieschema's hebben: alleen `monumenttype`
+(Monumenten Registratie Systeem) - de andere vier hebben geen `inScheme`
+naar enig schema en zijn dus nooit suggereerbaar via de algemene zoekbalk,
+ook al werken ze prima als exact conceptveld ná een zoekopdracht.
 
-Status: analyse, nog niet uitvoeren.
+Status: analyse, nog niet uitvoeren. (Betreft de navigatiefasen hieronder,
+niet de conceptveldentabel hierboven - die beschrijft al gebouwd gedrag.)
 
 ## Huidige conceptvelden
 
@@ -17,6 +26,11 @@ Status: analyse, nog niet uitvoeren.
 | `materiaal` | RN2, Archeologisch Informatie Systeem | Ja | Ja bij niet gekoppelde suggestie | Ja | Vondst |
 | `toestand` | RN2, Cultuurhistorische Object Informatie | Ja | Ja bij niet gekoppelde suggestie | Ja | Vondst |
 | `archeologischcomplextype` | RN2, Archeologisch Informatie Systeem | Ja | Ja bij niet gekoppelde suggestie | Ja | Archeologisch complex |
+| `stijl` | RN2, geen `skos:inScheme` naar een van de vier suggestieschema's | Ja | Nee: concept is niet suggereerbaar via de algemene zoekbalk | Ja | Rijksmonument |
+| `bouwkundigestaat` | RN2, geen `skos:inScheme` naar een van de vier suggestieschema's | Ja | Nee | Ja | Rijksmonument |
+| `verwerving` | RN2, geen `skos:inScheme` naar een van de vier suggestieschema's | Ja | Nee | Ja | Vondstlocatie |
+| `grondspoortype` | RN2, geen `skos:inScheme` naar een van de vier suggestieschema's | Ja | Nee | Ja | Grondspoor |
+| `monumenttype` | RN2, Monumenten Registratie Systeem | Ja | Ja bij niet gekoppelde suggestie (`monumenttype` zit niet in `TermSuggestion["conceptField"]`, dus een suggestie toont nooit "exact gekoppeld", alleen tekstfallback) | Ja | Rijksmonument (`Type`) |
 
 De algemene suggestiedienst gebruikt alleen vier CHO-relevante RN2-schema's:
 
