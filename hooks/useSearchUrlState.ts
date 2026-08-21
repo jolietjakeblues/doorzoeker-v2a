@@ -21,7 +21,7 @@ type SearchUrlSnapshot = {
   municipality: string;
   functionFilter: string;
   matchSourceFilter: string;
-  excludedStatuses: string[];
+  excludedCategories: string[];
   onlyGroenaanleg: boolean;
   onlyMsp: boolean;
   view: "list" | "map";
@@ -77,8 +77,8 @@ export function useSearchUrlState({
       params.set("functie", snapshot.functionFilter);
     if (snapshot.matchSourceFilter !== "Alle")
       params.set("bron", snapshot.matchSourceFilter);
-    if (snapshot.excludedStatuses.length)
-      params.set("uitgesloten", snapshot.excludedStatuses.join(","));
+    if (snapshot.excludedCategories.length)
+      params.set("uitgesloten", snapshot.excludedCategories.join(","));
     if (snapshot.onlyGroenaanleg) params.set("groenaanleg", "1");
     if (snapshot.onlyMsp) params.set("msp", "1");
     if (snapshot.view === "map") params.set("view", "map");
@@ -100,7 +100,7 @@ export function useSearchUrlState({
     snapshot.activeBrowseKind,
     snapshot.activeConceptUri,
     snapshot.activeConceptVeld,
-    snapshot.excludedStatuses,
+    snapshot.excludedCategories,
     snapshot.functionFilter,
     snapshot.mapViewport,
     snapshot.matchSourceFilter,

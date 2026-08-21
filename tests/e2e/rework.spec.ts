@@ -1204,6 +1204,26 @@ test("filters volgen het gekozen objecttype", async ({ page }) => {
   ).toBeVisible();
 });
 
+test("het filter voor objectsoort heet niet meer 'Juridische status' (gemeld door de eigenaar, 21-08-2026: 'er zijn maar 3 juridische statussen', dit filter toonde objectsoorten onder een verkeerd label)", async ({ page }) => {
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(
+    page.getByRole("heading", { name: "3 resultaten voor “Goirle”" }),
+  ).toBeVisible();
+
+  const fieldset = page.locator("fieldset", { has: page.getByText("Objectsoort uitsluiten") });
+  await expect(fieldset).toBeVisible();
+  await expect(page.getByText("Juridische status", { exact: true })).toHaveCount(0);
+  await fieldset.getByText("Wat betekent dit?").click();
+  await expect(fieldset).toContainText("Dit is geen juridische status");
+  await expect(fieldset).toContainText("rijksmonument, voorbeschermd en geen rijksmonument");
+
+  // Uitvinken verbergt die objectsoort, de rest blijft zichtbaar.
+  await fieldset.getByRole("checkbox", { name: /Complex van rijksmonumenten/ }).uncheck();
+  await expect(page.getByText("Historisch boerderijcomplex")).toHaveCount(0);
+  await expect(page.getByText("Woonhuis van de architect")).toBeVisible();
+});
+
 test("een complexdetail toont geen lege monumentvelden", async ({ page }) => {
   await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
   await page.getByRole("button", { name: "Doorzoek RCE" }).click();

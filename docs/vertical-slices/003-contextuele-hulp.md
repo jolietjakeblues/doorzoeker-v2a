@@ -13,6 +13,14 @@ fieldset-hints zijn aanwezig, openen en sluiten werkt, en
 `<summary>` is (zoals verwacht van native HTML) gewoon met het toetsenbord
 te focussen en te bedienen.
 
+**Hernoemd (21 augustus 2026):** de fieldset "Juridische status" heette
+zo ten onrechte - gemeld door de eigenaar als misleidend, want de echte
+RCE-juridische-status kent maar drie waarden (rijksmonument, voorbeschermd,
+geen rijksmonument) en werd hier nooit getoond. Het filter zelf toonde
+altijd al alleen een preciezere objectsoort-naam (`statusLabel()`). Heet nu
+"Objectsoort uitsluiten", met een hint-tekst die dat onderscheid expliciet
+uitlegt in plaats van "status" te suggereren. Zie `docs/filterlogica.md`.
+
 ## Aanleiding
 
 Een nieuwe of incidentele gebruiker van Doorzoeker kent het RCE-jargon niet
