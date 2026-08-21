@@ -1330,6 +1330,30 @@ test("kaartmarkers zijn met het toetsenbord bedienbaar, niet alleen met de muis 
   await expect(page.getByRole("dialog")).toBeVisible();
 });
 
+test("de compacte kaart in een detailvenster heeft in- en uitzoomknoppen, niet alleen scrollwheel-zoom (gemeld door de eigenaar, 21-08-2026: 'ik moet toch de omgeving van een monument of complex kunnen zien')", async ({ page }) => {
+  // Een compacte kaart (monument, complex, archeologische context) opent op
+  // straatniveau (fitBounds op één punt) zonder enige manier om uit te
+  // zoomen: scrollwheel-zoom staat bewust uit (zou de dialoogscroll kapen),
+  // maar de +/--knoppen waren tot 21-08-2026 óók uitgezet, dus de omgeving
+  // van het object was helemaal niet te zien.
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) =>
+    route.fulfill({ json: { results: [records[0]], page: 1, hasMore: false } }),
+  );
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Woonhuis");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+
+  await expect(page.locator(".detail-map .leaflet-control-zoom-in")).toBeVisible();
+  // Een kaart met één punt fit al op maxZoom (kan dus niet verder inzoomen,
+  // vandaar dat alleen uitzoomen hier getest wordt) - vóór 21-08-2026
+  // bestond deze knop op een compacte kaart helemaal niet.
+  const zoomOut = page.locator(".detail-map .leaflet-control-zoom-out");
+  await expect(zoomOut).toBeVisible();
+  await expect(zoomOut).not.toHaveClass(/leaflet-disabled/);
+  await zoomOut.click();
+});
+
 test("een gekozen termsuggestie behoudt URI en bron na herladen", async ({
   page,
 }) => {
