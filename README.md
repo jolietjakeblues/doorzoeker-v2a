@@ -23,7 +23,8 @@ Deze repository is een schone herbouw van Doorzoeker. De originele [Doorzoeker](
 - archeologische terreinen;
 - archeologische vondstlocaties;
 - archeologische grondsporen;
-- archeologische onderzoeksgebieden.
+- archeologische onderzoeksgebieden;
+- scheepswrakken (MASS-dataset).
 
 Archeologie bestaat uit meer dan onderzoeksgebieden en monumenten. Bij
 Rijksmonumenten toont Doorzoeker de archeologische terreinen die daar in de
@@ -55,6 +56,12 @@ als een Complex van gebouwde Rijksmonumenten. Archeologische complexen zijn
 zelfstandig vindbaar op CHO-nummer, omschrijving, woonplaats en RN2-type. Het
 detail toont alle gepubliceerde oudercontexten: vondstlocatie, archeologisch
 terrein en/of onderzoeksgebied.
+Scheepswrakken komen uit de losstaande MASS-dataset (`rce/mass`, een eigen
+`schema.org`-vocabulaire, geen CEO) en zijn zelfstandig vindbaar op naam en
+scheepstype, met een exacte MASS-nummerlookup bij een numerieke term. Het
+detail toont scheepstype, een gesaneerde omschrijving met afbeeldingen, het
+ontdekt-jaar (indien aanwezig) en een vaste bronvermelding met licentie; er
+is geen `Bekijk alles`-browsemodus voor deze categorie.
 
 Zie [Functionele dekking](docs/functionele-dekking.md) voor het precieze
 onderscheid tussen zelfstandige objecten, gekoppelde lijsten en tellingen.
@@ -65,22 +72,29 @@ De algemene zoekbalk zoekt in aangesloten CHO-velden, waaronder nummer,
 plaats, functie, type en omschrijving. Tekstzoekopdrachten kunnen volgende
 pagina's van 25 resultaten laden.
 
-Woordsuggesties komen uit vier schema's binnen Referentienetwerk 2:
+Woordsuggesties komen uit twee bronnen. Ten eerste twee CHO-relevante
+schema's binnen Referentienetwerk 2:
 
 - Archeologisch Informatie Systeem;
-- Cultuurhistorische Object Informatie;
-- Kennisregistratie;
 - Monumenten Registratie Systeem.
 
-Doorzoeker controleert per suggestie of die concept-URI werkelijk in een
-ondersteund CHO-veld voorkomt. Is dat zo, dan toont de zoekbalk het aantal
-gekoppelde objecten en zoekt een klik exact op de URI. Dit werkt voor functie,
-monumentaard, vondsttype, materiaal, toestand en archeologisch complextype.
-Een term zonder aangetoonde koppeling blijft zichtbaar een tekstzoekopdracht;
-de thesaurus wordt dus niet voorgesteld als een volledige CHO-index. Ook
+(Cultuurhistorische Object Informatie en Kennisregistratie leverden geen
+bruikbare CHO-suggesties op en zijn eruit gehaald.) Doorzoeker controleert
+per RN2-suggestie of die concept-URI werkelijk in een ondersteund CHO-veld
+voorkomt. Is dat zo, dan toont de zoekbalk het aantal gekoppelde objecten en
+zoekt een klik exact op de URI. Dit werkt voor functie, monumentaard,
+vondsttype, materiaal, toestand en archeologisch complextype. Ook
 archeologische waardering, gebeurtenistype en actor zijn vanuit records exact
-doorzoekbaar. Het losse ABR wordt niet gebruikt als interne CHO-begrippenlaag.
-Bibliotheek en Beeldbank gebruiken CHT in hun eigen brondata.
+doorzoekbaar.
+
+Ten tweede CHT- en ABR-begrippen die daadwerkelijk aan een formele
+Rijksmonument-omschrijving gekoppeld zijn (niet de volledige thesaurus - dat
+zou duizenden termen zonder zoekresultaat suggereren). Zo'n suggestie toont
+zijn bron (Cultuurhistorische Thesaurus of Archeologisch Basisregister) en
+zoekt, net als een RN2-term zonder aangetoonde koppeling, op tekst. Dezelfde
+koppeling levert op de detailpagina van een Rijksmonument het veld
+"Onderwerp (uit omschrijving)" op: elk concept toont daar zijn
+herkomstthesaurus (CHT, ABR of RN) naast het label.
 
 ## Kaart en geometrie
 
@@ -126,9 +140,12 @@ SPARQL. De objecten en hun relaties zijn gemodelleerd volgens de
 (Cultureel Erfgoed Ontologie) - de namespace die in iedere querybuilder onder
 `lib/rce/` als `ceo:` terugkomt.
 
-- `rce/cho`: objecten, relaties, geometrie en een deel van de verrijkingen;
-- `thesauri/referentienetwerk`: concepten en de vier gebruikte RN2-schema's;
+- `rce/cho`: objecten, relaties, geometrie, thesaurusgekoppelde
+  omschrijvingsbegrippen (CHT/ABR) en een deel van de verrijkingen;
+- `thesauri/referentienetwerk`: concepten en de twee gebruikte RN2-schema's;
 - `rce/bibliotheek`: gekoppelde publicaties;
+- `rce/mass`: scheepswrakken - een losstaande dataset met een eigen
+  `schema.org`-vocabulaire, geen CEO;
 - RCE-MCP: hulpmiddel voor onderzoek en queryontwikkeling, geen verplichte
   runtime-laag van de webapp.
 
@@ -148,6 +165,7 @@ hooks scheiden URL-herstel, request-lifecycle, filtering en detailverrijking.
 - `lib/rce/archaeology.ts`: archeologische objecten en relaties;
 - `lib/rce/terms.ts` en `lib/rce/concepts.ts`: thesauri en exacte conceptzoeking;
 - `lib/rce/enrichment.ts`: beeld, groenaanleg, MSP, gebeurtenissen en Op deze dag;
+- `lib/rce/scheepswrakken.ts`: scheepswrakken (MASS, losstaand van CEO);
 - `lib/rce/types.ts`, `geometry.ts` en `sparql.ts`: gedeelde basis.
 
 Zie [Consolidatieplan](docs/consolidatieplan.md) voor de gemaakte grenzen en

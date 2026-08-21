@@ -66,7 +66,16 @@ woordsuggesties: Archeologisch Informatie Systeem, Cultuurhistorische Object
 Informatie, Kennisregistratie en Monumenten Registratie Systeem. CHT hoort bij
 Bibliotheek en Beeldbank; het losse ABR wordt intern niet gebruikt. RN2 is
 rechtstreeks met de objectdata verweven via concept-URI's. Een gekozen
-suggestie bewaart concept-URI, thesaurus-URI en thesaurusnaam. Voor
+suggestie bewaart concept-URI, thesaurus-URI en thesaurusnaam.
+
+**Herzien (21 augustus 2026):** Cultuurhistorische Object Informatie en
+Kennisregistratie leverden geen bruikbare CHO-suggesties op en zijn eruit
+gehaald - alleen Archeologisch Informatie Systeem en Monumenten Registratie
+Systeem blijven over. CHT en ABR zijn er tegelijk bij gekomen, maar niet als
+volledige thesaurus: alleen begrippen die daadwerkelijk aan een formele
+Rijksmonument-omschrijving hangen via `ceox:heeftOmschrijvingOnderwerp` zijn
+suggereerbaar (`buildOnderwerpTermSuggestQuery`, `lib/rce/terms.ts`), met hun
+bron zichtbaar in de suggestie. Zie ook `docs/thesaurusmatrix.md`. Voor
 gecontroleerde CHO-veldroutes zoekt de zoekbalk exact op identiteit; overige
 suggesties blijven tekstzoekopdrachten.
 
