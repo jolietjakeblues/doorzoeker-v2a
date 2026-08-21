@@ -34,8 +34,12 @@ type MapItem = {
   forceArea?: boolean;
 };
 
+// #01689b/#ffb612/#154273 waren rce-blue-hover/rce-yellow/rce-blue - de
+// enige drie hier die letterlijk Rijkshuisstijl waren, nu op het eigen
+// teal/terracotta-palet (21 augustus 2026). De overige kleuren waren al
+// eigen, niet-RCE tinten en blijven ongewijzigd.
 function markerColor(item: Pick<MapItem, "objectType" | "monumentAard">) {
-  if (item.objectType === "Werelderfgoed") return "#01689b";
+  if (item.objectType === "Werelderfgoed") return "#163D42";
   if (item.objectType === "Gezicht") return "#176b3a";
   if (item.objectType === "Complex") return "#5b4b8a";
   if (item.objectType === "Onderzoeksgebied") return "#6b4226";
@@ -45,8 +49,8 @@ function markerColor(item: Pick<MapItem, "objectType" | "monumentAard">) {
   if (item.objectType === "Vondst") return "#9a6700";
   if (item.objectType === "Archeologisch complex") return "#704214";
   if (item.objectType === "Scheepswrak") return "#0a5c66";
-  if (item.monumentAard === "Archeologisch") return "#ffb612";
-  return "#154273";
+  if (item.monumentAard === "Archeologisch") return "#B65A34";
+  return "#23545B";
 }
 
 // Werelderfgoed, Gezicht, archeologische terreinen en archeologische

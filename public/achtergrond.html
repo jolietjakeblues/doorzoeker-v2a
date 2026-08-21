@@ -7,17 +7,16 @@
 <meta name="description" content="De achtergrond van Doorzoeker: waarom Linked Open Data, hoe de zoekmachine werkt, en de geschiedenis van Doorzoeker 1 (2013-2014)." />
 <style>
   :root {
-    --rce-blue: #154273;
-    --rce-blue-hover: #01689b;
-    --rce-link: #007bc7;
-    --rce-yellow: #ffb612;
+    --brand-teal: #23545B;
+    --brand-teal-hover: #163D42;
+    --brand-terracotta: #B65A34;
     --ink: #000;
     --muted: #595959;
     --paper: #fff;
     --panel: #f1f5f9;
     --panel-line: #dde3e8;
     --line: #d5d5d5;
-    --font: Calibri, Verdana, Arial, sans-serif;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
   * { box-sizing: border-box; }
   body {
@@ -28,10 +27,10 @@
     font-size: 16px;
     line-height: 1.65;
   }
-  a { color: var(--rce-link); }
+  a { color: var(--brand-teal); }
   a:focus-visible,
   button:focus-visible {
-    outline: 3px solid var(--rce-blue);
+    outline: 3px solid var(--brand-teal);
     outline-offset: 2px;
   }
 
@@ -43,7 +42,7 @@
     left: 12px;
     z-index: 2000;
     padding: 10px 16px;
-    background: var(--rce-blue);
+    background: var(--brand-teal);
     color: #fff;
     font-weight: 700;
     text-decoration: none;
@@ -52,29 +51,14 @@
     top: 12px;
   }
 
-  .govbar {
-    height: 96px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #fff;
-    border-bottom: 1px solid var(--panel-line);
-  }
-  .govbar img {
-    display: block;
-    width: 420px;
-    max-width: 90vw;
-    height: 60px;
-    object-fit: contain;
-    object-position: center;
-  }
   header {
     height: 75px;
     padding-inline: clamp(20px, 6vw, 90px);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: var(--rce-yellow);
+    background: #fff;
+    border-bottom: 3px solid var(--brand-terracotta);
     flex-wrap: wrap;
     gap: 8px;
   }
@@ -90,7 +74,7 @@
     height: 40px;
     display: grid;
     place-items: center;
-    background: var(--rce-blue);
+    background: var(--brand-teal);
     color: #fff;
     font-size: 20px;
     border-radius: 2px;
@@ -98,7 +82,7 @@
   header a.brand strong { display: block; font-size: 18px; }
   header a.brand small { display: block; color: #222; font-size: 12px; font-weight: 400; }
   header nav a {
-    color: var(--rce-blue);
+    color: var(--brand-teal);
     font-weight: 700;
     text-decoration: underline;
   }
@@ -120,10 +104,10 @@
   }
   h2 {
     font-size: 22px;
-    color: var(--rce-blue);
+    color: var(--brand-teal);
     margin: 48px 0 14px;
     padding-top: 8px;
-    border-top: 3px solid var(--rce-yellow);
+    border-top: 3px solid var(--brand-terracotta);
   }
   h3 {
     font-size: 17px;
@@ -161,13 +145,13 @@
     margin-top: 40px;
     padding: 12px 20px;
     min-height: 44px;
-    background: var(--rce-blue);
+    background: var(--brand-teal);
     color: #fff;
     text-decoration: none;
     font-weight: 700;
     line-height: 20px;
   }
-  .terug:hover { background: var(--rce-blue-hover); }
+  .terug:hover { background: var(--brand-teal-hover); }
 
   .site-footer {
     max-width: 1100px;
@@ -182,11 +166,9 @@
     line-height: 1.6;
   }
   .site-footer p:first-child { margin-top: 0; }
-  .site-footer a { color: var(--rce-blue); }
+  .site-footer a { color: var(--brand-teal); }
 
   @media (max-width: 800px) {
-    .govbar { height: 76px; }
-    .govbar img { width: 300px; height: 46px; }
     header { height: auto; padding-block: 12px; }
   }
 </style>
@@ -194,9 +176,6 @@
 <body>
   <a href="#inhoud" class="skip-link">Direct naar de inhoud</a>
 
-  <div class="govbar">
-    <img src="/logo-rce.gif" alt="Rijksdienst voor het Cultureel Erfgoed, Ministerie van Onderwijs, Cultuur en Wetenschap" />
-  </div>
   <header>
     <a class="brand" href="/">
       <b aria-hidden="true">D</b>

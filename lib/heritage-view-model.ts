@@ -322,11 +322,11 @@ export function typeBadge(item: {
     return { letter: "O", modifier: "dig" };
   if (item.objectType === "Archeologisch terrein")
     return { letter: "T", modifier: "sand" };
-  if (item.objectType === "Vondstlocatie") return { letter: "V", modifier: "dig" };
+  if (item.objectType === "Vondstlocatie") return { letter: "L", modifier: "dig" };
   if (item.objectType === "Grondspoor") return { letter: "S", modifier: "dig" };
   if (item.objectType === "Vondst") return { letter: "V", modifier: "sand" };
   if (item.objectType === "Archeologisch complex") return { letter: "A", modifier: "complex" };
-  if (item.objectType === "Scheepswrak") return { letter: "S", modifier: "wreck" };
+  if (item.objectType === "Scheepswrak") return { letter: "R", modifier: "wreck" };
   if (item.monumentAard === "Archeologisch")
     return { letter: "A", modifier: "sand" };
   return { letter: "M", modifier: "" };

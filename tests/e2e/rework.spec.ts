@@ -141,7 +141,7 @@ test("de footer noemt de bèta-status, een feedbacklink naar GitHub en de privac
   );
 });
 
-test("de gele balk linkt naar de achtergrondpagina, ook op mobiel waar de rest van de regel verborgen is", async ({ page }) => {
+test("de kopbalk linkt naar de achtergrondpagina, ook op mobiel waar de rest van de regel verborgen is", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Achtergrond" })).toHaveAttribute("href", "/achtergrond.html");
 
   await page.setViewportSize({ width: 375, height: 812 });
