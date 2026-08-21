@@ -93,12 +93,15 @@ export type RceMonument = {
   inProceduredatumGezicht?: string;
   begrenzingsdatumGezicht?: string;
   intrekkingsdatumGezicht?: string;
-  // Alleen gevuld voor Rijksmonument, via de archiefdagen-graph
-  // (ceox:heeftOmschrijvingOnderwerp) op de formele omschrijving. Sparse
-  // (1.166 van de omschrijvingen), bewust alleen op de hoofd-detailquery
-  // aangesloten. Display-only voor nu (geen apart concept-zoekveld) - dat
-  // is een goedkope, mechanische vervolgstap als daar behoefte aan blijkt.
-  omschrijvingOnderwerpConcepten?: { uri: string; label: string }[];
+  // Alleen gevuld voor Rijksmonument, via een UNION van de archiefdagen- en
+  // OmschrijvingenOnderwerp-graphs (ceox:heeftOmschrijvingOnderwerp) op de
+  // formele omschrijving - twee losse, elkaar deels overlappende graphs
+  // (21 augustus 2026: archiefdagen alleen bleek een verouderde aanname),
+  // bewust alleen op de hoofd-detailquery aangesloten. bron komt uit het
+  // URI-padsegment (CHT/ABR/RN, zie onderwerpConceptBron in monuments.ts).
+  // Display-only voor nu (geen apart concept-zoekveld) - dat is een
+  // goedkope, mechanische vervolgstap als daar behoefte aan blijkt.
+  omschrijvingOnderwerpConcepten?: { uri: string; label: string; bron: string }[];
   // MASS-scheepswrakken (018-mass-scheepswrakken.md) - eigen, losstaande
   // dataset (rce/mass i.p.v. rce/cho), vandaar een klein, apart veldensetje
   // i.p.v. hergebruik van bv. functionName/description.

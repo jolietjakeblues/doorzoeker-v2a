@@ -97,7 +97,7 @@ export type Item = {
   inProceduredatumGezicht?: string;
   begrenzingsdatumGezicht?: string;
   intrekkingsdatumGezicht?: string;
-  omschrijvingOnderwerpConcepten?: { uri: string; label: string }[];
+  omschrijvingOnderwerpConcepten?: { uri: string; label: string; bron: string }[];
   scheepstype?: string;
   omschrijvingHtml?: string;
   ontdekt?: string;

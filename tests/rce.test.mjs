@@ -283,24 +283,34 @@ test("leaves stijl en cultuur / bouwkundige staat undefined when a Rijksmonument
   assert.equal(monument.bouwkundigeStaat, undefined);
 });
 
-test("joins the archiefdagen-graph onderwerpconcept onto the formele omschrijving", () => {
-  // OmschrijvingenOnderwerp (ceox:heeftOmschrijvingOnderwerp) koppelt de
-  // formele omschrijving aan ABR-conceptlabels, sparse (1.166 records).
+test("unions the archiefdagen- en OmschrijvingenOnderwerp-graphs onto de formele omschrijving", () => {
+  // ceox:heeftOmschrijvingOnderwerp koppelt de formele omschrijving aan
+  // CHT-, ABR- en RN-conceptlabels. Twee losse graphs (empirisch: rmnr
+  // 395952 heeft 48 losse concepten via de union, tegen 14 alleen uit
+  // archiefdagen), dus UNION i.p.v. één GRAPH-blok.
   const query = buildRceDetailsQuery(["36046"]);
   assert.match(query, /GRAPH <https:\/\/linkeddata\.cultureelerfgoed\.nl\/graph\/archiefdagen>/);
+  assert.match(query, /GRAPH <https:\/\/linkeddata\.cultureelerfgoed\.nl\/graph\/OmschrijvingenOnderwerp>/);
+  assert.match(query, /UNION/);
   assert.match(query, /\?omschrijvingNode ceox:heeftOmschrijvingOnderwerp \?onderwerpConceptValue/);
   assert.match(query, /\?onderwerpConceptValue skos:prefLabel \?onderwerpLabelValue/);
 });
 
-test("parses one or more onderwerpconcepten from the GROUP_CONCAT'ed URI~~label pairs", () => {
+test("parses one or more onderwerpconcepten from the GROUP_CONCAT'ed URI~~label pairs, met bron uit het URI-pad", () => {
   const document = { results: { bindings: [{
     rmnr: { value: "36046" },
-    onderwerpConcepten: { value: "https://data.cultureelerfgoed.nl/term/id/abr/1~~kanaal||https://data.cultureelerfgoed.nl/term/id/abr/2~~sluis" },
+    onderwerpConcepten: {
+      value:
+        "https://data.cultureelerfgoed.nl/term/id/abr/1~~kanaal||" +
+        "https://data.cultureelerfgoed.nl/term/id/cht/2~~sluis||" +
+        "https://data.cultureelerfgoed.nl/term/id/rn/3~~vuurtoren",
+    },
   }] } };
   const [monument] = parseSparqlResults(document);
   assert.deepEqual(monument.omschrijvingOnderwerpConcepten, [
-    { uri: "https://data.cultureelerfgoed.nl/term/id/abr/1", label: "kanaal" },
-    { uri: "https://data.cultureelerfgoed.nl/term/id/abr/2", label: "sluis" },
+    { uri: "https://data.cultureelerfgoed.nl/term/id/abr/1", label: "kanaal", bron: "ABR" },
+    { uri: "https://data.cultureelerfgoed.nl/term/id/cht/2", label: "sluis", bron: "CHT" },
+    { uri: "https://data.cultureelerfgoed.nl/term/id/rn/3", label: "vuurtoren", bron: "RN" },
   ]);
 });
 

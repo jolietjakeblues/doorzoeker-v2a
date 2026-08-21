@@ -8,6 +8,15 @@ const INSTANCES_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/instanties
 const WERELDERFGOED_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/werelderfgoed_hvdl";
 const GEZICHT_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/gezicht_hvdl";
 const ARCHIEFDAGEN_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/archiefdagen";
+// Bewust een ANDERE, los bestaande graph dan hierboven, niet zomaar een
+// synoniem voor dezelfde property (eerdere aanname was fout - gecorrigeerd
+// 21 augustus 2026 op aanwijzing van de eigenaar). Empirisch gemeten:
+// 142.720 koppelingen, 3.492 losse begrippen (3.403 CHT, 87 ABR, 2 RN,
+// laatstgenoemde onder /term/id/rn/, niet /term/id/rn/2/) over
+// 5.838 omschrijvingen - veel rijker dan archiefdagen's 1.166. De twee
+// overlappen grotendeels maar niet volledig (129 (omschrijving,begrip)-paren
+// zitten alléén in archiefdagen), dus allebei bevragen, niet vervangen.
+const OMSCHRIJVINGEN_ONDERWERP_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/OmschrijvingenOnderwerp";
 const CEOX = "https://linkeddata.cultureelerfgoed.nl/def/ceox#";
 const RIJKSMONUMENT_STATUS = "https://data.cultureelerfgoed.nl/term/id/rn/2/b2d9a59a-fe1e-4552-9a05-3c2acddff864";
 const GEZICHT_STATUS = "https://data.cultureelerfgoed.nl/term/id/rn/2/fd968529-bf70-4afa-8564-7c6c2fcfcc54";
@@ -113,6 +122,17 @@ export function mergeDiscoveryMatches(resultsPerSource: DiscoveryMatch[][]): Dis
   );
 }
 
+// Herkomstthesaurus afleiden uit het URI-padsegment, niet uit SPARQL: de
+// drie thesauri gebruiken elk hun eigen, niet-overlappende padsegment
+// (/term/id/cht/, /term/id/abr/, /term/id/rn/) - empirisch gecontroleerd
+// tegen de union-query in buildRceDetailsQueryBody.
+function onderwerpConceptBron(uri: string): string {
+  if (uri.includes("/term/id/cht/")) return "CHT";
+  if (uri.includes("/term/id/abr/")) return "ABR";
+  if (uri.includes("/term/id/rn/")) return "RN";
+  return "";
+}
+
 export function parseSparqlResults(document: unknown): RceMonument[] {
   const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
   if (!Array.isArray(bindings)) return [];
@@ -136,7 +156,7 @@ export function parseSparqlResults(document: unknown): RceMonument[] {
       description: binding.omschrijving?.value,
       omschrijvingOnderwerpConcepten: binding.onderwerpConcepten?.value?.split("||").flatMap((value) => {
         const [uri, label] = value.split("~~");
-        return uri && label ? [{ uri, label }] : [];
+        return uri && label ? [{ uri, label, bron: onderwerpConceptBron(uri) }] : [];
       }),
       monumentNature: binding.monumentaard?.value,
       monumentAardConceptUri: binding.monumentaardConcept?.value,
@@ -183,6 +203,11 @@ export function parseParcelResults(document: unknown): RceParcel[] {
 // rijksmonumentnummer 395952, dat wel degelijk 14 onderwerpconcepten
 // heeft) - dezelfde soort endpoint-eigenaardigheid als de
 // geof:sfWithin-in-UNION-quirk verderop bij buildGezichtLidmaatschapQuery.
+// Bevraagt bewust TWEE graphs via UNION, niet alleen archiefdagen: de apart
+// bestaande OmschrijvingenOnderwerp-graph is veel rijker (empirisch:
+// rmnr 395952 heeft 48 losse concepten via de union, tegen 14 alleen uit
+// archiefdagen) en overlapt met archiefdagen zonder er een strikte deel-
+// verzameling van te zijn - dus samenvoegen, niet vervangen.
 function buildRceDetailsQueryBody(bindVariable: "rmnr" | "choi", values: string) {
   return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
 PREFIX ceox: <${CEOX}>
@@ -250,9 +275,9 @@ WHERE {
   }
  }
  OPTIONAL {
-   GRAPH <${ARCHIEFDAGEN_GRAPH}> {
-     ?omschrijvingNode ceox:heeftOmschrijvingOnderwerp ?onderwerpConceptValue .
-   }
+   { GRAPH <${ARCHIEFDAGEN_GRAPH}> { ?omschrijvingNode ceox:heeftOmschrijvingOnderwerp ?onderwerpConceptValue . } }
+   UNION
+   { GRAPH <${OMSCHRIJVINGEN_ONDERWERP_GRAPH}> { ?omschrijvingNode ceox:heeftOmschrijvingOnderwerp ?onderwerpConceptValue . } }
    ?onderwerpConceptValue skos:prefLabel ?onderwerpLabelValue .
  }
 }

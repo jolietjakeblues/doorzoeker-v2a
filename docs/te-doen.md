@@ -646,6 +646,18 @@ kreeg.
     terug; als los zusterblok op het hoogste `WHERE`-niveau werkt de join
     wel (zelfde soort quirk als de bestaande `geof:sfWithin`-in-UNION-notitie
     bij `buildGezichtLidmaatschapQuery`, zie code-comment).
+    **Correctie (21 augustus 2026):** de aanname hierboven dat
+    "OmschrijvingenOnderwerp" alleen de property was, niet een eigen graph,
+    was fout - gemeld door de eigenaar met de exacte graph-URI
+    (`https://linkeddata.cultureelerfgoed.nl/graph/OmschrijvingenOnderwerp`).
+    Die graph bestaat wél apart, is veel rijker (142.720 koppelingen, 3.492
+    losse begrippen: 3.403 CHT, 87 ABR, 2 RN) en overlapt met `archiefdagen`
+    zonder er een strikte deelverzameling van te zijn (129
+    (omschrijving,begrip)-paren zitten alléén in `archiefdagen`).
+    `buildRceDetailsQueryBody` bevraagt nu beide graphs via `UNION` i.p.v.
+    alleen `archiefdagen`, en elk concept toont zijn herkomstthesaurus (CHT/
+    ABR/RN, afgeleid uit het URI-padsegment) naast het label, bijvoorbeeld
+    "kanalen (CHT)". Zie `lib/rce/monuments.ts`.
 - ~~**Badge-letter botst tussen objectsoorten.**~~ **Opgelost (21 augustus
   2026, PR #99, samen met het loslaten van de RCE-huisstijl).** Gemeld
   door de eigenaar op 20 augustus 2026 tijdens het zoeken op "logger":
