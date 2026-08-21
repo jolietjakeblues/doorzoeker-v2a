@@ -637,37 +637,33 @@ kreeg.
     terug; als los zusterblok op het hoogste `WHERE`-niveau werkt de join
     wel (zelfde soort quirk als de bestaande `geof:sfWithin`-in-UNION-notitie
     bij `buildGezichtLidmaatschapQuery`, zie code-comment).
-- **Badge-letter botst tussen objectsoorten (gemeld door de eigenaar,
-  20 augustus 2026, tijdens het zoeken op "logger").** `typeBadge()` in
-  `lib/heritage-view-model.ts` geeft dezelfde letter aan twee verschillende
-  objectsoorten:
-  - `S` voor zowel Grondspoor (`modifier: "dig"`, bruin) als Scheepswrak
-    (`modifier: "wreck"`);
-  - `V` voor zowel Vondstlocatie (`modifier: "dig"`, bruin) als Vondst
-    (`modifier: "sand"`, lichter bruin) - dit paar was al zo vóór de
-    Scheepswrak-slice.
-  Bij het uitzoeken bleek Scheepswrak het **er nog erger** aan toe: er
-  bestaat helemaal geen `.tile.wreck` / `.heritage-card--wreck` /
-  `.detail-head.wreck`-regel in `app/globals.css`, dus een
-  Scheepswrak-tegel/kaart valt terug op de standaard `.tile`-achtergrond
-  (`var(--rce-blue)`) - visueel identiek aan een Rijksmonument, alleen de
-  letter verschilt ("S" i.p.v. "M"). Blijkbaar over het hoofd gezien bij
-  #95 (de Scheepswrakken-slice); de kaartmarkerkleur (`#0a5c66`,
-  `HeritageMap.tsx`) is destijds wel apart gezet, de tegel-/kaartkleur
-  niet. **Nog niet gefixt op verzoek van de eigenaar** ("Voor op de
-  lijst") - komt terug zodra de RCE-huisstijl wordt losgelaten (zie
-  hierboven), aangezien dan toch alle tegel-/badgekleuren opnieuw worden
-  vastgesteld.
-- ~~**Scheepstype nog niet doorzoekbaar op tekst.**~~ **Opgelost (21
-  augustus 2026).** Gemeld door de eigenaar op 20 augustus 2026:
-  "schoener ed. dat zou toch moeten lukken op 'tekst'".
-  `SCHEEPSWRAK_SOURCES` in `lib/rce/scheepswrakken.ts` had maar één
-  discovery-branch (`sdo:name`) - een zoekterm als "schoener" of "logger"
-  matchte dus alleen als dat woord toevallig in de náám van het wrak
-  stond, niet als het `schema:additionalType` was. Toegevoegd: een tweede
-  discovery-branch op `schema:additionalType` (rang 2, na naam op rang 1),
-  zelfde patroon als de bestaande `DISCOVERY_SOURCES`-branches bij
-  Rijksmonumenten. Live geverifieerd tegen de MASS-endpoint: "schoener"
-  en "logger" leveren nu elk 25 scheepswrakken op via
-  `matchSource: "scheepstype"`, bv. "Belgisch Loodsschip nr. 5" (type
-  Schoener) - eerder onvindbaar op die term.
+- ~~**Badge-letter botst tussen objectsoorten.**~~ **Opgelost (21 augustus
+  2026, PR #99, samen met het loslaten van de RCE-huisstijl).** Gemeld
+  door de eigenaar op 20 augustus 2026 tijdens het zoeken op "logger":
+  `typeBadge()` in `lib/heritage-view-model.ts` gaf dezelfde letter aan
+  meerdere objectsoorten (`S`: Grondspoor/Scheepswrak, `V`:
+  Vondstlocatie/Vondst, en een derde die pas tijdens het uitzoeken naar
+  boven kwam: `A`: Archeologisch complex/archeologisch Rijksmonument).
+  Scheepswrak miste bovendien een eigen `.tile.wreck`-kleur en viel terug
+  op de kale Rijksmonument-achtergrond. Opgelost: Vondstlocatie → `L`,
+  Scheepswrak → `R` (met eigen tegelkleur `#0a5c66`), en op expliciet
+  verzoek van de eigenaar ("Het zijn Rijksmonumenten -> M") deelt een
+  archeologisch Rijksmonument nu weer gewoon de `M` van een gebouwd
+  Rijksmonument - alleen de tegelkleur (`sand`) maakt nog onderscheid.
+- **Scheepstype nog niet doorzoekbaar op tekst (gemeld door de eigenaar,
+  20 augustus 2026: "schoener ed. dat zou toch moeten lukken op
+  'tekst'").** `SCHEEPSWRAK_SOURCES` in `lib/rce/scheepswrakken.ts` heeft
+  maar één discovery-branch (`sdo:name`) plus de exacte MASS-ID-kortsluiting
+  bij een numerieke term - een bewuste scope-keuze uit
+  018-mass-scheepswrakken.md ("beslissing 3: eerst alleen het detail
+  bouwen, geen apart scheepstype-facet"). Een zoekterm als "schoener" of
+  "logger" matcht dus nu alleen als dat woord toevallig in de náám van het
+  wrak staat, niet als het het `schema:additionalType` is.
+  Empirisch gecontroleerd (20 augustus 2026): `schema:additionalType` is
+  gevuld voor 2.483 van de 2.587 scheepswrakken (96%), over 134
+  verschillende typen - ruim voldoende gevuld om als volwaardige
+  discovery-bron toe te voegen, zelfde patroon als de bestaande
+  `DISCOVERY_SOURCES`-branches bij Rijksmonumenten
+  (`buildRceDiscoveryQueries`). "Schoener" (42) en "Logger" (30, zie de
+  badge-letter-melding hierboven) zijn allebei ruim vertegenwoordigd.
+  Nog niet gebouwd, staat op de lijst.

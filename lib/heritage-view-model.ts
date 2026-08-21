@@ -238,7 +238,9 @@ export function typeConceptForLabel(
   item: Pick<Item, "typeConcepts">,
   label: string,
 ): { uri: string; label: string } | undefined {
-  return item.typeConcepts?.find((concept) => concept.label === label);
+  return item.typeConcepts?.find(
+    (concept) => displayFunctionName(concept.label) === label,
+  );
 }
 
 const VERGELIJKBARE_RIJKSMONUMENTEN_LIMIT = 5;
@@ -386,9 +388,26 @@ export function toItem(record: RceMonument): Item {
     ?.map(displayFunctionName)
     .filter(Boolean);
   const matchedText =
-    (record.matchSource === "oorspronkelijke functie" || record.matchSource === "huidige functie") && record.matchedText
+    (record.matchSource === "oorspronkelijke functie" || record.matchSource === "huidige functie" || record.matchSource === "type") && record.matchedText
       ? displayFunctionName(record.matchedText)
       : record.matchedText;
+  // Type-namen krijgen dezelfde (code)-opschoning als functienamen hierboven
+  // (gemeld door de eigenaar, 21 augustus 2026: "Woonhuis(K)" - deep in het
+  // systeem betekenisvol, voor de gebruiker ruis). Gededupliceerd ná het
+  // opschonen, niet ervoor: "Boerderij(M)" en "Boerderij(M1)" zijn losse
+  // concepten met elk hun eigen URI, maar worden als tekst hetzelfde -
+  // zonder Set zou de lijst twee keer "Boerderij" tonen.
+  const typeNames = record.typeNames?.length
+    ? [...new Set(record.typeNames.map(displayFunctionName))]
+    : record.typeNames;
+  const typeConcepts = record.typeConcepts?.map((concept) => ({
+    ...concept,
+    label: displayFunctionName(concept.label),
+  }));
+  const functionConcepts = record.functionConcepts?.map((concept) => ({
+    ...concept,
+    label: displayFunctionName(concept.label),
+  }));
   const isWerelderfgoed = record.monumentNature === OBJECT_KIND.Werelderfgoed;
   const isGezicht = record.monumentNature === OBJECT_KIND.Gezicht;
   const isComplex = record.monumentNature === OBJECT_KIND.Complex;
@@ -544,9 +563,9 @@ export function toItem(record: RceMonument): Item {
         : undefined,
     originalFunctionNames,
     currentFunctionNames,
-    functionConcepts: record.functionConcepts,
-    typeNames: record.typeNames,
-    typeConcepts: record.typeConcepts,
+    functionConcepts,
+    typeNames,
+    typeConcepts,
     lat: record.lat ?? 0,
     lng: record.lng ?? 0,
     monumentAardConcept:

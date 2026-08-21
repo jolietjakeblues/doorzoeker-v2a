@@ -51,6 +51,42 @@ test("matchedText via andere matchbronnen (bv. woonplaats) blijft ongemoeid", ()
   assert.equal(item.matchedText, "Utrecht");
 });
 
+test("matchedText wordt ook opgeschoond wanneer de treffer via 'type' komt (gemeld door de eigenaar: 'Woonhuis(K)' bleef overal onopgeschoond staan)", () => {
+  const item = toItem({
+    ...baseRecord,
+    matchSource: "type",
+    matchedText: "Woonhuis(K)",
+  });
+  assert.equal(item.matchedText, "Woonhuis");
+});
+
+test("typeNames wordt net als functienamen opgeschoond van een (code)-staart, en gededupliceerd na het opschonen", () => {
+  const item = toItem({
+    ...baseRecord,
+    typeNames: ["Boerderij(M)", "Boerderij(M1)", "Kerk(K1)"],
+  });
+  assert.deepEqual(item.typeNames, ["Boerderij", "Kerk"]);
+});
+
+test("typeConcepts- en functionConcepts-labels worden opgeschoond (zichtbaar in 'Alle gekoppelde begrippen' en 'Vergelijkbare rijksmonumenten')", () => {
+  const item = toItem({
+    ...baseRecord,
+    typeConcepts: [{ uri: "https://example.test/boerderij-m", label: "Boerderij(M)" }],
+    functionConcepts: [{ uri: "https://example.test/archeologie-n1", label: "Archeologie (N1)" }],
+  });
+  assert.deepEqual(item.typeConcepts, [{ uri: "https://example.test/boerderij-m", label: "Boerderij" }]);
+  assert.deepEqual(item.functionConcepts, [{ uri: "https://example.test/archeologie-n1", label: "Archeologie" }]);
+});
+
+test("typeConceptForLabel matcht op de opgeschoonde naam", () => {
+  const item = toItem({
+    ...baseRecord,
+    typeNames: ["Boerderij(M)"],
+    typeConcepts: [{ uri: "https://example.test/boerderij-m", label: "Boerderij(M)" }],
+  });
+  assert.deepEqual(typeConceptForLabel(item, "Boerderij"), { uri: "https://example.test/boerderij-m", label: "Boerderij" });
+});
+
 test("een Gezicht linkt naar de RCE Kennisbank op gezichtsnummer, niet naar het dode Archis-archiefdomein (archisarchief.cultureelerfgoed.nl gaf 403/404 op elk pad, ook de root)", () => {
   const item = toItem({
     ...baseRecord,
