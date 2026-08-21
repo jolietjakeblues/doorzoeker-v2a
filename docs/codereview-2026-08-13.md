@@ -339,6 +339,14 @@ er gebouwd wordt.
   msp/groenaanleg beschikbaar maken). Nader te analyseren of dit twee
   bewust gescheiden ingangen zijn die beter uitgelegd moeten worden, of dat
   ze feitelijk zouden moeten samenvallen.
+  **Status (bijgewerkt 21 augustus 2026): bleek al opgelost, gevonden bij
+  het bespreken ervan.** Mentaal model bevestigd met de eigenaar: boven
+  bepaalt de zoekopdracht/collectie, links filtert binnen wat al geladen
+  is. Live gecontroleerd: `browseType()` in `hooks/useSearchState.ts` zet
+  bij een klik in de balk het "Soort object"-filter al mee
+  (`setObjectType(...)`), inclusief de Monumentaard/Kenmerken-velden -
+  precies het gedrag dat hier gewenst werd. Geen code gewijzigd, alleen
+  deze constatering vastgelegd.
   **Deelfix (P1, ditzelfde traject):** de Kenmerken-filters (groenaanleg/msp)
   verdwenen voorheen volledig uit het paneel zodra de teller op de geladen
   pagina 0 was, wat het "dit kenmerk bestaat niet"-misverstand versterkte.
