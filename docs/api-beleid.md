@@ -2,7 +2,11 @@
 
 Datum: 11 augustus 2026. Bijgewerkt 17 augustus 2026: het limiterbesluit voor
 vier routes is herzien na `docs/security-assessment-2026-08-17.md` (zie
-onder de tabel).
+onder de tabel). Bijgewerkt 21 augustus 2026 (documentatie-audit): drie
+routes die na 11 augustus zijn gebouwd (`ligt-in`, `archeologische-context`,
+`verras-me`) stonden nog niet in de tabel. Bij het narekenen bleek
+`/api/rce/verras-me` als enige route zonder rate limiter en zonder cache -
+bewust aanvaard, zie de tabel.
 
 ## Doel
 
@@ -19,7 +23,10 @@ controleerbaar wanneer routes of databronnen veranderen.
 | `/api/rce/complex-members` | Eén begrensde detailquery | Browser 60 seconden, gedeeld 300 seconden | 30/minuut, best effort per isolate (herzien 17-08-2026) |
 | `/api/rce/onderzoeksgebied-verrijking` | Drie begrensde detailquery's | Browser 60 seconden, gedeeld 300 seconden | 30/minuut, best effort per isolate (herzien 17-08-2026) |
 | `/api/rce/vondstlocatie-inhoud` | Minstens 5 parallelle deelquery's (3 inhoudsklassen, telling, concept-resolutie) | Browser 60 seconden, gedeeld 300 seconden | 30/minuut, best effort per isolate (herzien 17-08-2026) |
+| `/api/rce/ligt-in` | Twee parallelle SPARQL-aanroepen (Gezicht- en Werelderfgoed-lidmaatschap) | Browser 60 seconden, gedeeld 300 seconden | 30/minuut, best effort per isolate |
+| `/api/rce/archeologische-context` | Eén dure scan over 112.184 ArcheologischOnderzoeksgebied-instanties (15+ seconden) | Browser 3.600 seconden, gedeeld 2.592.000 seconden (30 dagen) - gelezen vóór de rate-limitcheck, telt dus niet mee tegen het budget | 8/minuut - strenger dan standaard vanwege de kostbare scan, zie `017-archeologische-context-onderzoeksgebied.md` |
 | `/api/rce/op-deze-dag` | Eén of meer datumquery's plus verrijking | Succes tot volgende UTC-dag, leeg maximaal 300 seconden | Geen limiter; geen gebruikersinvoer en één gedeeld dagresultaat |
+| `/api/rce/verras-me` | Eén willekeurige-kandidaat-query plus verrijking (foto, groenaanleg, MSP, literatuur, gebeurtenissen) | Nooit gecachet (`no-store`) - elke aanroep hoort een andere willekeurige suggestie te geven | **Geen limiter (bewust aanvaard, 21 augustus 2026, gevonden tijdens een documentatie-audit).** Geen gebruikersinvoer en kleine blootstelling; in tegenstelling tot de andere routes hierboven expliciet zonder best-effortlimiter gelaten in plaats van vergeten - zie ook de overweging bij `/api/rce/op-deze-dag` |
 | `/api/terms/suggest` | Thesaurusquery plus gebruiksmeting | Browser 60 seconden, gedeeld 300 seconden | Geen limiter zolang verkeersmetingen geen misbruik of bronbelasting tonen |
 
 Ongeldige invoer bereikt de RCE-bron niet. Upstreamfouten en niet-zoekbare
