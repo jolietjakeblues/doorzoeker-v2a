@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { boundingBoxWktLiteral, buildAbrTermSuggestQuery, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeContextExacteQuery, buildArcheologischeContextKandidatenQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildBouwkundigeStaatConceptQuery, buildChtTermSuggestQuery, buildRijksmonumentGeometrieQuery, buildStijlConceptQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtLidmaatschapQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildGrondspoorTypeConceptQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMonumentTypeConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceChoNumberQuery, buildRceDetailsQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceParcelsQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVerwervingConceptQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedLidmaatschapQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, mergeVondstlocatieInhoud, parseAbrTermSuggestResults, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischeContextKandidaten, parseArcheologischeContextResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseChtTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtLidmaatschapResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseRijksmonumentGeometrieResult, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedLidmaatschapResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS, VONDSTLOCATIE_INHOUD_KLASSEN, wktToLatLng } from "../lib/rce.ts";
+import { boundingBoxWktLiteral, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeContextExacteQuery, buildArcheologischeContextKandidatenQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildBouwkundigeStaatConceptQuery, buildOnderwerpTermSuggestQuery, buildRijksmonumentGeometrieQuery, buildStijlConceptQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtLidmaatschapQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildGrondspoorTypeConceptQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMonumentTypeConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceChoNumberQuery, buildRceDetailsQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceParcelsQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVerwervingConceptQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedLidmaatschapQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, mergeVondstlocatieInhoud, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischeContextKandidaten, parseArcheologischeContextResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseOnderwerpTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtLidmaatschapResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseRijksmonumentGeometrieResult, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedLidmaatschapResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS, VONDSTLOCATIE_INHOUD_KLASSEN, wktToLatLng } from "../lib/rce.ts";
 import { buildArchaeologyBrowseQuery, buildRijksmonumentenBrowseQuery, parseArchaeologyBrowseNumbers, parseRijksmonumentenBrowseNumbers } from "../lib/rce.ts";
 import { buildFunctieConceptQuery, buildTermUsageQuery, parseFacetResults, parseTermUsageResults } from "../lib/rce.ts";
 
@@ -1089,42 +1089,41 @@ test("treats a missing binding (geen vondstlocaties) as all-zero aggregaten, not
   });
 });
 
-test("queries the CHT-thesaurus rechtstreeks voor termsuggesties, met de materialen/stijlen-hoofdtakken als losse markering", () => {
-  // Referentienetwerk (RCE's eigen CHT/ABR-thesauri) is de brondata; het
-  // externe Termennetwerk is slechts een doorgeefluik daarvan. Voor een
-  // RCE-specifieke app als Doorzoeker is die omweg overbodig - vandaar
-  // rechtstreeks tegen dezelfde SPARQL-dienst als de rest van de app.
-  const query = buildChtTermSuggestQuery("woonhuis", 8);
-  assert.match(query, /GRAPH <https:\/\/data\.cultureelerfgoed\.nl\/term\/id\/cht\/thesaurus>/);
-  assert.match(query, /a skos:Concept ; skos:prefLabel \?label/);
+test("zoekt termsuggesties alleen binnen CHT/ABR-begrippen die aan een omschrijving gekoppeld zijn, niet de volledige thesaurus", () => {
+  // Bewust géén GRAPH <cht/thesaurus>/<abr/thesaurus> (de volledige
+  // vocabulaires) maar dezelfde archiefdagen/OmschrijvingenOnderwerp-UNION
+  // als buildRceDetailsQueryBody: alleen begrippen die al aan minstens één
+  // formele omschrijving hangen mogen als suggestie verschijnen.
+  const query = buildOnderwerpTermSuggestQuery("woonhuis", 8);
+  assert.match(query, /GRAPH <https:\/\/linkeddata\.cultureelerfgoed\.nl\/graph\/archiefdagen>/);
+  assert.match(query, /GRAPH <https:\/\/linkeddata\.cultureelerfgoed\.nl\/graph\/OmschrijvingenOnderwerp>/);
+  assert.match(query, /UNION/);
+  assert.match(query, /\?omschrijvingNode ceox:heeftOmschrijvingOnderwerp \?concept/);
   assert.match(query, /CONTAINS\(LCASE\(STR\(\?label\)\), "woonhuis"\)/);
+  assert.match(query, /!CONTAINS\(STR\(\?concept\), "\/term\/id\/rn\/"\)/);
   assert.match(query, /skos:broader\* <https:\/\/data\.cultureelerfgoed\.nl\/term\/id\/cht\/aa872ce6-a74c-4f81-96ec-6ee0e717f92a>/);
   assert.match(query, /skos:broader\* <https:\/\/data\.cultureelerfgoed\.nl\/term\/id\/cht\/63cca950-f545-467a-9d70-db3a2b21bba3>/);
   assert.match(query, /LIMIT 8/);
 });
 
-test("lowercases and escapes the search term in the CHT-termsuggestiequery", () => {
-  const query = buildChtTermSuggestQuery('Woonhuis" . ?s ?p ?o #', 8);
+test("lowercases and escapes the search term in the gekoppelde-onderwerp-termsuggestiequery", () => {
+  const query = buildOnderwerpTermSuggestQuery('Woonhuis" . ?s ?p ?o #', 8);
   assert.match(query, /CONTAINS\(LCASE\(STR\(\?label\)\), "woonhuis\\" \. \?s \?p \?o #"\)/);
 });
 
-test("parses CHT-termsuggesties, labeling de hoofdtak materialen/stijlen-en-periodes of de generieke thesaurus", () => {
+test("parses gekoppelde onderwerp-termsuggesties, herkent CHT vs. ABR aan het URI-padsegment en labelt de CHT-hoofdtak materialen/stijlen-en-periodes", () => {
   const document = { results: { bindings: [
-    { concept: { value: "cht:1" }, label: { value: "Woonhuis" }, isMateriaal: { value: "false" }, isStijlPeriode: { value: "false" } },
-    { concept: { value: "cht:2" }, label: { value: "Utrechtse steen" }, isMateriaal: { value: "true" }, isStijlPeriode: { value: "false" } },
-    { concept: { value: "cht:3" }, label: { value: "art deco" }, isMateriaal: { value: "false" }, isStijlPeriode: { value: "true" } },
+    { concept: { value: "https://data.cultureelerfgoed.nl/term/id/cht/1" }, label: { value: "Woonhuis" }, isMateriaal: { value: "false" }, isStijlPeriode: { value: "false" } },
+    { concept: { value: "https://data.cultureelerfgoed.nl/term/id/cht/2" }, label: { value: "Utrechtse steen" }, isMateriaal: { value: "true" }, isStijlPeriode: { value: "false" } },
+    { concept: { value: "https://data.cultureelerfgoed.nl/term/id/cht/3" }, label: { value: "art deco" }, isMateriaal: { value: "false" }, isStijlPeriode: { value: "true" } },
+    { concept: { value: "https://data.cultureelerfgoed.nl/term/id/abr/4" }, label: { value: "gladwandig aardewerk" }, isMateriaal: { value: "false" }, isStijlPeriode: { value: "false" } },
   ] } };
-  assert.deepEqual(parseChtTermSuggestResults(document), [
-    { uri: "cht:1", label: "Woonhuis", sourceUri: "https://data.cultureelerfgoed.nl/term/id/cht/thesaurus", sourceName: "Cultuurhistorische Thesaurus" },
-    { uri: "cht:2", label: "Utrechtse steen", sourceUri: "https://data.cultureelerfgoed.nl/term/id/cht/thesaurus", sourceName: "Cultuurhistorische Thesaurus - Materialen" },
-    { uri: "cht:3", label: "art deco", sourceUri: "https://data.cultureelerfgoed.nl/term/id/cht/thesaurus", sourceName: "Cultuurhistorische Thesaurus - Stijlen en periodes" },
+  assert.deepEqual(parseOnderwerpTermSuggestResults(document), [
+    { uri: "https://data.cultureelerfgoed.nl/term/id/cht/1", label: "Woonhuis", sourceUri: "https://data.cultureelerfgoed.nl/term/id/cht/thesaurus", sourceName: "Cultuurhistorische Thesaurus" },
+    { uri: "https://data.cultureelerfgoed.nl/term/id/cht/2", label: "Utrechtse steen", sourceUri: "https://data.cultureelerfgoed.nl/term/id/cht/thesaurus", sourceName: "Cultuurhistorische Thesaurus - Materialen" },
+    { uri: "https://data.cultureelerfgoed.nl/term/id/cht/3", label: "art deco", sourceUri: "https://data.cultureelerfgoed.nl/term/id/cht/thesaurus", sourceName: "Cultuurhistorische Thesaurus - Stijlen en periodes" },
+    { uri: "https://data.cultureelerfgoed.nl/term/id/abr/4", label: "gladwandig aardewerk", sourceUri: "https://data.cultureelerfgoed.nl/term/id/abr/thesaurus", sourceName: "Archeologisch Basisregister" },
   ]);
-});
-
-test("queries the ABR-thesaurus rechtstreeks voor archeologische vondsttermen", () => {
-  const query = buildAbrTermSuggestQuery("aardewerk", 8);
-  assert.match(query, /GRAPH <https:\/\/data\.cultureelerfgoed\.nl\/term\/id\/abr\/thesaurus>/);
-  assert.match(query, /CONTAINS\(LCASE\(STR\(\?label\)\), "aardewerk"\)/);
 });
 
 test("looks up a built complex by complexnummer or CHO-nummer", () => {
@@ -1353,14 +1352,16 @@ test("merget vondsten niet weg wanneer complexen/grondsporen een eigen LIMIT-doc
   assert.equal(inhoud.vondsten[0].uri, "v:1");
 });
 
-test("queries Referentienetwerk 2 als eigen thesaurusbron", () => {
+test("queries Referentienetwerk 2 als eigen thesaurusbron, alleen de twee CHO-relevante schema's", () => {
+  // Cultuurhistorische Object Informatie en Kennisregistratie leverden geen
+  // bruikbare CHO-suggesties op en zijn eruit gehaald (21 augustus 2026).
   const query = buildReferentienetwerkTermSuggestQuery("Parochiekerk", 8);
   assert.match(query, /\?concept a skos:Concept ; skos:prefLabel \?label ; skos:inScheme \?scheme/);
   assert.match(query, /VALUES \?scheme/);
   assert.match(query, /a4a7933c-e096-4bcf-a921-4f70a78749fe/);
-  assert.match(query, /bf88ef8b-eba4-46a7-9740-d58e983e4990/);
-  assert.match(query, /364d5132-a090-4b2c-8cbe-e167f1243f3f/);
   assert.match(query, /3f786c78-e111-4545-be64-f79f495f73f5/);
+  assert.doesNotMatch(query, /bf88ef8b-eba4-46a7-9740-d58e983e4990/);
+  assert.doesNotMatch(query, /364d5132-a090-4b2c-8cbe-e167f1243f3f/);
   assert.match(query, /CONTAINS\(LCASE\(STR\(\?label\)\), "parochiekerk"\)/);
 });
 
@@ -1377,13 +1378,6 @@ test("preserves RN2 concept- en thesaurusidentiteit in termsuggesties", () => {
     sourceUri: "https://data.cultureelerfgoed.nl/term/id/rn/2/schema",
     sourceName: "Monumenten Registratie Systeem",
   }]);
-});
-
-test("parses ABR-termsuggesties met een vaste bronnaam", () => {
-  const document = { results: { bindings: [{ concept: { value: "abr:1" }, label: { value: "gladwandig aardewerk" } }] } };
-  assert.deepEqual(parseAbrTermSuggestResults(document), [
-    { uri: "abr:1", label: "gladwandig aardewerk", sourceUri: "https://data.cultureelerfgoed.nl/term/id/abr/thesaurus", sourceName: "Archeologisch Basisregister" },
-  ]);
 });
 
 test("looks up msp_indicatie by rijksmonumentnummer, alleen de expliciet ware waarde", () => {

@@ -1,16 +1,26 @@
-import { buildReferentienetwerkTermSuggestQuery, buildTermUsageQuery, parseReferentienetwerkTermSuggestResults, parseTermUsageResults, type TermSuggestion } from "../rce.ts";
+import { buildOnderwerpTermSuggestQuery, buildReferentienetwerkTermSuggestQuery, buildTermUsageQuery, parseOnderwerpTermSuggestResults, parseReferentienetwerkTermSuggestResults, parseTermUsageResults, type TermSuggestion } from "../rce.ts";
 import { fetchSparql } from "./sparql-client.ts";
 import { REFERENTIENETWERK_ENDPOINT } from "./referentienetwerk-adapter.ts";
 
 export type { TermSuggestion };
 
-// De algemene zoekbalk doorzoekt CHO-data. Daarom komen de woordsuggesties
-// alleen uit de vier RN2-schema's die met die data zijn verweven. CHT hoort
-// bij bibliotheek/beeldbank; het losse ABR wordt intern niet gebruikt.
+// De algemene zoekbalk doorzoekt CHO-data, dus woordsuggesties komen uit
+// twee parallelle bronnen die allebei al aan die data hangen: de twee
+// CHO-relevante RN2-schema's (Archeologisch Informatie Systeem, Monumenten
+// Registratie Systeem) en CHT/ABR-begrippen die daadwerkelijk aan een
+// formele omschrijving gekoppeld zijn (buildOnderwerpTermSuggestQuery,
+// lib/rce/terms.ts - bewust niet de volledige thesaurus).
 export async function suggestTerms(query: string, signal?: AbortSignal, limit = 8): Promise<TermSuggestion[]> {
-  const rnDocument = await fetchSparql(buildReferentienetwerkTermSuggestQuery(query, limit), signal, REFERENTIENETWERK_ENDPOINT);
   const needle = query.trim().toLocaleLowerCase("nl");
-  const suggestions = parseReferentienetwerkTermSuggestResults(rnDocument);
+  // RN2 blijft de primaire, harde bron (bestaand gedrag: een fout hier laat
+  // suggestTerms falen). CHT/ABR is een aanvulling - een fout daar mag de
+  // RN2-suggesties niet meeslepen, dus faalt open naar een lege lijst
+  // (zelfde patroon als de usageCheck hieronder).
+  const [rnDocument, onderwerpSuggestions] = await Promise.all([
+    fetchSparql(buildReferentienetwerkTermSuggestQuery(query, limit), signal, REFERENTIENETWERK_ENDPOINT),
+    fetchSparql(buildOnderwerpTermSuggestQuery(query, limit), signal).then(parseOnderwerpTermSuggestResults).catch((): TermSuggestion[] => []),
+  ]);
+  const suggestions = [...parseReferentienetwerkTermSuggestResults(rnDocument), ...onderwerpSuggestions];
   const unique = [...new Map(suggestions.map((suggestion) => [suggestion.uri, suggestion])).values()];
   const usage = await fetchSparql(buildTermUsageQuery(unique.map((suggestion) => suggestion.uri)), signal)
     .then(parseTermUsageResults)

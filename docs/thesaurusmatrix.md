@@ -32,16 +32,22 @@ niet de conceptveldentabel hierboven - die beschrijft al gebouwd gedrag.)
 | `grondspoortype` | RN2, geen `skos:inScheme` naar een van de vier suggestieschema's | Ja | Nee | Ja | Grondspoor |
 | `monumenttype` | RN2, Monumenten Registratie Systeem | Ja | Ja bij niet gekoppelde suggestie (`monumenttype` zit niet in `TermSuggestion["conceptField"]`, dus een suggestie toont nooit "exact gekoppeld", alleen tekstfallback) | Ja | Rijksmonument (`Type`) |
 
-De algemene suggestiedienst gebruikt alleen vier CHO-relevante RN2-schema's:
+**Bijgewerkt 21 augustus 2026:** de algemene suggestiedienst gebruikt nu twee
+CHO-relevante RN2-schema's:
 
 - Archeologisch Informatie Systeem;
-- Cultuurhistorische Object Informatie;
-- Kennisregistratie;
 - Monumenten Registratie Systeem.
 
-CHT en ABR blijven relevante bronthesauri, maar zijn niet automatisch een
-exacte algemene CHO-index. Zonder aangetoonde koppeling zoekt de interface
-expliciet op tekst.
+Cultuurhistorische Object Informatie en Kennisregistratie zijn eruit gehaald
+(gemeld door de eigenaar: "Daar doen we niets mee"). CHT en ABR zijn er
+tegelijk bij gekomen, maar niet als volledige thesaurus: alleen begrippen die
+daadwerkelijk aan een formele Rijksmonument-omschrijving hangen via
+`ceox:heeftOmschrijvingOnderwerp` (dezelfde archiefdagen/OmschrijvingenOnderwerp-
+koppeling als "Onderwerp (uit omschrijving)" op de detailpagina) zijn
+suggereerbaar - nooit "alle mogelijkheden" uit de thesaurus. Zie
+`buildOnderwerpTermSuggestQuery` in `lib/rce/terms.ts`. Zo'n suggestie toont
+zijn bron (Cultuurhistorische Thesaurus of Archeologisch Basisregister) en
+zoekt, net als een niet-gekoppelde RN2-suggestie, op tekst.
 
 ## Ontbrekend algemeen contract
 
