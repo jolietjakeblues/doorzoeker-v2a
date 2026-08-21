@@ -744,3 +744,36 @@ kreeg.
   de omgeving te zien. `zoomControl` staat nu altijd aan; scrollwheel-zoom
   blijft bewust uit voor compacte kaarten. Nieuwe e2e-test controleert dat
   de uitzoomknop op een detailkaart zichtbaar en bruikbaar is.
+
+## Uit een externe review (21 augustus 2026)
+
+Twee bevindingen live herbevestigd (niet aangenomen) vóór opname hieronder.
+Nog niet opgepakt, staan op de lijst:
+
+- **Een brede vrije-tekstzoekopdracht kan de serverzijdige timeout nog
+  raken.** Live herhaald: `q=Utrecht&scope=core` gaf 504 na 20,1 seconden.
+  De timeoutverlenging uit de "Kerken"-fix (`CONCEPT_MATCH_TIMEOUT_MS`, zie
+  hierboven) geldt alleen voor de conceptmatch-functies
+  (`searchByConceptMatchQuery` en de vier losstaande varianten), niet voor
+  `searchByText`'s eigen discoverybranches - die blijven op de standaard
+  20s. Openstaande vraag: dezelfde verlenging ook daar toepassen (risico:
+  langer een Worker-invocation vasthouden, en de eerder gevonden
+  subrequest-limiet bij scope="all" lost een langere timeout sowieso niet
+  op), of eerst per categorie meten welke tak structureel traag is.
+- **Het Werelderfgoed-overzicht (`browse=werelderfgoed`) stuurt onnodig
+  grote antwoorden.** Live herhaald: 4,04 MB voor 18 objecten. Oorzaak
+  gevonden: de volledige, ongegeneraliseerde WKT-geometrie zit al in het
+  lijstantwoord (`Hollandse Waterlinies` alleen al 2,6 MB aan WKT-tekst) -
+  nodig voor de kaartweergave, maar overkill voor een lijstweergave of als
+  een gebruiker nog niet eens de kaart heeft geopend. Openstaande vraag:
+  geometrie pas lazy ophalen bij het openen van de kaartweergave, of een
+  vereenvoudigde/gegeneraliseerde geometrie in het lijstantwoord en de
+  volledige vorm pas bij het detail.
+
+Overige punten uit dezelfde review, ter info (geen nieuwe bevinding, al
+bekend of al opgepakt): README liep achter op CHT/ABR en Scheepswrakken
+(opgelost, zie de documentatie-PR van dezelfde dag); geen Content-Security-
+Policy-header (bekend, zie `docs/security-assessment-2026-08-17.md`); nog
+geen test op een echt mobiel apparaat (staat al hierboven, "Mobiele
+weergave controleren"); `useSearchState`/de centrale adapter zijn groot
+(bekend, zie TD-03/TD-04 in `docs/analyse-2026-08-11.md`).
