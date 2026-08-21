@@ -18,6 +18,7 @@ zelfstandig doorzoekbare objecten, gekoppelde gegevens en alleen tellingen.
 | Vondst | Vrij zoeken op CHO- of Archis-vondstnummer, omschrijving, woonplaats, type, materiaal en toestand; daarnaast per 25 records te doorbladeren | Geen kaartpunt: de RCE publiceert hiervoor geen coördinaten | Aantal, omschrijving, bovenliggende vondstlocatie en aanklikbare RN2-begrippen voor type, materiaal en toestand |
 | Archeologisch complex | Vrij zoeken op CHO-nummer, omschrijving, woonplaats en RN2-complextype; daarnaast per 25 records te doorbladeren | Geen kaartpunt: de RCE publiceert hiervoor geen coördinaten | Aanklikbaar complextype en alle gekoppelde vondstlocaties, archeologische terreinen of onderzoeksgebieden |
 | Archeologisch onderzoeksgebied | Vrij zoeken op CHO-nummer, woonplaats en onderzoeksomschrijving; daarnaast per 25 records te doorbladeren | Polygon of MultiPolygon | Onderzoeksgegevens en gekoppelde archeologische inhoud |
+| Scheepswrak | Vrij zoeken op naam en scheepstype (MASS-dataset, losstaand van rce/cho met een eigen `sdo:`-vocabulaire), plus exacte MASS-nummer-lookup bij een numerieke term; geen "bekijk alles"-browsemodus (bewuste scope-keuze, zie `018-mass-scheepswrakken.md`) | Als marker (punt); de MASS-dataset publiceert geen polygoongeometrie | Naam, scheepstype, gesaneerde omschrijving met afbeeldingen, ontdekt-veld (indien aanwezig) en de vaste bronvermelding met licentie |
 
 Een Complex heeft in Doorzoeker geen kunstmatig berekende `union`-geometrie.
 De kaart tekent de beschikbare Point-, Polygon- en MultiPolygon-geometrieën
