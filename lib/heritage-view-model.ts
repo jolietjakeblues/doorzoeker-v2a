@@ -376,6 +376,18 @@ export function primaryIdentifier(
   return { label: "Onderzoeksgebied", value };
 }
 
+// Eén bron van waarheid voor "is dit hetzelfde object" bij het samenvoegen
+// van resultaten (bv. loadMore() in useSearchState.ts) - monumentNumber
+// alléén is niet globaal uniek (bv. een MASS-scheepswrak-ID kan numeriek
+// botsen met een rijksmonumentnummer, andere ID-ruimte, andere bron), dus
+// altijd eerst de volledige bron-URI proberen en pas daarna terugvallen op
+// een met objectType voorvoegde monumentNumber/id (P2, externe review
+// 22-08-2026: loadMore() gebruikte voorheen alleen monumentNumber ?? id,
+// zonder dat voorvoegsel).
+export function resultIdentity(item: Item): string {
+  return item.sourceUrl || `${item.objectType}:${item.monumentNumber ?? item.id}`;
+}
+
 export function toItem(record: RceMonument): Item {
   const functionName = record.functionName
     ? displayFunctionName(record.functionName)

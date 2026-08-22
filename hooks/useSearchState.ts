@@ -27,6 +27,7 @@ import {
 import {
   EMPTY_ITEMS,
   EMPTY_URL_STATE,
+  resultIdentity,
   toItem,
   type ConceptField,
   type Item,
@@ -101,6 +102,8 @@ export function useSearchState() {
     setHasMore,
     loadingMore,
     setLoadingMore,
+    loadMoreError,
+    setLoadMoreError,
     beginRequest,
   } = useSearchRequest();
   const [activeBrowseKind, setActiveBrowseKind] = useState<BrowseKind | undefined>();
@@ -243,6 +246,7 @@ export function useSearchState() {
     setOnlyMsp(false);
     setResultPage(1);
     setHasMore(false);
+    setLoadMoreError(false);
     setFailedCategories([]);
     if (!term) {
       setRemoteResults(null);
@@ -297,6 +301,7 @@ export function useSearchState() {
     setOnlyMsp(false);
     setResultPage(1);
     setHasMore(false);
+    setLoadMoreError(false);
     setFailedCategories([]);
     setRemoteState("loading");
     try {
@@ -413,6 +418,7 @@ export function useSearchState() {
     setOnlyMsp(false);
     setResultPage(1);
     setHasMore(false);
+    setLoadMoreError(false);
     setFailedCategories([]);
     setRemoteState("loading");
     try {
@@ -440,6 +446,7 @@ export function useSearchState() {
     // verouderde resultaten niet alsnog in de nieuwe zoekopdracht belanden.
     const request = beginRequest();
     setLoadingMore(true);
+    setLoadMoreError(false);
     try {
       const response = activeBrowseKind
         ? await browseRceObjects(activeBrowseKind, request.signal, nextPage)
@@ -447,17 +454,18 @@ export function useSearchState() {
       if (!request.isCurrent()) return;
       const additions = response.results.map((record) => toItem(record));
       setRemoteResults((current) => {
-        const merged = new Map(
-          (current ?? []).map((item) => [item.monumentNumber ?? item.id, item]),
-        );
-        for (const item of additions)
-          merged.set(item.monumentNumber ?? item.id, item);
+        const merged = new Map((current ?? []).map((item) => [resultIdentity(item), item]));
+        for (const item of additions) merged.set(resultIdentity(item), item);
         return [...merged.values()];
       });
       setResultPage(nextPage);
       setHasMore(response.hasMore);
     } catch {
-      if (!request.isAborted() && request.isCurrent()) setHasMore(false);
+      // hasMore blijft ongewijzigd (P2, externe review 22-08-2026): een
+      // mislukte aanvraag betekent niet dat er niets meer te laden valt -
+      // de knop blijft dus staan, nu met een zichtbare foutmelding en
+      // retry i.p.v. stilzwijgend te verdwijnen.
+      if (!request.isAborted() && request.isCurrent()) setLoadMoreError(true);
     } finally {
       setLoadingMore(false);
     }
@@ -510,6 +518,7 @@ export function useSearchState() {
     setRemoteState("idle");
     setResultPage(1);
     setHasMore(false);
+    setLoadMoreError(false);
     setFailedCategories([]);
   }
 
@@ -562,6 +571,7 @@ export function useSearchState() {
     resultPage,
     hasMore,
     loadingMore,
+    loadMoreError,
     baseResults,
     groenaanlegCount,
     mspCount,

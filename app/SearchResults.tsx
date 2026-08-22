@@ -13,6 +13,7 @@ type SearchResultsProps = {
   view: "list" | "map";
   hasMore: boolean;
   loadingMore: boolean;
+  loadMoreError: boolean;
   loadedCount: number;
   idleContent: ReactNode;
   onReset: () => void;
@@ -32,6 +33,7 @@ export function SearchResults({
   view,
   hasMore,
   loadingMore,
+  loadMoreError,
   loadedCount,
   idleContent,
   onReset,
@@ -122,8 +124,17 @@ export function SearchResults({
       )}
       {hasMore && remoteState === "success" && view === "list" && (
         <div className="more-results">
+          {loadMoreError ? (
+            <p className="partial-warning" role="status">
+              De volgende resultaten konden niet worden geladen.
+            </p>
+          ) : null}
           <button type="button" onClick={onLoadMore} disabled={loadingMore}>
-            {loadingMore ? "Meer RCE-resultaten laden…" : "Laad 25 volgende resultaten"}
+            {loadingMore
+              ? "Meer RCE-resultaten laden…"
+              : loadMoreError
+                ? "Probeer opnieuw"
+                : "Laad 25 volgende resultaten"}
           </button>
           <small>{loadedCount} unieke erfgoedobjecten geladen</small>
         </div>

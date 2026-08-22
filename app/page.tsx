@@ -59,6 +59,7 @@ export default function Home() {
     retry,
     hasMore,
     loadingMore,
+    loadMoreError,
     baseResults,
     groenaanlegCount,
     mspCount,
@@ -263,6 +264,7 @@ export default function Home() {
             view={view}
             hasMore={hasMore}
             loadingMore={loadingMore}
+            loadMoreError={loadMoreError}
             loadedCount={baseResults.length}
             idleContent={
               <StartContent
