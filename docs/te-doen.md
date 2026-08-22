@@ -803,7 +803,7 @@ gevonden.
   record).
 
 Tijdens hetzelfde onderzoek plakte de eigenaar een tweede, gedetailleerde
-externe code review met vijf bevindingen. Twee zijn al opgepakt:
+externe code review met vijf bevindingen. Drie zijn al opgepakt:
 
 - ~~**P0: de URL-sanitizer (`lib/server/html-sanitize.ts`) was te omzeilen
   via HTML-entity-encoding** (bv. `javascript&#58;alert(1)` - de browser
@@ -813,19 +813,42 @@ externe code review met vijf bevindingen. Twee zijn al opgepakt:
   allowlist (http/https/mailto voor links, http/https voor afbeeldingen).
   6 nieuwe regressietests.
 
-Drie resterende punten uit die review, nog niet opgepakt, staan op de
-lijst (reviewer-advies: idealiter vóór de v0.5.0 Beta-publicatie, samen
-met bovenstaande P0):
+~~**P1: een falende `core`-scope blokkeert de andere drie scopes
+volledig.**~~ **Opgelost, zie
+[PR #116](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/116).**
+`searchRceMonuments` (`lib/rce-client.ts`) wachtte eerst `core` af
+vóórdat de overige scopes (`heritage`/`archaeology-a`/`archaeology-b`)
+via `Promise.allSettled` gestart werden - bij een `core`-timeout werden
+de andere drie dus nooit eens aangeroepen, ook al hadden ze zelfstandig
+kunnen slagen. Alle scopes starten nu gelijktijdig; alleen als élke scope
+faalt wordt nog een fout getoond.
 
-- **P1: een falende `core`-scope blokkeert de andere drie scopes
-  volledig.** `searchRceMonuments` (`lib/rce-client.ts`) wacht eerst
-  `core` af vóórdat de overige scopes (`heritage`/`archaeology-a`/
-  `archaeology-b`) via `Promise.allSettled` gestart worden - bij een
-  `core`-timeout worden de andere drie dus nooit eens aangeroepen, ook al
-  hadden ze zelfstandig kunnen slagen.
-- **P1: paginering (pagina 2+) dekt alleen de `core`-scope.** Archeologie-
-  en scheepswrakresultaten voorbij pagina 1 zijn daardoor onbereikbaar;
-  `hasMore` weerspiegelt ook alleen `core`'s status.
+Twee resterende punten uit die review, nog niet opgepakt, staan op de
+lijst (reviewer-advies: idealiter vóór de v0.5.0 Beta-publicatie):
+
+- **P1: paginering (pagina 2+) dekt alleen de `core`-scope - bevestigd
+  als een echte bug, niet alleen een ontwerpkeuze (22 augustus 2026,
+  live in de code geverifieerd vóór opname hieronder).** Voor de drie
+  `heritage`-categorieën (Werelderfgoed/Gezicht/Complex) klopt de
+  bestaande code-comment wél dat dit bewust is: hun queries hebben geen
+  `LIMIT`, en met resp. 18/472/~4.200 instanties totaal levert een
+  zoekterm hier realistisch nooit veel treffers op. Maar de zeven
+  categorieën in `archaeology-a`/`archaeology-b` (Onderzoeksgebied,
+  Archeologisch terrein, Vondstlocatie, Grondspoor, Vondst, Archeologisch
+  complex, Scheepswrak) kappen hun eigen matches wél degelijk intern af
+  op 25 (`mergeDiscoveryMatches(...).slice(0, 25)` in elke helper-functie
+  in `lib/server/rce-adapter.ts`), en die scopes worden sowieso alleen op
+  pagina 1 aangeroepen (`page === 1 && ...`-gate in `searchByText`) -
+  zonder eigen paginering is alles voorbij de 25e match van zo'n
+  categorie permanent en onopgemerkt onbereikbaar. Geen hypothetisch
+  scenario: elders in dit document staat al vastgelegd dat "schoener" 42
+  scheepswrakken oplevert - 17 daarvan zouden dus nu al buiten bereik
+  vallen zodra de aangekondigde scheepstype-tekstzoekfunctie gebouwd
+  wordt. **Bewust uitgesteld naar v0.5.1 Beta** (zelfde advies als de
+  reviewer): een correcte fix vraagt paginering per scope (server +
+  client, zie `hooks/useSearchState.ts`'s `loadMore()`) - een grotere,
+  eigen architecturale wijziging, geen kleine aanpassing zoals de overige
+  punten uit deze review.
 - **P2: inconsistente samenvoegsleutel tussen de eerste pagina
   (`item.sourceUrl || monumentNature:monumentNumber` in
   `rce-client.ts`) en `loadMore()` (`item.monumentNumber ?? item.id` in
