@@ -777,3 +777,63 @@ Policy-header (bekend, zie `docs/security-assessment-2026-08-17.md`); nog
 geen test op een echt mobiel apparaat (staat al hierboven, "Mobiele
 weergave controleren"); `useSearchState`/de centrale adapter zijn groot
 (bekend, zie TD-03/TD-04 in `docs/analyse-2026-08-11.md`).
+
+## Regressie: "Probeer bijvoorbeeld" en "Ontdek een thema" traag/kapot (22 augustus 2026)
+
+Gemeld door de eigenaar: *"zoeken met 'Probeer bijvoorbeeld:' en 'ontdek
+een thema:' is echt stuk [...] Het heeft altijd gewerkt. en best wel
+snel."* - terecht geen genoegen genomen met een verklaring van "langzame
+RCE"; opnieuw onderzocht en een echte, zelf geïntroduceerde regressie
+gevonden.
+
+- ~~**`buildRceDetailsQueryBody` (de gedeelde, gebatchte detailquery
+  achter élke zoekresultatenpagina) bevatte sinds 21 augustus 2026 een
+  UNION over de archiefdagen- en OmschrijvingenOnderwerp-graphs
+  (142.720 triples) plus een GROUP_CONCAT-aggregaat, gebatcht over tot
+  25 rijksmonumenten tegelijk.**~~ **Opgelost, zie
+  [PR #115](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/115).**
+  Voor rijk beschreven records (bv. een kerk met tot 195 CHT-begrippen)
+  maakte die combinatie de query onevenredig duur. Live bevestigd vóór en
+  ná de fix tegen het productie-endpoint: `q=36046` 8,6s → 2,4s;
+  conceptzoekopdracht "Kerken" 504-timeout na 20,4s → 548ms (25
+  resultaten). Onderwerpconcepten worden nu, net als complexleden/ligtIn/
+  archeologische context, lazy per record opgehaald zodra een gebruiker
+  een Rijksmonument-detail daadwerkelijk opent (nieuwe
+  `/api/rce/omschrijving-onderwerp`-route, ~200ms ook voor het rijkste
+  record).
+
+Tijdens hetzelfde onderzoek plakte de eigenaar een tweede, gedetailleerde
+externe code review met vijf bevindingen. Twee zijn al opgepakt:
+
+- ~~**P0: de URL-sanitizer (`lib/server/html-sanitize.ts`) was te omzeilen
+  via HTML-entity-encoding** (bv. `javascript&#58;alert(1)` - de browser
+  decodeert dit pas ná de sanitizer-check).~~ **Opgelost, zie
+  [PR #114](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/114).**
+  Eerst decoderen, dán toetsen; overgestapt van een blocklist naar een
+  allowlist (http/https/mailto voor links, http/https voor afbeeldingen).
+  6 nieuwe regressietests.
+
+Drie resterende punten uit die review, nog niet opgepakt, staan op de
+lijst (reviewer-advies: idealiter vóór de v0.5.0 Beta-publicatie, samen
+met bovenstaande P0):
+
+- **P1: een falende `core`-scope blokkeert de andere drie scopes
+  volledig.** `searchRceMonuments` (`lib/rce-client.ts`) wacht eerst
+  `core` af vóórdat de overige scopes (`heritage`/`archaeology-a`/
+  `archaeology-b`) via `Promise.allSettled` gestart worden - bij een
+  `core`-timeout worden de andere drie dus nooit eens aangeroepen, ook al
+  hadden ze zelfstandig kunnen slagen.
+- **P1: paginering (pagina 2+) dekt alleen de `core`-scope.** Archeologie-
+  en scheepswrakresultaten voorbij pagina 1 zijn daardoor onbereikbaar;
+  `hasMore` weerspiegelt ook alleen `core`'s status.
+- **P2: inconsistente samenvoegsleutel tussen de eerste pagina
+  (`item.sourceUrl || monumentNature:monumentNumber` in
+  `rce-client.ts`) en `loadMore()` (`item.monumentNumber ?? item.id` in
+  `hooks/useSearchState.ts`).** `monumentNumber` is niet globaal uniek
+  (bv. een MASS-scheepswrak-ID kan botsen met een rijksmonumentnummer) -
+  een latere `loadMore()`-pagina zou zo stilzwijgend een ongerelateerd
+  eerder resultaat kunnen overschrijven. Voorstel: één gedeelde
+  `resultIdentity(item)`-helper.
+- **P2: `loadMore()` faalt stil.** Bij een fout doet `loadMore()` alleen
+  `setHasMore(false)` - de "laad meer"-knop verdwijnt zonder foutmelding
+  of retry-optie, niet te onderscheiden van "alle resultaten geladen".
