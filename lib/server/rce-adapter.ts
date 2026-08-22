@@ -45,6 +45,7 @@ import {
   buildRijksmonumentGeometrieQuery,
   buildGezichtQuery,
   buildRceParcelsQuery,
+  buildWerelderfgoedGeometrieQuery,
   buildWerelderfgoedLidmaatschapQuery,
   buildWerelderfgoedQuery,
   buildVondstlocatieDetailsQuery,
@@ -94,6 +95,7 @@ import {
   parseRijksmonumentenBrowseNumbers,
   parseRijksmonumentGeometrieResult,
   parseSparqlResults,
+  parseWerelderfgoedGeometrieResult,
   parseWerelderfgoedLidmaatschapResults,
   parseWerelderfgoedResults,
   parseVondstlocatieDiscoveryResults,
@@ -224,6 +226,14 @@ export async function fetchLigtIn(monumentNumber: string, signal?: AbortSignal):
 export async function fetchOmschrijvingOnderwerp(choUri: string, signal?: AbortSignal): Promise<{ uri: string; label: string; bron: string }[]> {
   const document = await fetchSparql(buildOmschrijvingOnderwerpQuery(choUri), signal);
   return parseOmschrijvingOnderwerpResults(document);
+}
+
+// Lazy per-record ophaalslag - zie de toelichting bij browseRceObjects
+// (werelderfgoed-tak hieronder) voor waarom de volledige WKT niet meer
+// standaard in de Werelderfgoed-lijstrespons zit.
+export async function fetchWerelderfgoedGeometrie(choUri: string, signal?: AbortSignal): Promise<string | undefined> {
+  const document = await fetchSparql(buildWerelderfgoedGeometrieQuery(choUri), signal);
+  return parseWerelderfgoedGeometrieResult(document);
 }
 
 // On-demand "ligt dit gebouwde Rijksmonument op archeologie"-check
@@ -970,7 +980,22 @@ export async function browseRceObjects(kind: "rijksmonument" | "archeologischter
         : undefined,
     }));
   }
-  if (kind === "werelderfgoed") return fetchSparql(buildWerelderfgoedQuery(""), signal).then(parseWerelderfgoedResults);
+  // Alle 18 Werelderfgoed-objecten komen in één respons terug (bewust geen
+  // paginering, zie buildWerelderfgoedQuery) - de volledige, ongegeneraliseerde
+  // WKT-geometrie liet die respons daardoor onnodig groot worden (live
+  // gemeten 22-08-2026: 4,1MB, waarvan alleen al 2,6MB voor de Hollandse
+  // Waterlinies). lat/lng (voor puntmarkers) blijven wel gewoon staan - de
+  // volledige vorm wordt nu pas lazy opgehaald zodra een gebruiker een
+  // Werelderfgoed-detail daadwerkelijk opent (zie
+  // buildWerelderfgoedGeometrieQuery in lib/rce/monuments.ts), net als
+  // omschrijvingOnderwerp/ligtIn/complexMembers. De bulk-kaartweergave van de
+  // resultatenlijst zelf toont Werelderfgoed daardoor als puntmarkers i.p.v.
+  // vormen - bewuste afweging bij zo'n kleine, landelijke collectie (18
+  // objecten), niet per ongeluk.
+  if (kind === "werelderfgoed")
+    return fetchSparql(buildWerelderfgoedQuery(""), signal).then(parseWerelderfgoedResults).then(
+      (monuments) => monuments.map((monument) => ({ ...monument, wkt: undefined })),
+    );
   if (kind === "gezicht") return fetchSparql(buildGezichtQuery(""), signal).then(parseGezichtResults);
   return fetchSparql(buildComplexenQuery(""), signal).then(parseComplexenResults);
 }

@@ -170,6 +170,20 @@ export async function fetchOmschrijvingOnderwerp(choUri: string, signal?: AbortS
   return document.concepten;
 }
 
+// Zelfde lazy-aanpak als fetchLigtIn/fetchOmschrijvingOnderwerp hierboven -
+// zie de toelichting bij browseRceObjects's werelderfgoed-tak (lib/server/
+// rce-adapter.ts) voor waarom de volledige WKT niet meer standaard in de
+// Werelderfgoed-lijstrespons zit.
+export async function fetchWerelderfgoedGeometrie(choUri: string, signal?: AbortSignal) {
+  const response = await fetch(`/api/rce/werelderfgoed-geometrie?cho=${encodeURIComponent(choUri)}`, {
+    headers: { Accept: "application/json" },
+    signal,
+  });
+  if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
+  const document = await response.json() as { wkt?: string };
+  return document.wkt;
+}
+
 // In tegenstelling tot fetchLigtIn hierboven NIET lazy-bij-openen: dit kan
 // 15+ seconden duren (112.184 ArcheologischOnderzoeksgebied-instanties, geen
 // kleine vaste kandidatenset), dus wordt alleen aangeroepen op een expliciete

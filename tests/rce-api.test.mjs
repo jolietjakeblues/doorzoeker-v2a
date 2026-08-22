@@ -560,3 +560,28 @@ test("cachet een geslaagde tekstzoekopdracht nog altijd normaal (geen regressie 
   assert.equal(response.headers.get("x-doorzoeker-cache"), "MISS");
   assert.equal(cachePutCalls, 1);
 });
+
+test("browse=werelderfgoed stuurt geen volledige WKT-geometrie mee, wel lat/lng (regressie 22-08-2026: 4,1MB voor 18 objecten, waarvan 2,6MB alleen al voor de Hollandse Waterlinies)", async (context) => {
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalCaches === undefined) delete globalThis.caches;
+    else globalThis.caches = originalCaches;
+  });
+  globalThis.caches = { default: { match() { return undefined; }, put() {} } };
+  globalThis.fetch = async () => Response.json({ results: { bindings: [{
+    cho: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/werelderfgoed/10134674" },
+    choi: { value: "10134674" },
+    wenr: { value: "759" },
+    naam: { value: "Hollandse Waterlinies" },
+    wkt: { value: "Polygon ((5.0 52.0, 5.1 52.0, 5.1 52.1, 5.0 52.1, 5.0 52.0))" },
+  }] } });
+
+  const response = await GET(new Request("https://doorzoeker.test/api/rce/search?browse=werelderfgoed&page=1", { headers: { "cf-connecting-ip": "test-werelderfgoed-browse" } }));
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.equal(document.results[0].wkt, undefined);
+  assert.equal(document.results[0].lat, 52.04);
+  assert.equal(document.results[0].lng, 5.04);
+});

@@ -591,6 +591,25 @@ export function parseWerelderfgoedResults(document: unknown): RceMonument[] {
   });
 }
 
+// Lazy, één Werelderfgoed tegelijk - zie de toelichting bij browseRceObjects
+// (lib/server/rce-adapter.ts) voor waarom de volledige WKT niet meer
+// standaard in de lijst-/browse-respons van Werelderfgoed zit.
+export function buildWerelderfgoedGeometrieQuery(choUri: string) {
+  return `PREFIX ceo: <${CEO}>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+SELECT (STR(?wktValue) AS ?wkt) WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    <${choUri}> ceo:heeftGeometrie/geo:asWKT ?wktValue .
+  }
+}
+LIMIT 1`;
+}
+
+export function parseWerelderfgoedGeometrieResult(document: unknown): string | undefined {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  return bindings?.[0]?.wkt?.value || undefined;
+}
+
 // Zelfde tweegraphs-patroon als Werelderfgoed: naam/geometrie in
 // instanties-rce, de Archis-link in gezicht_hvdl. Van de 482 Gezicht-
 // instanties zijn er 472 daadwerkelijk "rijksbeschermd" (de rest is
