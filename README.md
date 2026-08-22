@@ -245,3 +245,10 @@ valt onder het eigen hergebruiksbeleid van de RCE/Kadaster, zie
 ## Dank
 
 Met dank aan Dirk, Kees, Hans en Joppe voor de ideeën en inspiratie.
+
+---
+
+*"The future is unwritten."*  
+— Joe Strummer
+
+---

@@ -75,8 +75,8 @@ export function useSearchState() {
   const [matchSourceFilter, setMatchSourceFilter] = useState(
     EMPTY_URL_STATE.matchSourceFilter,
   );
-  const [excludedStatuses, setExcludedStatuses] = useState<string[]>(
-    EMPTY_URL_STATE.excludedStatuses,
+  const [excludedCategories, setExcludedCategories] = useState<string[]>(
+    EMPTY_URL_STATE.excludedCategories,
   );
   const [onlyGroenaanleg, setOnlyGroenaanleg] = useState(
     EMPTY_URL_STATE.onlyGroenaanleg,
@@ -118,7 +118,7 @@ export function useSearchState() {
       municipality,
       functionFilter,
       matchSourceFilter,
-      excludedStatuses,
+      excludedCategories,
       onlyGroenaanleg,
       onlyMsp,
       view,
@@ -156,12 +156,12 @@ export function useSearchState() {
       province,
       municipality,
       matchSourceFilter,
-      excludedStatuses,
+      excludedCategories,
       onlyGroenaanleg,
       onlyMsp,
     }),
     [
-      excludedStatuses,
+      excludedCategories,
       functionFilter,
       matchSourceFilter,
       monumentAard,
@@ -188,15 +188,15 @@ export function useSearchState() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [groenaanlegCount, mspCount, onlyGroenaanleg, onlyMsp, remoteState]);
-  function toggleLegalStatus(label: string) {
-    setExcludedStatuses((current) =>
+  function toggleCategory(label: string) {
+    setExcludedCategories((current) =>
       current.includes(label)
         ? current.filter((excluded) => excluded !== label)
         : [...current, label],
     );
   }
-  function clearExcludedStatuses() {
-    setExcludedStatuses([]);
+  function clearExcludedCategories() {
+    setExcludedCategories([]);
   }
 
   // Een mislukte zoekopdracht hoort niet als rode waarschuwing te blijven
@@ -238,7 +238,7 @@ export function useSearchState() {
     setMunicipality("Alle");
     setFunctionFilter("Alle");
     setMatchSourceFilter("Alle");
-    setExcludedStatuses([]);
+    setExcludedCategories([]);
     setOnlyGroenaanleg(false);
     setOnlyMsp(false);
     setResultPage(1);
@@ -292,7 +292,7 @@ export function useSearchState() {
     setMunicipality("Alle");
     setFunctionFilter("Alle");
     setMatchSourceFilter("Alle");
-    setExcludedStatuses([]);
+    setExcludedCategories([]);
     setOnlyGroenaanleg(false);
     setOnlyMsp(false);
     setResultPage(1);
@@ -408,7 +408,7 @@ export function useSearchState() {
     setMunicipality("Alle");
     setFunctionFilter("Alle");
     setMatchSourceFilter("Alle");
-    setExcludedStatuses([]);
+    setExcludedCategories([]);
     setOnlyGroenaanleg(false);
     setOnlyMsp(false);
     setResultPage(1);
@@ -481,7 +481,7 @@ export function useSearchState() {
     setMunicipality(initial.municipality);
     setFunctionFilter(initial.functionFilter);
     setMatchSourceFilter(initial.matchSourceFilter);
-    setExcludedStatuses(initial.excludedStatuses);
+    setExcludedCategories(initial.excludedCategories);
     setOnlyGroenaanleg(initial.onlyGroenaanleg);
     setOnlyMsp(initial.onlyMsp);
     setView(initial.view);
@@ -500,7 +500,7 @@ export function useSearchState() {
     setMunicipality("Alle");
     setFunctionFilter("Alle");
     setMatchSourceFilter("Alle");
-    setExcludedStatuses([]);
+    setExcludedCategories([]);
     setOnlyGroenaanleg(false);
     setOnlyMsp(false);
     setView("list");
@@ -545,9 +545,9 @@ export function useSearchState() {
     setFunctionFilter,
     matchSourceFilter,
     setMatchSourceFilter,
-    excludedStatuses,
-    toggleLegalStatus,
-    clearExcludedStatuses,
+    excludedCategories,
+    toggleCategory,
+    clearExcludedCategories,
     onlyGroenaanleg,
     setOnlyGroenaanleg,
     onlyMsp,

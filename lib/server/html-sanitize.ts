@@ -45,14 +45,36 @@ const STRIP_CONTENT_TAGS = new Set(["script", "style", "iframe", "object", "embe
 
 const VOID_TAGS = new Set(["br", "img"]);
 
-function isDangerousUrl(value: string): boolean {
-  // Verwijdert whitespace vóór het schema-onderzoek - een bekende omzeiling
-  // splitst een gevaarlijk schema op met tabs/regeleindes (bv.
-  // "java\tscript:"). \s dekt dat al; geen losse \x00-\x1f-reeks (ESLint's
-  // no-control-regex, en de praktische winst t.o.v. \s alleen is klein).
-  const normalized = value.trim().toLowerCase().replace(/\s/g, "");
-  return normalized.startsWith("javascript:") || normalized.startsWith("data:") || normalized.startsWith("vbscript:");
+// HTML staat karakterverwijzingen (&#58; of &#x3a;) toe in attribuutwaarden
+// en decodeert die tijdens attribute-value tokenizing, vóórdat de browser de
+// waarde als URL gebruikt - "javascript&#58;alert(1)" bevat dus geen
+// letterlijke ":" op het moment dat hieronder gecontroleerd wordt, maar
+// wordt door de browser alsnog als "javascript:alert(1)" geïnterpreteerd.
+// Gemeld door een externe review (22-08-2026), geverifieerd tegen de HTML
+// Standard (whatwg.org/#attribute-value-(double-quoted)-state). Decodeer
+// daarom eerst, zodat het schema niet in een karakterverwijzing verstopt kan
+// worden.
+function decodeEntitiesForUrlCheck(value: string): string {
+  return value
+    .replace(/&#x([0-9a-f]+);?/gi, (_match, hex: string) => String.fromCodePoint(Number.parseInt(hex, 16)))
+    .replace(/&#(\d+);?/g, (_match, dec: string) => String.fromCodePoint(Number.parseInt(dec, 10)))
+    .replace(/&amp;?/gi, "&");
 }
+
+// Allowlist in plaats van blokkeerlijst: een blokkeerlijst moet elk gevaarlijk
+// schema kennen (en elke manier om het te verbergen), een allowlist hoeft
+// alleen te weten wat wél mag. Relatieve URL's (geen schema) horen altijd bij
+// de eigen origin en zijn dus altijd toegestaan.
+function isAllowedUrl(value: string, allowedSchemes: ReadonlySet<string>): boolean {
+  // Zelfde tab/regeleinde-omzeiling als voorheen ("java\tscript:") blijft
+  // afgevangen door alle whitespace te verwijderen vóór de schema-check.
+  const normalized = decodeEntitiesForUrlCheck(value).trim().replace(/\s/g, "").toLowerCase();
+  const scheme = /^([a-z][a-z0-9+.-]*):/.exec(normalized)?.[1];
+  return !scheme || allowedSchemes.has(`${scheme}:`);
+}
+
+const ALLOWED_LINK_SCHEMES: ReadonlySet<string> = new Set(["http:", "https:", "mailto:"]);
+const ALLOWED_IMAGE_SCHEMES: ReadonlySet<string> = new Set(["http:", "https:"]);
 
 // Geen &-escaping: de brondata levert al correct geëncodeerde entiteiten
 // (bv. &rsquo;) door - die blindelings ook nog eens escapen zou er
@@ -206,7 +228,8 @@ function renderOpenTag(tag: ParsedTag, allowedAttrs: string[], imageBaseUrl: str
   for (const attrName of allowedAttrs) {
     let value = tag.attributes.get(attrName);
     if (value === undefined) continue;
-    if ((attrName === "href" || attrName === "src") && isDangerousUrl(value)) continue;
+    if (attrName === "href" && !isAllowedUrl(value, ALLOWED_LINK_SCHEMES)) continue;
+    if (attrName === "src" && !isAllowedUrl(value, ALLOWED_IMAGE_SCHEMES)) continue;
     if (attrName === "src" && value.startsWith("/")) value = imageBaseUrl + value;
     parts.push(`${attrName}="${escapeAttributeValue(value)}"`);
   }

@@ -42,9 +42,9 @@ export default function Home() {
     setFunctionFilter,
     matchSourceFilter,
     setMatchSourceFilter,
-    excludedStatuses,
-    toggleLegalStatus,
-    clearExcludedStatuses,
+    excludedCategories,
+    toggleCategory,
+    clearExcludedCategories,
     onlyGroenaanleg,
     setOnlyGroenaanleg,
     onlyMsp,
@@ -87,7 +87,7 @@ export default function Home() {
     }
     selectTermSuggestion(suggestion);
   });
-  const { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten, ligtIn } =
+  const { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten, ligtIn, omschrijvingOnderwerp } =
     useSelectedDetailEnrichment(selected);
   const archeologischeContext = useArcheologischeContext(selected);
   const opDezeDag = useOpDezeDag();
@@ -111,7 +111,7 @@ export default function Home() {
         .filter((kind) => kind && kind !== "Functie niet opgenomen"),
     ),
   ].sort((a, b) => a.localeCompare(b, "nl"));
-  const contextStatuses = [
+  const contextCategories = [
     ...new Set(objectTypeResults.map((item) => statusLabel(item.objectType))),
   ];
   const contextMatchSources = [
@@ -216,7 +216,7 @@ export default function Home() {
           municipality={municipality}
           functionFilter={functionFilter}
           matchSourceFilter={matchSourceFilter}
-          excludedStatuses={excludedStatuses}
+          excludedCategories={excludedCategories}
           onlyGroenaanleg={onlyGroenaanleg}
           onlyMsp={onlyMsp}
           includesRijksmonumenten={includesRijksmonumenten}
@@ -224,7 +224,7 @@ export default function Home() {
           contextMunicipalities={contextMunicipalities}
           contextFunctions={contextFunctions}
           contextMatchSources={contextMatchSources}
-          contextStatuses={contextStatuses}
+          contextCategories={contextCategories}
           groenaanlegCount={groenaanlegCount}
           mspCount={mspCount}
           onClose={() => setFilters(false)}
@@ -234,8 +234,8 @@ export default function Home() {
           onMunicipalityChange={setMunicipality}
           onFunctionChange={setFunctionFilter}
           onMatchSourceChange={setMatchSourceFilter}
-          onToggleStatus={toggleLegalStatus}
-          onClearStatuses={clearExcludedStatuses}
+          onToggleCategory={toggleCategory}
+          onClearCategories={clearExcludedCategories}
           onOnlyGroenaanlegChange={setOnlyGroenaanleg}
           onOnlyMspChange={setOnlyMsp}
           onReset={reset}
@@ -286,7 +286,7 @@ export default function Home() {
         <HeritageDetailDialog
           selected={selected}
           dialogRef={detailDialogRef}
-          enrichment={{ complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten, ligtIn }}
+          enrichment={{ complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten, ligtIn, omschrijvingOnderwerp }}
           archeologischeContext={archeologischeContext}
           onClose={() => setSelected(null)}
           onSearch={executeSearch}

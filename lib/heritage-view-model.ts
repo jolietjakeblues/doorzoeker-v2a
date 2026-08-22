@@ -97,7 +97,6 @@ export type Item = {
   inProceduredatumGezicht?: string;
   begrenzingsdatumGezicht?: string;
   intrekkingsdatumGezicht?: string;
-  omschrijvingOnderwerpConcepten?: { uri: string; label: string; bron: string }[];
   scheepstype?: string;
   omschrijvingHtml?: string;
   ontdekt?: string;
@@ -281,7 +280,7 @@ export const EMPTY_URL_STATE = {
   municipality: "Alle",
   functionFilter: "Alle",
   matchSourceFilter: "Alle",
-  excludedStatuses: [] as string[],
+  excludedCategories: [] as string[],
   onlyGroenaanleg: false,
   onlyMsp: false,
   view: "list" as const,
@@ -541,7 +540,6 @@ export function toItem(record: RceMonument): Item {
     inProceduredatumGezicht: record.inProceduredatumGezicht,
     begrenzingsdatumGezicht: record.begrenzingsdatumGezicht,
     intrekkingsdatumGezicht: record.intrekkingsdatumGezicht,
-    omschrijvingOnderwerpConcepten: record.omschrijvingOnderwerpConcepten,
     scheepstype: record.scheepstype,
     omschrijvingHtml: record.omschrijvingHtml,
     ontdekt: record.ontdekt,
@@ -656,7 +654,7 @@ export function parseUrlState(search: string) {
     municipality: municipality || "Alle",
     functionFilter: params.get("functie") ?? "Alle",
     matchSourceFilter: params.get("bron") ?? "Alle",
-    excludedStatuses:
+    excludedCategories:
       params.get("uitgesloten")?.split(",").filter(Boolean) ?? [],
     onlyGroenaanleg: params.get("groenaanleg") === "1",
     onlyMsp: params.get("msp") === "1",

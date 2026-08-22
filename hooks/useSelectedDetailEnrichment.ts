@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchComplexMembers, fetchLigtIn, fetchOnderzoeksgebiedVerrijking, fetchVondstlocatieInhoud, searchByFunctieConcept } from "@/lib/rce-client";
+import { fetchComplexMembers, fetchLigtIn, fetchOmschrijvingOnderwerp, fetchOnderzoeksgebiedVerrijking, fetchVondstlocatieInhoud, searchByFunctieConcept } from "@/lib/rce-client";
 import type { ComplexMember, GezichtLidmaatschap, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, VondstlocatieInhoud, WerelderfgoedLidmaatschap } from "@/lib/rce";
 import { pickVergelijkbareRijksmonumenten, toItem, type Item } from "@/lib/heritage-view-model";
 
@@ -17,6 +17,7 @@ export function useSelectedDetailEnrichment(selected: Item | null) {
   const [vondstlocatieInhoud, setVondstlocatieInhoud] = useState<({ locatieUri: string; error?: boolean } & VondstlocatieInhoud) | null>(null);
   const [vergelijkbareRijksmonumenten, setVergelijkbareRijksmonumenten] = useState<{ conceptUri: string; conceptLabel: string; items: Item[]; error?: boolean } | null>(null);
   const [ligtIn, setLigtIn] = useState<{ monumentNumber: string; gezicht: GezichtLidmaatschap[]; werelderfgoed: WerelderfgoedLidmaatschap[]; error?: boolean } | null>(null);
+  const [omschrijvingOnderwerp, setOmschrijvingOnderwerp] = useState<{ choUri: string; concepten: { uri: string; label: string; bron: string }[]; error?: boolean } | null>(null);
 
   // `error: true` houdt een mislukte aanvraag onderscheidbaar van een echt
   // lege-maar-geldige respons (bv. een complex zonder leden) - zonder dit
@@ -77,5 +78,15 @@ export function useSelectedDetailEnrichment(selected: Item | null) {
     return () => controller.abort();
   }, [selected]);
 
-  return { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten, ligtIn };
+  useEffect(() => {
+    if (selected?.objectType !== "Rijksmonument" || !selected.linkedDataUrl) return;
+    const choUri = selected.linkedDataUrl;
+    const controller = new AbortController();
+    fetchOmschrijvingOnderwerp(choUri, controller.signal)
+      .then((concepten) => { if (!controller.signal.aborted) setOmschrijvingOnderwerp({ choUri, concepten }); })
+      .catch(() => { if (!controller.signal.aborted) setOmschrijvingOnderwerp({ choUri, concepten: [], error: true }); });
+    return () => controller.abort();
+  }, [selected]);
+
+  return { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten, ligtIn, omschrijvingOnderwerp };
 }

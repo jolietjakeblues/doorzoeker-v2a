@@ -32,6 +32,7 @@ import {
   buildStijlConceptQuery,
   buildVerwervingConceptQuery,
   buildMspIndicatieQuery,
+  buildOmschrijvingOnderwerpQuery,
   buildOnderzoeksgebiedAggregatenQuery,
   buildOnderzoeksgebiedComplexenQuery,
   buildOnderzoeksgebiedVondstlocatiesQuery,
@@ -83,6 +84,7 @@ import {
   parseGrondsporenResults,
   parseImageResults,
   parseMspIndicatieResults,
+  parseOmschrijvingOnderwerpResults,
   parseOnderzoeksgebiedAggregatenResults,
   parseOnderzoeksgebiedComplexenResults,
   parseOnderzoeksgebiedVondstlocatiesResults,
@@ -215,6 +217,13 @@ export async function fetchLigtIn(monumentNumber: string, signal?: AbortSignal):
     gezicht: parseGezichtLidmaatschapResults(gezichtDocument),
     werelderfgoed: parseWerelderfgoedLidmaatschapResults(werelderfgoedDocument),
   };
+}
+
+// Lazy per-record ophaalslag - zie de toelichting bij buildOmschrijvingOnderwerpQuery
+// (lib/rce/monuments.ts) voor waarom dit niet meer in de batch-detailquery zit.
+export async function fetchOmschrijvingOnderwerp(choUri: string, signal?: AbortSignal): Promise<{ uri: string; label: string; bron: string }[]> {
+  const document = await fetchSparql(buildOmschrijvingOnderwerpQuery(choUri), signal);
+  return parseOmschrijvingOnderwerpResults(document);
 }
 
 // On-demand "ligt dit gebouwde Rijksmonument op archeologie"-check
