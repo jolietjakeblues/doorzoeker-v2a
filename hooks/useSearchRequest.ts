@@ -21,6 +21,11 @@ export function useSearchRequest() {
   const [resultPage, setResultPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  // Apart van hasMore: een mislukte 'laad meer'-aanvraag betekent niet dat
+  // er niets meer te laden valt (P2, externe review 22-08-2026 - voorheen
+  // verdween de knop stilzwijgend via setHasMore(false), niet te
+  // onderscheiden van "alle resultaten zijn geladen").
+  const [loadMoreError, setLoadMoreError] = useState(false);
   const searchController = useRef<AbortController | null>(null);
   const searchSequence = useRef(0);
 
@@ -51,6 +56,8 @@ export function useSearchRequest() {
     setHasMore,
     loadingMore,
     setLoadingMore,
+    loadMoreError,
+    setLoadMoreError,
     beginRequest,
   };
 }

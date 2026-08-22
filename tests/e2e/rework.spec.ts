@@ -505,6 +505,7 @@ test("Rijksmonumenten zijn per 25 te doorbladeren", async ({ page }) => {
         results: Array.from({ length: count }, (_, index) => ({
           ...records[0],
           choNumber: `cho-${requestedPage}-${index}`,
+          sourceUrl: `https://linkeddata.cultureelerfgoed.nl/cho-${requestedPage}-${index}`,
           monumentNumber: `${requestedPage}${String(index).padStart(5, "0")}`,
           name: `Rijksmonument pagina ${requestedPage}, nummer ${index + 1}`,
         })),
@@ -571,6 +572,79 @@ test("'laad meer' bij tekstzoekopdracht stopt niet als het laatst geladen item t
   await page.getByRole("button", { name: "Laad 25 volgende resultaten" }).click();
   await expect(page.getByText("Rijksmonument pagina 2")).toBeVisible();
   await expect(page.getByRole("button", { name: "Laad 25 volgende resultaten" })).toHaveCount(0);
+});
+
+test("'laad meer' verliest geen resultaat bij een monumentnummer dat botst met een object uit een andere bron (P2, externe review 22-08-2026: een MASS-scheepswrak-ID kan numeriek botsen met een rijksmonumentnummer)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const url = new URL(route.request().url());
+    const scope = url.searchParams.get("scope");
+    const requestedPage = Number(url.searchParams.get("page") ?? "1");
+    if (scope !== "core") return route.fulfill({ json: { results: [], page: requestedPage, hasMore: false } });
+    if (requestedPage === 1) {
+      return route.fulfill({ json: {
+        results: [{ ...records[0], choNumber: "cho-p1", sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-p1", monumentNumber: "12345", name: "Rijksmonument eerste pagina" }],
+        page: 1, hasMore: true,
+      } });
+    }
+    // Dezelfde monumentNumber als het rijksmonument hierboven, maar een
+    // scheepswrak (andere bron, MASS i.p.v. CHO) - precies het scenario
+    // waarin de oude samenvoegsleutel (alleen monumentNumber ?? id, zonder
+    // sourceUrl/objectType) het eerste resultaat stilzwijgend zou laten
+    // verdwijnen zodra 'laad meer' het tweede binnenhaalt.
+    return route.fulfill({ json: {
+      results: [{
+        ...records[0],
+        choNumber: "cho-p2",
+        sourceUrl: "https://mass.example/scheepswrak/12345",
+        officialUrl: "https://mass.example/scheepswrak/12345",
+        monumentNature: "scheepswrak",
+        monumentNumber: "12345",
+        name: "Scheepswrak tweede pagina",
+      }],
+      page: 2, hasMore: false,
+    } });
+  });
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(page.getByText("Rijksmonument eerste pagina")).toBeVisible();
+  await page.getByRole("button", { name: "Laad 25 volgende resultaten" }).click();
+  await expect(page.getByText("Scheepswrak tweede pagina")).toBeVisible();
+  // Het eerste resultaat blijft gewoon zichtbaar, ondanks het gedeelde
+  // monumentNumber met een object uit een andere bron.
+  await expect(page.getByText("Rijksmonument eerste pagina")).toBeVisible();
+});
+
+test("een mislukte 'laad meer' toont een foutmelding met retry i.p.v. de knop stilzwijgend te laten verdwijnen (P2, externe review 22-08-2026)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  let pageTwoAttempts = 0;
+  await page.route("**/api/rce/search**", (route) => {
+    const url = new URL(route.request().url());
+    const scope = url.searchParams.get("scope");
+    const requestedPage = Number(url.searchParams.get("page") ?? "1");
+    if (scope !== "core") return route.fulfill({ json: { results: [], page: requestedPage, hasMore: false } });
+    if (requestedPage === 1)
+      return route.fulfill({ json: { results: [{ ...records[0] }], page: 1, hasMore: true } });
+    pageTwoAttempts += 1;
+    if (pageTwoAttempts === 1) return route.fulfill({ status: 502, json: { error: "onbereikbaar" } });
+    return route.fulfill({ json: {
+      results: [{ ...records[0], choNumber: "cho-p2", sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-p2", monumentNumber: "p2", name: "Alsnog geladen" }],
+      page: 2, hasMore: false,
+    } });
+  });
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Laad 25 volgende resultaten" }).click();
+  await expect(page.getByText("De volgende resultaten konden niet worden geladen.")).toBeVisible();
+  const retryButton = page.getByRole("button", { name: "Probeer opnieuw" });
+  await expect(retryButton).toBeVisible();
+
+  // Retry gebruikt dezelfde 'laad meer'-aanroep, en slaagt nu.
+  await retryButton.click();
+  await expect(page.getByText("Alsnog geladen")).toBeVisible();
+  await expect(page.getByText("De volgende resultaten konden niet worden geladen.")).toHaveCount(0);
 });
 
 test("een categorie die stil faalt (bv. Scheepswrak via de losstaande MASS-dienst) toont een waarschuwing i.p.v. onopgemerkt te verdwijnen (gemeld door de eigenaar, 21-08-2026: 'schoener' toonde 0 scheepswrakken zonder signaal)", async ({ page }) => {
