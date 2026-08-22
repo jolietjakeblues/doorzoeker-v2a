@@ -668,6 +668,27 @@ test("een categorie die stil faalt (bv. Scheepswrak via de losstaande MASS-diens
   await expect(page.getByText("Woonhuis van de architect")).toBeVisible();
 });
 
+test("een falende Rijksmonument-scope (core) blokkeert niet het tonen van de andere, wél geslaagde scopes (P1, externe review 22-08-2026: core werd eerst afgewacht vóórdat de andere drie scopes zelfs maar werden aangevraagd)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const url = new URL(route.request().url());
+    const scope = url.searchParams.get("scope");
+    if (scope === "core") {
+      return route.fulfill({ status: 502, json: { error: "De RCE Linked Data-service is momenteel niet bereikbaar." } });
+    }
+    if (scope === "heritage") {
+      return route.fulfill({ json: { results: [{ ...records[1] }], page: 1, hasMore: false } });
+    }
+    return route.fulfill({ json: { results: [] } });
+  });
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(page.getByText("Rijksmonument kon niet worden geladen.")).toBeVisible();
+  // Het heritage-resultaat blijft gewoon zichtbaar, ondanks de gefaalde core-scope.
+  await expect(page.getByText("Historisch boerderijcomplex")).toBeVisible();
+});
+
 test("een nieuwe zoekopdracht overschrijft resultaten van een nog lopende 'laad meer' (TD-12 regressie)", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", async (route) => {

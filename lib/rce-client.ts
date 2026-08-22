@@ -9,6 +9,7 @@ export type SearchResponse = { results: RceMonument[]; page?: number; pageSize?:
 // (het gebruikelijke geval, zie de "schoener"/Scheepswrak-melding 21-08-2026)
 // noemt de server de categorie al zelf preciezer.
 const SCOPE_CATEGORIES: Record<string, string[]> = {
+  core: ["Rijksmonument"],
   heritage: ["Werelderfgoed", "Gezicht", "Complex"],
   "archaeology-a": ["Onderzoeksgebied", "Archeologisch terrein", "Vondstlocatie"],
   "archaeology-b": ["Grondspoor", "Vondst", "Archeologisch complex", "Scheepswrak"],
@@ -28,23 +29,41 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
     if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`, { cause: response.status });
     return await response.json() as SearchResponse;
   };
-  const core = await requestScope("core");
-  if (page !== 1 || /^\d{1,6}$/.test(query.trim()) || /^\d{4}\s?[A-Za-z]{2}$/.test(query.trim()))
-    return { results: core.results, hasMore: core.hasMore ?? false, page: core.page ?? page, failedCategories: core.failedCategories };
-  const scopes = ["heritage", "archaeology-a", "archaeology-b"] as const;
-  const additions = await Promise.allSettled(scopes.map((scope) => requestScope(scope)));
-  const byId = new Map(core.results.map((item) => [item.sourceUrl || `${item.monumentNature}:${item.monumentNumber}`, item]));
-  const failedCategories = new Set(core.failedCategories ?? []);
-  additions.forEach((addition, index) => {
-    if (addition.status === "fulfilled") {
-      for (const item of addition.value.results)
+  const includeOtherScopes =
+    page === 1 && !/^\d{1,6}$/.test(query.trim()) && !/^\d{4}\s?[A-Za-z]{2}$/.test(query.trim());
+  const scopes = includeOtherScopes
+    ? (["core", "heritage", "archaeology-a", "archaeology-b"] as const)
+    : (["core"] as const);
+  // Alle scopes tegelijk starten, niet core eerst afwachten en pas dán de
+  // rest - een trage of gefaalde core-scope blokkeerde eerder het zelfs
+  // maar aánvragen van de andere drie, ook als die zelfstandig hadden
+  // kunnen slagen (P1, externe review 22-08-2026).
+  const settled = await Promise.allSettled(scopes.map((scope) => requestScope(scope)));
+  const byId = new Map<string, RceMonument>();
+  const failedCategories = new Set<string>();
+  let core: SearchResponse | undefined;
+  settled.forEach((result, index) => {
+    const scope = scopes[index];
+    if (result.status === "fulfilled") {
+      if (scope === "core") core = result.value;
+      for (const item of result.value.results)
         byId.set(item.sourceUrl || `${item.monumentNature}:${item.monumentNumber}`, item);
-      for (const category of addition.value.failedCategories ?? []) failedCategories.add(category);
+      for (const category of result.value.failedCategories ?? []) failedCategories.add(category);
     } else {
-      for (const category of SCOPE_CATEGORIES[scopes[index]]) failedCategories.add(category);
+      for (const category of SCOPE_CATEGORIES[scope]) failedCategories.add(category);
     }
   });
-  return { results: [...byId.values()], hasMore: core.hasMore ?? false, page: core.page ?? page, failedCategories: [...failedCategories] };
+  // Alleen als werkelijk élke scope faalde is er niets te tonen - dan de
+  // eerste fout alsnog doorgeven, zodat de bestaande timeout/error-
+  // afhandeling in useSearchState ongewijzigd blijft werken.
+  if (byId.size === 0 && settled.every((result) => result.status === "rejected"))
+    throw (settled[0] as PromiseRejectedResult).reason;
+  return {
+    results: [...byId.values()],
+    hasMore: core?.hasMore ?? false,
+    page: core?.page ?? page,
+    failedCategories: [...failedCategories],
+  };
 }
 
 // Exact zoeken op een concept-URI uit het Referentienetwerk in plaats van
