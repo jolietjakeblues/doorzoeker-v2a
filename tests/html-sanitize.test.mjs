@@ -46,6 +46,35 @@ test("weigert javascript:-URL's ondanks tabs/spaties/hoofdletters (bekende XSS-o
   assert.equal(out, "<a>klik</a>");
 });
 
+test("weigert javascript:-URL's verstopt achter decimale karakterverwijzingen (&#58; voor de dubbele punt, gemeld door een externe review 22-08-2026: de browser decodeert dit tijdens attribute-value tokenizing, ná een letterlijke stringcheck)", () => {
+  const out = sanitizeMassDescriptionHtml('<a href="javascript&#58;alert(1)">klik</a>', BASE);
+  assert.equal(out, "<a>klik</a>");
+});
+
+test("weigert javascript:-URL's verstopt achter hexadecimale karakterverwijzingen (&#x3a;)", () => {
+  const out = sanitizeMassDescriptionHtml('<a href="javascript&#x3a;alert(1)">klik</a>', BASE);
+  assert.equal(out, "<a>klik</a>");
+});
+
+test("weigert javascript:-URL's met een karakterverwijzing zonder puntkomma (&#58 zonder ;, browsers accepteren dit ook)", () => {
+  const out = sanitizeMassDescriptionHtml('<a href="javascript&#58alert(1)">klik</a>', BASE);
+  assert.equal(out, "<a>klik</a>");
+});
+
+test("weigert een karakterverwijzing die het hele schema spelt, niet alleen de dubbele punt", () => {
+  const out = sanitizeMassDescriptionHtml('<a href="&#106;avascript:alert(1)">klik</a>', BASE);
+  assert.equal(out, "<a>klik</a>");
+});
+
+test("staat een echte relatieve of https-link gewoon toe (allowlist mag geen valse positieven geven)", () => {
+  const relative = sanitizeMassDescriptionHtml('<a href="/pagina">link</a>', BASE);
+  assert.equal(relative, '<a href="/pagina">link</a>');
+  const https = sanitizeMassDescriptionHtml('<a href="https://voorbeeld.nl">link</a>', BASE);
+  assert.equal(https, '<a href="https://voorbeeld.nl">link</a>');
+  const mailto = sanitizeMassDescriptionHtml('<a href="mailto:info@voorbeeld.nl">link</a>', BASE);
+  assert.equal(mailto, '<a href="mailto:info@voorbeeld.nl">link</a>');
+});
+
 test("lost een relatief <img src> op tegen de MASS-basis-URL", () => {
   const out = sanitizeMassDescriptionHtml('<img src="/photos/l/00000003.jpg" alt="foto">', BASE);
   assert.equal(out, '<img src="https://mass.cultureelerfgoed.nl/photos/l/00000003.jpg" alt="foto">');
