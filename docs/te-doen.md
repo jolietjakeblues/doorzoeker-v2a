@@ -744,3 +744,119 @@ kreeg.
   de omgeving te zien. `zoomControl` staat nu altijd aan; scrollwheel-zoom
   blijft bewust uit voor compacte kaarten. Nieuwe e2e-test controleert dat
   de uitzoomknop op een detailkaart zichtbaar en bruikbaar is.
+
+## Uit een externe review (21 augustus 2026)
+
+Twee bevindingen live herbevestigd (niet aangenomen) vóór opname hieronder.
+Nog niet opgepakt, staan op de lijst:
+
+- **Een brede vrije-tekstzoekopdracht kan de serverzijdige timeout nog
+  raken.** Live herhaald: `q=Utrecht&scope=core` gaf 504 na 20,1 seconden.
+  De timeoutverlenging uit de "Kerken"-fix (`CONCEPT_MATCH_TIMEOUT_MS`, zie
+  hierboven) geldt alleen voor de conceptmatch-functies
+  (`searchByConceptMatchQuery` en de vier losstaande varianten), niet voor
+  `searchByText`'s eigen discoverybranches - die blijven op de standaard
+  20s. Openstaande vraag: dezelfde verlenging ook daar toepassen (risico:
+  langer een Worker-invocation vasthouden, en de eerder gevonden
+  subrequest-limiet bij scope="all" lost een langere timeout sowieso niet
+  op), of eerst per categorie meten welke tak structureel traag is.
+- **Het Werelderfgoed-overzicht (`browse=werelderfgoed`) stuurt onnodig
+  grote antwoorden.** Live herhaald: 4,04 MB voor 18 objecten. Oorzaak
+  gevonden: de volledige, ongegeneraliseerde WKT-geometrie zit al in het
+  lijstantwoord (`Hollandse Waterlinies` alleen al 2,6 MB aan WKT-tekst) -
+  nodig voor de kaartweergave, maar overkill voor een lijstweergave of als
+  een gebruiker nog niet eens de kaart heeft geopend. Openstaande vraag:
+  geometrie pas lazy ophalen bij het openen van de kaartweergave, of een
+  vereenvoudigde/gegeneraliseerde geometrie in het lijstantwoord en de
+  volledige vorm pas bij het detail.
+
+Overige punten uit dezelfde review, ter info (geen nieuwe bevinding, al
+bekend of al opgepakt): README liep achter op CHT/ABR en Scheepswrakken
+(opgelost, zie de documentatie-PR van dezelfde dag); geen Content-Security-
+Policy-header (bekend, zie `docs/security-assessment-2026-08-17.md`); nog
+geen test op een echt mobiel apparaat (staat al hierboven, "Mobiele
+weergave controleren"); `useSearchState`/de centrale adapter zijn groot
+(bekend, zie TD-03/TD-04 in `docs/analyse-2026-08-11.md`).
+
+## Regressie: "Probeer bijvoorbeeld" en "Ontdek een thema" traag/kapot (22 augustus 2026)
+
+Gemeld door de eigenaar: *"zoeken met 'Probeer bijvoorbeeld:' en 'ontdek
+een thema:' is echt stuk [...] Het heeft altijd gewerkt. en best wel
+snel."* - terecht geen genoegen genomen met een verklaring van "langzame
+RCE"; opnieuw onderzocht en een echte, zelf geïntroduceerde regressie
+gevonden.
+
+- ~~**`buildRceDetailsQueryBody` (de gedeelde, gebatchte detailquery
+  achter élke zoekresultatenpagina) bevatte sinds 21 augustus 2026 een
+  UNION over de archiefdagen- en OmschrijvingenOnderwerp-graphs
+  (142.720 triples) plus een GROUP_CONCAT-aggregaat, gebatcht over tot
+  25 rijksmonumenten tegelijk.**~~ **Opgelost, zie
+  [PR #115](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/115).**
+  Voor rijk beschreven records (bv. een kerk met tot 195 CHT-begrippen)
+  maakte die combinatie de query onevenredig duur. Live bevestigd vóór en
+  ná de fix tegen het productie-endpoint: `q=36046` 8,6s → 2,4s;
+  conceptzoekopdracht "Kerken" 504-timeout na 20,4s → 548ms (25
+  resultaten). Onderwerpconcepten worden nu, net als complexleden/ligtIn/
+  archeologische context, lazy per record opgehaald zodra een gebruiker
+  een Rijksmonument-detail daadwerkelijk opent (nieuwe
+  `/api/rce/omschrijving-onderwerp`-route, ~200ms ook voor het rijkste
+  record).
+
+Tijdens hetzelfde onderzoek plakte de eigenaar een tweede, gedetailleerde
+externe code review met vijf bevindingen. Drie zijn al opgepakt:
+
+- ~~**P0: de URL-sanitizer (`lib/server/html-sanitize.ts`) was te omzeilen
+  via HTML-entity-encoding** (bv. `javascript&#58;alert(1)` - de browser
+  decodeert dit pas ná de sanitizer-check).~~ **Opgelost, zie
+  [PR #114](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/114).**
+  Eerst decoderen, dán toetsen; overgestapt van een blocklist naar een
+  allowlist (http/https/mailto voor links, http/https voor afbeeldingen).
+  6 nieuwe regressietests.
+
+~~**P1: een falende `core`-scope blokkeert de andere drie scopes
+volledig.**~~ **Opgelost, zie
+[PR #116](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/116).**
+`searchRceMonuments` (`lib/rce-client.ts`) wachtte eerst `core` af
+vóórdat de overige scopes (`heritage`/`archaeology-a`/`archaeology-b`)
+via `Promise.allSettled` gestart werden - bij een `core`-timeout werden
+de andere drie dus nooit eens aangeroepen, ook al hadden ze zelfstandig
+kunnen slagen. Alle scopes starten nu gelijktijdig; alleen als élke scope
+faalt wordt nog een fout getoond.
+
+Twee resterende punten uit die review, nog niet opgepakt, staan op de
+lijst (reviewer-advies: idealiter vóór de v0.5.0 Beta-publicatie):
+
+- **P1: paginering (pagina 2+) dekt alleen de `core`-scope - bevestigd
+  als een echte bug, niet alleen een ontwerpkeuze (22 augustus 2026,
+  live in de code geverifieerd vóór opname hieronder).** Voor de drie
+  `heritage`-categorieën (Werelderfgoed/Gezicht/Complex) klopt de
+  bestaande code-comment wél dat dit bewust is: hun queries hebben geen
+  `LIMIT`, en met resp. 18/472/~4.200 instanties totaal levert een
+  zoekterm hier realistisch nooit veel treffers op. Maar de zeven
+  categorieën in `archaeology-a`/`archaeology-b` (Onderzoeksgebied,
+  Archeologisch terrein, Vondstlocatie, Grondspoor, Vondst, Archeologisch
+  complex, Scheepswrak) kappen hun eigen matches wél degelijk intern af
+  op 25 (`mergeDiscoveryMatches(...).slice(0, 25)` in elke helper-functie
+  in `lib/server/rce-adapter.ts`), en die scopes worden sowieso alleen op
+  pagina 1 aangeroepen (`page === 1 && ...`-gate in `searchByText`) -
+  zonder eigen paginering is alles voorbij de 25e match van zo'n
+  categorie permanent en onopgemerkt onbereikbaar. Geen hypothetisch
+  scenario: elders in dit document staat al vastgelegd dat "schoener" 42
+  scheepswrakken oplevert - 17 daarvan zouden dus nu al buiten bereik
+  vallen zodra de aangekondigde scheepstype-tekstzoekfunctie gebouwd
+  wordt. **Bewust uitgesteld naar v0.5.1 Beta** (zelfde advies als de
+  reviewer): een correcte fix vraagt paginering per scope (server +
+  client, zie `hooks/useSearchState.ts`'s `loadMore()`) - een grotere,
+  eigen architecturale wijziging, geen kleine aanpassing zoals de overige
+  punten uit deze review.
+- **P2: inconsistente samenvoegsleutel tussen de eerste pagina
+  (`item.sourceUrl || monumentNature:monumentNumber` in
+  `rce-client.ts`) en `loadMore()` (`item.monumentNumber ?? item.id` in
+  `hooks/useSearchState.ts`).** `monumentNumber` is niet globaal uniek
+  (bv. een MASS-scheepswrak-ID kan botsen met een rijksmonumentnummer) -
+  een latere `loadMore()`-pagina zou zo stilzwijgend een ongerelateerd
+  eerder resultaat kunnen overschrijven. Voorstel: één gedeelde
+  `resultIdentity(item)`-helper.
+- **P2: `loadMore()` faalt stil.** Bij een fout doet `loadMore()` alleen
+  `setHasMore(false)` - de "laad meer"-knop verdwijnt zonder foutmelding
+  of retry-optie, niet te onderscheiden van "alle resultaten geladen".
