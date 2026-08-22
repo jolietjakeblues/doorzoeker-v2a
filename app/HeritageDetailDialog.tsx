@@ -37,8 +37,12 @@ export function HeritageDetailDialog({
   onSearch,
   onConceptSearch,
 }: HeritageDetailDialogProps) {
-  const { complexMembers, ligtIn } = enrichment;
+  const { complexMembers, ligtIn, omschrijvingOnderwerp } = enrichment;
   const ligtInLoaded = ligtIn && ligtIn.monumentNumber === selected.monumentNumber ? ligtIn : undefined;
+  const omschrijvingOnderwerpLoaded =
+    omschrijvingOnderwerp && omschrijvingOnderwerp.choUri === selected.linkedDataUrl
+      ? omschrijvingOnderwerp
+      : undefined;
   const archeologischeContextState: ArcheologischeContextState =
     archeologischeContext.state.status !== "idle" &&
     archeologischeContext.state.monumentNumber !== selected.monumentNumber
@@ -157,6 +161,7 @@ export function HeritageDetailDialog({
           <dl>
             <HeritageDetailFacts
               item={selected}
+              omschrijvingOnderwerpConcepten={omschrijvingOnderwerpLoaded?.concepten}
               onConceptSearch={(concept, field) =>
                 void onConceptSearch(concept, field)
               }
