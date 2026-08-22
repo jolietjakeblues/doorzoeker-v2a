@@ -37,12 +37,22 @@ export function HeritageDetailDialog({
   onSearch,
   onConceptSearch,
 }: HeritageDetailDialogProps) {
-  const { complexMembers, ligtIn, omschrijvingOnderwerp } = enrichment;
+  const { complexMembers, ligtIn, omschrijvingOnderwerp, werelderfgoedGeometrie } = enrichment;
   const ligtInLoaded = ligtIn && ligtIn.monumentNumber === selected.monumentNumber ? ligtIn : undefined;
   const omschrijvingOnderwerpLoaded =
     omschrijvingOnderwerp && omschrijvingOnderwerp.choUri === selected.linkedDataUrl
       ? omschrijvingOnderwerp
       : undefined;
+  // selected.wkt is al gevuld als dit item via tekstzoeken binnenkwam - dan
+  // is er niets lazy geladen en valt dit terug op selected zelf.
+  const werelderfgoedGeometrieLoaded =
+    werelderfgoedGeometrie && werelderfgoedGeometrie.choUri === selected.linkedDataUrl
+      ? werelderfgoedGeometrie
+      : undefined;
+  const selectedWithGeometry =
+    selected.objectType === "Werelderfgoed" && werelderfgoedGeometrieLoaded?.wkt
+      ? { ...selected, wkt: werelderfgoedGeometrieLoaded.wkt }
+      : selected;
   const archeologischeContextState: ArcheologischeContextState =
     archeologischeContext.state.status !== "idle" &&
     archeologischeContext.state.monumentNumber !== selected.monumentNumber
@@ -155,7 +165,7 @@ export function HeritageDetailDialog({
             </div>
           ) : selected.lat && selected.lng ? (
             <div className="detail-map">
-              <HeritageMap items={[selected]} onSelect={() => {}} compact />
+              <HeritageMap items={[selectedWithGeometry]} onSelect={() => {}} compact />
             </div>
           ) : null}
           <dl>
