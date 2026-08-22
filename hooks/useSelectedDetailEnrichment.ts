@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchComplexMembers, fetchLigtIn, fetchOmschrijvingOnderwerp, fetchOnderzoeksgebiedVerrijking, fetchVondstlocatieInhoud, searchByFunctieConcept } from "@/lib/rce-client";
+import { fetchComplexMembers, fetchLigtIn, fetchOmschrijvingOnderwerp, fetchOnderzoeksgebiedVerrijking, fetchVondstlocatieInhoud, fetchWerelderfgoedGeometrie, searchByFunctieConcept } from "@/lib/rce-client";
 import type { ComplexMember, GezichtLidmaatschap, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, VondstlocatieInhoud, WerelderfgoedLidmaatschap } from "@/lib/rce";
 import { pickVergelijkbareRijksmonumenten, toItem, type Item } from "@/lib/heritage-view-model";
 
@@ -18,6 +18,7 @@ export function useSelectedDetailEnrichment(selected: Item | null) {
   const [vergelijkbareRijksmonumenten, setVergelijkbareRijksmonumenten] = useState<{ conceptUri: string; conceptLabel: string; items: Item[]; error?: boolean } | null>(null);
   const [ligtIn, setLigtIn] = useState<{ monumentNumber: string; gezicht: GezichtLidmaatschap[]; werelderfgoed: WerelderfgoedLidmaatschap[]; error?: boolean } | null>(null);
   const [omschrijvingOnderwerp, setOmschrijvingOnderwerp] = useState<{ choUri: string; concepten: { uri: string; label: string; bron: string }[]; error?: boolean } | null>(null);
+  const [werelderfgoedGeometrie, setWerelderfgoedGeometrie] = useState<{ choUri: string; wkt?: string; error?: boolean } | null>(null);
 
   // `error: true` houdt een mislukte aanvraag onderscheidbaar van een echt
   // lege-maar-geldige respons (bv. een complex zonder leden) - zonder dit
@@ -88,5 +89,19 @@ export function useSelectedDetailEnrichment(selected: Item | null) {
     return () => controller.abort();
   }, [selected]);
 
-  return { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten, ligtIn, omschrijvingOnderwerp };
+  useEffect(() => {
+    // Als selected.wkt al gevuld is (het item kwam via tekstzoeken binnen,
+    // niet via browse=werelderfgoed) is er niets te halen - zie de
+    // toelichting bij browseRceObjects's werelderfgoed-tak (lib/server/
+    // rce-adapter.ts) voor waarom browse-resultaten geen wkt meesturen.
+    if (selected?.objectType !== "Werelderfgoed" || !selected.linkedDataUrl || selected.wkt) return;
+    const choUri = selected.linkedDataUrl;
+    const controller = new AbortController();
+    fetchWerelderfgoedGeometrie(choUri, controller.signal)
+      .then((wkt) => { if (!controller.signal.aborted) setWerelderfgoedGeometrie({ choUri, wkt }); })
+      .catch(() => { if (!controller.signal.aborted) setWerelderfgoedGeometrie({ choUri, error: true }); });
+    return () => controller.abort();
+  }, [selected]);
+
+  return { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten, ligtIn, omschrijvingOnderwerp, werelderfgoedGeometrie };
 }
