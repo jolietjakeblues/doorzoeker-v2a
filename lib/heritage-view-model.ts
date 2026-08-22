@@ -97,7 +97,6 @@ export type Item = {
   inProceduredatumGezicht?: string;
   begrenzingsdatumGezicht?: string;
   intrekkingsdatumGezicht?: string;
-  omschrijvingOnderwerpConcepten?: { uri: string; label: string; bron: string }[];
   scheepstype?: string;
   omschrijvingHtml?: string;
   ontdekt?: string;
@@ -541,7 +540,6 @@ export function toItem(record: RceMonument): Item {
     inProceduredatumGezicht: record.inProceduredatumGezicht,
     begrenzingsdatumGezicht: record.begrenzingsdatumGezicht,
     intrekkingsdatumGezicht: record.intrekkingsdatumGezicht,
-    omschrijvingOnderwerpConcepten: record.omschrijvingOnderwerpConcepten,
     scheepstype: record.scheepstype,
     omschrijvingHtml: record.omschrijvingHtml,
     ontdekt: record.ontdekt,

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { boundingBoxWktLiteral, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeContextExacteQuery, buildArcheologischeContextKandidatenQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildBouwkundigeStaatConceptQuery, buildOnderwerpTermSuggestQuery, buildRijksmonumentGeometrieQuery, buildStijlConceptQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtLidmaatschapQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildGrondspoorTypeConceptQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMonumentTypeConceptQuery, buildMspIndicatieQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceChoNumberQuery, buildRceDetailsQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceParcelsQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVerwervingConceptQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedLidmaatschapQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, mergeVondstlocatieInhoud, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischeContextKandidaten, parseArcheologischeContextResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseOnderwerpTermSuggestResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtLidmaatschapResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseRijksmonumentGeometrieResult, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedLidmaatschapResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS, VONDSTLOCATIE_INHOUD_KLASSEN, wktToLatLng } from "../lib/rce.ts";
+import { boundingBoxWktLiteral, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeContextExacteQuery, buildArcheologischeContextKandidatenQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildBouwkundigeStaatConceptQuery, buildOnderwerpTermSuggestQuery, buildRijksmonumentGeometrieQuery, buildStijlConceptQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtLidmaatschapQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildGrondspoorTypeConceptQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMonumentTypeConceptQuery, buildMspIndicatieQuery, buildOmschrijvingOnderwerpQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceChoNumberQuery, buildRceDetailsQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceParcelsQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVerwervingConceptQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedLidmaatschapQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, mergeVondstlocatieInhoud, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischeContextKandidaten, parseArcheologischeContextResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseOnderwerpTermSuggestResults, parseOmschrijvingOnderwerpResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtLidmaatschapResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseRijksmonumentGeometrieResult, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedLidmaatschapResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS, VONDSTLOCATIE_INHOUD_KLASSEN, wktToLatLng } from "../lib/rce.ts";
 import { buildArchaeologyBrowseQuery, buildRijksmonumentenBrowseQuery, parseArchaeologyBrowseNumbers, parseRijksmonumentenBrowseNumbers } from "../lib/rce.ts";
 import { buildFunctieConceptQuery, buildTermUsageQuery, parseFacetResults, parseTermUsageResults } from "../lib/rce.ts";
 
@@ -20,7 +20,7 @@ test("parses rich SPARQL results", () => {
   // the parenthesis. A stricter regex silently dropped lat/lng for every
   // result, which emptied the map without ever failing a request.
   const document = { results: { bindings: [{ cho: { value: "rm:38342" }, choi: { value: "38342" }, rmnr: { value: "36046" }, functie: { value: "Woonhuis(K)" }, omschrijving: { value: "Pand met 17e eeuwse lijstgevel." }, monumentaard: { value: "onroerend gebouwd" }, volledigAdres: { value: "Brigittenstraat 18" }, postcode: { value: "3512KM" }, woonplaats: { value: "Utrecht" }, wkt: { value: "Point (5.1267842049703 52.088895166661)" }, inschrijving: { value: "1967-06-20" } }] } };
-  assert.deepEqual(parseSparqlResults(document), [{ choNumber: "38342", monumentNumber: "36046", registrationDate: "1967-06-20", street: "", houseNumber: "", postalCode: "3512KM", sourceUrl: "rm:38342", name: undefined, functionName: "Woonhuis(K)", originalFunctionNames: [], currentFunctionNames: [], typeNames: [], legalStatus: "rijksmonument", description: "Pand met 17e eeuwse lijstgevel.", omschrijvingOnderwerpConcepten: undefined, monumentNature: "onroerend gebouwd", monumentAardConceptUri: undefined, fullAddress: "Brigittenstraat 18", place: "Utrecht", municipality: undefined, provinceCode: undefined, lng: 5.1267842049703, lat: 52.088895166661, wkt: "Point (5.1267842049703 52.088895166661)", stijlEnCultuur: undefined, stijlEnCultuurConceptUri: undefined, bouwkundigeStaat: undefined, bouwkundigeStaatConceptUri: undefined }]);
+  assert.deepEqual(parseSparqlResults(document), [{ choNumber: "38342", monumentNumber: "36046", registrationDate: "1967-06-20", street: "", houseNumber: "", postalCode: "3512KM", sourceUrl: "rm:38342", name: undefined, functionName: "Woonhuis(K)", originalFunctionNames: [], currentFunctionNames: [], typeNames: [], legalStatus: "rijksmonument", description: "Pand met 17e eeuwse lijstgevel.", monumentNature: "onroerend gebouwd", monumentAardConceptUri: undefined, fullAddress: "Brigittenstraat 18", place: "Utrecht", municipality: undefined, provinceCode: undefined, lng: 5.1267842049703, lat: 52.088895166661, wkt: "Point (5.1267842049703 52.088895166661)", stijlEnCultuur: undefined, stijlEnCultuurConceptUri: undefined, bouwkundigeStaat: undefined, bouwkundigeStaatConceptUri: undefined }]);
 });
 
 test("captures the monumentaard concept-URI alongside its label", () => {
@@ -283,41 +283,38 @@ test("leaves stijl en cultuur / bouwkundige staat undefined when a Rijksmonument
   assert.equal(monument.bouwkundigeStaat, undefined);
 });
 
-test("unions the archiefdagen- en OmschrijvingenOnderwerp-graphs onto de formele omschrijving", () => {
-  // ceox:heeftOmschrijvingOnderwerp koppelt de formele omschrijving aan
-  // CHT-, ABR- en RN-conceptlabels. Twee losse graphs (empirisch: rmnr
-  // 395952 heeft 48 losse concepten via de union, tegen 14 alleen uit
-  // archiefdagen), dus UNION i.p.v. één GRAPH-blok.
+test("de batch-detailquery bevat geen ceox:heeftOmschrijvingOnderwerp-join meer (regressie 22-08-2026: die UNION+GROUP_CONCAT, gebatcht over tot 25 rijksmonumenten tegelijk, maakte gewoon zoeken traag/timeout voor rijk beschreven records zoals kerken - zie buildOmschrijvingOnderwerpQuery voor de lazy, per-record vervanger)", () => {
   const query = buildRceDetailsQuery(["36046"]);
+  assert.doesNotMatch(query, /heeftOmschrijvingOnderwerp/);
+  assert.doesNotMatch(query, /graph\/archiefdagen/);
+  assert.doesNotMatch(query, /graph\/OmschrijvingenOnderwerp/);
+  assert.doesNotMatch(query, /UNION/);
+});
+
+test("bouwt een losstaande, niet-gebatchte onderwerpquery op één CHO-URI", () => {
+  const query = buildOmschrijvingOnderwerpQuery("https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/rijksmonument/38342");
+  assert.match(query, /<https:\/\/linkeddata\.cultureelerfgoed\.nl\/cho-kennis\/id\/rijksmonument\/38342> ceo:heeftOmschrijving \?omschrijvingNode/);
   assert.match(query, /GRAPH <https:\/\/linkeddata\.cultureelerfgoed\.nl\/graph\/archiefdagen>/);
   assert.match(query, /GRAPH <https:\/\/linkeddata\.cultureelerfgoed\.nl\/graph\/OmschrijvingenOnderwerp>/);
   assert.match(query, /UNION/);
-  assert.match(query, /\?omschrijvingNode ceox:heeftOmschrijvingOnderwerp \?onderwerpConceptValue/);
-  assert.match(query, /\?onderwerpConceptValue skos:prefLabel \?onderwerpLabelValue/);
+  assert.doesNotMatch(query, /VALUES/);
 });
 
-test("parses one or more onderwerpconcepten from the GROUP_CONCAT'ed URI~~label pairs, met bron uit het URI-pad", () => {
-  const document = { results: { bindings: [{
-    rmnr: { value: "36046" },
-    onderwerpConcepten: {
-      value:
-        "https://data.cultureelerfgoed.nl/term/id/abr/1~~kanaal||" +
-        "https://data.cultureelerfgoed.nl/term/id/cht/2~~sluis||" +
-        "https://data.cultureelerfgoed.nl/term/id/rn/3~~vuurtoren",
-    },
-  }] } };
-  const [monument] = parseSparqlResults(document);
-  assert.deepEqual(monument.omschrijvingOnderwerpConcepten, [
+test("parses onderwerpconcepten uit de losstaande query, met bron uit het URI-pad", () => {
+  const document = { results: { bindings: [
+    { onderwerpConceptValue: { value: "https://data.cultureelerfgoed.nl/term/id/abr/1" }, onderwerpLabelValue: { value: "kanaal" } },
+    { onderwerpConceptValue: { value: "https://data.cultureelerfgoed.nl/term/id/cht/2" }, onderwerpLabelValue: { value: "sluis" } },
+    { onderwerpConceptValue: { value: "https://data.cultureelerfgoed.nl/term/id/rn/3" }, onderwerpLabelValue: { value: "vuurtoren" } },
+  ] } };
+  assert.deepEqual(parseOmschrijvingOnderwerpResults(document), [
     { uri: "https://data.cultureelerfgoed.nl/term/id/abr/1", label: "kanaal", bron: "ABR" },
     { uri: "https://data.cultureelerfgoed.nl/term/id/cht/2", label: "sluis", bron: "CHT" },
     { uri: "https://data.cultureelerfgoed.nl/term/id/rn/3", label: "vuurtoren", bron: "RN" },
   ]);
 });
 
-test("leaves onderwerpconcepten undefined when a Rijksmonument has none", () => {
-  const document = { results: { bindings: [{ rmnr: { value: "36046" } }] } };
-  const [monument] = parseSparqlResults(document);
-  assert.equal(monument.omschrijvingOnderwerpConcepten, undefined);
+test("geeft een lege lijst bij geen bindings", () => {
+  assert.deepEqual(parseOmschrijvingOnderwerpResults({ results: { bindings: [] } }), []);
 });
 
 test("looks up a Rijksmonument by CHO-nummer, not just rijksmonumentnummer (P1: 71286 gaf 0 resultaten)", () => {

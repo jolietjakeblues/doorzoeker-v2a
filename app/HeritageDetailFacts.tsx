@@ -31,10 +31,14 @@ function Status({ item }: { item: Item }) {
 
 export function HeritageDetailFacts({
   item,
+  omschrijvingOnderwerpConcepten,
   onConceptSearch,
   onObjectSearch,
 }: {
   item: Item;
+  // Lazy geladen (zie useSelectedDetailEnrichment.ts) - undefined zolang de
+  // aanroep nog loopt of nog niet gestart is, niet per se "geen concepten".
+  omschrijvingOnderwerpConcepten?: { uri: string; label: string; bron: string }[];
   onConceptSearch: (concept: Concept, field?: ConceptField) => void;
   onObjectSearch: (number: string) => void;
 }) {
@@ -367,11 +371,11 @@ export function HeritageDetailFacts({
           <dd>{dating}</dd>
         </div>
       ) : null}
-      {item.omschrijvingOnderwerpConcepten?.length ? (
+      {omschrijvingOnderwerpConcepten?.length ? (
         <div>
           <dt>Onderwerp (uit omschrijving)</dt>
           <dd>
-            {item.omschrijvingOnderwerpConcepten
+            {omschrijvingOnderwerpConcepten
               .map((concept) => (concept.bron ? `${concept.label} (${concept.bron})` : concept.label))
               .join(", ")}
           </dd>
