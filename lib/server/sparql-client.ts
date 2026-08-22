@@ -30,21 +30,44 @@ async function fetchSparqlOnce(endpoint: string, query: string, signal?: AbortSi
 }
 
 // Gedeeld door elke adapter die tegen een RCE SPARQL-dienst praat (monumenten,
-// thesauri, Referentienetwerk, ...): één kans op een transiente 5xx wordt één
-// keer herkanst voordat we het opgeven; een echte clientfout (4xx) wordt niet
-// herkanst. `endpoint` is optioneel en valt terug op de hoofddienst
-// (rce/cho) - alleen de Referentienetwerk-adapter geeft een ander endpoint
-// mee, want dat is een fysiek apart SPARQL-endpoint. `timeoutMs` is optioneel
-// en valt terug op de standaard 20s - alleen de archeologische-contextroute
-// (017) geeft hier expliciet iets langers voor mee, gemeten op ~15,4s voor de
-// bbox-voorfilterstap alleen al. `method` is optioneel en valt terug op GET.
+// thesauri, Referentienetwerk, ...): een transiente 5xx wordt herkanst; een
+// echte clientfout (4xx) wordt niet herkanst. `endpoint` is optioneel en
+// valt terug op de hoofddienst (rce/cho) - alleen de Referentienetwerk-
+// adapter geeft een ander endpoint mee, want dat is een fysiek apart
+// SPARQL-endpoint. `timeoutMs` is optioneel en valt terug op de standaard
+// 20s - alleen de archeologische-contextroute (017) geeft hier expliciet
+// iets langers voor mee, gemeten op ~15,4s voor de bbox-voorfilterstap
+// alleen al. `method` is optioneel en valt terug op GET.
+//
+// Tot 3 pogingen (was 1 herkansing = 2 pogingen totaal): live geconstateerd
+// (22-08-2026, wrangler-logs tijdens het onderzoeken van een gemelde
+// "Scheepswrak kon niet worden geladen"-melding voor "Utrecht" - die term
+// heeft wél degelijk treffers, zie MASS-ID's 1189/1263/233/3080/445/454/553)
+// dat zowel rce/cho als rce/mass soms twee 503's ná elkaar geven binnen
+// hetzelfde verzoek, dus één herkansing was niet altijd genoeg. Elke
+// individuele poging is snel (100-350ms in dezelfde logs) zodra de dienst
+// wél antwoordt, dus een korte, oplopende pauze tussen pogingen kost
+// nauwelijks tijd t.o.v. de 20s-timeoutbudget.
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 300;
+
+function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) { reject(signal.reason); return; }
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener("abort", () => { clearTimeout(timer); reject(signal.reason); }, { once: true });
+  });
+}
+
 export async function fetchSparql(query: string, signal?: AbortSignal, endpoint: string = RCE_CHO_ENDPOINT, timeoutMs?: number, method?: "GET" | "POST") {
-  try {
-    return await fetchSparqlOnce(endpoint, query, signal, timeoutMs, method);
-  } catch (error) {
-    const status = error instanceof Error ? error.cause : undefined;
-    if (typeof status !== "number" || status < 500) throw error;
-    return fetchSparqlOnce(endpoint, query, signal, timeoutMs, method);
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fetchSparqlOnce(endpoint, query, signal, timeoutMs, method);
+    } catch (error) {
+      const status = error instanceof Error ? error.cause : undefined;
+      if (typeof status !== "number" || status < 500 || attempt >= MAX_ATTEMPTS) throw error;
+      await delay(RETRY_DELAY_MS * attempt, signal);
+    }
   }
 }
 
