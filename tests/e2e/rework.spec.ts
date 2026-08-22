@@ -846,6 +846,32 @@ test("'Onderdeel van Werelderfgoed' is doorklikbaar (006-werelderfgoed-ligt-in)"
   await expect(page).toHaveURL(/q=Molens\+bij\+Kinderdijk-Elshout/);
 });
 
+test("'Onderwerp (uit omschrijving)' wordt lazy opgehaald per record, niet meer in de gewone zoekresultaten (regressie 22-08-2026: de oude, gebatchte variant maakte gewoon zoeken traag/timeout)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: { page: 1, hasMore: false, results: [records[0]] },
+  }));
+  let omschrijvingOnderwerpCalls = 0;
+  await page.route("**/api/rce/omschrijving-onderwerp**", (route) => {
+    omschrijvingOnderwerpCalls += 1;
+    return route.fulfill({
+      json: { concepten: [
+        { uri: "https://data.cultureelerfgoed.nl/term/id/cht/1", label: "kanalen", bron: "CHT" },
+        { uri: "https://data.cultureelerfgoed.nl/term/id/abr/2", label: "terra sigillata", bron: "ABR" },
+      ] },
+    });
+  });
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("architect");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  // De zoekresultaten zelf mogen geen aanroep naar de nieuwe route maken -
+  // pas het openen van een detail triggert de lazy-fetch.
+  expect(omschrijvingOnderwerpCalls).toBe(0);
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("kanalen (CHT), terra sigillata (ABR)")).toBeVisible();
+  expect(omschrijvingOnderwerpCalls).toBe(1);
+});
+
 test("'Archeologische context'-knop toont een waarschuwing, laadstatus en doorklikbaar resultaat (017-archeologische-context-onderzoeksgebied)", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", (route) => route.fulfill({

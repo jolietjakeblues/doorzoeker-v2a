@@ -154,10 +154,6 @@ export function parseSparqlResults(document: unknown): RceMonument[] {
       typeNames: binding.typen?.value?.split("||").filter(Boolean) ?? [],
       legalStatus: binding.juridischeStatus?.value ?? "rijksmonument",
       description: binding.omschrijving?.value,
-      omschrijvingOnderwerpConcepten: binding.onderwerpConcepten?.value?.split("||").flatMap((value) => {
-        const [uri, label] = value.split("~~");
-        return uri && label ? [{ uri, label, bron: onderwerpConceptBron(uri) }] : [];
-      }),
       monumentNature: binding.monumentaard?.value,
       monumentAardConceptUri: binding.monumentaardConcept?.value,
       fullAddress: binding.volledigAdres?.value,
@@ -195,29 +191,28 @@ export function parseParcelResults(document: unknown): RceParcel[] {
 // (VALUES op ?choi): zelfde velden, alleen andere identifier om op te matchen.
 // Eén WHERE-body zodat een toekomstig extra veld niet per ongeluk alleen bij
 // de ene variant terechtkomt.
-// De ceox:heeftOmschrijvingOnderwerp-join (onderaan de WHERE) staat bewust
-// als los, zusterblok op het hoogste WHERE-niveau, niet genest in de
-// heeftOmschrijving-OPTIONAL hierboven: een GRAPH-blok genest in een
-// OPTIONAL die zelf weer in de buitenste GRAPH <INSTANCES_GRAPH>-blok zit,
-// gaf op dit endpoint stil 0 resultaten terug (empirisch getest tegen
-// rijksmonumentnummer 395952, dat wel degelijk 14 onderwerpconcepten
-// heeft) - dezelfde soort endpoint-eigenaardigheid als de
-// geof:sfWithin-in-UNION-quirk verderop bij buildGezichtLidmaatschapQuery.
-// Bevraagt bewust TWEE graphs via UNION, niet alleen archiefdagen: de apart
-// bestaande OmschrijvingenOnderwerp-graph is veel rijker (empirisch:
-// rmnr 395952 heeft 48 losse concepten via de union, tegen 14 alleen uit
-// archiefdagen) en overlapt met archiefdagen zonder er een strikte deel-
-// verzameling van te zijn - dus samenvoegen, niet vervangen.
+// Bevat GEEN onderwerpconcepten (ceox:heeftOmschrijvingOnderwerp) meer - die
+// UNION-join over archiefdagen/OmschrijvingenOnderwerp met GROUP_CONCAT zat
+// hier eerder wél in, gebatcht over tot 25 rijksmonumenten tegelijk (VALUES).
+// Live productieregressie gevonden (22-08-2026, gemeld door de eigenaar:
+// "gewoon zoeken werkt niet meer"): voor een rijk beschreven record (bv. een
+// kerk, tot 195 CHT-begrippen) maakt die combinatie van UNION over een
+// 142.720-triple-graph plus GROUP_CONCAT, gebatcht over 25 records
+// tegelijk, deze query onevenredig duur - empirisch een timeout op deze
+// query, terwijl exact dezelfde query zonder de VALUES-batch (één record)
+// gewoon snel is. Zie buildOmschrijvingOnderwerpQuery hieronder: die haalt
+// dit nu lazy op, één record tegelijk, pas wanneer een gebruiker een
+// Rijksmonument-detail daadwerkelijk opent (zelfde patroon als
+// complexMembers/ligtIn/onderzoeksgebiedVerrijking in
+// useSelectedDetailEnrichment.ts).
 function buildRceDetailsQueryBody(bindVariable: "rmnr" | "choi", values: string) {
   return `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
-PREFIX ceox: <${CEOX}>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX geo: <http://www.opengis.net/ont/geosparql#>
 SELECT ?cho ?choi ?rmnr
   (SAMPLE(STR(?naamValue)) AS ?naam)
   (SAMPLE(STR(?functieValue)) AS ?functie)
   (SAMPLE(STR(?omschrijvingValue)) AS ?omschrijving)
-  (GROUP_CONCAT(DISTINCT CONCAT(STR(?onderwerpConceptValue), "~~", STR(?onderwerpLabelValue)); separator="||") AS ?onderwerpConcepten)
   (SAMPLE(STR(?monumentaardValue)) AS ?monumentaard)
   (SAMPLE(STR(?monumentaardConceptValue)) AS ?monumentaardConcept)
   (SAMPLE(STR(?adresValue)) AS ?volledigAdres)
@@ -274,15 +269,41 @@ WHERE {
     ?bouwkundigeStaatConceptValue skos:prefLabel ?bouwkundigeStaatValue .
   }
  }
- OPTIONAL {
-   { GRAPH <${ARCHIEFDAGEN_GRAPH}> { ?omschrijvingNode ceox:heeftOmschrijvingOnderwerp ?onderwerpConceptValue . } }
-   UNION
-   { GRAPH <${OMSCHRIJVINGEN_ONDERWERP_GRAPH}> { ?omschrijvingNode ceox:heeftOmschrijvingOnderwerp ?onderwerpConceptValue . } }
-   ?onderwerpConceptValue skos:prefLabel ?onderwerpLabelValue .
- }
 }
 GROUP BY ?cho ?choi ?rmnr
 LIMIT 100`;
+}
+
+// Lazy, één record tegelijk (zie de toelichting bij buildRceDetailsQueryBody
+// hierboven voor waarom dit niet meer in de batch-detailquery zit). Geen
+// VALUES/GROUP_CONCAT nodig: met een vaste ?cho-URI is er maar één
+// (formele) omschrijvingNode, dus de UNION-join blijft per definitie klein.
+export function buildOmschrijvingOnderwerpQuery(choUri: string) {
+  return `PREFIX ceo: <${CEO}>
+PREFIX ceox: <${CEOX}>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+SELECT DISTINCT ?onderwerpConceptValue ?onderwerpLabelValue WHERE {
+  GRAPH <${INSTANCES_GRAPH}> {
+    <${choUri}> ceo:heeftOmschrijving ?omschrijvingNode .
+    ?omschrijvingNode ceo:formeelStandpunt true .
+  }
+  { GRAPH <${ARCHIEFDAGEN_GRAPH}> { ?omschrijvingNode ceox:heeftOmschrijvingOnderwerp ?onderwerpConceptValue . } }
+  UNION
+  { GRAPH <${OMSCHRIJVINGEN_ONDERWERP_GRAPH}> { ?omschrijvingNode ceox:heeftOmschrijvingOnderwerp ?onderwerpConceptValue . } }
+  ?onderwerpConceptValue skos:prefLabel ?onderwerpLabelValue .
+  FILTER(LANG(?onderwerpLabelValue) = "nl")
+}
+LIMIT 500`;
+}
+
+export function parseOmschrijvingOnderwerpResults(document: unknown): { uri: string; label: string; bron: string }[] {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  if (!Array.isArray(bindings)) return [];
+  return bindings.flatMap((binding) => {
+    const uri = binding.onderwerpConceptValue?.value;
+    const label = binding.onderwerpLabelValue?.value;
+    return uri && label ? [{ uri, label, bron: onderwerpConceptBron(uri) }] : [];
+  });
 }
 
 export function buildRceDetailsQuery(monumentNumbers: string[]) {
