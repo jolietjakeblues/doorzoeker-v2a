@@ -7,6 +7,8 @@ type StartContentProps = {
   verrasMeItem: Item | null;
   verrasMeLoading: boolean;
   onVerrasMe: () => void;
+  voorbeeldLoading: boolean;
+  onVoorbeeld: () => void;
 };
 
 function HeritageTile({ item, onOpen }: { item: Item; onOpen: () => void }) {
@@ -52,7 +54,7 @@ function HeritageTile({ item, onOpen }: { item: Item; onOpen: () => void }) {
   );
 }
 
-export function StartContent({ item, onOpen, verrasMeItem, verrasMeLoading, onVerrasMe }: StartContentProps) {
+export function StartContent({ item, onOpen, verrasMeItem, verrasMeLoading, onVerrasMe, voorbeeldLoading, onVoorbeeld }: StartContentProps) {
   return (
     <>
       {item && (
@@ -74,6 +76,14 @@ export function StartContent({ item, onOpen, verrasMeItem, verrasMeLoading, onVe
             : verrasMeItem
               ? "Verras me nog een keer"
               : "Verras me"}
+        </button>
+        <button
+          type="button"
+          className="verras-me-button"
+          onClick={onVoorbeeld}
+          disabled={voorbeeldLoading}
+        >
+          {voorbeeldLoading ? "Voorbeeld laden…" : "Zie de kracht van Doorzoeker"}
         </button>
         {verrasMeItem && <HeritageTile item={verrasMeItem} onOpen={() => onOpen(verrasMeItem)} />}
       </section>

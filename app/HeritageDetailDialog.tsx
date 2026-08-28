@@ -11,7 +11,7 @@ import {
   typeBadge,
   type Item,
 } from "@/lib/heritage-view-model";
-import { wktToLatLng } from "@/lib/rce";
+import { wktToLatLng, type ArcheologischeContext } from "@/lib/rce";
 import { HeritageDetailFacts } from "./HeritageDetailFacts";
 import { HeritageMap } from "./HeritageMap";
 import { HeritageRelationSections } from "./HeritageRelationSections";
@@ -23,6 +23,7 @@ type HeritageDetailDialogProps = {
   dialogRef: RefObject<HTMLElement | null>;
   enrichment: DetailEnrichment;
   archeologischeContext: ReturnType<typeof useArcheologischeContext>;
+  voorbeeldGebieden: { monumentNumber: string; gebieden: ArcheologischeContext[] } | null;
   onClose: () => void;
   onSearch: ReturnType<typeof useSearchState>["executeSearch"];
   onConceptSearch: ReturnType<typeof useSearchState>["executeConceptSearch"];
@@ -33,6 +34,7 @@ export function HeritageDetailDialog({
   dialogRef: detailDialogRef,
   enrichment,
   archeologischeContext,
+  voorbeeldGebieden,
   onClose,
   onSearch,
   onConceptSearch,
@@ -53,11 +55,17 @@ export function HeritageDetailDialog({
     selected.objectType === "Werelderfgoed" && werelderfgoedGeometrieLoaded?.wkt
       ? { ...selected, wkt: werelderfgoedGeometrieLoaded.wkt }
       : selected;
+  // Voor het vaste showcase-monument (zie useVoorbeeldMonument.ts) is de
+  // archeologische context al vooraf opgehaald, samen met het monument zelf
+  // - dan direct "done" tonen, geen knop/laadstatus nodig. Voor elk ander
+  // monument blijft het bestaande, knop-op-klik-gedreven gedrag ongewijzigd.
   const archeologischeContextState: ArcheologischeContextState =
-    archeologischeContext.state.status !== "idle" &&
-    archeologischeContext.state.monumentNumber !== selected.monumentNumber
-      ? { status: "idle" }
-      : archeologischeContext.state;
+    voorbeeldGebieden && voorbeeldGebieden.monumentNumber === selected.monumentNumber
+      ? { status: "done", monumentNumber: selected.monumentNumber, gebieden: voorbeeldGebieden.gebieden }
+      : archeologischeContext.state.status !== "idle" &&
+        archeologischeContext.state.monumentNumber !== selected.monumentNumber
+        ? { status: "idle" }
+        : archeologischeContext.state;
   const allLinkedConcepts = linkedConcepts(selected);
   const selectedIdentifier = primaryIdentifier(selected);
   const selectedIdentifierRepeatsTitle = Boolean(
