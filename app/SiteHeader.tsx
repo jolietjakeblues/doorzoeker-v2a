@@ -7,6 +7,7 @@ export function SiteHeader({ onReset }: { onReset: () => void }) {
       </button>
       <div className="header-links">
         <p><i aria-hidden="true" />Live gekoppeld aan RCE Linked Data <a href="https://linkeddata.cultureelerfgoed.nl/rce/cho" target="_blank" rel="noreferrer">Bronverantwoording</a></p>
+        <a className="achtergrond-link" href="/vraag">Stel een vraag</a>
         <a className="achtergrond-link" href="/achtergrond.html">Achtergrond</a>
       </div>
     </header>
