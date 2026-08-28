@@ -1592,6 +1592,11 @@ h2 {
   position: sticky;
   top: 0;
 }
+.vraag-resultaten-tabel a {
+  color: var(--brand-teal);
+  font-weight: 700;
+  white-space: nowrap;
+}
 
 .vraag-bron {
   margin-top: 40px;
