@@ -9,6 +9,7 @@ type ResultsToolbarProps = {
   onOpenFilters: () => void;
   onViewChange: (view: "list" | "map") => void;
   onExport: (format: "csv" | "geojson") => void;
+  onReset: () => void;
 };
 
 export function ResultsToolbar({
@@ -22,6 +23,7 @@ export function ResultsToolbar({
   onOpenFilters,
   onViewChange,
   onExport,
+  onReset,
 }: ResultsToolbarProps) {
   return (
     <div className="toolbar">
@@ -51,6 +53,9 @@ export function ResultsToolbar({
         </h2>
       </div>
       <div>
+        <button className="reset" type="button" onClick={onReset}>
+          Wis alle filters
+        </button>
         <button className="mobile-filter" type="button" onClick={onOpenFilters}>
           ☰ Filters
         </button>

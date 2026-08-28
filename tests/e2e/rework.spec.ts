@@ -1007,7 +1007,7 @@ test("'Archeologische context'-knop toont een waarschuwing, laadstatus en doorkl
   await expect(page).toHaveURL(/q=2051204/);
 });
 
-test("'Zie de kracht van Doorzoeker' opent het vaste showcase-monument (14948) direct met archeologische context, geen knopklik nodig (gemeld door de eigenaar, 28-08-2026)", async ({ page }) => {
+test("'Zie de kracht van Doorzoeker' toont het vaste showcase-monument (14948) inline op de pagina, geen popup en geen knopklik nodig voor de archeologische context (gemeld door de eigenaar, 28-08-2026)", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", (route) => route.fulfill({
     json: { page: 1, hasMore: false, results: [{ ...records[0], choNumber: "cho-14948", sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/rijksmonument/59284", monumentNumber: "14948", name: "Sint-Maartenskerk" }] },
@@ -1023,16 +1023,50 @@ test("'Zie de kracht van Doorzoeker' opent het vaste showcase-monument (14948) d
       }],
     },
   }));
+  await page.unroute("**/api/rce/ligt-in**");
+  await page.route("**/api/rce/ligt-in**", (route) => route.fulfill({
+    json: { gezicht: [], werelderfgoed: [{ werelderfgoednummer: "759", naam: "Neder-Germaanse Limes" }] },
+  }));
 
   await page.getByRole("button", { name: "Zie de kracht van Doorzoeker" }).click();
+  // Inline op de pagina, geen dialoog - dat is precies het verschil met
+  // klikken op een gewoon zoekresultaat.
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Sint-Maartenskerk" })).toBeVisible();
+  await expect(page.getByText("Onderdeel van Werelderfgoed:")).toBeVisible();
+  await expect(page.getByText("Neder-Germaanse Limes")).toBeVisible();
+  // De rijkste omschrijving wint (niet zomaar het eerste gebied) en is
+  // direct zichtbaar, geen "Zoek archeologische context"-knop.
+  await expect(page.getByText("Gallo-Romeins Tempelcomplex")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Zoek archeologische context" })).toHaveCount(0);
+
+  // Doorklikken naar het volledige detail opent alsnog het bestaande
+  // detailvenster, met dezelfde, al opgehaalde archeologische context.
+  await page.getByRole("button", { name: "Bekijk het volledige detail" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: "Sint-Maartenskerk" })).toBeVisible();
-  // Direct "gevonden", geen waarschuwing en geen "Zoek archeologische
-  // context"-knop - dat is precies het verschil met de generieke, knop-
-  // gedreven flow hierboven.
   await expect(dialog.getByText("Gallo-Romeins Tempelcomplex")).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Zoek archeologische context" })).toHaveCount(0);
-  await expect(dialog.getByText("kan tot ~20 seconden duren")).toHaveCount(0);
+});
+
+test("'Wis alle filters' staat direct boven de resultatenlijst, geen scroll of geopend filterpaneel nodig (gemeld door de eigenaar, 28-08-2026)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: { page: 1, hasMore: false, results: [records[0]] },
+  }));
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(page.getByRole("heading", { name: /voor .Goirle./ })).toBeVisible();
+
+  // Direct zichtbaar in de resultatenbalk, zonder het (op mobiel verborgen)
+  // filterpaneel te hoeven openen - dat stond voorheen alleen onderaan dat
+  // paneel.
+  const resetButton = page.getByRole("button", { name: "Wis alle filters" }).first();
+  await expect(resetButton).toBeVisible();
+  await resetButton.click();
+  await expect(page.getByRole("combobox", { name: "Zoeken" })).toHaveValue("");
+  await expect(page.getByText("ONTDEKKEN")).toBeVisible();
 });
 
 test("'Archeologische context'-knop toont geen resultaten-melding als er niets overlapt (017-archeologische-context-onderzoeksgebied)", async ({ page }) => {
