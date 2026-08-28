@@ -16,8 +16,8 @@ function withMocks(context, { fetchImpl }) {
   });
 }
 
-function anthropicResponse(text) {
-  return Response.json({ content: [{ type: "text", text }] });
+function anthropicResponse(text, stopReason = "end_turn") {
+  return Response.json({ content: [{ type: "text", text }], stop_reason: stopReason });
 }
 
 function jsonRequest(url, body) {
@@ -57,6 +57,30 @@ test("genereer-sparql: herkanst één keer als de lijstmodus toch een COUNT ople
   const document = await response.json();
   assert.doesNotMatch(document.query, /COUNT/i);
   assert.equal(calls, 2);
+});
+
+test("genereer-sparql: herkanst met meer budget als het antwoord is afgekapt (max_tokens)", async (context) => {
+  let calls = 0;
+  let secondCallMaxTokens;
+  withMocks(context, {
+    fetchImpl: async (_input, init) => {
+      calls += 1;
+      if (calls === 1) {
+        // Live geconstateerd (28-08-2026): een afgekapte respons mist hele
+        // UNION-takken en sluithaken - niet iets wat postprocessing kan
+        // repareren, dus deze mag nooit als `query` teruggegeven worden.
+        return anthropicResponse('SELECT DISTINCT ?rm WHERE { ?rm a ceo:Rijksmonument . FILTER(CONTAINS(LCASE(?fNaam), "kerk"', "max_tokens");
+      }
+      secondCallMaxTokens = JSON.parse(init.body).max_tokens;
+      return anthropicResponse("SELECT DISTINCT ?rm ?nummer WHERE { ?rm a ceo:Rijksmonument . ?rm ceo:rijksmonumentnummer ?nummer . }");
+    },
+  });
+  const response = await genereerSparql(jsonRequest("https://doorzoeker.test/api/vraag/genereer-sparql", { question: "Welke rijksmonumenten staan er in Zeist?", mode: "lijst" }));
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.doesNotMatch(document.query, /CONTAINS\(LCASE\(\?fNaam\), "kerk"$/m);
+  assert.equal(calls, 2);
+  assert.ok(secondCallMaxTokens > 2000, "de herkansing moet met een hoger max_tokens-budget aanroepen");
 });
 
 test("genereer-sparql: 400 bij een te korte vraag", async (context) => {

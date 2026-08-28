@@ -5,16 +5,29 @@
 // van de Doorzoeker-eigenaar is doorontwikkeld). Zie project-memory
 // "ldv-talk-to-your-data-integratie" voor de herkomst.
 //
-// Twee correcties t.o.v. de brontekst, empirisch geverifieerd via de
-// rce-cho MCP op rijksmonument 14948 (Elst, gemeente Overbetuwe) op
-// 28-08-2026:
-// 1. Het geporte gemeentepad (heeftBRKRelatie -> gemeentenaam) gaf voor dit
-//    monument "Elst" terug - dat is de plaatsnaam, niet de gemeente. Het
-//    directe pad heeftGemeente (op de basisregistratierelatie, niet op het
-//    hoofdobject) gaf wel de juiste gemeente ("Overbetuwe").
+// Vier correcties t.o.v. de brontekst, alle empirisch geverifieerd via de
+// rce-cho MCP en/of live productiegebruik op 28-08-2026:
+// 1. Het geporte gemeentepad (heeftBRKRelatie -> gemeentenaam) gaf voor
+//    rijksmonument 14948 (Elst) "Elst" terug - dat is de plaatsnaam, niet
+//    de gemeente. Het directe pad heeftGemeente (op de basisregistratie-
+//    relatie, niet op het hoofdobject) gaf wel de juiste gemeente
+//    ("Overbetuwe").
 // 2. Het rdfs:label van een provincie-/gemeente-URI (OWMS-referentiedata)
 //    staat niet in GRAPH graph:instanties-rce - een labelquery binnen dat
 //    GRAPH-blok geeft stil 0 resultaten.
+// 3. GRAPH graph:instanties-rce werd door Claude vrijwel nooit gebruikt
+//    (de brontekst demonstreert het nergens in een uitgewerkt voorbeeld,
+//    alleen als losse regel) - zonder die restrictie telt een query ook
+//    objecten uit andere graphs mee (67.496 zonder GRAPH tegenover 67.494
+//    mét GRAPH voor een simpele ceo:Rijksmonument-telling). Nu verwerkt
+//    in elk uitgewerkt voorbeeld, niet alleen als regel.
+// 4. Geen enkel geport patroon filterde op de actieve juridische status,
+//    terwijl Doorzoekers eigen, beproefde queries (lib/rce/monuments.ts)
+//    dat overal doen. Zonder dat filter tel je ook vervallen/niet-actieve
+//    rijksmonumenten mee: 63.103 mét statusfilter tegenover 67.494 zonder
+//    - een verschil van ruim 4.300 objecten (~6,5%). Live geraakt via een
+//    productiefout ("RCE SPARQL-service antwoordde met 400" na 115ms -
+//    een afgekapte, niet-gerelateerde LLM-respons legde dit bloot).
 
 export const SPARQL_PREFIXES = `PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
@@ -51,6 +64,13 @@ export const PROVINCIE_NAAM: Record<string, string> = Object.fromEntries(
   PROVINCIES.map((provincie) => [PROVINCIE_BASE + provincie.uriSuffix, provincie.naam]),
 );
 
+export const GRAPH_INSTANTIES_RCE = "https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce";
+
+// Zelfde concept-URI als Doorzoekers eigen, beproefde Rijksmonument-queries
+// (lib/rce/monuments.ts, concepts.ts, enrichment.ts) - een ceo:Rijksmonument
+// zonder deze status is vervallen/niet-actief en hoort niet mee te tellen.
+export const RIJKSMONUMENT_STATUS_URI = "https://data.cultureelerfgoed.nl/term/id/rn/2/b2d9a59a-fe1e-4552-9a05-3c2acddff864";
+
 export const DATAMODEL_RULES = `DATAMODELREGELS RCE CEO
 
 Doel:
@@ -76,10 +96,20 @@ Gebruik nooit:
 
 ALGEMEEN
 
-- Gebruik GRAPH graph:instanties-rce voor CHO-instance-data.
+- VERPLICHT: wrap alle triples over het cultuurhistorisch object zelf
+  (class, identifiers, basisregistratie/gemeente/provincie-URI, naam,
+  functie, type, omschrijving, juridische status) in
+  GRAPH <https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce> { ... }.
+  Zonder deze restrictie tel je ook objecten uit andere graphs mee.
 - Let op: rdfs:label van een provincie- of gemeente-URI (OWMS-referentiedata)
-  staat NIET in GRAPH graph:instanties-rce. Haal zo'n label buiten dat
-  GRAPH-blok op, anders levert de query stil 0 resultaten op.
+  staat NIET in GRAPH graph:instanties-rce. Haal zo'n label BUITEN dat
+  GRAPH-blok op (na de sluitende } ervan), anders levert de query stil 0
+  resultaten op.
+- VERPLICHT bij elke ceo:Rijksmonument-query, ook bij tellingen: filter
+  altijd mee op
+  ?rm ceo:heeftJuridischeStatus <https://data.cultureelerfgoed.nl/term/id/rn/2/b2d9a59a-fe1e-4552-9a05-3c2acddff864> .
+  (de actieve rijksmonumentstatus). Zonder dit filter tel je ook vervallen/
+  niet-actieve monumenten mee.
 - Gebruik alleen bewezen classes en properties uit deze regels.
 - Verzin geen classes.
 - Verzin geen properties.
@@ -233,9 +263,13 @@ PROVINCIE URI'S
 
 RIJKSMONUMENTEN
 
-Basis:
-?rm a ceo:Rijksmonument .
-?rm ceo:rijksmonumentnummer ?nummer .
+Basis (VERPLICHT, ook bij tellingen - de statusfilter en de GRAPH-wrap horen
+hier altijd bij, niet alleen in dit voorbeeld):
+GRAPH <https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce> {
+  ?rm a ceo:Rijksmonument .
+  ?rm ceo:rijksmonumentnummer ?nummer .
+  ?rm ceo:heeftJuridischeStatus <https://data.cultureelerfgoed.nl/term/id/rn/2/b2d9a59a-fe1e-4552-9a05-3c2acddff864> .
+}
 
 Naam:
 OPTIONAL {
@@ -252,7 +286,8 @@ Monumentaard:
 ?rm ceo:heeftMonumentAard ?aardConcept .
 ?aardConcept skos:prefLabel ?aard .
 
-Juridische status:
+Juridische status-label (optioneel, voor weergave - naast, niet in plaats
+van, de verplichte statusfilter hierboven):
 ?rm ceo:heeftJuridischeStatus ?statusConcept .
 ?statusConcept skos:prefLabel ?status .
 
@@ -280,7 +315,7 @@ Bij functie/type zoekvragen:
 - gebruik nooit ?rm ceo:heeftFunctie
 - selecteer ?bron als je BIND gebruikt
 
-Patroon:
+Patroon (binnen dezelfde GRAPH <https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce> { ... } als de rest van de query):
 {
   {
     ?rm ceo:heeftOorspronkelijkeFunctie ?functieObj .
@@ -507,14 +542,22 @@ OPTIONAL {
   ?waarderingConcept skos:prefLabel ?waardering .
 }`;
 
-const GEMEENTE_PAD_REGELS = `Gemeente en provincie - gebruik ALTIJD één heeftBasisregistratieRelatie pad via ?relatie:
-?rm ceo:heeftBasisregistratieRelatie ?relatie .
-OPTIONAL { ?relatie ceo:heeftGemeente ?gemeenteUri . ?gemeenteUri rdfs:label ?gemeente . }
-OPTIONAL { ?relatie ceo:heeftProvincie ?provURI . ?provURI rdfs:label ?provincie . }
+const GEMEENTE_PAD_REGELS = `Gemeente en provincie - gebruik ALTIJD één heeftBasisregistratieRelatie pad
+via ?relatie, BINNEN het GRAPH-blok tot en met de URI. De rdfs:label-stap
+staat ALTIJD BUITEN het GRAPH-blok (na de sluitende } ervan):
+GRAPH <https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce> {
+  ?rm ceo:heeftBasisregistratieRelatie ?relatie .
+  OPTIONAL { ?relatie ceo:heeftGemeente ?gemeenteUri . }
+  OPTIONAL { ?relatie ceo:heeftProvincie ?provURI . }
+}
+OPTIONAL { ?gemeenteUri rdfs:label ?gemeente . }
+OPTIONAL { ?provURI rdfs:label ?provincie . }
 
 Als je op gemeente filtert:
-?rm ceo:heeftBasisregistratieRelatie ?relatie .
-?relatie ceo:heeftGemeente ?gemeenteUri .
+GRAPH <https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce> {
+  ?rm ceo:heeftBasisregistratieRelatie ?relatie .
+  ?relatie ceo:heeftGemeente ?gemeenteUri .
+}
 ?gemeenteUri rdfs:label ?gemeente .
 FILTER(CONTAINS(LCASE(STR(?gemeente)), "bunnik"))
 
@@ -523,8 +566,10 @@ geeft de plaatsnaam terug, niet de gemeente. Gebruik BRKRelatie alleen voor
 kadastrale informatie waar dat expliciet naar gevraagd wordt.
 
 Als je op provincie filtert:
-?rm ceo:heeftBasisregistratieRelatie ?relatie .
-?relatie ceo:heeftProvincie ?provURI .
+GRAPH <https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce> {
+  ?rm ceo:heeftBasisregistratieRelatie ?relatie .
+  ?relatie ceo:heeftProvincie ?provURI .
+}
 ?provURI rdfs:label ?provincie .
 FILTER(CONTAINS(LCASE(STR(?provincie)), "utrecht"))
 
@@ -540,21 +585,32 @@ VERPLICHTE STRUCTUUR - gebruik dit altijd:
 SELECT DISTINCT ?rm ?nummer
   [optionele extra velden via OPTIONAL]
 WHERE {
-  ?rm a ceo:Rijksmonument .
-  ?rm ceo:rijksmonumentnummer ?nummer .
-  OPTIONAL { ?rm ceo:heeftNaam ?naamObj . ?naamObj ceo:naam ?naam . }
-  OPTIONAL { ?rm ceo:heeftBasisregistratieRelatie ?relatie . ?relatie ceo:heeftGemeente ?gemeenteUri . ?gemeenteUri rdfs:label ?gemeente . }
+  GRAPH <https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce> {
+    ?rm a ceo:Rijksmonument .
+    ?rm ceo:rijksmonumentnummer ?nummer .
+    ?rm ceo:heeftJuridischeStatus <https://data.cultureelerfgoed.nl/term/id/rn/2/b2d9a59a-fe1e-4552-9a05-3c2acddff864> .
+    OPTIONAL { ?rm ceo:heeftNaam ?naamObj . ?naamObj ceo:naam ?naam . }
+    ?rm ceo:heeftBasisregistratieRelatie ?relatie .
+    ?relatie ceo:heeftGemeente ?gemeenteUri .
+  }
+  OPTIONAL { ?gemeenteUri rdfs:label ?gemeente . }
   [filtercriteria]
 }
 LIMIT 20
 
 ABSOLUTE REGELS:
 - Gebruik ALTIJD SELECT DISTINCT
+- Wrap alle triples over ?rm zelf in GRAPH <https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce> { ... }
+- Filter ALTIJD op ?rm ceo:heeftJuridischeStatus <https://data.cultureelerfgoed.nl/term/id/rn/2/b2d9a59a-fe1e-4552-9a05-3c2acddff864> . binnen dat GRAPH-blok
+- Haal rdfs:label van een gemeente-/provincie-URI ALTIJD BUITEN het GRAPH-blok op
 - Zet NOOIT tussenliggende variabelen in SELECT: niet ?naamObj, ?relatie, ?typeObj etc.
 - Zet in SELECT alleen de eindwaarden die de gebruiker ziet: ?rm, ?nummer, ?naam, ?gemeente etc.
 - DISTINCT werkt alleen als SELECT uitsluitend eindwaarden bevat
 
-PADEN (gebruik altijd OPTIONAL tenzij het het filtercriterium is):
+PADEN (gebruik altijd OPTIONAL tenzij het het filtercriterium is). Alle
+onderstaande paden horen BINNEN hetzelfde GRAPH <https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce> { ... }
+-blok als de basisstructuur hierboven, behalve de rdfs:label-stappen voor
+gemeente/provincie (die staan altijd BUITEN dat blok):
 
 Naam (huidige):
 OPTIONAL { ?rm ceo:heeftNaam ?naamObj . ?naamObj ceo:naam ?naam . }
@@ -568,25 +624,25 @@ Registratiedatum:
 OPTIONAL { ?rm ceo:datumInschrijvingInMonumentenregister ?registratiedatum . }
 
 Juridische status:
-OPTIONAL { ?rm ceo:heeftJuridischeStatus ?statusC . ?statusC skos:prefLabel ?status . FILTER(lang(?status)="nl") }
+OPTIONAL { ?rm ceo:heeftJuridischeStatus ?statusC . ?statusC skos:prefLabel ?status . }
 
 Monument aard:
-OPTIONAL { ?rm ceo:heeftMonumentAard ?aardC . ?aardC skos:prefLabel ?aard . FILTER(lang(?aard)="nl") }
+OPTIONAL { ?rm ceo:heeftMonumentAard ?aardC . ?aardC skos:prefLabel ?aard . }
 
 Type monument:
-OPTIONAL { ?rm ceo:heeftKennisregistratie ?typeObj . ?typeObj a ceo:Type . ?typeObj ceo:heeftTypeNaam ?typeC . ?typeC skos:prefLabel ?typeNaam . FILTER(lang(?typeNaam)="nl") }
+OPTIONAL { ?rm ceo:heeftKennisregistratie ?typeObj . ?typeObj a ceo:Type . ?typeObj ceo:heeftTypeNaam ?typeC . ?typeC skos:prefLabel ?typeNaam . }
 
 Oorspronkelijke functie:
-OPTIONAL { ?rm ceo:heeftOorspronkelijkeFunctie ?ofObj . ?ofObj ceo:heeftFunctieNaam ?ofC . ?ofC skos:prefLabel ?oFunctie . FILTER(lang(?oFunctie)="nl") }
+OPTIONAL { ?rm ceo:heeftOorspronkelijkeFunctie ?ofObj . ?ofObj ceo:heeftFunctieNaam ?ofC . ?ofC skos:prefLabel ?oFunctie . }
 
 Huidige functie:
-OPTIONAL { ?rm ceo:heeftHuidigeFunctie ?hfObj . ?hfObj ceo:heeftFunctieNaam ?hfC . ?hfC skos:prefLabel ?hFunctie . FILTER(lang(?hFunctie)="nl") }
+OPTIONAL { ?rm ceo:heeftHuidigeFunctie ?hfObj . ?hfObj ceo:heeftFunctieNaam ?hfC . ?hfC skos:prefLabel ?hFunctie . }
 
 Omschrijving:
 OPTIONAL { ?rm ceo:heeftKennisregistratie ?omschrObj . ?omschrObj a ceo:Omschrijving . ?omschrObj ceo:omschrijving ?tekst . }
 
 Stijl:
-OPTIONAL { ?rm ceo:heeftKennisregistratie ?stijlObj . ?stijlObj a ceo:StijlEnCultuur . ?stijlObj ceo:heeftStijlEnCultuurNaam ?stijlC . ?stijlC skos:prefLabel ?stijl . FILTER(lang(?stijl)="nl") }
+OPTIONAL { ?rm ceo:heeftKennisregistratie ?stijlObj . ?stijlObj a ceo:StijlEnCultuur . ?stijlObj ceo:heeftStijlEnCultuurNaam ?stijlC . ?stijlC skos:prefLabel ?stijl . }
 
 ARCHEOLOGISCHE OBJECTEN - gebruik deze klassen naast ceo:Rijksmonument:
 
@@ -623,11 +679,13 @@ OPTIONAL { ?locatie ceo:heeftLocatieAanduiding ?locObj . ?locObj ceo:locatienaam
 
 Voorbeeldquery - vondstlocaties met de meeste vondsten:
 SELECT DISTINCT ?locatie ?naam ?aantal WHERE {
-  ?locatie a ceo:Vondstlocatie .
-  ?locatie ceo:bevatObject ?vondstObj .
-  ?vondstObj a ceo:Vondsten .
-  ?vondstObj ceo:aantalVondsten ?aantal .
-  OPTIONAL { ?locatie ceo:heeftLocatieAanduiding ?locObj . ?locObj ceo:locatienaam ?naam . }
+  GRAPH <https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce> {
+    ?locatie a ceo:Vondstlocatie .
+    ?locatie ceo:bevatObject ?vondstObj .
+    ?vondstObj a ceo:Vondsten .
+    ?vondstObj ceo:aantalVondsten ?aantal .
+    OPTIONAL { ?locatie ceo:heeftLocatieAanduiding ?locObj . ?locObj ceo:locatienaam ?naam . }
+  }
 }
 ORDER BY DESC(?aantal)
 LIMIT 20
@@ -635,21 +693,22 @@ LIMIT 20
 ZOEKEN OP FUNCTIE/TYPE (kerk, molen, kasteel etc.) als filtercriterium:
 Gebruik UNION over de gestructureerde paden en voeg altijd een ?bron kolom toe.
 Zoek NIET in ceo:omschrijving - dat is vrije tekst en geeft onbetrouwbare resultaten.
+Dit hele UNION-blok hoort BINNEN hetzelfde GRAPH-blok als de rest van de query.
 
 {
   { ?rm ceo:heeftOorspronkelijkeFunctie ?fObj . ?fObj ceo:heeftFunctieNaam ?fC .
-    ?fC skos:prefLabel ?fNaam . FILTER(lang(?fNaam)="nl")
+    ?fC skos:prefLabel ?fNaam .
     FILTER(CONTAINS(LCASE(?fNaam), "zoekterm"))
     BIND("oorspronkelijke functie" AS ?bron) }
   UNION
   { ?rm ceo:heeftHuidigeFunctie ?fObj . ?fObj ceo:heeftFunctieNaam ?fC .
-    ?fC skos:prefLabel ?fNaam . FILTER(lang(?fNaam)="nl")
+    ?fC skos:prefLabel ?fNaam .
     FILTER(CONTAINS(LCASE(?fNaam), "zoekterm"))
     BIND("huidige functie" AS ?bron) }
   UNION
   { ?rm ceo:heeftKennisregistratie ?typeObj . ?typeObj a ceo:Type .
     ?typeObj ceo:heeftTypeNaam ?typeC . ?typeC skos:prefLabel ?fNaam .
-    FILTER(lang(?fNaam)="nl") FILTER(CONTAINS(LCASE(?fNaam), "zoekterm"))
+    FILTER(CONTAINS(LCASE(?fNaam), "zoekterm"))
     BIND("type" AS ?bron) }
   UNION
   { ?rm ceo:heeftKennisregistratie ?oObj . ?oObj a ceo:Omschrijving .
@@ -673,21 +732,29 @@ ${SPARQL_PREFIXES}
 
 VOORBEELDEN:
 
-Eenvoudige telling:
+Eenvoudige telling (GRAPH-wrap en statusfilter zijn VERPLICHT, ook bij een
+telling - niet alleen in dit voorbeeld):
 SELECT (COUNT(DISTINCT ?rm) AS ?aantal)
 WHERE {
-  ?rm a ceo:Rijksmonument .
-  ?rm ceo:heeftBasisregistratieRelatie ?relatie .
-  ?relatie ceo:heeftGemeente ?gemeenteUri .
-  ?gemeenteUri rdfs:label "Bunnik" .
+  GRAPH <https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce> {
+    ?rm a ceo:Rijksmonument .
+    ?rm ceo:heeftJuridischeStatus <https://data.cultureelerfgoed.nl/term/id/rn/2/b2d9a59a-fe1e-4552-9a05-3c2acddff864> .
+    ?rm ceo:heeftBasisregistratieRelatie ?relatie .
+    ?relatie ceo:heeftGemeente ?gemeenteUri .
+  }
+  ?gemeenteUri rdfs:label ?gemeente .
+  FILTER(CONTAINS(LCASE(STR(?gemeente)), "bunnik"))
 }
 
 Telling per gemeente:
 SELECT ?gemeenteUri (COUNT(DISTINCT ?rm) AS ?aantal)
 WHERE {
-  ?rm a ceo:Rijksmonument .
-  ?rm ceo:heeftBasisregistratieRelatie ?relatie .
-  ?relatie ceo:heeftGemeente ?gemeenteUri .
+  GRAPH <https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce> {
+    ?rm a ceo:Rijksmonument .
+    ?rm ceo:heeftJuridischeStatus <https://data.cultureelerfgoed.nl/term/id/rn/2/b2d9a59a-fe1e-4552-9a05-3c2acddff864> .
+    ?rm ceo:heeftBasisregistratieRelatie ?relatie .
+    ?relatie ceo:heeftGemeente ?gemeenteUri .
+  }
 }
 GROUP BY ?gemeenteUri
 ORDER BY DESC(?aantal)
@@ -695,9 +762,12 @@ ORDER BY DESC(?aantal)
 Telling per provincie (gebruik ALTIJD ?provURI als groepeervariabele, NIET rdfs:label):
 SELECT ?provURI (COUNT(DISTINCT ?rm) AS ?aantal)
 WHERE {
-  ?rm a ceo:Rijksmonument .
-  ?rm ceo:heeftBasisregistratieRelatie ?relatie .
-  ?relatie ceo:heeftProvincie ?provURI .
+  GRAPH <https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce> {
+    ?rm a ceo:Rijksmonument .
+    ?rm ceo:heeftJuridischeStatus <https://data.cultureelerfgoed.nl/term/id/rn/2/b2d9a59a-fe1e-4552-9a05-3c2acddff864> .
+    ?rm ceo:heeftBasisregistratieRelatie ?relatie .
+    ?relatie ceo:heeftProvincie ?provURI .
+  }
 }
 GROUP BY ?provURI
 ORDER BY DESC(?aantal)
@@ -736,26 +806,31 @@ ceo:Grondsporen - grondsporen
 ceo:Vondsten - vondsten
   ceo:aantalVondsten ?aantal .
 
-ZOEKEN OP FUNCTIE/TYPE bij tellingen - gebruik UNION, zoek NIET in ceo:omschrijving:
+ZOEKEN OP FUNCTIE/TYPE bij tellingen - gebruik UNION, zoek NIET in ceo:omschrijving.
+GRAPH-wrap en statusfilter blijven ook hier verplicht:
 SELECT (COUNT(DISTINCT ?rm) AS ?aantal)
 WHERE {
-  ?rm a ceo:Rijksmonument .
-  {
-    { ?rm ceo:heeftOorspronkelijkeFunctie ?fObj . ?fObj ceo:heeftFunctieNaam ?fC .
-      ?fC skos:prefLabel ?fNaam . FILTER(lang(?fNaam)="nl") FILTER(CONTAINS(LCASE(?fNaam), "kerk")) }
-    UNION
-    { ?rm ceo:heeftHuidigeFunctie ?fObj . ?fObj ceo:heeftFunctieNaam ?fC .
-      ?fC skos:prefLabel ?fNaam . FILTER(lang(?fNaam)="nl") FILTER(CONTAINS(LCASE(?fNaam), "kerk")) }
-    UNION
-    { ?rm ceo:heeftKennisregistratie ?typeObj . ?typeObj a ceo:Type .
-      ?typeObj ceo:heeftTypeNaam ?typeC . ?typeC skos:prefLabel ?fNaam .
-      FILTER(lang(?fNaam)="nl") FILTER(CONTAINS(LCASE(?fNaam), "kerk")) }
-    UNION
-    { ?rm ceo:heeftKennisregistratie ?oObj . ?oObj a ceo:Omschrijving .
-      ?oObj ceo:omschrijving ?fNaam .
-      FILTER(REGEX(LCASE(?fNaam), "(^|\\\\W)kerk(\\\\W|$)")) }
+  GRAPH <https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce> {
+    ?rm a ceo:Rijksmonument .
+    ?rm ceo:heeftJuridischeStatus <https://data.cultureelerfgoed.nl/term/id/rn/2/b2d9a59a-fe1e-4552-9a05-3c2acddff864> .
+    {
+      { ?rm ceo:heeftOorspronkelijkeFunctie ?fObj . ?fObj ceo:heeftFunctieNaam ?fC .
+        ?fC skos:prefLabel ?fNaam . FILTER(CONTAINS(LCASE(?fNaam), "kerk")) }
+      UNION
+      { ?rm ceo:heeftHuidigeFunctie ?fObj . ?fObj ceo:heeftFunctieNaam ?fC .
+        ?fC skos:prefLabel ?fNaam . FILTER(CONTAINS(LCASE(?fNaam), "kerk")) }
+      UNION
+      { ?rm ceo:heeftKennisregistratie ?typeObj . ?typeObj a ceo:Type .
+        ?typeObj ceo:heeftTypeNaam ?typeC . ?typeC skos:prefLabel ?fNaam .
+        FILTER(CONTAINS(LCASE(?fNaam), "kerk")) }
+      UNION
+      { ?rm ceo:heeftKennisregistratie ?oObj . ?oObj a ceo:Omschrijving .
+        ?oObj ceo:omschrijving ?fNaam .
+        FILTER(REGEX(LCASE(?fNaam), "(^|\\\\W)kerk(\\\\W|$)")) }
+    }
+    ?rm ceo:heeftBasisregistratieRelatie ?relatie .
+    ?relatie ceo:heeftGemeente ?gemeenteUri .
   }
-  ?rm ceo:heeftBasisregistratieRelatie ?relatie . ?relatie ceo:heeftGemeente ?gemeenteUri .
   ?gemeenteUri rdfs:label ?gemeente . FILTER(CONTAINS(LCASE(?gemeente), "bunnik"))
 }
 
