@@ -83,6 +83,34 @@ test("genereer-sparql: herkanst met meer budget als het antwoord is afgekapt (ma
   assert.ok(secondCallMaxTokens > 2000, "de herkansing moet met een hoger max_tokens-budget aanroepen");
 });
 
+test("genereer-sparql: valt terug op een aanroep zonder MCP-tools als de rce-cho-server onbereikbaar is", async (context) => {
+  let calls = 0;
+  const bodies = [];
+  withMocks(context, {
+    fetchImpl: async (_input, init) => {
+      calls += 1;
+      bodies.push(JSON.parse(init.body));
+      if (calls === 1) {
+        // Live geconstateerd (28-08-2026): een onbereikbare MCP-server laat
+        // de HELE Anthropic-aanroep mislukken met HTTP 400, niet een
+        // gedeeltelijke degradatie - vandaar de terugval zonder mcp_servers.
+        return new Response(
+          JSON.stringify({ type: "error", error: { type: "invalid_request_error", message: "Connection error while communicating with MCP server. The server may be unavailable or unresponsive." } }),
+          { status: 400 },
+        );
+      }
+      return anthropicResponse("SELECT DISTINCT ?rm ?nummer WHERE { ?rm a ceo:Rijksmonument . ?rm ceo:rijksmonumentnummer ?nummer . }");
+    },
+  });
+  const response = await genereerSparql(jsonRequest("https://doorzoeker.test/api/vraag/genereer-sparql", { question: "Welke rijksmonumenten staan er in Zeist?", mode: "lijst" }));
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.match(document.query, /PREFIX ceo:/);
+  assert.equal(calls, 2);
+  assert.ok(bodies[0].mcp_servers?.length, "eerste poging moet mcp_servers meesturen");
+  assert.equal(bodies[1].mcp_servers, undefined, "terugvalpoging mag geen mcp_servers meesturen");
+});
+
 test("genereer-sparql: 400 bij een te korte vraag", async (context) => {
   withMocks(context, { fetchImpl: async () => { throw new Error("fetch had niet aangeroepen mogen worden"); } });
   const response = await genereerSparql(jsonRequest("https://doorzoeker.test/api/vraag/genereer-sparql", { question: "hi", mode: "lijst" }));

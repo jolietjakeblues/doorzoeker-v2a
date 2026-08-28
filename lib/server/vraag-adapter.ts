@@ -1,10 +1,23 @@
 // Orkestratie voor de "Stel een vraag"-assistent (/vraag): vraag -> SPARQL
 // -> resultaten -> Nederlands antwoord. Zie lib/vraag/prompts.ts voor de
 // herkomst van de kennisbank (ldv-talk-to-your-data-test).
-import { AnthropicTruncatedError, callClaude } from "../vraag/anthropic-client.ts";
+import { AnthropicTruncatedError, callClaude, type McpServerConfig } from "../vraag/anthropic-client.ts";
 import { DATAMODEL_RULES, LIJST_PROMPT, TELLING_PROMPT } from "../vraag/prompts.ts";
 import { dedupeByRm, hasCount, postprocessSparql, translateProvincieUris, type SparqlResultsDocument, type VraagMode } from "../vraag/postprocess.ts";
 import { fetchSparql, RCE_CHO_ENDPOINT } from "./sparql-client.ts";
+
+// De eigenaars eigen, zelfgebouwde MCP-server (github.com/jolietjakeblues/
+// rce-cho-mcp, gehost op Render) - geeft Claude tijdens het genereren
+// toegang tot echte concept-/URI-resolutie (resolve_concept_label,
+// ontology_search, validate_query_structured) in plaats van alleen de
+// statische kennisbank hierboven. Live geverifieerd (28-08-2026): lost het
+// "Utrechtse Heuvelrug"-probleem bij de bron op (directe URI-match i.p.v.
+// CONTAINS-op-label). Overschrijfbaar via env voor als de eigenaar de
+// server verplaatst; callClaude valt automatisch terug op alleen de
+// statische kennisbank als deze server niet bereikbaar is.
+const RCE_CHO_MCP_SERVERS: McpServerConfig[] = [
+  { url: process.env.RCE_CHO_MCP_URL || "https://rce-cho-mcp.onrender.com/mcp", name: "rce-cho" },
+];
 
 // 1000, toen 1500 tokens bleken live (28-08-2026) soms krap voor het diep
 // geneste GRAPH+UNION-functiezoekpatroon - een afgekapte respons levert een
@@ -23,7 +36,7 @@ const EXECUTE_TIMEOUT_MS = 45_000;
 
 async function generateOnce(question: string, mode: VraagMode, maxTokens: number, signal?: AbortSignal): Promise<string> {
   const system = `${DATAMODEL_RULES}\n\n${mode === "lijst" ? LIJST_PROMPT : TELLING_PROMPT}`;
-  const raw = await callClaude(question, { system, maxTokens, signal });
+  const raw = await callClaude(question, { system, maxTokens, signal, mcpServers: RCE_CHO_MCP_SERVERS });
   return postprocessSparql(raw, mode);
 }
 

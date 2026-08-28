@@ -19,6 +19,21 @@ export function stripCodeFences(query: string): string {
   return query.replace(/```sparql/g, "").replace(/```/g, "").trim();
 }
 
+// Live geconstateerd (28-08-2026, met de rce-cho MCP-tools aangesloten):
+// na een validate_query_structured-toolaanroep meldt Claude soms eerst in
+// gewone tekst dat de query gevalideerd is ("De query is gevalideerd
+// zonder fouten...") vóór de eigenlijke SPARQL, zonder ```sparql-codeblok -
+// ondanks de instructie om alleen de ruwe query terug te geven. stripCodeFences
+// laat zo'n inleidende zin dan gewoon staan. Zoekt daarom, als er geen
+// codeblok is, naar het eerste SPARQL-sleutelwoord en negeert alles ervoor.
+export function extractSparql(raw: string): string {
+  const fenced = raw.match(/```(?:sparql)?\s*([\s\S]*?)```/i);
+  if (fenced) return fenced[1].trim();
+  const match = raw.match(/\b(PREFIX|SELECT|ASK|CONSTRUCT|DESCRIBE)\b/i);
+  if (match && typeof match.index === "number") return raw.slice(match.index).trim();
+  return raw.trim();
+}
+
 export function injectPrefixes(query: string): string {
   if (!query.includes("PREFIX ceo:")) return `${SPARQL_PREFIXES}\n\n${query}`;
   if (!query.includes("PREFIX rdfs:") && query.includes("rdfs:")) {
@@ -111,7 +126,7 @@ export function balanceBraces(query: string): string {
 }
 
 export function postprocessSparql(rawQuery: string, mode: VraagMode): string {
-  let query = stripCodeFences(rawQuery);
+  let query = extractSparql(rawQuery);
   query = injectPrefixes(query);
   query = fixGemeentePad(query);
   query = fixProvinciePad(query);

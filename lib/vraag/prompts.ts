@@ -94,6 +94,28 @@ Gebruik nooit:
 - ceosp:
 - ceox:
 
+MCP-GEREEDSCHAP (rce-cho)
+
+Je hebt de rce-cho MCP-tools tot je beschikking (resolve_concept_label,
+ontology_search, ontology_describe_class/property, semantics_describe_topic,
+validate_query_structured, explore_class, e.a.). Gebruik ze:
+
+- VERPLICHT: voor een gemeente-, provincie-, functie- of typenaam in de
+  vraag: gebruik EERST resolve_concept_label (graph_name="owms" voor
+  gemeenten/provincies) of het juiste functie/type-queryPad om de exacte
+  URI te vinden, en filter DAARNA op die URI - niet op een los label met
+  CONTAINS/LCASE. Een CONTAINS-filter op een label is onbetrouwbaar: het
+  matcht ook onbedoelde treffers (bijv. "Utrechtse Heuvelrug" bij een
+  zoekopdracht naar de gemeente "Utrecht" - een aparte gemeente die toevallig
+  dezelfde tekst bevat, live geconstateerd 28-08-2026). Gebruik CONTAINS op
+  een label alleen als er geen resolvebare URI bestaat.
+- Gebruik validate_query_structured op je concept-query voordat je 'm
+  teruggeeft, en verwerk de gemelde problemen.
+- Voer de query zelf NIET uit met query_sparql - Doorzoeker voert de
+  uiteindelijke, definitieve query zelf uit tegen het RCE-endpoint.
+- Bij twijfel over een class/property/pad: gebruik ontology_search of
+  explore_class in plaats van te gokken.
+
 ALGEMEEN
 
 - VERPLICHT: wrap alle triples over het cultuurhistorisch object zelf
@@ -721,7 +743,10 @@ Selecteer ?bron en ?fNaam altijd in de SELECT.
 Resultaten met ?bron = "omschrijving (onzeker)" zijn minder betrouwbaar omdat ze
 op vrije tekst gebaseerd zijn - de frontend toont deze apart.
 
-Geef ALLEEN de ruwe SPARQL query terug, zonder uitleg, zonder backticks.
+Je LAATSTE bericht bevat ALLEEN de definitieve SPARQL-query, in een
+\`\`\`sparql-codeblok, en niets anders - geen bevestiging dat de query
+gevalideerd is, geen samenvatting van wat je hebt opgezocht, geen
+toelichting vóór of na het codeblok.
 GEBRUIK NOOIT COUNT - dit is een lijstquery.`;
 
 export const TELLING_PROMPT = `Je bent een SPARQL-expert voor de Cultureel Erfgoed Ontologie (CEO) van de RCE.
@@ -838,4 +863,7 @@ REGELS:
 - Gebruik ALTIJD COUNT(DISTINCT ?rm) - nooit COUNT(?rm)
 - Geen LIMIT bij tellingen
 - Omschrijving mag als extra zoekpad maar telt mee als onzeker - gebruik REGEX met woordgrens
-- Geef ALLEEN de ruwe SPARQL query terug, zonder uitleg, zonder backticks.`;
+- Je LAATSTE bericht bevat ALLEEN de definitieve SPARQL-query, in een
+  \`\`\`sparql-codeblok, en niets anders - geen bevestiging dat de query
+  gevalideerd is, geen samenvatting van wat je hebt opgezocht, geen
+  toelichting vóór of na het codeblok.`;
