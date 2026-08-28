@@ -9,6 +9,14 @@ const DEFAULT_MODEL = "claude-sonnet-5";
 
 export class AnthropicConfigError extends Error {}
 
+// Live geconstateerd (28-08-2026): bij het diep geneste functie/type-UNION-
+// patroon liep de generatie soms tegen max_tokens aan, wat een afgekapte
+// (syntactisch onvolledige) SPARQL-query oplevert - géén onbalans die
+// balanceBraces kan repareren, want er ontbreken ook hele UNION-takken en
+// sluithaken van FILTER/CONTAINS. Zo'n afkapping moet gedetecteerd en
+// opnieuw geprobeerd worden met meer budget, niet stilzwijgend doorgezet.
+export class AnthropicTruncatedError extends Error {}
+
 type CallClaudeOptions = {
   system?: string;
   maxTokens: number;
@@ -38,8 +46,11 @@ export async function callClaude(userMessage: string, options: CallClaudeOptions
   if (!response.ok) {
     throw new Error(`Anthropic API antwoordde met ${response.status}`, { cause: response.status });
   }
-  const document = (await response.json()) as { content?: { type: string; text?: string }[] };
+  const document = (await response.json()) as { content?: { type: string; text?: string }[]; stop_reason?: string };
   const text = document.content?.find((block) => block.type === "text")?.text;
   if (!text) throw new Error("Anthropic API gaf geen tekstantwoord terug.");
+  if (document.stop_reason === "max_tokens") {
+    throw new AnthropicTruncatedError("Anthropic API kapte het antwoord af (max_tokens bereikt).");
+  }
   return text;
 }
