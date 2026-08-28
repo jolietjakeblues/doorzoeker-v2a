@@ -11,7 +11,6 @@ import { SearchFilters } from "./SearchFilters";
 import { SearchResults } from "./SearchResults";
 import { StartContent } from "./StartContent";
 import { statusLabel } from "@/lib/heritage-view-model";
-import type { ArcheologischeContext } from "@/lib/rce";
 import { exportFileName, itemsToCsv, itemsToGeoJson } from "@/lib/export";
 import { useTermSuggestions } from "@/hooks/useTermSuggestions";
 import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
@@ -20,7 +19,7 @@ import { useArcheologischeContext } from "@/hooks/useArcheologischeContext";
 import { useSearchState } from "@/hooks/useSearchState";
 import { useOpDezeDag } from "@/hooks/useOpDezeDag";
 import { useVerrasMe } from "@/hooks/useVerrasMe";
-import { useVoorbeeldMonument } from "@/hooks/useVoorbeeldMonument";
+import { useVoorbeeldMonument, type VoorbeeldResult } from "@/hooks/useVoorbeeldMonument";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 
 export default function Home() {
@@ -96,7 +95,7 @@ export default function Home() {
   const opDezeDag = useOpDezeDag();
   const verrasMe = useVerrasMe();
   const voorbeeld = useVoorbeeldMonument();
-  const [voorbeeldGebieden, setVoorbeeldGebieden] = useState<{ monumentNumber: string; gebieden: ArcheologischeContext[] } | null>(null);
+  const [voorbeeldResult, setVoorbeeldResult] = useState<VoorbeeldResult | null>(null);
   useBodyScrollLock(Boolean(selected));
   const detailDialogRef = useDialogFocus(Boolean(selected), () =>
     setSelected(null),
@@ -257,6 +256,7 @@ export default function Home() {
             onOpenFilters={() => setFilters(true)}
             onViewChange={setView}
             onExport={exportResults}
+            onReset={reset}
           />
 
           <SearchResults
@@ -277,13 +277,9 @@ export default function Home() {
                 verrasMeItem={verrasMe.item}
                 verrasMeLoading={verrasMe.loading}
                 onVerrasMe={verrasMe.trigger}
+                voorbeeldResult={voorbeeldResult}
                 voorbeeldLoading={voorbeeld.loading}
-                onVoorbeeld={() =>
-                  voorbeeld.trigger((result) => {
-                    setVoorbeeldGebieden({ monumentNumber: result.item.monumentNumber ?? "", gebieden: result.gebieden });
-                    setSelected(result.item);
-                  })
-                }
+                onVoorbeeld={() => voorbeeld.trigger(setVoorbeeldResult)}
               />
             }
             onReset={reset}
@@ -301,7 +297,11 @@ export default function Home() {
           dialogRef={detailDialogRef}
           enrichment={{ complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten, ligtIn, omschrijvingOnderwerp, werelderfgoedGeometrie }}
           archeologischeContext={archeologischeContext}
-          voorbeeldGebieden={voorbeeldGebieden}
+          voorbeeldGebieden={
+            voorbeeldResult
+              ? { monumentNumber: voorbeeldResult.item.monumentNumber ?? "", gebieden: voorbeeldResult.gebieden }
+              : null
+          }
           onClose={() => setSelected(null)}
           onSearch={executeSearch}
           onConceptSearch={executeConceptSearch}
