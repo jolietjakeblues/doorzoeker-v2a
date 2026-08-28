@@ -4,6 +4,7 @@ import {
   balanceBraces,
   capListLimit,
   dedupeByRm,
+  extractSparql,
   fixGemeentePad,
   fixLabelFilter,
   fixProvinciePad,
@@ -17,6 +18,21 @@ import {
 
 test("stripCodeFences verwijdert markdown-codeblokken rond de query", () => {
   assert.equal(stripCodeFences("```sparql\nSELECT * WHERE { ?s ?p ?o }\n```"), "SELECT * WHERE { ?s ?p ?o }");
+});
+
+test("extractSparql pakt de inhoud van een sparql-codeblok, ook met tekst eromheen", () => {
+  const raw = 'De query is gevalideerd zonder fouten.\n\n```sparql\nSELECT * WHERE { ?s ?p ?o }\n```';
+  assert.equal(extractSparql(raw), "SELECT * WHERE { ?s ?p ?o }");
+});
+
+test("extractSparql negeert een tekstintro zonder codeblok (MCP-toolgebruik, 28-08-2026 live geconstateerd)", () => {
+  const raw = "De query is gevalideerd zonder fouten of waarschuwingen. Hier is de definitieve SPARQL-query:\n\n\nPREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>\nSELECT DISTINCT ?rm WHERE { ?rm a ceo:Rijksmonument }";
+  assert.equal(extractSparql(raw), "PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>\nSELECT DISTINCT ?rm WHERE { ?rm a ceo:Rijksmonument }");
+});
+
+test("extractSparql laat een kale query zonder omliggende tekst met rust", () => {
+  const raw = "SELECT * WHERE { ?s ?p ?o }";
+  assert.equal(extractSparql(raw), raw);
 });
 
 test("injectPrefixes voegt de vaste prefixen toe als PREFIX ceo: ontbreekt", () => {
