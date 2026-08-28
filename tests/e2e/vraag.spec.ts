@@ -42,6 +42,11 @@ test("stelt een vraag en toont de gegenereerde query, resultaten en het antwoord
   await expect(page.getByRole("cell", { name: "Sint-Maartenskerk" })).toBeVisible();
   expect(calls.genereerCalls.length).toBe(1);
   expect(calls.uitvoerenCalls.length).toBe(1);
+
+  const deepLink = page.getByRole("link", { name: "Bekijk in Doorzoeker →" });
+  await expect(deepLink).toBeVisible();
+  await expect(deepLink).toHaveAttribute("href", "/?q=12345&object=12345");
+  await expect(deepLink).toHaveAttribute("target", "_blank");
 });
 
 test("een voorbeeldvraag vult het vraagveld en de bijbehorende modus", async ({ page }) => {

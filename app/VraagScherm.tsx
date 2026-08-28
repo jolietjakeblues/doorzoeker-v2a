@@ -206,16 +206,34 @@ export function VraagScherm() {
                   {vars.map((variable) => (
                     <th key={variable}>{variable}</th>
                   ))}
+                  {vars.includes("nummer") && <th />}
                 </tr>
               </thead>
               <tbody>
-                {bindings.map((row, index) => (
-                  <tr key={index}>
-                    {vars.map((variable) => (
-                      <td key={variable}>{row[variable]?.value ?? ""}</td>
-                    ))}
-                  </tr>
-                ))}
+                {bindings.map((row, index) => {
+                  // Doorzoekers eigen zoekpagina herkent ?q=<nummer>&object=<nummer>
+                  // al (zie hooks/useSearchState.ts's applyPendingSelection) - een
+                  // numerieke zoekopdracht matcht exact op rijksmonumentnummer, dus
+                  // dit heropent daar meteen het volledige detail, zonder nieuwe
+                  // route of backend-wijziging.
+                  const nummer = row.nummer?.value;
+                  return (
+                    <tr key={index}>
+                      {vars.map((variable) => (
+                        <td key={variable}>{row[variable]?.value ?? ""}</td>
+                      ))}
+                      {vars.includes("nummer") && (
+                        <td>
+                          {nummer && (
+                            <a href={`/?q=${encodeURIComponent(nummer)}&object=${encodeURIComponent(nummer)}`} target="_blank" rel="noreferrer">
+                              Bekijk in Doorzoeker →
+                            </a>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
