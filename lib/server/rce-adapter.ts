@@ -236,6 +236,21 @@ export async function fetchWerelderfgoedGeometrie(choUri: string, signal?: Abort
   return parseWerelderfgoedGeometrieResult(document);
 }
 
+// Vast showcase-monument (zie useVoorbeeldMonument.ts): de Sint-Maartenskerk
+// in Elst, gekozen door de eigenaar omdat het in één record de volle breedte
+// van de knowledge graph laat zien - inclusief de archeologische context
+// (een Gallo-Romeins tempelcomplex onder de kerk). Voor dit ene, altijd-
+// hetzelfde monument zijn de overlappende ArcheologischOnderzoeksgebied-URI's
+// al bekend (live bepaald met een directe geof:sfOverlaps-query op 22-08-2026,
+// zie fetchArcheologischeContext hieronder) - dus slaat de dure
+// bbox-voorfilterstap (~15,4s) hieronder over. Alleen voor dit exacte
+// monumentnummer; elk ander nummer doorloopt de generieke, ongewijzigde flow.
+const VOORBEELD_MONUMENTNUMMER = "14948";
+const VOORBEELD_ARCHEOLOGISCHE_KANDIDATEN = [
+  "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2038140",
+  "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2051204",
+];
+
 // On-demand "ligt dit gebouwde Rijksmonument op archeologie"-check
 // (017-archeologische-context-onderzoeksgebied.md). In tegenstelling tot
 // fetchLigtIn hierboven is dit BEWUST niet lazy-bij-openen: de bbox-stap
@@ -247,7 +262,8 @@ export async function fetchWerelderfgoedGeometrie(choUri: string, signal?: Abort
 //   1. het Rijksmonument-WKT ophalen (nodig voor zowel de bbox als de
 //      exacte overlap-toets);
 //   2. een goedkope bbox-voorfilter (langere timeout dan de standaard 20s -
-//      gemeten 15,4s, dus 40s marge);
+//      gemeten 15,4s, dus 40s marge) - overgeslagen voor het vaste
+//      showcase-monument hierboven, waarvan de kandidaten al bekend zijn;
 //   3. de dure exacte geof:sfOverlaps-toets, maar dan alleen op de kleine,
 //      overgebleven kandidatenset uit stap 2 (~0,3-0,8s gemeten).
 export async function fetchArcheologischeContext(monumentNumber: string, signal?: AbortSignal): Promise<ArcheologischeContext[]> {
@@ -255,11 +271,15 @@ export async function fetchArcheologischeContext(monumentNumber: string, signal?
   const rmWkt = parseRijksmonumentGeometrieResult(rmGeometrieDocument);
   if (!rmWkt) return [];
 
-  const bboxWkt = boundingBoxWktLiteral(rmWkt, ARCHEOLOGISCHE_CONTEXT_BBOX_PADDING_DEGREES);
-  if (!bboxWkt) return [];
-
-  const kandidatenDocument = await fetchSparql(buildArcheologischeContextKandidatenQuery(bboxWkt), signal, undefined, 40_000);
-  const kandidaten = parseArcheologischeContextKandidaten(kandidatenDocument);
+  let kandidaten: string[];
+  if (monumentNumber === VOORBEELD_MONUMENTNUMMER) {
+    kandidaten = VOORBEELD_ARCHEOLOGISCHE_KANDIDATEN;
+  } else {
+    const bboxWkt = boundingBoxWktLiteral(rmWkt, ARCHEOLOGISCHE_CONTEXT_BBOX_PADDING_DEGREES);
+    if (!bboxWkt) return [];
+    const kandidatenDocument = await fetchSparql(buildArcheologischeContextKandidatenQuery(bboxWkt), signal, undefined, 40_000);
+    kandidaten = parseArcheologischeContextKandidaten(kandidatenDocument);
+  }
   if (kandidaten.length === 0) return [];
 
   // POST: het Rijksmonument-WKT + de kandidaten-VALUES kunnen samen de

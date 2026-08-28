@@ -1007,6 +1007,34 @@ test("'Archeologische context'-knop toont een waarschuwing, laadstatus en doorkl
   await expect(page).toHaveURL(/q=2051204/);
 });
 
+test("'Zie de kracht van Doorzoeker' opent het vaste showcase-monument (14948) direct met archeologische context, geen knopklik nodig (gemeld door de eigenaar, 28-08-2026)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: { page: 1, hasMore: false, results: [{ ...records[0], choNumber: "cho-14948", sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/rijksmonument/59284", monumentNumber: "14948", name: "Sint-Maartenskerk" }] },
+  }));
+  await page.unroute("**/api/rce/archeologische-context**");
+  await page.route("**/api/rce/archeologische-context**", (route) => route.fulfill({
+    json: {
+      gebieden: [{
+        onderzoeksgebiedUri: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischonderzoeksgebied/2051204",
+        choNummer: "2051204",
+        omschrijving: "Gallo-Romeins Tempelcomplex 1e en 2e eeuw",
+        wkt: "Point (5.83 51.93)",
+      }],
+    },
+  }));
+
+  await page.getByRole("button", { name: "Zie de kracht van Doorzoeker" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "Sint-Maartenskerk" })).toBeVisible();
+  // Direct "gevonden", geen waarschuwing en geen "Zoek archeologische
+  // context"-knop - dat is precies het verschil met de generieke, knop-
+  // gedreven flow hierboven.
+  await expect(dialog.getByText("Gallo-Romeins Tempelcomplex")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Zoek archeologische context" })).toHaveCount(0);
+  await expect(dialog.getByText("kan tot ~20 seconden duren")).toHaveCount(0);
+});
+
 test("'Archeologische context'-knop toont geen resultaten-melding als er niets overlapt (017-archeologische-context-onderzoeksgebied)", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", (route) => route.fulfill({
