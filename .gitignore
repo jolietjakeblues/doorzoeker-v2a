@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# Wrangler's lokale secrets-bestand (ANTHROPIC_API_KEY e.a.) - andere
+# bestandsnaam dan .env*, dus expliciet nodig.
+.dev.vars
 
 # vercel
 .vercel
