@@ -9,7 +9,7 @@ export default function VraagPagina() {
   return (
     <>
       {/* eslint-disable-next-line @next/next/no-location-assign-relative-destination -- volle paginanavigatie tussen twee losse routes, geen SPA-interne overgang */}
-      <SiteHeader onReset={() => { window.location.href = "/"; }} />
+      <SiteHeader onReset={() => { window.location.href = "/"; }} huidigePagina="vraag" />
       <BetaBadge />
       <main className="vraag-main">
         <section className="hero vraag-hero">

@@ -83,3 +83,12 @@ test("de header op de startpagina linkt naar /vraag", async ({ page }) => {
   await page.getByRole("link", { name: "Stel een vraag" }).click();
   await expect(page).toHaveURL(/\/vraag$/);
 });
+
+test("op /vraag zelf is de navigatielink een weg terug, geen cirkelroute naar /vraag (gemeld door de eigenaar, 28-08-2026)", async ({ page }) => {
+  await page.goto("/vraag");
+  await page.waitForLoadState("networkidle");
+  await expect(page.getByRole("link", { name: "Stel een vraag" })).toHaveCount(0);
+  const terugLink = page.getByRole("link", { name: "Terug naar Doorzoeker" });
+  await expect(terugLink).toBeVisible();
+  await expect(terugLink).toHaveAttribute("href", "/");
+});
