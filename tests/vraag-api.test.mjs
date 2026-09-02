@@ -60,6 +60,26 @@ test("genereer-sparql: herkanst één keer als de lijstmodus toch een COUNT ople
   assert.equal(calls, 2);
 });
 
+test("genereer-sparql: herkanst één keer met de gevonden fouten als de semantische volledigheidscheck faalt (bv. 'kerken' zonder functiepad)", async (context) => {
+  let calls = 0;
+  let secondBody;
+  withMocks(context, {
+    fetchImpl: async (input, init) => {
+      calls += 1;
+      if (calls === 1) return anthropicResponse("SELECT DISTINCT ?rm WHERE { ?rm a ceo:Rijksmonument }");
+      secondBody = JSON.parse(String(init.body));
+      return anthropicResponse("SELECT DISTINCT ?rm WHERE { ?rm a ceo:Rijksmonument . ?rm ceo:heeftOorspronkelijkeFunctie ?f }");
+    },
+  });
+  const response = await genereerSparql(jsonRequest("https://doorzoeker.test/api/vraag/genereer-sparql", { question: "Welke kerken staan er in Zeist?", mode: "lijst" }));
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.match(document.query, /heeftOorspronkelijkeFunctie/);
+  assert.equal(calls, 2);
+  assert.match(secondBody.messages[0].content, /CORRIGEER DE VORIGE QUERY/);
+  assert.match(secondBody.messages[0].content, /functie of type/);
+});
+
 test("genereer-sparql: herkanst met meer budget als het antwoord is afgekapt (max_tokens)", async (context) => {
   let calls = 0;
   let secondCallMaxTokens;

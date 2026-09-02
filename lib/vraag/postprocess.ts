@@ -100,11 +100,18 @@ export function fixGemeentePad(query: string): string {
     .replace(/(\?\w+)\s+ceo:heeftBRKRelatie\s+(\?\w+)\s*\.\s*\2\s+ceo:gemeentenaam\s+(\?\w+)\s*\./g, (_match, relatie: string, _brk: string, gemeente: string) => `${relatie} ceo:heeftGemeente ${gemeente}Uri . ${gemeente}Uri rdfs:label ${gemeente} .`);
 }
 
-// Zet een eventuele bestaande LIMIT om naar LIJST_LIMIT, of voegt die toe als
-// er nog geen LIMIT is - nooit een ongelimiteerde lijstquery op een publieke
-// route.
+// Begrenst een eventuele bestaande LIMIT tot max, of voegt max toe als er
+// nog geen LIMIT is - nooit een ongelimiteerde lijstquery op een publieke
+// route. Verlaagt een grotere LIMIT, maar overschrijft NOOIT een kleinere,
+// bewust door Claude gezette LIMIT (bv. "geef 5 rijksmonumenten" ->
+// LIMIT 5) - dat deed deze functie eerder wél, wat semantic-validator.ts's
+// exacte-aantal-check zinloos zou maken (de correcte LIMIT 5 zou hier
+// alsnog naar 200 zijn opgehoogd).
 export function capListLimit(query: string, max: number = LIJST_LIMIT): string {
-  if (/\bLIMIT\s+\d+/i.test(query)) {
+  const match = /\bLIMIT\s+(\d+)/i.exec(query);
+  if (match) {
+    const existing = Number(match[1]);
+    if (existing <= max) return query;
     return query.replace(/\bLIMIT\s+\d+/i, `LIMIT ${max}`);
   }
   return `${query.trimEnd()}\nLIMIT ${max}`;
