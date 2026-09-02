@@ -1,5 +1,7 @@
 export {
   boundingBoxWktLiteral,
+  doesIntersect,
+  isWithin,
   parseWktGeometry,
   wktToLatLng,
   type WktGeometry,
