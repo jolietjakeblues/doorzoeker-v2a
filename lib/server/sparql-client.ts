@@ -25,7 +25,16 @@ async function fetchSparqlOnce(endpoint: string, query: string, signal?: AbortSi
         headers: { Accept: "application/sparql-results+json" },
         signal: requestSignal(signal, timeoutMs),
       });
-  if (!response.ok) throw new Error(`RCE SPARQL-service antwoordde met ${response.status}`, { cause: response.status });
+  if (!response.ok) {
+    const error = new Error(`RCE SPARQL-service antwoordde met ${response.status}`, { cause: response.status });
+    // Additief, niet-breaking: bestaande callers die alleen .cause (de
+    // status) lezen blijven ongewijzigd werken. lib/vraag/spatial-fallback.ts
+    // gebruikt .body om na afloop (dus ook na de herkansingen hieronder) een
+    // TopologyException/GEOS-fout te herkennen en op een andere strategie
+    // over te schakelen in plaats van de kapotte query te blijven herhalen.
+    (error as Error & { body?: string }).body = await response.text().catch(() => "");
+    throw error;
+  }
   return response.json();
 }
 

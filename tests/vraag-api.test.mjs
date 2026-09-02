@@ -3,6 +3,7 @@ import test from "node:test";
 import { POST as genereerSparql } from "../app/api/vraag/genereer-sparql/route.ts";
 import { POST as uitvoeren } from "../app/api/vraag/uitvoeren/route.ts";
 import { POST as antwoord } from "../app/api/vraag/antwoord/route.ts";
+import { FALLBACK_CANDIDATE_LIMIT } from "../lib/vraag/spatial-fallback.ts";
 
 function withMocks(context, { fetchImpl }) {
   const originalFetch = globalThis.fetch;
@@ -142,6 +143,58 @@ test("uitvoeren: voert de query uit tegen het RCE-endpoint en dedupliceert op ?r
   assert.equal(response.status, 200);
   const document = await response.json();
   assert.equal(document.results.results.bindings.length, 1);
+});
+
+test("uitvoeren: valt terug op een lokale ruimtelijke berekening als geof:sfWithin op RCE een TopologyException geeft", async (context) => {
+  let calls = 0;
+  withMocks(context, {
+    fetchImpl: async (_input, init) => {
+      calls += 1;
+      const body = decodeURIComponent(String(init?.body ?? "").replace(/^query=/, ""));
+      if (body.includes("geof:sfWithin")) {
+        return new Response(JSON.stringify({ message: "Virtuoso 22023 Error GEO22: TopologyException: side location conflict" }), { status: 500 });
+      }
+      // De vereenvoudigde query (zonder ruimtelijke FILTER) - een klein
+      // aantal kandidaten, ruim onder FALLBACK_CANDIDATE_LIMIT.
+      return Response.json({
+        head: { vars: ["rm", "rmWkt", "gezichtWkt"] },
+        results: {
+          bindings: [
+            { rm: { type: "uri", value: "https://example.org/rm/1" }, rmWkt: { type: "literal", value: "POINT(5 5)" }, gezichtWkt: { type: "literal", value: "POLYGON((0 0, 0 10, 10 10, 10 0, 0 0))" } },
+            { rm: { type: "uri", value: "https://example.org/rm/2" }, rmWkt: { type: "literal", value: "POINT(50 50)" }, gezichtWkt: { type: "literal", value: "POLYGON((0 0, 0 10, 10 10, 10 0, 0 0))" } },
+          ],
+        },
+      });
+    },
+  });
+  const response = await uitvoeren(jsonRequest("https://doorzoeker.test/api/vraag/uitvoeren", { query: "SELECT ?rm WHERE { ?rm a ceo:Rijksmonument . FILTER(geof:sfWithin(?rmWkt, ?gezichtWkt)) }" }));
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.equal(document.results.results.bindings.length, 1);
+  assert.equal(document.results.results.bindings[0].rm.value, "https://example.org/rm/1");
+  assert.ok(calls > 1);
+});
+
+test("uitvoeren: 422 met een eerlijke melding als de terugvalquery het verruimde plafond raakt (mogelijk vals-negatief)", async (context) => {
+  withMocks(context, {
+    fetchImpl: async (_input, init) => {
+      const body = decodeURIComponent(String(init?.body ?? "").replace(/^query=/, ""));
+      if (body.includes("geof:sfWithin")) {
+        return new Response(JSON.stringify({ message: "TopologyException" }), { status: 500 });
+      }
+      // Live geconstateerd (28-08-2026, "rijksmonumenten binnen Gezicht
+      // Schil Dordrecht" zonder gemeente-/functiefilter): het verruimde
+      // plafond geraakt betekent dat er mogelijk kandidaten buiten de set
+      // vielen - dan hoort Doorzoeker niet zomaar 0 (of een ander getal)
+      // als definitief antwoord te presenteren.
+      const bindings = Array.from({ length: FALLBACK_CANDIDATE_LIMIT }, (_, i) => ({ rm: { type: "uri", value: `https://example.org/rm/${i}` } }));
+      return Response.json({ head: { vars: ["rm"] }, results: { bindings } });
+    },
+  });
+  const response = await uitvoeren(jsonRequest("https://doorzoeker.test/api/vraag/uitvoeren", { query: "SELECT ?rm WHERE { ?rm a ceo:Rijksmonument . FILTER(geof:sfWithin(?rmWkt, ?gezichtWkt)) }" }));
+  assert.equal(response.status, 422);
+  const document = await response.json();
+  assert.match(document.error, /specifieker/);
 });
 
 test("uitvoeren: 400 bij een lege query", async (context) => {

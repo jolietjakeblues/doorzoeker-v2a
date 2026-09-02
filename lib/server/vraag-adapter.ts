@@ -3,7 +3,8 @@
 // herkomst van de kennisbank (ldv-talk-to-your-data-test).
 import { AnthropicTruncatedError, callClaude, type McpServerConfig } from "../vraag/anthropic-client.ts";
 import { DATAMODEL_RULES, LIJST_PROMPT, TELLING_PROMPT } from "../vraag/prompts.ts";
-import { dedupeByRm, hasCount, postprocessSparql, translateProvincieUris, type SparqlResultsDocument, type VraagMode } from "../vraag/postprocess.ts";
+import { dedupeByRm, hasCount, LIJST_LIMIT, postprocessSparql, translateProvincieUris, type SparqlResultsDocument, type VraagMode } from "../vraag/postprocess.ts";
+import { applySpatialFilterLocally, extractSpatialFilter, isFallbackCandidateSetIncomplete, isSpatialFailure, SpatialFallbackIncompleteError, stripSpatialFilter, widenLimitForFallback } from "../vraag/spatial-fallback.ts";
 import { fetchSparql, RCE_CHO_ENDPOINT } from "./sparql-client.ts";
 
 // De eigenaars eigen, zelfgebouwde MCP-server (github.com/jolietjakeblues/
@@ -59,9 +60,45 @@ export async function generateSparqlQuery(question: string, mode: VraagMode, sig
   return query;
 }
 
+// Live geconstateerd (28-08-2026, "kerken in de 19e-eeuwse Schil
+// Dordrecht"): geof:sfWithin/sfIntersects kan op RCE's Virtuoso-endpoint
+// vastlopen op een TopologyException in de brongeometrie zelf (bevestigd
+// via de rce-cho MCP, ook zonder functiefilter) - geen queryfout, dus geen
+// betere prompt lost dit op. Poort van de eigenaars eigen
+// ldv-talk-2-your-data (sparql/spatial.py/executor.py): bij zo'n fout (of
+// een timeout) wordt de query herhaald zonder de ruimtelijke FILTER en
+// lokaal opnieuw berekend (lib/vraag/spatial-fallback.ts).
 export async function executeVraagQuery(query: string, signal?: AbortSignal): Promise<SparqlResultsDocument> {
-  const data = (await fetchSparql(query, signal, RCE_CHO_ENDPOINT, EXECUTE_TIMEOUT_MS, "POST")) as SparqlResultsDocument;
-  return dedupeByRm(translateProvincieUris(data));
+  const spatialFilter = extractSpatialFilter(query);
+  try {
+    const data = (await fetchSparql(query, signal, RCE_CHO_ENDPOINT, EXECUTE_TIMEOUT_MS, "POST")) as SparqlResultsDocument;
+    return dedupeByRm(translateProvincieUris(data));
+  } catch (error) {
+    if (!spatialFilter || !isSpatialFailure(error)) throw error;
+    console.info(JSON.stringify({ event: "vraag.ruimtelijke-terugval", relation: spatialFilter.relation, message: error instanceof Error ? error.message : "onbekend" }));
+
+    const simplifiedQuery = widenLimitForFallback(stripSpatialFilter(query));
+    const rawData = (await fetchSparql(simplifiedQuery, signal, RCE_CHO_ENDPOINT, EXECUTE_TIMEOUT_MS, "POST")) as SparqlResultsDocument;
+    const rawCount = rawData.results?.bindings?.length ?? 0;
+    if (isFallbackCandidateSetIncomplete(rawCount)) {
+      // De vereenvoudigde query had geen eigen scoping meer (bv. geen
+      // gemeente- of functiefilter naast de ruimtelijke relatie) en raakte
+      // het verruimde plafond - er kunnen dus kandidaten buiten de
+      // opgehaalde set gemist zijn. Een "0 resultaten" (of elk ander
+      // aantal) zou hier vals-negatief kunnen zijn, dus liever een
+      // eerlijke foutmelding dan een mogelijk onvolledig antwoord.
+      throw new SpatialFallbackIncompleteError(
+        "De ruimtelijke vergelijking had geen eigen afbakening (zoals een gemeente of functie) naast het gebied zelf, en de kandidatenset werd te groot om volledig te doorzoeken. Probeer de vraag specifieker te maken, bijvoorbeeld met één gemeente of functie erbij.",
+      );
+    }
+    const { data, skipped } = applySpatialFilterLocally(rawData, spatialFilter);
+    if (skipped) console.info(JSON.stringify({ event: "vraag.ruimtelijke-terugval.overgeslagen", skipped }));
+    // De vereenvoudigde query had een verruimde LIMIT (widenLimitForFallback)
+    // om na de lokale filtering nog genoeg relevante rijen over te houden -
+    // knip het eindresultaat terug naar het normale plafond.
+    if (data.results?.bindings) data.results.bindings = data.results.bindings.slice(0, LIJST_LIMIT);
+    return dedupeByRm(translateProvincieUris(data));
+  }
 }
 
 export async function generateAntwoord(question: string, results: SparqlResultsDocument, signal?: AbortSignal): Promise<string> {

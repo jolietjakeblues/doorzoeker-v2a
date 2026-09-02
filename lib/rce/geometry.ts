@@ -98,6 +98,66 @@ export function boundingBoxWktLiteral(wkt: string, paddingDegrees = 0): string |
   return `POLYGON((${minLng} ${minLat}, ${maxLng} ${minLat}, ${maxLng} ${maxLat}, ${minLng} ${maxLat}, ${minLng} ${minLat}))`;
 }
 
+// Ray-casting (even-odd rule) - standaardalgoritme voor punt-in-veelhoek,
+// zonder externe geometriebibliotheek. Gebruikt door isWithin/doesIntersect
+// hieronder (lib/vraag/spatial-fallback.ts) als lokale vervanger voor RCE's
+// geof:sfWithin/sfIntersects wanneer die op het endpoint een
+// TopologyException geven (poort van ldv-talk-2-your-data's Shapely-
+// gebaseerde fallback, zie project-memory).
+function isPointInRing(point: readonly [number, number], ring: WktRing): boolean {
+  const [x, y] = point;
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    const crosses = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+    if (crosses) inside = !inside;
+  }
+  return inside;
+}
+
+// rings[0] is de buitenring, rings[1..] zijn gaten (het gangbare WKT-Polygon-
+// profiel) - een punt telt alleen mee als het binnen de buitenring ligt én
+// buiten elk gat.
+function isPointInPolygonRings(point: readonly [number, number], rings: WktRing[]): boolean {
+  if (rings.length === 0 || !isPointInRing(point, rings[0])) return false;
+  return !rings.slice(1).some((hole) => isPointInRing(point, hole));
+}
+
+function isPointInGeometry(point: readonly [number, number], geometry: WktGeometry): boolean {
+  if (geometry.kind === "point") return false;
+  if (geometry.kind === "polygon") return isPointInPolygonRings(point, geometry.rings);
+  return geometry.polygons.some((rings) => isPointInPolygonRings(point, rings));
+}
+
+function verticesOf(geometry: WktGeometry): WktRing {
+  if (geometry.kind === "point") return [[geometry.lng, geometry.lat]];
+  if (geometry.kind === "polygon") return geometry.rings.flat();
+  return geometry.polygons.flat(2);
+}
+
+// Benadering voor object-geometrieën die zelf een (multi)polygon zijn (bv.
+// een rijksmonument met een eigen vlak i.p.v. een punt): "binnen" betekent
+// hier "elk hoekpunt van het object ligt binnen het gebied" - geen volledige
+// topologische within-toets (die zou ook randgevallen zonder
+// hoekpuntoverlap moeten afvangen), maar in de praktijk ruim voldoende voor
+// Doorzoekers eenvoudige RCE-geometrieën, en nooit erger dan de fout die
+// deze fallback juist probeert op te vangen.
+export function isWithin(object: WktGeometry, area: WktGeometry): boolean {
+  if (object.kind === "point") return isPointInGeometry([object.lng, object.lat], area);
+  const vertices = verticesOf(object);
+  return vertices.length > 0 && vertices.every((point) => isPointInGeometry(point, area));
+}
+
+export function doesIntersect(object: WktGeometry, area: WktGeometry): boolean {
+  if (object.kind === "point") return isPointInGeometry([object.lng, object.lat], area);
+  // Benadering: een hoekpunt van de een binnen de ander is voldoende bewijs
+  // van overlap; mist het randgeval van twee vlakken die alleen via
+  // kruisende randen overlappen zonder dat een hoekpunt binnen het andere
+  // vlak valt - zeldzaam bij Doorzoekers eenvoudige RCE-geometrieën.
+  return verticesOf(object).some((point) => isPointInGeometry(point, area)) || verticesOf(area).some((point) => isPointInGeometry(point, object));
+}
+
 // Een multipolygon kan uit ver uit elkaar liggende delen bestaan. Kies voor
 // een representatief kaartpunt de ring met de grootste bounding box en middel
 // alleen de coördinaten van die dominante vorm.
