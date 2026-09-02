@@ -127,6 +127,11 @@ test("capListLimit voegt een LIMIT toe als die ontbreekt", () => {
   assert.match(capListLimit("SELECT ?rm WHERE { ?rm a ceo:Rijksmonument }", 200), /LIMIT 200$/);
 });
 
+test("capListLimit laat een kleinere, bewust gezette LIMIT met rust (bv. 'geef 5 rijksmonumenten')", () => {
+  const query = "SELECT ?rm WHERE { ?rm a ceo:Rijksmonument }\nLIMIT 5";
+  assert.equal(capListLimit(query, 200), query);
+});
+
 test("postprocessSparql past alle stappen in de juiste volgorde toe voor lijstmodus", () => {
   const raw = [
     "```sparql",

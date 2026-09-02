@@ -4,6 +4,7 @@
 import { AnthropicTruncatedError, callClaude, type McpServerConfig } from "../vraag/anthropic-client.ts";
 import { DATAMODEL_RULES, LIJST_PROMPT, TELLING_PROMPT } from "../vraag/prompts.ts";
 import { dedupeByRm, hasCount, LIJST_LIMIT, postprocessSparql, translateProvincieUris, type SparqlResultsDocument, type VraagMode } from "../vraag/postprocess.ts";
+import { validateQuery } from "../vraag/semantic-validator.ts";
 import { applySpatialFilterLocally, extractSpatialFilter, isFallbackCandidateSetIncomplete, isSpatialFailure, SpatialFallbackIncompleteError, stripSpatialFilter, widenLimitForFallback } from "../vraag/spatial-fallback.ts";
 import { fetchSparql, RCE_CHO_ENDPOINT } from "./sparql-client.ts";
 
@@ -56,6 +57,17 @@ export async function generateSparqlQuery(question: string, mode: VraagMode, sig
   // vraag, in plaats van de foute query te tonen.
   if (mode === "lijst" && hasCount(query)) {
     return generateOnce(`${question} (geef een lijst van individuele monumenten, geen telling)`, mode, SPARQL_MAX_TOKENS, signal);
+  }
+  // Gratis, deterministische volledigheidscheck (poort van
+  // semantic_validator.py): vangt het geval waarin Claude een onderdeel van
+  // een meerledige vraag stilzwijgend laat vallen. Bij fouten: precies één
+  // corrigerende hergeneratie met de gevonden fouten erbij, zelfde patroon
+  // als de COUNT-correctie hierboven en de bron zijn eigen "CORRIGEER DE
+  // VORIGE QUERY"-aanroep.
+  const errors = validateQuery(question, query);
+  if (errors.length > 0) {
+    const correctie = `${question}\n\nCORRIGEER DE VORIGE QUERY, DEZE MISTE ONDERDELEN UIT DE VRAAG:\n- ${errors.join("\n- ")}`;
+    return generateOnce(correctie, mode, SPARQL_MAX_TOKENS, signal);
   }
   return query;
 }
