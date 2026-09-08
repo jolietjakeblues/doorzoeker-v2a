@@ -2,6 +2,7 @@ import { generateSparqlQuery } from "../../../../lib/server/vraag-adapter.ts";
 import { createRateLimiter, rateLimitedResponse } from "../../../../lib/server/route-rate-limit.ts";
 import { withRceErrorHandling } from "../../../../lib/server/route-error-handling.ts";
 import { NO_STORE } from "../../../../lib/server/http-cache.ts";
+import { SparqlSyntaxInvalidError } from "../../../../lib/vraag/syntax-validator.ts";
 
 export const runtime = "edge";
 
@@ -27,7 +28,22 @@ export async function POST(request: Request) {
     }
     if (!rateLimiter.consume(request)) return rateLimitedResponse();
 
-    const query = await generateSparqlQuery(question.trim(), mode, request.signal);
+    let query: string;
+    try {
+      query = await generateSparqlQuery(question.trim(), mode, request.signal);
+    } catch (error) {
+      // Eigen, eerlijke melding i.p.v. withRceErrorHandling's generieke
+      // "niet bereikbaar" - dit is geen storing maar een vraag waarvoor
+      // ook na de correctiepoging geen geldige SPARQL is gelukt (zie
+      // lib/vraag/syntax-validator.ts).
+      if (error instanceof SparqlSyntaxInvalidError) {
+        return Response.json(
+          { error: "Kon voor deze vraag geen geldige SPARQL-query genereren. Probeer de vraag anders te formuleren." },
+          { status: 422, headers: { "Cache-Control": NO_STORE } },
+        );
+      }
+      throw error;
+    }
     return Response.json({ query }, { headers: { "Cache-Control": NO_STORE, "Server-Timing": `vraag;dur=${Date.now() - startedAt}` } });
   });
 }
