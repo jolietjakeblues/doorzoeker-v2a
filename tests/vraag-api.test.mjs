@@ -21,10 +21,10 @@ function anthropicResponse(text, stopReason = "end_turn") {
   return Response.json({ content: [{ type: "text", text }], stop_reason: stopReason });
 }
 
-function jsonRequest(url, body) {
+function jsonRequest(url, body, ip = "test-vraag") {
   return new Request(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "cf-connecting-ip": "test-vraag" },
+    headers: { "Content-Type": "application/json", "cf-connecting-ip": ip },
     body: JSON.stringify(body),
   });
 }
@@ -78,6 +78,29 @@ test("genereer-sparql: herkanst één keer met de gevonden fouten als de semanti
   assert.equal(calls, 2);
   assert.match(secondBody.messages[0].content, /CORRIGEER DE VORIGE QUERY/);
   assert.match(secondBody.messages[0].content, /functie of type/);
+});
+
+test("genereer-sparql: 422 met een eerlijke melding als de query na de correctiepoging nog steeds syntactisch ongeldig is", async (context) => {
+  let calls = 0;
+  withMocks(context, {
+    fetchImpl: async () => {
+      calls += 1;
+      // Een dubbele vergelijkingsoperator -- geen van postprocess.ts's
+      // fixes (prefixes, gemeente-/provinciepad, label-filter,
+      // balanceBraces, capListLimit) raakt hieraan, dus blijft na de
+      // herkansing net zo ongeldig als ervoor.
+      return anthropicResponse(
+        'SELECT ?rm ?jaar WHERE { ?rm a ceo:Rijksmonument . ?rm ceo:registratiedatum ?jaar . FILTER(?jaar > > "2000-01-01"^^xsd:date) }',
+      );
+    },
+  });
+  const response = await genereerSparql(
+    jsonRequest("https://doorzoeker.test/api/vraag/genereer-sparql", { question: "Welke rijksmonumenten staan er in Zeist?", mode: "lijst" }, "test-vraag-syntax-invalid"),
+  );
+  assert.equal(response.status, 422);
+  const document = await response.json();
+  assert.match(document.error, /geen geldige SPARQL-query/);
+  assert.equal(calls, 2, "moet één correctiepoging doen voordat de fout wordt teruggegeven");
 });
 
 test("genereer-sparql: herkanst met meer budget als het antwoord is afgekapt (max_tokens)", async (context) => {

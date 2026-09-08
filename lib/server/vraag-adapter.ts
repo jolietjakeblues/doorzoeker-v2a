@@ -5,6 +5,7 @@ import { AnthropicTruncatedError, callClaude, type McpServerConfig } from "../vr
 import { DATAMODEL_RULES, LIJST_PROMPT, TELLING_PROMPT } from "../vraag/prompts.ts";
 import { dedupeByRm, hasCount, LIJST_LIMIT, postprocessSparql, translateProvincieUris, type SparqlResultsDocument, type VraagMode } from "../vraag/postprocess.ts";
 import { validateQuery } from "../vraag/semantic-validator.ts";
+import { SparqlSyntaxInvalidError, validateSyntax } from "../vraag/syntax-validator.ts";
 import { applySpatialFilterLocally, extractSpatialFilter, isFallbackCandidateSetIncomplete, isSpatialFailure, SpatialFallbackIncompleteError, stripSpatialFilter, widenLimitForFallback } from "../vraag/spatial-fallback.ts";
 import { fetchSparql, RCE_CHO_ENDPOINT } from "./sparql-client.ts";
 
@@ -64,10 +65,16 @@ export async function generateSparqlQuery(question: string, mode: VraagMode, sig
   // corrigerende hergeneratie met de gevonden fouten erbij, zelfde patroon
   // als de COUNT-correctie hierboven en de bron zijn eigen "CORRIGEER DE
   // VORIGE QUERY"-aanroep.
-  const errors = validateQuery(question, query);
+  const errors = [...validateQuery(question, query), ...validateSyntax(query)];
   if (errors.length > 0) {
     const correctie = `${question}\n\nCORRIGEER DE VORIGE QUERY, DEZE MISTE ONDERDELEN UIT DE VRAAG:\n- ${errors.join("\n- ")}`;
-    return generateOnce(correctie, mode, SPARQL_MAX_TOKENS, signal);
+    const corrected = await generateOnce(correctie, mode, SPARQL_MAX_TOKENS, signal);
+    // Gratis en deterministisch (geen extra Anthropic-aanroep) - voorkomt
+    // dat een na de correctiepoging nog steeds kapotte query alsnog naar
+    // het RCE-endpoint gaat, waar hij toch als 400 terug zou komen.
+    const remainingSyntaxErrors = validateSyntax(corrected);
+    if (remainingSyntaxErrors.length > 0) throw new SparqlSyntaxInvalidError(remainingSyntaxErrors[0]);
+    return corrected;
   }
   return query;
 }
