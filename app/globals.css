@@ -1322,6 +1322,44 @@ h2 {
   background-size: cover;
   background-position: center;
 }
+.detail-head.expanded {
+  height: 60vh;
+  place-content: initial;
+}
+.iiif-viewer {
+  position: absolute;
+  inset: 0;
+}
+.detail-head-zoom {
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  z-index: 1;
+  border: 1px solid #ffffff88;
+  border-radius: 20px;
+  background: #0006;
+  color: #fff;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.iiif-controls {
+  position: absolute;
+  left: 16px;
+  bottom: 14px;
+  z-index: 1;
+  display: flex;
+  gap: 6px;
+}
+.iiif-controls button {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid #ffffff88;
+  background: #0006;
+  color: #fff;
+  font-size: 16px;
+}
 .detail-head.sand {
   background: #9d6937;
 }

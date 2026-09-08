@@ -1856,6 +1856,101 @@ test("een groenaanleg-foto wordt getoond met bron en rechten", async ({ page }) 
   );
 });
 
+test("een 'Vergroten'-knop verschijnt bij een foto met een IIIF-endpoint en klikken toont een zoombare weergave (issue #125)", async ({ page }) => {
+  await page.route("**/info.json", (route) => route.fulfill({
+    json: {
+      "@context": "http://iiif.io/api/image/2/context.json",
+      "@id": "https://images.memorix.nl/rce/iiif/test-uuid",
+      protocol: "http://iiif.io/api/image",
+      width: 800,
+      height: 600,
+      profile: ["http://iiif.io/api/image/2/level2.json"],
+    },
+  }));
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: {
+      page: 1,
+      hasMore: false,
+      results: [{
+        ...records[0],
+        image: {
+          url: "https://images.memorix.nl/rce/thumb/640x480/test-uuid.jpg",
+          title: "Voorgevel",
+          sourceUrl: "https://beeldbank.cultureelerfgoed.nl/x",
+        },
+      }],
+    },
+  }));
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+
+  const dialog = page.getByRole("dialog");
+  const zoomButton = dialog.getByRole("button", { name: "Vergroten" });
+  await expect(zoomButton).toBeVisible();
+  await zoomButton.click();
+
+  await expect(dialog.getByRole("button", { name: "Verkleinen" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Inzoomen" })).toBeVisible();
+  await expect(
+    dialog.getByRole("img", { name: "Ingezoomde foto: Woonhuis van de architect" }),
+  ).toBeVisible();
+});
+
+test("een foto zonder IIIF-endpoint (bv. een rechtstreekse Wikimedia-thumbnail) toont geen 'Vergroten'-knop", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: {
+      page: 1,
+      hasMore: false,
+      results: [{
+        ...records[0],
+        image: {
+          url: "https://commons.wikimedia.org/w/thumb.php?f=Foto.jpg&w=400",
+          title: "Voorgevel",
+        },
+      }],
+    },
+  }));
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Voorgevel")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Vergroten" })).toHaveCount(0);
+});
+
+test("de 'Vergroten'-knop op de detailkop blijft binnen de focus-trap van de detaildialoog", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: {
+      page: 1,
+      hasMore: false,
+      results: [{
+        ...records[0],
+        image: { url: "https://images.memorix.nl/rce/thumb/640x480/test-uuid.jpg" },
+      }],
+    },
+  }));
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+
+  const dialog = page.getByRole("dialog");
+  const closeButton = dialog.getByRole("button", { name: "Details sluiten" });
+  const zoomButton = dialog.getByRole("button", { name: "Vergroten" });
+  await expect(closeButton).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(zoomButton).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(closeButton).toBeFocused();
+});
+
 test("een scheepswrak (MASS) toont scheepstype, gesaneerde omschrijving met afbeelding en de vaste bronvermelding (018-mass-scheepswrakken)", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", (route) => route.fulfill({
