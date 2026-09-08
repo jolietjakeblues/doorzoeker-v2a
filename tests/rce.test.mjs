@@ -3,6 +3,7 @@ import test from "node:test";
 import { boundingBoxWktLiteral, buildActorConceptQuery, buildArcheologischeComplexConceptQuery, buildArcheologischeComplexDetailsQuery, buildArcheologischeComplexDiscoveryQueries, buildArcheologischeContextExacteQuery, buildArcheologischeContextKandidatenQuery, buildArcheologischeWaarderingConceptQuery, buildArcheologischOnderzoekDetailsQuery, buildArcheologischOnderzoekDiscoveryQueries, buildArcheologischTerreinDetailsQuery, buildArcheologischTerreinDiscoveryQueries, buildArcheologischTerreinQuery, buildBouwkundigeStaatConceptQuery, buildOnderwerpTermSuggestQuery, buildRijksmonumentGeometrieQuery, buildStijlConceptQuery, buildComplexenQuery, buildComplexMembersQuery, buildComplexQuery, buildGebeurtenisConceptQuery, buildGebeurtenissenQuery, buildGezichtLidmaatschapQuery, buildGezichtQuery, buildGroenaanlegQuery, buildGrondsporenDetailsQuery, buildGrondsporenDiscoveryQueries, buildGrondspoorTypeConceptQuery, buildImageQuery, buildMonumentAardConceptQuery, buildMonumentTypeConceptQuery, buildMspIndicatieQuery, buildOmschrijvingOnderwerpQuery, buildOnderzoeksgebiedAggregatenQuery, buildOnderzoeksgebiedComplexenQuery, buildOnderzoeksgebiedVondstlocatiesQuery, buildOpDezeDagQuery, buildRceChoNumberQuery, buildRceDetailsQuery, buildRceDiscoveryQueries, buildRceFacetsQuery, buildRceParcelsQuery, buildReferentienetwerkTermSuggestQuery, buildVondstlocatieDetailsQuery, buildVondstlocatieDiscoveryQueries, buildVondstlocatieInhoudQuery, buildVondstlocatieInhoudTellingQuery, buildVerwervingConceptQuery, buildVondstenConceptQuery, buildVondstenDetailsQuery, buildVondstenDiscoveryQueries, buildWerelderfgoedLidmaatschapQuery, buildWerelderfgoedQuery, mergeDiscoveryMatches, mergeVondstlocatieInhoud, parseArcheologischeComplexDiscoveryResults, parseArcheologischeComplexResults, parseArcheologischeContextKandidaten, parseArcheologischeContextResults, parseArcheologischOnderzoekDiscoveryResults, parseArcheologischOnderzoekResults, parseArcheologischTerreinDiscoveryResults, parseArcheologischTerreinResults, parseOnderwerpTermSuggestResults, parseOmschrijvingOnderwerpResults, parseComplexenResults, parseComplexMembersResults, parseComplexResults, parseConceptSearchMatches, parseDiscoveryBranchResults, parseGebeurtenissenResults, parseGezichtLidmaatschapResults, parseGezichtResults, parseGroenaanlegResults, parseGrondsporenDiscoveryResults, parseGrondsporenResults, parseImageResults, parseMspIndicatieResults, parseOnderzoeksgebiedAggregatenResults, parseOnderzoeksgebiedComplexenResults, parseOnderzoeksgebiedVondstlocatiesResults, parseOpDezeDagCandidates, parseParcelResults, parseRceMonuments, parseReferentienetwerkTermSuggestResults, parseRijksmonumentGeometrieResult, parseSparqlResults, parseStandaloneArcheologischTerreinResults, parseVondstlocatieDiscoveryResults, parseVondstlocatieInhoudResults, parseVondstlocatieInhoudTelling, parseVondstlocatieResults, parseVondstenDiscoveryResults, parseVondstenResults, parseWerelderfgoedLidmaatschapResults, parseWerelderfgoedResults, parseWktGeometry, pickOpDezeDagCandidate, provinceName, RCE_SEMANTICS, VONDSTLOCATIE_INHOUD_KLASSEN, wktToLatLng } from "../lib/rce.ts";
 import { buildArchaeologyBrowseQuery, buildRijksmonumentenBrowseQuery, parseArchaeologyBrowseNumbers, parseRijksmonumentenBrowseNumbers } from "../lib/rce.ts";
 import { buildFunctieConceptQuery, buildTermUsageQuery, parseFacetResults, parseTermUsageResults } from "../lib/rce.ts";
+import { iiifSourceForImage } from "../lib/rce.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const graph = [
@@ -834,6 +835,35 @@ test("parses image results, skipping monuments without a usable depiction URL", 
   const byNumber = parseImageResults(document);
   assert.deepEqual(byNumber.get("36046"), { url: "https://images.memorix.nl/rce/thumb/640x480/abc.jpg", title: "Voorgevel", license: "https://creativecommons.org/licenses/by/4.0/", sourceUrl: "https://beeldbank.cultureelerfgoed.nl/x" });
   assert.equal(byNumber.has("45708"), false);
+});
+
+test("iiifSourceForImage leidt het IIIF-endpoint af uit een gewone Memorix-thumbnail-URL", () => {
+  // Live geverifieerd (02-09-2026) tegen de rce-cho MCP: deze exacte
+  // vorm (.../thumb/640x480/<uuid>.jpg) heeft een werkend IIIF Image
+  // API 2.0-endpoint op .../iiif/<uuid>/info.json.
+  const source = iiifSourceForImage("https://images.memorix.nl/rce/thumb/640x480/0001090b-b030-b76e-8276-5eff860265d0.jpg");
+  assert.deepEqual(source, {
+    base: "https://images.memorix.nl/rce/iiif/0001090b-b030-b76e-8276-5eff860265d0",
+    infoUrl: "https://images.memorix.nl/rce/iiif/0001090b-b030-b76e-8276-5eff860265d0/info.json",
+  });
+});
+
+test("iiifSourceForImage matcht ook een niet-numeriek maatsegment (bv. 'fullsize', zoals groenaanleg-foto's gebruiken)", () => {
+  const source = iiifSourceForImage("https://images.memorix.nl/rce/thumb/fullsize/groenaanleg.jpg");
+  assert.equal(source?.base, "https://images.memorix.nl/rce/iiif/groenaanleg");
+});
+
+test("iiifSourceForImage matcht .png- en .webp-varianten", () => {
+  assert.equal(iiifSourceForImage("https://images.memorix.nl/rce/thumb/640x480/abc.png")?.base, "https://images.memorix.nl/rce/iiif/abc");
+  assert.equal(iiifSourceForImage("https://images.memorix.nl/rce/thumb/640x480/abc.webp")?.base, "https://images.memorix.nl/rce/iiif/abc");
+});
+
+test("iiifSourceForImage geeft undefined voor een niet-Memorix-URL (bv. een rechtstreekse Wikimedia Commons-thumbnail)", () => {
+  assert.equal(iiifSourceForImage("https://commons.wikimedia.org/w/thumb.php?f=Foto.jpg&w=400"), undefined);
+});
+
+test("iiifSourceForImage geeft undefined bij een onverwachte padvorm", () => {
+  assert.equal(iiifSourceForImage("https://images.memorix.nl/rce/anders/abc.jpg"), undefined);
 });
 
 test("looks up groenaanleg-classificatie en -foto by the monument's own CHO subject URI", () => {

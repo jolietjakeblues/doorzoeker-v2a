@@ -21,6 +21,7 @@
     "dependencies": {
         "@traqula/parser-sparql-1-2": "^1.2.1",
         "leaflet": "^1.9.4",
+        "openseadragon": "^6.1.0",
         "react": "^19.2.8",
         "react-dom": "^19.2.8"
     },

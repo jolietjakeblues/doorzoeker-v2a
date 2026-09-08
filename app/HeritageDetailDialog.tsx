@@ -13,6 +13,7 @@ import {
 } from "@/lib/heritage-view-model";
 import { wktToLatLng, type ArcheologischeContext } from "@/lib/rce";
 import { HeritageDetailFacts } from "./HeritageDetailFacts";
+import { HeritageImageViewer } from "./HeritageImageViewer";
 import { HeritageMap } from "./HeritageMap";
 import { HeritageRelationSections } from "./HeritageRelationSections";
 
@@ -96,25 +97,21 @@ export function HeritageDetailDialog({
         >
           ×
         </button>
-        <div
-          className={`detail-head ${typeBadge(selected).modifier}${selected.image ? " has-image" : ""}`.trim()}
-          style={
-            selected.image
-              ? {
-                  backgroundImage: `linear-gradient(0deg, #00000073, #00000073), url(${selected.image.url})`,
-                }
-              : undefined
-          }
-        >
-          {selected.image ? (
-            <span className="tile-badge large">
-              {typeBadge(selected).letter}
-            </span>
-          ) : (
+        {selected.image ? (
+          <HeritageImageViewer
+            key={selected.id}
+            image={selected.image}
+            title={selected.title}
+            badgeLetter={typeBadge(selected).letter}
+            statusText={statusLabel(selected.objectType)}
+            modifierClass={typeBadge(selected).modifier}
+          />
+        ) : (
+          <div className={`detail-head ${typeBadge(selected).modifier}`.trim()}>
             <b>{typeBadge(selected).letter}</b>
-          )}
-          <small>{statusLabel(selected.objectType)}</small>
-        </div>
+            <small>{statusLabel(selected.objectType)}</small>
+          </div>
+        )}
         <div className="detail-copy">
           {!selectedIdentifierRepeatsTitle ? (
             <small>
