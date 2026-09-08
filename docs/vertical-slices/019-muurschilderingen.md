@@ -93,10 +93,17 @@ punt 5 hieronder) die MASS niet had.
    Muurschilderingen-dataset zelf, met een eigen URI, eigen velden
    (`schema:birthDate`, `schema:sameAs` naar RKD) — geen concept-URI-klik
    binnen bestaande infrastructuur, een echt nieuw datamodel-stuk.
-8. **Licentie nog niet geverifieerd voor deze dataset specifiek** (in
-   tegenstelling tot MASS, waar CC BY-SA 4.0 op elk record expliciet
-   `sdo:license` was). Moet uitgezocht worden — analoog aan MASS punt 8,
-   een zichtbare bronvermelding is vereist voordat dit gebouwd wordt.
+8. **Geen expliciete licentie gevonden — in tegenstelling tot MASS.** Geen
+   `license`/`rights`-predicaat in de RDF, `license: null` in de
+   datasetmetadata op TriplyDB, geen licentievermelding in de voettekst van
+   muurschilderingendatabase.nl. Belangrijker: de dataset is samengesteld
+   uit meerdere bronnen/partners (RKD, Radboud Universiteit, Stichting
+   Groninger Kerken, diverse publicaties met eigen fotografie-credits, bv.
+   "fotografie: Sjaan van der Jagt" bij één van de bronpublicaties) — zelfs
+   als er een algemene RCE-LOD-licentie voor de metadata geldt, is dat voor
+   de **afbeeldingen specifiek** niet aan te nemen. Anders dan bij MASS is
+   dit (nog) geen groen licht met een vaste bronregel, maar een echte
+   blokkerende open vraag voor beeldmateriaal.
 9. **Chronologisch bereik is breed en verrassend.** 29% van de
    schilderingen is 20e-eeuws (piek in het interbellum, 1920–1944), niet
    overwegend middeleeuws zoals de naam "muurschildering" doet vermoeden —
@@ -118,12 +125,11 @@ niet kon bieden.
 1. Nieuwe module `lib/rce/muurschilderingen.ts`, analoog aan
    `scheepswrakken.ts`: eigen discoveryquery's (gebouwnaam, plaats,
    makernaam), eigen detailquery, eigen parser, eigen `ENDPOINT`-constante.
-2. Nieuw objecttype "Muurschildering" (of "Gebouw met muurschildering(en)"
-   — open vraag, zie hieronder) door de stack heen: eigen kleur/icoon op de
-   kaart, eigen filter in "Soort object".
-3. Aparte, kleine module voor de Omeka-media-REST-call (thumbnails +
-   origineel), losstaand van de SPARQL-laag — geen live per-detail-fetch
-   zonder caching, gezien de paginering die nodig is (~2.900 media-items).
+2. Nieuw objecttype "Gebouw met muurschildering(en)" door de stack heen:
+   eigen kleur/icoon op de kaart, eigen filter in "Soort object" (beslissing
+   1 hieronder).
+3. Omeka-media-REST-call (thumbnails/origineel) **niet** in deze eerste
+   bouwstap — pas bouwen zodra de licentievraag hieronder is opgelost.
 4. Rijksmonument-koppeling: op de bestaande Rijksmonument-detailpagina een
    sectie "Muurschilderingen in dit gebouw" tonen wanneer
    `ceo:rijksmonumentnummer` matcht — vergelijkbaar met hoe archeologische
@@ -168,40 +174,46 @@ type Muurschildering = {
 - Eerste bouwstap: zoeken + detail + kaartmarker + Rijksmonument-koppeling.
   Geen aparte, doorzoekbare "makers"-entiteit (punt 5 hierboven) — dat is
   een reële vervolgstap, geen dagtaak samen met de rest.
-- Geen live IIIF/deep-zoom (bestaat niet bij de bron — punt 6) — een
-  simpele "grootste beschikbare afbeelding"-weergave, net zoals de eigen
-  explorer al doet.
-- Coördinaat-fallbackketen (rijksmonument-centroid, Reliwiki+PDOK) alleen
-  overnemen als de eigenaar dat expliciet wil; anders "geen marker" voor de
-  66 gebouwen zonder eigen coördinaat, net als MASS "geen polygoon" toont
-  waar geometrie ontbreekt.
+- Geen afbeeldingen in de eerste bouwstap (zie "Nog open: licentie" hieronder)
+  — alleen tekst/metadata, met een doorklik naar de bronpagina voor wie de
+  foto wil zien.
+- Coördinaat-fallbackketen (rijksmonument-centroid, Reliwiki+PDOK) wordt
+  overgenomen (beslissing 2 hieronder) — 552/576 gebouwen krijgen zo een
+  marker, i.p.v. alleen de 510/576 met een eigen brongeometrie.
 - De 4 bevestigde coördinaatfouten (punt 5) worden hoe dan ook niet
   klakkeloos overgenomen, ongeacht of de fallbackketen wordt gebouwd.
 
-## Open vragen (voor de eigenaar, vóór er gebouwd wordt — zelfde volgorde als slice 018)
+## Beslissingen (8 september 2026, na overleg met de eigenaar)
 
-1. **Categorienaam in de UI**: "Muurschildering(en)" op schilderingniveau,
-   of "Gebouw met muurschildering(en)" op gebouwniveau als primair
-   doorzoekbaar object (met schilderingen als onderdeel van het detail)?
-   De brondata is gebouw-per-gebouw gestructureerd (net als bij
-   Rijksmonumenten zelf), dus dat laatste ligt voor de hand, maar is niet
-   vanzelfsprekend.
-2. **Coördinaat-fallback overnemen of niet** (zie Scope-afbakening) — en zo
-   ja, hoeveel van de eigen explorer se aanpak (rijksmonument-centroid +
-   Reliwiki/PDOK-geocoding) is het waard om te dupliceren versus gewoon
-   "geen marker" bij ontbrekende coördinaat?
-3. **Licentie/bronvermelding**: nog uit te zoeken bij de bron zelf (zie
-   punt 8) voordat dit gebouwd wordt — analoog aan de vaste
-   CC BY-SA-regel bij MASS.
-4. **Makers als aparte entiteit, nu of later** (zie punt 5/aanpak-punt 5)?
+1. **Primair object: het gebouw**, met schilderingen als onderdeel van het
+   detail — sluit aan bij hoe de brondata en Rijksmonumenten al
+   gestructureerd zijn.
+2. **Coördinaat-fallbackketen overnemen**: rijksmonument-centroid +
+   Reliwiki/PDOK-geocoding dupliceren zoals in de eigen explorer, zodat
+   552/576 i.p.v. 510/576 gebouwen een kaartmarker krijgen.
+3. **Makers: eerst alleen tekst** in het schildering-detail (naam +
+   RKD/Wikidata-link waar aanwezig), geen aparte doorzoekbare entiteit in
+   deze slice.
+
+## Nog open: licentie/afbeeldingen (blokkerend voor beeldmateriaal)
+
+Geen groen licht zoals bij MASS. Voorlopig advies: de eerste bouwstap
+toont **geen afbeeldingen**, alleen tekst/metadata met een doorklik naar de
+bronpagina op muurschilderingendatabase.nl voor wie de foto wil zien — pas
+alsnog thumbnails/originelen tonen zodra RCE een licentie voor het
+beeldmateriaal bevestigt. Metadata (titels, datering, iconografie, makers)
+kan als "RCE Linked Open Data" wel getoond worden, consistent met hoe
+Doorzoeker de rest van de CEO-data al behandelt.
 
 ## Acceptatiecriteria (concept, aan te scherpen zodra de open vragen beantwoord zijn)
 
 1. Muurschilderingen/gebouwen zijn doorzoekbaar op naam/plaats, net als de
    andere objectsoorten.
 2. Een detail toont: gebouw, plaats, schilderingen (titel, datering,
-   locatie-in-gebouw, onderwerp, maker, afbeelding waar aanwezig), en waar
-   een rijksmonumentnummer bekend is een link naar dat rijksmonument.
+   locatie-in-gebouw, onderwerp, maker als tekst), en waar een
+   rijksmonumentnummer bekend is een link naar dat rijksmonument. Geen
+   afbeeldingen in deze slice (zie licentievraag) — wel een doorklik naar de
+   bronpagina.
 3. Vanaf een Rijksmonument-detailpagina is zichtbaar of er
    muurschilderingen aan gekoppeld zijn.
 4. Geen crash bij gebouwen zonder coördinaat, zonder foto, of zonder
