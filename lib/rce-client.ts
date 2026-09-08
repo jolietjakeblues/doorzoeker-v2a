@@ -12,7 +12,7 @@ const SCOPE_CATEGORIES: Record<string, string[]> = {
   core: ["Rijksmonument"],
   heritage: ["Werelderfgoed", "Gezicht", "Complex"],
   "archaeology-a": ["Onderzoeksgebied", "Archeologisch terrein", "Vondstlocatie"],
-  "archaeology-b": ["Grondspoor", "Vondst", "Archeologisch complex", "Scheepswrak"],
+  "archaeology-b": ["Grondspoor", "Vondst", "Archeologisch complex", "Scheepswrak", "Muurschildering"],
 };
 export type BrowseKind = "rijksmonument" | "archeologischterrein" | "onderzoeksgebied" | "vondstlocatie" | "archeologischcomplex" | "vondsten" | "grondsporen" | "werelderfgoed" | "gezicht" | "complex";
 type ComplexMembersResponse = { members: ComplexMember[] };

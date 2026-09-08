@@ -450,6 +450,40 @@ export function HeritageDetailDialog({
               </p>
             </div>
           ) : null}
+          {selected.objectType === "Muurschildering" && selected.muurschilderingen?.length ? (
+            <div className="map-object-list">
+              <h3>Muurschilderingen in dit gebouw</h3>
+              <ul>
+                {selected.muurschilderingen.map((schildering, index) => (
+                  <li key={index}>
+                    <strong>{schildering.titel || "Zonder titel"}</strong>
+                    {schildering.dateringVan || schildering.dateringTekst ? (
+                      <>
+                        {" "}
+                        —{" "}
+                        {schildering.dateringVan
+                          ? schildering.dateringTot && schildering.dateringTot !== schildering.dateringVan
+                            ? `${schildering.dateringVan}–${schildering.dateringTot}`
+                            : schildering.dateringVan
+                          : schildering.dateringTekst}
+                      </>
+                    ) : null}
+                    {schildering.locatieomschrijving ? ` (${schildering.locatieomschrijving})` : ""}
+                    {schildering.makers.length ? ` — ${schildering.makers.join(", ")}` : ""}
+                    {schildering.beschrijving ? <p>{schildering.beschrijving}</p> : null}
+                  </li>
+                ))}
+              </ul>
+              <p className="detail-image-credit">
+                <small>
+                  Bron: RCE Linked Data Voorziening, dataset Muurschilderingen.
+                  Geen afbeeldingen in deze weergave (licentie voor
+                  beeldmateriaal nog niet bevestigd) — bekijk de bronpagina
+                  hieronder voor foto&apos;s.
+                </small>
+              </p>
+            </div>
+          ) : null}
           {archeologischeContextState.status === "done" &&
           archeologischeContextState.gebieden.length ? (
             <div className="map-object-list">
@@ -733,6 +767,8 @@ export function HeritageDetailDialog({
                   ? "Bekijk in de RCE Kennisbank"
                   : selected.objectType === "Scheepswrak"
                     ? "Bekijk op MASS (RCE)"
+                    : selected.objectType === "Muurschildering"
+                    ? "Bekijk in de Muurschilderingendatabase"
                     : selected.objectType === "Complex" ||
                       selected.objectType === "Archeologisch terrein" ||
                       selected.objectType === "Vondstlocatie" ||

@@ -2,10 +2,12 @@
 
 ## Status
 
-Onderzoek — nog niet gepland, nog niet gebouwd. Eerst onderzoek, dan plan
-(dit document), dan pas bouwen, zelfde volgorde als bij slice 018
-(scheepswrakken). De empirische bevindingen hieronder komen uit een eigen
-verkenner die de eigenaar deze week al bouwde bovenop dezelfde brondataset
+Gebouwd en live geverifieerd (8 september 2026) - zoeken, detail, kaartmarker
+(inclusief coördinaat-fallback via rijksmonument-centroid) en de link terug
+naar het gekoppelde Rijksmonument. Zie "Gebouwd - wat er tijdens de bouw nog
+bijkwam" hieronder voor de bouwstap zelf en wat bewust nog niet meegenomen
+is. De empirische bevindingen hieronder komen uit een eigen verkenner die de
+eigenaar deze week al bouwde bovenop dezelfde brondataset
 ([`muurschilderingendatabase-explorer`](https://github.com/jolietjakeblues/muurschilderingendatabase-explorer),
 live op `jolietjakeblues.github.io/muurschilderingendatabase-explorer`) —
 dus geen educated guess, maar cijfers uit een werkend, live geverifieerd
@@ -224,3 +226,76 @@ Doorzoeker de rest van de CEO-data al behandelt.
    gebouw zonder coördinaat en een schildering zonder foto.
 6. Live geverifieerd tegen minstens één bekend gebouw met een
    rijksmonumentkoppeling (bv. de Grote Kerk van Gouda) vóór opleveren.
+
+## Gebouwd - wat er tijdens de bouw nog bijkwam
+
+Gebouwd analoog aan scheepswrakken.ts/018: een eigen module
+(`lib/rce/muurschilderingen.ts`) met discovery- (naam/plaats/maker/exact
+rijksmonumentnummer) en detailquery's tegen `MUUR_ENDPOINT`, een eigen
+`OBJECT_KIND.Muurschildering`, een `searchMuurschilderingen()` in
+`lib/server/rce-adapter.ts` die meedraait in de "archaeology-b"-scopebucket
+(zelfde kostenprofiel-redenering als scheepswrakken - geen eigen scope-
+waarde, geen client-wijziging in `lib/rce-client.ts` nodig behalve de
+`SCOPE_CATEGORIES`-labeltoevoeging), en de gebruikelijke doorvoer door
+`heritage-view-model.ts`, `HeritageMap.tsx` (eigen kleur `#8c2f39`, letter
+"F"), `HeritageDetailFacts.tsx`/`HeritageDetailDialog.tsx` en
+`SearchFilters.tsx`.
+
+Wat tijdens het bouwen bijkwam, niet vooraf voorzien in het plan hierboven:
+
+- **Rijksmonumentnummer-zoekopdracht toont nu ook de gekoppelde
+  muurschildering.** Niet expliciet in stap 1 van de aanpak, maar een
+  goedkope, sterke win gezien punt 3 (88% van de gebouwen heeft een
+  rijksmonumentnummer): `searchRceMonuments`'s numerieke tak roept nu ook
+  `searchMuurschilderingen()` aan met een exacte
+  `ceo:rijksmonumentnummer`-VALUES-tak (rang 0, boven naam/plaats/maker).
+  Wie op een rijksmonumentnummer zoekt ziet zo zowel het Rijksmonument als
+  het gekoppelde gebouw-met-muurschildering(en) in dezelfde resultatenlijst.
+- **Coördinaat-fallbackketen gedeeltelijk overgenomen, niet volledig.**
+  Beslissing 2 vroeg om de hele keten uit de eigen explorer (eigen
+  coördinaat -> rijksmonument-centroid -> Reliwiki-adres+PDOK-geocoding) te
+  dupliceren. Gebouwd: eigen coördinaat (waardebereik-classificatie, zoals
+  scheepswrakken) én de rijksmonument-centroidstap (een extra VALUES-join op
+  rce/cho, live geverifieerd tegen de Sint-Janskerk/"Grote Kerk" van Gouda -
+  rijksmonumentnummer 16722, geen eigen coördinaat, wél een correcte
+  centroid via het rijksmonument). **Niet gebouwd**: de laatste
+  Reliwiki+PDOK-geocodingstap. Die zou Doorzoekers live zoekpad een volledig
+  nieuwe externe afhankelijkheid (PDOK) geven die de rest van de app niet
+  kent, voor een klein aanvullend aantal gebouwen (~10 van de 576, de eigen
+  explorer ging zo van 510/576 naar 552/576 - deze bouwstap haalt naar
+  schatting ~546/576 zonder de PDOK-stap). Reële vervolgstap, geen dagtaak
+  samen met de rest - acceptatiecriterium 4 ("geen crash bij een gebouw
+  zonder coördinaat") blijft hoe dan ook gelden voor de resterende ~24-30
+  gebouwen: geen marker, geen verzonnen locatie, net als een scheepswrak
+  zonder wrakvorm-geometrie.
+- **Iconografie (onderwerpen) nog niet getoond.** `schema:about` wijst naar
+  Wikidata-URI's zonder label in deze dataset zelf (zie punt 1 van de
+  aanpak) - een label ophalen zou een live cross-endpoint-aanroep naar de
+  Wikidata Query Service betekenen, een tweede nieuwe externe afhankelijkheid
+  bovenop PDOK. Makers zijn wél volledig gebouwd (dcterms:creator ->
+  dcterms:title, dezelfde dataset, geen extra endpoint nodig) - alleen de
+  iconografie-labels zijn uitgesteld.
+- **Omgekeerde relatie (Rijksmonument -> "Muurschilderingen in dit gebouw")
+  nog niet als eigen sectie op de Rijksmonument-detailpagina.**
+  Acceptatiecriterium 3 vroeg zichtbaarheid vanaf de Rijksmonument-kant. Dat
+  is nu vooral eenrichtings gebouwd (Muurschildering-detail linkt naar het
+  Rijksmonument, via `onObjectSearch`) plus de bovenstaande numerieke-
+  zoekopdracht-verrijking (beide records verschijnen samen bij een
+  rijksmonumentnummer-zoekopdracht). Een eigen, lazy-geladen sectie ín de
+  Rijksmonument-detaildialoog zelf (zoals `HeritageRelationSections.tsx` al
+  voor archeologische context doet) is niet gebouwd - dat vereist een nieuwe
+  lazy-fetchhook analoog aan `useSelectedDetailEnrichment.ts` en is een
+  reële vervolgstap, geen onderdeel van deze eerste bouwstap.
+- **Bronfout gevonden tijdens live verificatie, niet in de eigen explorer
+  gemeld.** Minstens één gebouwrecord (RM517621, Gouda) heeft een trailing
+  newline in zowel `dcterms:identifier` als `ceo:rijksmonumentnummer` -
+  onschuldig om te tonen, maar fataal voor de exacte
+  rijksmonumentnummer-VALUES-join als het niet getrimd wordt. Opgevangen met
+  een `.trim()` op de gebouwparser, net zoals punt 5/de eigen explorer al
+  eerdere brondatafouten opving in plaats van ze door te laten werken.
+- **Test-mock in `tests/rce-api.test.mjs` uitgebreid.** De gedeelde
+  "stable application API contract"-test mockt `fetch` met een strikte
+  URL-regex die alleen rce/cho en (na 018) rce/mass toestond; de nieuwe
+  Muurschilderingen-aanroepen in elke tekstzoekopdracht braken die test tot
+  er een `MUUR_SPARQL`-tak aan de mock werd toegevoegd, net als
+  `MASS_SPARQL` dat al deed.

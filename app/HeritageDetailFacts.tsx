@@ -209,6 +209,37 @@ export function HeritageDetailFacts({
         {item.objectType === "Scheepswrak" && item.ontdekt ? (
           <div><dt>Ontdekt</dt><dd>{item.ontdekt}</dd></div>
         ) : null}
+        {item.objectType === "Muurschildering" && item.place ? (
+          <div><dt>Plaats</dt><dd>{item.place}</dd></div>
+        ) : null}
+        {item.objectType === "Muurschildering" && item.muurschilderingRijksmonumentnummer ? (
+          <div>
+            <dt>Rijksmonument</dt>
+            <dd>
+              <button
+                type="button"
+                className="concept-link"
+                onClick={() => onObjectSearch(item.muurschilderingRijksmonumentnummer!)}
+              >
+                Rijksmonument {item.muurschilderingRijksmonumentnummer}
+              </button>
+            </dd>
+          </div>
+        ) : null}
+        {item.objectType === "Muurschildering" && item.muurschilderingen?.length ? (
+          <div>
+            <dt>Muurschilderingen</dt>
+            <dd>
+              {item.muurschilderingen.length} in dit gebouw
+              {item.muurschilderingGeometrieBron === "rijksmonument" ? (
+                <>
+                  {" "}
+                  <small>(locatie bij benadering, via het gekoppelde rijksmonument)</small>
+                </>
+              ) : null}
+            </dd>
+          </div>
+        ) : null}
       </>
     );
   }
