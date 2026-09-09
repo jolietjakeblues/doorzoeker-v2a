@@ -58,6 +58,11 @@ import {
   buildScheepswrakDetailsQuery,
   buildScheepswrakDiscoveryQueries,
   MASS_ENDPOINT,
+  buildMuurschilderingDiscoveryQueries,
+  buildMuurschilderingGebouwDetailsQuery,
+  buildMuurschilderingSchilderingenQuery,
+  buildMuurschilderingRijksmonumentGeometrieQuery,
+  MUUR_ENDPOINT,
   mergeDiscoveryMatches,
   OBJECT_KIND,
   mergeVondstlocatieInhoud,
@@ -106,6 +111,10 @@ import {
   parseVondstenResults,
   parseScheepswrakDiscoveryResults,
   parseScheepswrakResults,
+  parseMuurschilderingDiscoveryResults,
+  parseMuurschilderingGebouwResults,
+  parseMuurschilderingSchilderingenResults,
+  parseMuurschilderingRijksmonumentGeometrieResults,
   pickOpDezeDagCandidate,
   pickRandomCandidate,
   VONDSTLOCATIE_INHOUD_KLASSEN,
@@ -571,6 +580,7 @@ const FAILED_CATEGORY_LABELS: Record<string, string> = {
   "search.vondsten": "Vondst",
   "search.archeologische-complexen": "Archeologisch complex",
   "search.scheepswrakken": "Scheepswrak",
+  "search.muurschilderingen": "Muurschildering",
   "search.rijksmonumenten-op-nummer": "Rijksmonument",
 };
 
@@ -851,6 +861,84 @@ async function searchScheepswrakken(term: string, signal?: AbortSignal, tracker?
   });
 }
 
+// Muurschilderingen (019-muurschilderingen.md) - net als scheepswrakken hierboven
+// een losstaande SPARQL-dienst (rce/Muurschilderingen), vandaar dezelfde
+// expliciete endpoint-override. Anders dan scheepswrakken heeft deze dataset
+// geen eigen geometrie voor elk record: een gebouw zonder eigen
+// mapping-coördinaat maar mét rijksmonumentnummer krijgt hier een
+// rijksmonument-centroid als fallbackpunt (beslissing 2), zodat het niet
+// stilzwijgend van de kaart verdwijnt. Nog geen marker (net als een
+// scheepswrak zonder wrakvorm-geometrie) betekent hier: geen eigen
+// coördinaat én geen rijksmonumentnummer, of een rijksmonumentnummer zonder
+// vindbare geometrie in rce/cho.
+async function searchMuurschilderingen(term: string, signal?: AbortSignal, tracker?: SearchPartialFailure): Promise<RceMonument[]> {
+  const branches = await runDiscoveryBranches(
+    "search.muurschilderingen",
+    buildMuurschilderingDiscoveryQueries(term),
+    term,
+    parseMuurschilderingDiscoveryResults,
+    signal,
+    tracker,
+    MUUR_ENDPOINT,
+  );
+  const discovery = mergeDiscoveryMatches(branches).slice(0, 25);
+  if (!discovery.length) return [];
+  const ids = discovery.map((match) => match.monumentNumber);
+  const [detailsDocument, schilderingenDocument] = await Promise.all([
+    fetchSparql(buildMuurschilderingGebouwDetailsQuery(ids), signal, MUUR_ENDPOINT),
+    fetchSparql(buildMuurschilderingSchilderingenQuery(ids), signal, MUUR_ENDPOINT),
+  ]);
+  const byId = new Map(parseMuurschilderingGebouwResults(detailsDocument).map((gebouw) => [gebouw.id, gebouw]));
+  const schilderingenByGebouw = parseMuurschilderingSchilderingenResults(schilderingenDocument);
+
+  const needsFallback = [...byId.values()].filter((gebouw) => gebouw.lat === undefined && gebouw.rijksmonumentnummer);
+  const rmCentroids = needsFallback.length
+    ? parseMuurschilderingRijksmonumentGeometrieResults(
+        await fetchSparql(buildMuurschilderingRijksmonumentGeometrieQuery(needsFallback.map((gebouw) => gebouw.rijksmonumentnummer!)), signal),
+      )
+    : new Map<string, { lat: number; lng: number }>();
+
+  return discovery.flatMap((match) => {
+    const gebouw = byId.get(match.monumentNumber);
+    if (!gebouw) return [];
+    let lat = gebouw.lat;
+    let lng = gebouw.lng;
+    let geometrieBron: "eigen" | "rijksmonument" | undefined = lat !== undefined ? "eigen" : undefined;
+    if (lat === undefined && gebouw.rijksmonumentnummer) {
+      const fallback = rmCentroids.get(gebouw.rijksmonumentnummer);
+      if (fallback) {
+        lat = fallback.lat;
+        lng = fallback.lng;
+        geometrieBron = "rijksmonument";
+      }
+    }
+    // Geen marker zonder locatie verzinnen - zelfde regel als scheepswrakken
+    // (018-mass-scheepswrakken.md) en de rest van Doorzoeker.
+    if (lat === undefined || lng === undefined) return [];
+    const monument: RceMonument = {
+      choNumber: gebouw.id,
+      registrationDate: "",
+      street: "",
+      houseNumber: "",
+      postalCode: "",
+      sourceUrl: gebouw.uri,
+      officialUrl: gebouw.uri,
+      name: gebouw.naam,
+      description: gebouw.huidigeFunctie,
+      monumentNature: OBJECT_KIND.Muurschildering,
+      lat,
+      lng,
+      place: gebouw.plaats,
+      muurschilderingRijksmonumentnummer: gebouw.rijksmonumentnummer,
+      muurschilderingGeometrieBron: geometrieBron,
+      muurschilderingen: schilderingenByGebouw.get(gebouw.id) ?? [],
+      ...match,
+      monumentNumber: gebouw.id,
+    };
+    return [monument];
+  });
+}
+
 export type TextSearchScope = "all" | "core" | "heritage" | "archaeology-a" | "archaeology-b";
 
 async function searchByText(term: string, signal?: AbortSignal, page = 1, scope: TextSearchScope = "all", tracker?: SearchPartialFailure): Promise<RceMonument[]> {
@@ -860,7 +948,7 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1, scope:
     runDiscoveryBranches("search.discovery", discoveryQueries, term, parseDiscoveryBranchResults, signal, tracker),
   );
 
-  const [werelderfgoed, gezichten, complexen, onderzoeksgebieden, archeologischeTerreinen, vondstlocaties, grondsporen, vondsten, archeologischeComplexen, scheepswrakken] = await Promise.all([
+  const [werelderfgoed, gezichten, complexen, onderzoeksgebieden, archeologischeTerreinen, vondstlocaties, grondsporen, vondsten, archeologischeComplexen, scheepswrakken, muurschilderingen] = await Promise.all([
     page === 1 && (scope === "all" || scope === "heritage")
       ? optionalSearch("search.werelderfgoed", () => fetchSparql(buildWerelderfgoedQuery(term), signal).then(parseWerelderfgoedResults), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
@@ -895,8 +983,16 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1, scope:
     page === 1 && (scope === "all" || scope === "archaeology-b")
       ? optionalSearch("search.scheepswrakken", () => searchScheepswrakken(term, signal, tracker), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
+    // Muurschilderingen zijn evenmin archeologie, maar delen het
+    // kostenprofiel (klein, snel) van deze bucket - zelfde afweging als
+    // scheepswrakken hierboven (019-muurschilderingen.md). Geen eigen
+    // scope-waarde om de client-side parallelle scope-fetches
+    // (lib/rce-client.ts) niet te hoeven uitbreiden.
+    page === 1 && (scope === "all" || scope === "archaeology-b")
+      ? optionalSearch("search.muurschilderingen", () => searchMuurschilderingen(term, signal, tracker), [], signal, tracker)
+      : Promise.resolve<RceMonument[]>([]),
   ]);
-  const extras = [...werelderfgoed, ...gezichten, ...complexen, ...onderzoeksgebieden, ...archeologischeTerreinen, ...vondstlocaties, ...grondsporen, ...vondsten, ...archeologischeComplexen, ...scheepswrakken];
+  const extras = [...werelderfgoed, ...gezichten, ...complexen, ...onderzoeksgebieden, ...archeologischeTerreinen, ...vondstlocaties, ...grondsporen, ...vondsten, ...archeologischeComplexen, ...scheepswrakken, ...muurschilderingen];
   const start = Math.max(0, page - 1) * 25;
   const discovery = mergeDiscoveryMatches(branchResults).slice(start, start + 25);
   if (!discovery.length) return extras;
@@ -1034,7 +1130,7 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
     // tijdelijk onbereikbare RCE-tak liet daardoor de hele Promise.all
     // falen, ook als de andere zes allang klaar waren. Live gereproduceerd
     // tijdens verhoogde RCE-latency (securityassessment 17-08-2026).
-    const [rijksmonumenten, complexen, terreinen, vondstlocaties, grondsporen, vondsten, archeologischeComplexen, scheepswrakken] = await Promise.all([
+    const [rijksmonumenten, complexen, terreinen, vondstlocaties, grondsporen, vondsten, archeologischeComplexen, scheepswrakken, muurschilderingen] = await Promise.all([
       optionalSearch("search.rijksmonumenten-op-nummer", () => searchByNumber(trimmed, signal), [], signal, tracker),
       optionalSearch("search.complexen", () => fetchSparql(buildComplexenQuery(trimmed), signal)
         .then(parseComplexenResults)
@@ -1045,8 +1141,15 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
       optionalSearch("search.vondsten", () => searchVondsten(trimmed, signal, tracker), [], signal, tracker),
       optionalSearch("search.archeologische-complexen", () => searchArcheologischeComplexen(trimmed, signal, tracker), [], signal, tracker),
       optionalSearch("search.scheepswrakken", () => searchScheepswrakken(trimmed, signal, tracker), [], signal, tracker),
+      // Een exacte numerieke term matcht hier ook op rijksmonumentnummer
+      // (buildMuurschilderingDiscoveryQueries' eigen "rijksmonumentnummer"-
+      // brontak) - direct de sterke koppeling uit punt 3 van
+      // 019-muurschilderingen.md: wie op een rijksmonumentnummer zoekt, ziet
+      // ook het gekoppelde gebouw met muurschildering(en), niet alleen het
+      // rijksmonument zelf.
+      optionalSearch("search.muurschilderingen", () => searchMuurschilderingen(trimmed, signal, tracker), [], signal, tracker),
     ]);
-    return [...rijksmonumenten, ...complexen, ...terreinen, ...vondstlocaties, ...grondsporen, ...vondsten, ...archeologischeComplexen, ...scheepswrakken];
+    return [...rijksmonumenten, ...complexen, ...terreinen, ...vondstlocaties, ...grondsporen, ...vondsten, ...archeologischeComplexen, ...scheepswrakken, ...muurschilderingen];
   }
   if (!/^\d{4}\s?[A-Za-z]{2}$/.test(trimmed)) return searchByText(trimmed, signal, page, scope, tracker);
   const params = new URLSearchParams({ page: "1", pageSize: "100", postcode: trimmed.replace(/\s/g, "").toUpperCase() });

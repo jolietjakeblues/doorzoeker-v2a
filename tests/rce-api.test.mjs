@@ -5,6 +5,7 @@ import { GET } from "../app/api/rce/search/route.ts";
 const SPARQL = "https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/cho/sparql";
 const BIBLIOTHEEK_SPARQL = "https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/bibliotheek/sparql";
 const MASS_SPARQL = "https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/mass/sparql";
+const MUUR_SPARQL = "https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/Muurschilderingen/sparql";
 
 test("rejects invalid application API input before contacting RCE", async () => {
   const response = await GET(new Request("https://doorzoeker.test/api/rce/search?q=&page=0", { headers: { "cf-connecting-ip": "test-invalid" } }));
@@ -44,6 +45,7 @@ test("returns a stable application API contract for a monument number", async (c
     const url = decodeURIComponent(String(input));
     if (url.startsWith(BIBLIOTHEEK_SPARQL)) return Response.json({ results: { bindings: [] } });
     if (url.startsWith(MASS_SPARQL)) return Response.json({ results: { bindings: [] } });
+    if (url.startsWith(MUUR_SPARQL)) return Response.json({ results: { bindings: [] } });
     assert.match(url, new RegExp(`^${SPARQL.replaceAll(".", "\\.")}`));
     // The details query now also joins heeftBRKRelatie (for a gemeente
     // fallback), so match on "perceelnummer" - only the dedicated parcel
