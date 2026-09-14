@@ -1008,23 +1008,28 @@ test("'Archeologische context'-knop toont een waarschuwing, laadstatus en doorkl
 });
 
 test("'Zie de kracht van Doorzoeker' toont het vaste showcase-monument (14948) inline op de pagina, geen popup en geen knopklik nodig voor de archeologische context (gemeld door de eigenaar, 28-08-2026)", async ({ page }) => {
+  // Regressietest (gemeld door de eigenaar, 14-09-2026): 14948 is toevallig
+  // zowel het rijksmonumentnummer van deze kerk als het Archis-nummer van
+  // een compleet ander archeologisch terrein in Wieringerwaard. De vrije
+  // zoekbalk (/api/rce/search) matcht een kaal getal bewust op ALLE
+  // objectsoorten - hier bewust gemockt met dat verkeerde, botsende
+  // archeologisch terrein als (enige) resultaat, om te bevestigen dat
+  // "Zie de kracht van Doorzoeker" die route helemaal niet gebruikt. De
+  // widget vraagt via /api/rce/rijksmonument rechtstreeks, klasse-gebonden
+  // naar ceo:rijksmonumentnummer 14948 (fetchRijksmonumentByNummer) - geen
+  // fan-out, dus geen botsing mogelijk.
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", (route) => route.fulfill({
     json: {
       page: 1,
       hasMore: false,
-      // Regressietest (gemeld door de eigenaar, 14-09-2026): 14948 is
-      // toevallig zowel het rijksmonumentnummer van deze kerk als het
-      // Archis-nummer van een compleet ander archeologisch terrein in
-      // Wieringerwaard. searchRceMonuments geeft bij zo'n numerieke
-      // zoekopdracht altijd beide typen terug - het archeologisch terrein
-      // staat hier bewust EERST, om te bevestigen dat useVoorbeeldMonument
-      // niet zomaar results[0] pakt maar specifiek het Rijksmonument kiest.
       results: [
         { choNumber: "cho-terrein-14948", sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/archeologischterrein/6046432", monumentNumber: "14948", name: "Archeologisch terrein 14948", description: "Terrein met sporen van bewoning.", monumentNature: "archeologischterrein", place: "Wieringerwaard", registrationDate: "", street: "", houseNumber: "", postalCode: "" },
-        { ...records[0], choNumber: "cho-14948", sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/rijksmonument/59284", monumentNumber: "14948", name: "Sint-Maartenskerk" },
       ],
     },
+  }));
+  await page.route("**/api/rce/rijksmonument**", (route) => route.fulfill({
+    json: { monument: { ...records[0], choNumber: "cho-14948", sourceUrl: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/rijksmonument/59284", monumentNumber: "14948", name: "Sint-Maartenskerk" } },
   }));
   await page.unroute("**/api/rce/archeologische-context**");
   await page.route("**/api/rce/archeologische-context**", (route) => route.fulfill({

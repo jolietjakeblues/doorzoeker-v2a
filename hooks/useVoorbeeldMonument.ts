@@ -1,13 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { fetchArcheologischeContext, fetchLigtIn, searchRceMonuments } from "@/lib/rce-client";
+import { fetchArcheologischeContext, fetchLigtIn, fetchRijksmonumentByNummer } from "@/lib/rce-client";
 import { toItem, type Item } from "@/lib/heritage-view-model";
-import { OBJECT_KIND, type ArcheologischeContext, type WerelderfgoedLidmaatschap } from "@/lib/rce";
-
-// Voor een echt Rijksmonument bevat monumentNature het SKOS-monumentaard-
-// label (bv. "onroerend gebouwd"); voor elk ander objecttype is het een van
-// de vaste OBJECT_KIND-discriminatiewaarden (zie lib/rce/types.ts). Zelfde
-// patroon als app/api/rce/search/route.ts's collectionNatures-check.
-const COLLECTION_NATURES = new Set<string>(Object.values(OBJECT_KIND));
+import type { ArcheologischeContext, WerelderfgoedLidmaatschap } from "@/lib/rce";
 
 // Rijksmonument 14948 (Sint-Maartenskerk, Elst) - door de eigenaar gekozen
 // als vaste showcase omdat het in één record de volle breedte van de
@@ -23,10 +17,14 @@ export type VoorbeeldResult = { item: Item; gebieden: ArcheologischeContext[]; w
 
 // Op klik aangeroepen, geen idle-load - zelfde aanpak als useVerrasMe/
 // useOpDezeDag: faalt stil (geen foutmelding) omdat dit een leuk extraatje
-// is, geen kernfunctie. searchRceMonuments("14948") hergebruikt de gewone
-// exacte-nummerlookup (geen nieuwe route nodig) en levert daarmee al een
-// volledig verrijkt record (percelen, complexen, afbeelding, literatuur,
-// gebeurtenissen).
+// is, geen kernfunctie. fetchRijksmonumentByNummer("14948") vraagt exact
+// naar class:Rijksmonument via ceo:rijksmonumentnummer (geen fan-out naar
+// andere objectsoorten zoals de vrije zoekbalk doet - "14948" is toevallig
+// óók het Archis-nummer van een compleet ander archeologisch terrein in
+// Wieringerwaard, wat de widget eerder liet tonen als de generieke
+// nummerzoekopdracht die kant op viel; gemeld door de eigenaar, 14-09-2026)
+// en levert daarmee al een volledig verrijkt record (percelen, complexen,
+// afbeelding, literatuur, gebeurtenissen).
 //
 // De archeologische context en het Werelderfgoed-lidmaatschap zijn normaal
 // alleen lazy/op-klik beschikbaar (archeologie kost 15+ seconden bij een
@@ -47,23 +45,13 @@ export function useVoorbeeldMonument() {
     controllerRef.current = controller;
     setLoading(true);
     Promise.all([
-      searchRceMonuments(VOORBEELD_MONUMENTNUMMER, controller.signal),
+      fetchRijksmonumentByNummer(VOORBEELD_MONUMENTNUMMER, controller.signal),
       fetchArcheologischeContext(VOORBEELD_MONUMENTNUMMER, controller.signal).catch(() => [] as ArcheologischeContext[]),
       fetchLigtIn(VOORBEELD_MONUMENTNUMMER, controller.signal).catch(() => ({ gezicht: [], werelderfgoed: [] as WerelderfgoedLidmaatschap[] })),
     ])
-      .then(([response, gebieden, ligtIn]) => {
+      .then(([monument, gebieden, ligtIn]) => {
         if (controller.signal.aborted) return;
-        // searchRceMonuments geeft bij een numerieke zoekopdracht ALLE
-        // objecttypen terug (rijksmonumentnummer, complexnummer, Archis-
-        // nummer, ...), niet alleen Rijksmonumenten - "14948" is toevallig
-        // zowel het rijksmonumentnummer van deze kerk als het Archis-nummer
-        // van een compleet ander archeologisch terrein in Wieringerwaard.
-        // results[0] pakken zou dus, afhankelijk van welke deelzoekopdracht
-        // toevallig als eerste terugkomt, het verkeerde object kunnen tonen
-        // (live gemeld door de eigenaar, 14-09-2026). Expliciet filteren op
-        // een écht Rijksmonument (COLLECTION_NATURES uitsluiten) voorkomt dat.
-        const record = response.results.find((result) => !COLLECTION_NATURES.has(result.monumentNature ?? ""));
-        if (record) onLoaded({ item: toItem(record), gebieden, werelderfgoed: ligtIn.werelderfgoed });
+        if (monument) onLoaded({ item: toItem(monument), gebieden, werelderfgoed: ligtIn.werelderfgoed });
       })
       .catch(() => {})
       .finally(() => {
