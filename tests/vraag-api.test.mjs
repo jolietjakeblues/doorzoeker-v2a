@@ -4,14 +4,62 @@ import { POST as genereerSparql } from "../app/api/vraag/genereer-sparql/route.t
 import { POST as uitvoeren } from "../app/api/vraag/uitvoeren/route.ts";
 import { POST as antwoord } from "../app/api/vraag/antwoord/route.ts";
 import { FALLBACK_CANDIDATE_LIMIT } from "../lib/vraag/spatial-fallback.ts";
+import { __resetResolverCacheForTests } from "../lib/vraag/semantic-resolver.ts";
 
-function withMocks(context, { fetchImpl }) {
+function isSparqlEndpoint(input) {
+  return /linkeddata\.cultureelerfgoed\.nl/.test(String(input));
+}
+
+function extractSparqlQueryText(input, init) {
+  if (init?.body) return decodeURIComponent(String(init.body).replace(/^query=/, ""));
+  try {
+    return decodeURIComponent(new URL(String(input)).searchParams.get("query") ?? "");
+  } catch {
+    return "";
+  }
+}
+
+// lib/vraag/semantic-resolver.ts vraagt vóór elke Anthropic-aanroep drie
+// OWMS/woonplaats-SPARQL-query's op (via fetchSparql, GET, dus als
+// querystring). Herkend op query-inhoud (graph:owms / ceo:woonplaatsnaam),
+// niet op host - de "uitvoeren"-tests praten tegen hetzelfde RCE-endpoint
+// met een andere (uitvoerings-)query en moeten dit pad niet raken.
+function isResolverQuery(input, init) {
+  const queryText = extractSparqlQueryText(input, init);
+  return queryText.includes("graph:owms") || queryText.includes("ceo:woonplaatsnaam");
+}
+
+function emptySparqlResultsResponse() {
+  return Response.json({ head: { vars: [] }, results: { bindings: [] } });
+}
+
+function owmsBindingResponse(uri, label) {
+  return Response.json({ head: { vars: ["uri", "label"] }, results: { bindings: [{ uri: { type: "uri", value: uri }, label: { type: "literal", value: label } }] } });
+}
+
+// Standaard beantwoordt withMocks de resolutielaag se drie OWMS/woonplaats-
+// query's leeg, zodat bestaande tests die niets met resolutie te maken
+// hebben ongewijzigd blijven werken (geen ambiguïteit, geen beperking,
+// gewoon door naar de Anthropic-aanroep). Geef `resolverImpl` mee om dat
+// voor een specifieke test te overschrijven (bv. om een echte
+// gemeente/provincie-naamsbotsing te simuleren).
+function withMocks(context, { fetchImpl, resolverImpl }) {
   const originalFetch = globalThis.fetch;
   const originalKey = process.env.ANTHROPIC_API_KEY;
   process.env.ANTHROPIC_API_KEY = "test-sleutel";
-  globalThis.fetch = fetchImpl;
+  // De resolutielaag cachet OWMS/woonplaats-termen module-scope (zie
+  // lib/vraag/semantic-resolver.ts) - zonder reset zou een eerdere test in
+  // dit bestand haar (lege) mockrespons laten "lekken" naar deze test.
+  __resetResolverCacheForTests();
+  globalThis.fetch = async (input, init) => {
+    if (isSparqlEndpoint(input) && isResolverQuery(input, init)) {
+      return resolverImpl ? resolverImpl(input, init) : emptySparqlResultsResponse();
+    }
+    return fetchImpl(input, init);
+  };
   context.after(() => {
     globalThis.fetch = originalFetch;
+    __resetResolverCacheForTests();
     if (originalKey === undefined) delete process.env.ANTHROPIC_API_KEY;
     else process.env.ANTHROPIC_API_KEY = originalKey;
   });
@@ -167,6 +215,100 @@ test("genereer-sparql: 400 bij een ongeldige modus", async (context) => {
   assert.equal(response.status, 400);
 });
 
+test("genereer-sparql: geeft een verduidelijkingsvraag terug bij een echte gemeente/provincie-naamsbotsing, zonder Anthropic aan te roepen", async (context) => {
+  withMocks(context, {
+    resolverImpl: async (input, init) => {
+      const queryText = extractSparqlQueryText(input, init);
+      if (queryText.includes("ceo:woonplaatsnaam")) return emptySparqlResultsResponse();
+      if (queryText.includes("/terms/Gemeente>")) return owmsBindingResponse("http://standaarden.overheid.nl/owms/terms/Groningen_(gemeente)", "Groningen");
+      return owmsBindingResponse("http://standaarden.overheid.nl/owms/terms/Groningen_(provincie)", "Groningen");
+    },
+    fetchImpl: async () => { throw new Error("Anthropic had niet aangeroepen mogen worden bij een onopgeloste ambiguïteit"); },
+  });
+  const response = await genereerSparql(
+    jsonRequest("https://doorzoeker.test/api/vraag/genereer-sparql", { question: "Welke rijksmonumenten staan er in Groningen?", mode: "lijst" }, "test-vraag-ambigu-1"),
+  );
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.equal(document.clarification.type, "entity_ambiguity");
+  assert.match(document.clarification.message, /Groningen/);
+  assert.equal(document.clarification.options.length, 2);
+});
+
+test("genereer-sparql: gaat door met de gekozen kant na een disambiguation-keuze", async (context) => {
+  let secondBody;
+  withMocks(context, {
+    resolverImpl: async (input, init) => {
+      const queryText = extractSparqlQueryText(input, init);
+      if (queryText.includes("ceo:woonplaatsnaam")) return emptySparqlResultsResponse();
+      if (queryText.includes("/terms/Gemeente>")) return owmsBindingResponse("http://standaarden.overheid.nl/owms/terms/Groningen_(gemeente)", "Groningen");
+      return owmsBindingResponse("http://standaarden.overheid.nl/owms/terms/Groningen_(provincie)", "Groningen");
+    },
+    fetchImpl: async (_input, init) => {
+      secondBody = JSON.parse(init.body);
+      return anthropicResponse("SELECT DISTINCT ?rm ?nummer WHERE { ?rm a ceo:Rijksmonument . ?rm ceo:rijksmonumentnummer ?nummer . }");
+    },
+  });
+  const response = await genereerSparql(
+    jsonRequest("https://doorzoeker.test/api/vraag/genereer-sparql", {
+      question: "Welke rijksmonumenten staan er in Groningen?",
+      mode: "lijst",
+      disambiguation: { Groningen: "provincie" },
+    }, "test-vraag-ambigu-2"),
+  );
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.match(document.query, /PREFIX ceo:/);
+  assert.match(secondBody.messages[0].content, /OPGELOSTE BEGRIPPEN/);
+  assert.match(secondBody.messages[0].content, /provincie "Groningen" = <http:\/\/standaarden\.overheid\.nl\/owms\/terms\/Groningen_\(provincie\)>/);
+});
+
+test("genereer-sparql: geeft een verduidelijkingsvraag terug bij een begraafplaats-nabijheidsvraag, zonder Anthropic aan te roepen", async (context) => {
+  withMocks(context, { fetchImpl: async () => { throw new Error("Anthropic had niet aangeroepen mogen worden zonder gekozen deelinterpretatie"); } });
+  const response = await genereerSparql(
+    jsonRequest("https://doorzoeker.test/api/vraag/genereer-sparql", { question: "Welke rijksmonumenten liggen bij een begraafplaats?", mode: "lijst" }, "test-vraag-beperking-1"),
+  );
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.equal(document.clarification.type, "answerability_limitation");
+  assert.equal(document.clarification.options.length, 2);
+});
+
+test("genereer-sparql: gaat door met de gekozen deelinterpretatie na een limitationChoice, en geeft de caveat mee terug", async (context) => {
+  let secondBody;
+  withMocks(context, {
+    fetchImpl: async (_input, init) => {
+      secondBody = JSON.parse(init.body);
+      return anthropicResponse("SELECT DISTINCT ?rm ?nummer WHERE { ?rm a ceo:Rijksmonument . ?rm ceo:heeftOorspronkelijkeFunctie ?f . ?rm ceo:rijksmonumentnummer ?nummer . }");
+    },
+  });
+  const response = await genereerSparql(
+    jsonRequest("https://doorzoeker.test/api/vraag/genereer-sparql", {
+      question: "Welke rijksmonumenten liggen bij een begraafplaats?",
+      mode: "lijst",
+      limitationChoice: "functie_begraafplaats",
+    }, "test-vraag-beperking-2"),
+  );
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.match(secondBody.messages[0].content, /begraafplaats-variant is/);
+  assert.equal(document.caveats.length, 1);
+  assert.match(document.caveats[0], /niet losse grafmonumenten/);
+});
+
+test("genereer-sparql: geeft een transparantiekanttekening terug bij een vage 'soort/aard/type'-vraag", async (context) => {
+  withMocks(context, {
+    fetchImpl: async () => anthropicResponse("SELECT DISTINCT ?rm ?aard WHERE { ?rm a ceo:Rijksmonument . ?rm ceo:heeftMonumentAard ?aardC . ?aardC skos:prefLabel ?aard }"),
+  });
+  const response = await genereerSparql(
+    jsonRequest("https://doorzoeker.test/api/vraag/genereer-sparql", { question: "Wat voor soort monument is dit?", mode: "lijst" }, "test-vraag-vage-soort"),
+  );
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.equal(document.caveats.length, 1);
+  assert.match(document.caveats[0], /monumentaard \(uitsluitend archeologisch\/onroerend gebouwd\)/);
+});
+
 test("uitvoeren: voert de query uit tegen het RCE-endpoint en dedupliceert op ?rm", async (context) => {
   withMocks(context, {
     fetchImpl: async (input) => {
@@ -258,6 +400,19 @@ test("antwoord: geeft het Anthropic-antwoord terug", async (context) => {
   assert.equal(response.status, 200);
   const document = await response.json();
   assert.match(document.answer, /Zeist/);
+});
+
+test("antwoord: voegt meegegeven kanttekeningen als 'Let op: ...'-alinea's toe ná het Anthropic-antwoord", async (context) => {
+  withMocks(context, {
+    fetchImpl: async () => anthropicResponse("In Zeist staan verschillende rijksmonumenten."),
+  });
+  const results = { head: { vars: ["rm"] }, results: { bindings: [{ rm: { type: "uri", value: "https://example.org/rm/1" } }] } };
+  const response = await antwoord(
+    jsonRequest("https://doorzoeker.test/api/vraag/antwoord", { question: "Welke rijksmonumenten staan er in Zeist?", results, caveats: ["Voorbeeldkanttekening."] }),
+  );
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.equal(document.answer, "In Zeist staan verschillende rijksmonumenten.\n\nLet op: Voorbeeldkanttekening.");
 });
 
 test("antwoord: 400 bij ontbrekende resultaten", async (context) => {

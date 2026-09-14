@@ -7,6 +7,7 @@ import {
   extractSparql,
   fixGemeentePad,
   fixLabelFilter,
+  fixMissingWhereWrapper,
   fixProvinciePad,
   hasCount,
   injectPrefixes,
@@ -98,6 +99,30 @@ test("fixGemeentePad laat een query zonder dat patroon met rust", () => {
   assert.equal(fixGemeentePad(query), query);
 });
 
+test("fixMissingWhereWrapper herstelt een ontbrekende WHERE/accolade rond een top-level GRAPH-blok", () => {
+  const query = [
+    "SELECT (COUNT(DISTINCT ?rm) AS ?aantal)",
+    "GRAPH graph:instanties-rce {",
+    "  ?rm a ceo:Rijksmonument .",
+    "}",
+  ].join("\n");
+  const result = fixMissingWhereWrapper(query);
+  assert.match(result, /WHERE \{\nGRAPH graph:instanties-rce \{/);
+  const opens = (result.match(/\{/g) ?? []).length;
+  const closes = (result.match(/\}/g) ?? []).length;
+  assert.equal(opens, closes);
+});
+
+test("fixMissingWhereWrapper laat een al correct gewrapte query met rust", () => {
+  const query = "SELECT ?rm WHERE { GRAPH graph:instanties-rce { ?rm a ceo:Rijksmonument . } }";
+  assert.equal(fixMissingWhereWrapper(query), query);
+});
+
+test("fixMissingWhereWrapper laat een query zonder GRAPH-blok met rust", () => {
+  const query = "SELECT ?rm WHERE { ?rm a ceo:Rijksmonument . }";
+  assert.equal(fixMissingWhereWrapper(query), query);
+});
+
 test("balanceBraces vult ontbrekende sluithaken aan (live geconstateerd bij het geneste UNION-functiezoekpatroon)", () => {
   const query = [
     "SELECT DISTINCT ?rm ?bron WHERE {",
@@ -151,6 +176,15 @@ test("postprocessSparql past alle stappen in de juiste volgorde toe voor lijstmo
   assert.doesNotMatch(result, /heeftBRKRelatie/);
   assert.match(result, /CONTAINS\(LCASE\(\?gemeente\), "bunnik"\)/);
   assert.match(result, /LIMIT 200/);
+});
+
+test("postprocessSparql herstelt eerst een ontbrekende WHERE-wrapper vóór de overige stappen", () => {
+  const raw = "```sparql\nSELECT (COUNT(DISTINCT ?rm) AS ?aantal)\nGRAPH graph:instanties-rce {\n  ?rm a ceo:Rijksmonument .\n}\n```";
+  const result = postprocessSparql(raw, "telling");
+  assert.match(result, /WHERE \{\nGRAPH graph:instanties-rce \{/);
+  const opens = (result.match(/\{/g) ?? []).length;
+  const closes = (result.match(/\}/g) ?? []).length;
+  assert.equal(opens, closes);
 });
 
 test("postprocessSparql voegt geen LIMIT toe bij tellingmodus", () => {

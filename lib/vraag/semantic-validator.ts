@@ -60,3 +60,36 @@ export function validateExactLimit(question: string, query: string): string[] {
 export function validateQuery(question: string, query: string): string[] {
   return [...validateCompleteness(question, query), ...validateExactLimit(question, query)];
 }
+
+// Woorden die naar drie semantisch incompatibele properties kunnen wijzen -
+// zie Type 7 in chat2thedata's ambiguïteitstaxonomie. Multi-woord-frasen,
+// niet kale "type"/"soort"/"aard": die komen te vaak voor in ongerelateerde
+// vragen (bv. "type kasteel" bedoelt gewoon een functie, geen echte
+// Type-7-vraag).
+const VAAG_WOORD_FRASEN = ["soort monument", "soort rijksmonument", "wat voor soort", "monumentaard", "aard van het monument", "welke aard"];
+const MONUMENTAARD_PATH = "heeftmonumentaard";
+const FUNCTIE_PATHS_TYPE7 = ["heeftoorspronkelijkefunctie", "heefthuidigefunctie"];
+const TYPE_PATH = "heefttype";
+
+// Meldt welk property-pad gebruikt is bij een vage "soort/aard/type"-vraag.
+// Anders dan validateCompleteness/validateExactLimit hierboven: geen
+// foutenlijst die een correctie-retry triggert (daarom niet opgenomen in
+// validateQuery). heeftMonumentAard, functie en heeftType zijn alle drie
+// geldige lezingen van "soort"/"aard"/"type" - er is niets te corrigeren,
+// alleen iets om transparant te maken: welke van de drie de gegenereerde
+// query daadwerkelijk gebruikt heeft. Poort van chat2thedata's
+// describe_property_choice.
+export function describePropertyChoice(question: string, query: string): string | undefined {
+  const q = question.toLowerCase();
+  if (!VAAG_WOORD_FRASEN.some((frase) => q.includes(frase))) return undefined;
+
+  const lowered = query.toLowerCase();
+  const gebruikt: string[] = [];
+  if (lowered.includes(MONUMENTAARD_PATH)) gebruikt.push("monumentaard (uitsluitend archeologisch/onroerend gebouwd)");
+  if (FUNCTIE_PATHS_TYPE7.some((path) => lowered.includes(path))) gebruikt.push("functie (bv. kerk, kasteel)");
+  if (lowered.includes(TYPE_PATH)) gebruikt.push("type");
+
+  if (gebruikt.length === 0) return undefined;
+
+  return `"soort"/"aard"/"type" is hier geïnterpreteerd via: ${gebruikt.join(", ")}. Bedoelde je iets anders, stel de vraag dan explicieter (bv. "functie" of "monumentaard" met archeologisch/onroerend gebouwd).`;
+}

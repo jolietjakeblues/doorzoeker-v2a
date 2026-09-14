@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { requestedLimit, validateCompleteness, validateExactLimit, validateQuery } from "../lib/vraag/semantic-validator.ts";
+import { describePropertyChoice, requestedLimit, validateCompleteness, validateExactLimit, validateQuery } from "../lib/vraag/semantic-validator.ts";
 
 test("validateCompleteness meldt een fout als de vraag een functie noemt maar de query geen functiepad heeft", () => {
   const errors = validateCompleteness("Welke kerken staan er in Bunnik?", "SELECT ?rm WHERE { ?rm a ceo:Rijksmonument }");
@@ -56,4 +56,25 @@ test("validateExactLimit is stil zonder expliciet gevraagd aantal", () => {
 test("validateQuery combineert beide checks", () => {
   const errors = validateQuery("Geef 5 kerken in Bunnik", "SELECT ?rm WHERE { ?rm a ceo:Rijksmonument }\nLIMIT 200");
   assert.equal(errors.length, 2);
+});
+
+test("describePropertyChoice meldt het gebruikte pad bij een multi-woord vage-soort-frase", () => {
+  const note = describePropertyChoice("Wat voor soort monument is dit?", "SELECT ?rm WHERE { ?rm ceo:heeftMonumentAard ?aardC }");
+  assert.match(note, /monumentaard \(uitsluitend archeologisch\/onroerend gebouwd\)/);
+});
+
+test("describePropertyChoice triggert niet op een kaal 'type'/'soort' (bv. 'type kasteel' bedoelt een functie)", () => {
+  assert.equal(describePropertyChoice("Welk type kasteel is dit?", "SELECT ?rm WHERE { ?rm ceo:heeftType ?typeC }"), undefined);
+});
+
+test("describePropertyChoice combineert meerdere gebruikte paden", () => {
+  const note = describePropertyChoice(
+    "Welke aard heeft dit rijksmonument?",
+    "SELECT ?rm WHERE { ?rm ceo:heeftMonumentAard ?aardC . ?rm ceo:heeftOorspronkelijkeFunctie ?f }",
+  );
+  assert.match(note, /monumentaard \(uitsluitend archeologisch\/onroerend gebouwd\), functie \(bv\. kerk, kasteel\)/);
+});
+
+test("describePropertyChoice is stil zonder vage-soort-frase in de vraag", () => {
+  assert.equal(describePropertyChoice("Welke rijksmonumenten staan er in Bunnik?", "SELECT ?rm WHERE { ?rm ceo:heeftMonumentAard ?aardC }"), undefined);
 });

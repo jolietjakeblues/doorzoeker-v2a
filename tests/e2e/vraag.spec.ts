@@ -77,6 +77,56 @@ test("'Voer bewerkte query uit' herhaalt alleen uitvoeren en antwoord, niet gene
   expect(calls.uitvoerenCalls.length).toBe(2);
 });
 
+test("een verduidelijkingsvraag toont opties en gaat na een keuze door tot het antwoord", async ({ page }) => {
+  let genereerCalls = 0;
+  await page.route("**/api/vraag/genereer-sparql", (route) => {
+    genereerCalls += 1;
+    if (genereerCalls === 1) {
+      return route.fulfill({
+        json: {
+          clarification: {
+            type: "entity_ambiguity",
+            message: '"Groningen" kan meerdere dingen zijn. Deze geven mogelijk verschillende resultaten.',
+            options: [
+              { id: "gemeente", label: "Gemeente Groningen", termLabel: "Groningen" },
+              { id: "provincie", label: "Provincie Groningen", termLabel: "Groningen" },
+            ],
+          },
+        },
+      });
+    }
+    return route.fulfill({ json: { query: GENERATED_QUERY, caveats: [] } });
+  });
+  await page.route("**/api/vraag/uitvoeren", (route) => route.fulfill({ json: { results: { head: { vars: ["rm"] }, results: { bindings: [] } } } }));
+  await page.route("**/api/vraag/antwoord", (route) => route.fulfill({ json: { answer: "In Groningen staan diverse rijksmonumenten." } }));
+
+  await page.goto("/vraag");
+  await page.waitForLoadState("networkidle");
+  await page.getByLabel("Stel je vraag in gewone taal").fill("Welke rijksmonumenten staan er in Groningen?");
+  await page.getByRole("button", { name: "Stel de vraag" }).click();
+
+  await expect(page.getByText('"Groningen" kan meerdere dingen zijn')).toBeVisible();
+  await page.getByRole("button", { name: "Provincie Groningen" }).click();
+
+  await expect(page.getByText("In Groningen staan diverse rijksmonumenten.")).toBeVisible();
+  expect(genereerCalls).toBe(2);
+});
+
+test("een 'Let op: ...'-kanttekening in het antwoord krijgt een eigen stijl", async ({ page }) => {
+  await page.route("**/api/vraag/genereer-sparql", (route) => route.fulfill({ json: { query: GENERATED_QUERY, caveats: [] } }));
+  await page.route("**/api/vraag/uitvoeren", (route) => route.fulfill({ json: { results: { head: { vars: ["rm"] }, results: { bindings: [] } } } }));
+  await page.route("**/api/vraag/antwoord", (route) =>
+    route.fulfill({ json: { answer: "Er zijn geen resultaten gevonden.\n\nLet op: dit dekt slechts een deelinterpretatie van de vraag." } }),
+  );
+
+  await page.goto("/vraag");
+  await page.waitForLoadState("networkidle");
+  await page.getByLabel("Stel je vraag in gewone taal").fill("Welke rijksmonumenten staan er in Elst?");
+  await page.getByRole("button", { name: "Stel de vraag" }).click();
+
+  await expect(page.locator(".vraag-antwoord-kanttekening")).toHaveText("Let op: dit dekt slechts een deelinterpretatie van de vraag.");
+});
+
 test("de header op de startpagina linkt naar /vraag", async ({ page }) => {
   await page.route("**/api/rce/op-deze-dag", (route) => route.fulfill({ json: { monument: null } }));
   await page.goto("/");
