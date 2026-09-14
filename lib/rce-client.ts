@@ -21,6 +21,7 @@ type ArcheologischeContextResponse = { gebieden: ArcheologischeContext[] };
 type OnderzoeksgebiedVerrijkingResponse = OnderzoeksgebiedAggregaten & { complexen: OnderzoeksgebiedComplex[]; vondstlocaties: OnderzoeksgebiedVondstlocatie[] };
 type OpDezeDagResponse = { monument: RceMonument | null };
 type VerrasMeResponse = { monument: RceMonument | null };
+type RijksmonumentResponse = { monument: RceMonument | null };
 
 export async function searchRceMonuments(query: string, signal?: AbortSignal, page = 1) {
   const requestScope = async (scope: string) => {
@@ -252,5 +253,20 @@ export async function fetchVerrasMe(signal?: AbortSignal) {
   });
   if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
   const document = await response.json() as VerrasMeResponse;
+  return document.monument;
+}
+
+// Exacte, klasse-gebonden lookup op ceo:rijksmonumentnummer - geen fan-out
+// naar andere objectsoorten zoals searchRceMonuments doet voor een kale
+// numerieke zoekopdracht. Gebruikt door useVoorbeeldMonument, waar een
+// botsend Archis-nummer bij een ander objecttype nooit het verkeerde
+// object mag opleveren.
+export async function fetchRijksmonumentByNummer(nummer: string, signal?: AbortSignal) {
+  const response = await fetch(`/api/rce/rijksmonument?nummer=${encodeURIComponent(nummer)}`, {
+    headers: { Accept: "application/json" },
+    signal,
+  });
+  if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
+  const document = await response.json() as RijksmonumentResponse;
   return document.monument;
 }
