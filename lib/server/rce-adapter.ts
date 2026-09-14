@@ -538,7 +538,7 @@ export async function fetchVerrasMe(signal?: AbortSignal): Promise<RceMonument |
 // daarom zijn eigen mini-discoveryronde (woonplaats + omschrijving, zie
 // ARCHEOLOGISCH_ONDERZOEK_SOURCES in rce.ts) in plaats van één CONTAINS-query
 // op de hele collectie.
-async function searchArcheologischOnderzoek(term: string, signal?: AbortSignal, tracker?: SearchPartialFailure): Promise<RceMonument[]> {
+async function searchArcheologischOnderzoek(term: string, signal?: AbortSignal, tracker?: SearchPartialFailure, page = 1): Promise<RceMonument[]> {
   const branchResults = await runDiscoveryBranches(
     "search.onderzoeksgebieden",
     buildArcheologischOnderzoekDiscoveryQueries(term),
@@ -547,7 +547,10 @@ async function searchArcheologischOnderzoek(term: string, signal?: AbortSignal, 
     signal,
     tracker,
   );
-  const discovery = mergeDiscoveryMatches(branchResults).slice(0, 25);
+  const merged = mergeDiscoveryMatches(branchResults);
+  const start = Math.max(0, page - 1) * 25;
+  if (tracker && merged.length > start + 25) tracker.hasMore = true;
+  const discovery = merged.slice(start, start + 25);
   if (!discovery.length) return [];
   const detailsDocument = await fetchSparql(buildArcheologischOnderzoekDetailsQuery(discovery.map((match) => match.monumentNumber)), signal);
   const detailsByNumber = new Map(parseArcheologischOnderzoekResults(detailsDocument).map((item) => [item.monumentNumber, item]));
@@ -573,7 +576,13 @@ async function searchArcheologischOnderzoek(term: string, signal?: AbortSignal, 
 // alleen in de gefaalde categorie zat) 5 minuten lang als geldig cachen en
 // aan iedereen serveren; zie searchByText/searchRceMonuments en de
 // cache-beslissing in app/api/rce/search/route.ts.
-export type SearchPartialFailure = { partial: boolean; failedCategories: string[] };
+// `hasMore` wordt door de archeologiecategorie-helpers gezet zodra hun
+// eigen, gemergede kandidatenlijst verder reikt dan de huidige pagina-
+// slice (zie searchScheepswrakken e.a. hieronder) - route.ts leest dit
+// terug voor scope=archaeology-a/-b, want pagedResultCount (gebaseerd op
+// collectionNatures) sluit deze categorieën juist expliciet uit en kan dit
+// zelf nooit signaleren.
+export type SearchPartialFailure = { partial: boolean; failedCategories: string[]; hasMore: boolean };
 
 // Vertaalt het interne event-label van een optionalSearch-aanroep naar de
 // naam zoals die al in het "Soort object"-filter staat (SearchFilters.tsx),
@@ -635,8 +644,13 @@ async function runDiscoveryBranches(
   tracker?: SearchPartialFailure,
   endpoint?: string,
 ): Promise<DiscoveryMatch[][]> {
+  // Zelfde 35s-marge als CONCEPT_MATCH_TIMEOUT_MS hierboven, want elke
+  // discoverytak (kern-Rijksmonumenttekstzoeking én elke archeologie-
+  // categorie) deelt hetzelfde CONTAINS/LCASE-scankostenprofiel - live
+  // geraakt (14-09-2026): q=Utrecht&scope=core gaf een 504 na 20,1s op de
+  // toen nog ongewijzigde standaardtimeout.
   const settled = await Promise.allSettled(
-    branches.map(({ bron, query }) => fetchSparql(query, signal, endpoint).then((document) => parse(document, bron, term))),
+    branches.map(({ bron, query }) => fetchSparql(query, signal, endpoint, CONCEPT_MATCH_TIMEOUT_MS).then((document) => parse(document, bron, term))),
   );
   if (signal?.aborted) throw signal.reason;
   const branchResults = settled.flatMap((result, index) => {
@@ -685,7 +699,7 @@ export async function fetchVondstlocatieInhoud(locatieUri: string, signal?: Abor
   };
 }
 
-async function searchArcheologischeTerreinen(term: string, signal?: AbortSignal, tracker?: SearchPartialFailure): Promise<RceMonument[]> {
+async function searchArcheologischeTerreinen(term: string, signal?: AbortSignal, tracker?: SearchPartialFailure, page = 1): Promise<RceMonument[]> {
   const branchResults = await runDiscoveryBranches(
     "search.archeologische-terreinen",
     buildArcheologischTerreinDiscoveryQueries(term),
@@ -694,7 +708,10 @@ async function searchArcheologischeTerreinen(term: string, signal?: AbortSignal,
     signal,
     tracker,
   );
-  const discovery = mergeDiscoveryMatches(branchResults).slice(0, 25);
+  const merged = mergeDiscoveryMatches(branchResults);
+  const start = Math.max(0, page - 1) * 25;
+  if (tracker && merged.length > start + 25) tracker.hasMore = true;
+  const discovery = merged.slice(start, start + 25);
   if (!discovery.length) return [];
   const detailsDocument = await fetchSparql(buildArcheologischTerreinDetailsQuery(discovery.map((match) => match.monumentNumber)), signal);
   const detailsByNumber = new Map(parseStandaloneArcheologischTerreinResults(detailsDocument).map((item) => [item.choNumber, item]));
@@ -704,7 +721,7 @@ async function searchArcheologischeTerreinen(term: string, signal?: AbortSignal,
   });
 }
 
-async function searchVondstlocaties(term: string, signal?: AbortSignal, tracker?: SearchPartialFailure): Promise<RceMonument[]> {
+async function searchVondstlocaties(term: string, signal?: AbortSignal, tracker?: SearchPartialFailure, page = 1): Promise<RceMonument[]> {
   const branches = await runDiscoveryBranches(
     "search.vondstlocaties",
     buildVondstlocatieDiscoveryQueries(term),
@@ -713,7 +730,10 @@ async function searchVondstlocaties(term: string, signal?: AbortSignal, tracker?
     signal,
     tracker,
   );
-  const discovery = mergeDiscoveryMatches(branches).slice(0, 25);
+  const merged = mergeDiscoveryMatches(branches);
+  const start = Math.max(0, page - 1) * 25;
+  if (tracker && merged.length > start + 25) tracker.hasMore = true;
+  const discovery = merged.slice(start, start + 25);
   if (!discovery.length) return [];
   const details = await fetchSparql(buildVondstlocatieDetailsQuery(discovery.map((match) => match.monumentNumber)), signal);
   const byNumber = new Map(parseVondstlocatieResults(details).map((item) => [item.choNumber, item]));
@@ -723,7 +743,7 @@ async function searchVondstlocaties(term: string, signal?: AbortSignal, tracker?
   });
 }
 
-async function searchGrondsporen(term: string, signal?: AbortSignal, tracker?: SearchPartialFailure): Promise<RceMonument[]> {
+async function searchGrondsporen(term: string, signal?: AbortSignal, tracker?: SearchPartialFailure, page = 1): Promise<RceMonument[]> {
   const branches = await runDiscoveryBranches(
     "search.grondsporen",
     buildGrondsporenDiscoveryQueries(term),
@@ -732,7 +752,10 @@ async function searchGrondsporen(term: string, signal?: AbortSignal, tracker?: S
     signal,
     tracker,
   );
-  const discovery = mergeDiscoveryMatches(branches).slice(0, 25);
+  const merged = mergeDiscoveryMatches(branches);
+  const start = Math.max(0, page - 1) * 25;
+  if (tracker && merged.length > start + 25) tracker.hasMore = true;
+  const discovery = merged.slice(start, start + 25);
   if (!discovery.length) return [];
   const details = await fetchSparql(buildGrondsporenDetailsQuery(discovery.map((match) => match.monumentNumber)), signal);
   const records = parseGrondsporenResults(details);
@@ -776,7 +799,7 @@ async function buildVondstenFromDiscovery(discovery: ReturnType<typeof mergeDisc
   });
 }
 
-async function searchVondsten(term: string, signal?: AbortSignal, tracker?: SearchPartialFailure): Promise<RceMonument[]> {
+async function searchVondsten(term: string, signal?: AbortSignal, tracker?: SearchPartialFailure, page = 1): Promise<RceMonument[]> {
   const branches = await runDiscoveryBranches(
     "search.vondsten",
     buildVondstenDiscoveryQueries(term),
@@ -785,7 +808,10 @@ async function searchVondsten(term: string, signal?: AbortSignal, tracker?: Sear
     signal,
     tracker,
   );
-  return buildVondstenFromDiscovery(mergeDiscoveryMatches(branches).slice(0, 25), signal);
+  const merged = mergeDiscoveryMatches(branches);
+  const start = Math.max(0, page - 1) * 25;
+  if (tracker && merged.length > start + 25) tracker.hasMore = true;
+  return buildVondstenFromDiscovery(merged.slice(start, start + 25), signal);
 }
 
 export async function searchByVondstenConcept(conceptUri: string, field: VondstenConceptField, signal?: AbortSignal): Promise<RceMonument[]> {
@@ -809,7 +835,7 @@ async function buildArcheologischeComplexenFromDiscovery(discovery: ReturnType<t
   });
 }
 
-async function searchArcheologischeComplexen(term: string, signal?: AbortSignal, tracker?: SearchPartialFailure): Promise<RceMonument[]> {
+async function searchArcheologischeComplexen(term: string, signal?: AbortSignal, tracker?: SearchPartialFailure, page = 1): Promise<RceMonument[]> {
   const branches = await runDiscoveryBranches(
     "search.archeologische-complexen",
     buildArcheologischeComplexDiscoveryQueries(term),
@@ -818,7 +844,10 @@ async function searchArcheologischeComplexen(term: string, signal?: AbortSignal,
     signal,
     tracker,
   );
-  return buildArcheologischeComplexenFromDiscovery(mergeDiscoveryMatches(branches).slice(0, 25), signal);
+  const merged = mergeDiscoveryMatches(branches);
+  const start = Math.max(0, page - 1) * 25;
+  if (tracker && merged.length > start + 25) tracker.hasMore = true;
+  return buildArcheologischeComplexenFromDiscovery(merged.slice(start, start + 25), signal);
 }
 
 export async function searchByArcheologischeComplexTypeConcept(conceptUri: string, signal?: AbortSignal): Promise<RceMonument[]> {
@@ -832,7 +861,7 @@ export async function searchByArcheologischeComplexTypeConcept(conceptUri: strin
 // endpoint-override op zowel de discovery- als de detailquery, in
 // tegenstelling tot elke andere categorie hier die stilzwijgend de
 // standaard-CHO-dienst gebruikt.
-async function searchScheepswrakken(term: string, signal?: AbortSignal, tracker?: SearchPartialFailure): Promise<RceMonument[]> {
+async function searchScheepswrakken(term: string, signal?: AbortSignal, tracker?: SearchPartialFailure, page = 1): Promise<RceMonument[]> {
   const branches = await runDiscoveryBranches(
     "search.scheepswrakken",
     buildScheepswrakDiscoveryQueries(term),
@@ -842,7 +871,10 @@ async function searchScheepswrakken(term: string, signal?: AbortSignal, tracker?
     tracker,
     MASS_ENDPOINT,
   );
-  const discovery = mergeDiscoveryMatches(branches).slice(0, 25);
+  const merged = mergeDiscoveryMatches(branches);
+  const start = Math.max(0, page - 1) * 25;
+  if (tracker && merged.length > start + 25) tracker.hasMore = true;
+  const discovery = merged.slice(start, start + 25);
   if (!discovery.length) return [];
   const details = await fetchSparql(buildScheepswrakDetailsQuery(discovery.map((match) => match.monumentNumber)), signal, MASS_ENDPOINT);
   const byId = new Map(parseScheepswrakResults(details).map((wrak) => [wrak.id, wrak]));
@@ -887,7 +919,7 @@ async function searchScheepswrakken(term: string, signal?: AbortSignal, tracker?
 // scheepswrak zonder wrakvorm-geometrie) betekent hier: geen eigen
 // coördinaat én geen rijksmonumentnummer, of een rijksmonumentnummer zonder
 // vindbare geometrie in rce/cho.
-async function searchMuurschilderingen(term: string, signal?: AbortSignal, tracker?: SearchPartialFailure): Promise<RceMonument[]> {
+async function searchMuurschilderingen(term: string, signal?: AbortSignal, tracker?: SearchPartialFailure, page = 1): Promise<RceMonument[]> {
   const branches = await runDiscoveryBranches(
     "search.muurschilderingen",
     buildMuurschilderingDiscoveryQueries(term),
@@ -897,7 +929,10 @@ async function searchMuurschilderingen(term: string, signal?: AbortSignal, track
     tracker,
     MUUR_ENDPOINT,
   );
-  const discovery = mergeDiscoveryMatches(branches).slice(0, 25);
+  const merged = mergeDiscoveryMatches(branches);
+  const start = Math.max(0, page - 1) * 25;
+  if (tracker && merged.length > start + 25) tracker.hasMore = true;
+  const discovery = merged.slice(start, start + 25);
   if (!discovery.length) return [];
   const ids = discovery.map((match) => match.monumentNumber);
   const [detailsDocument, schilderingenDocument] = await Promise.all([
@@ -974,38 +1009,38 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1, scope:
     page === 1 && (scope === "all" || scope === "heritage")
       ? optionalSearch("search.complexen", () => fetchSparql(buildComplexenQuery(term), signal).then(parseComplexenResults), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
-    page === 1 && (scope === "all" || scope === "archaeology-a")
-      ? optionalSearch("search.onderzoeksgebieden", () => searchArcheologischOnderzoek(term, signal, tracker), [], signal, tracker)
+    scope === "all" || scope === "archaeology-a"
+      ? optionalSearch("search.onderzoeksgebieden", () => searchArcheologischOnderzoek(term, signal, tracker, page), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
-    page === 1 && (scope === "all" || scope === "archaeology-a")
-      ? optionalSearch("search.archeologische-terreinen", () => searchArcheologischeTerreinen(term, signal, tracker), [], signal, tracker)
+    scope === "all" || scope === "archaeology-a"
+      ? optionalSearch("search.archeologische-terreinen", () => searchArcheologischeTerreinen(term, signal, tracker, page), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
-    page === 1 && (scope === "all" || scope === "archaeology-a")
-      ? optionalSearch("search.vondstlocaties", () => searchVondstlocaties(term, signal, tracker), [], signal, tracker)
+    scope === "all" || scope === "archaeology-a"
+      ? optionalSearch("search.vondstlocaties", () => searchVondstlocaties(term, signal, tracker, page), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
-    page === 1 && (scope === "all" || scope === "archaeology-b")
-      ? optionalSearch("search.grondsporen", () => searchGrondsporen(term, signal, tracker), [], signal, tracker)
+    scope === "all" || scope === "archaeology-b"
+      ? optionalSearch("search.grondsporen", () => searchGrondsporen(term, signal, tracker, page), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
-    page === 1 && (scope === "all" || scope === "archaeology-b")
-      ? optionalSearch("search.vondsten", () => searchVondsten(term, signal, tracker), [], signal, tracker)
+    scope === "all" || scope === "archaeology-b"
+      ? optionalSearch("search.vondsten", () => searchVondsten(term, signal, tracker, page), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
-    page === 1 && (scope === "all" || scope === "archaeology-b")
-      ? optionalSearch("search.archeologische-complexen", () => searchArcheologischeComplexen(term, signal, tracker), [], signal, tracker)
+    scope === "all" || scope === "archaeology-b"
+      ? optionalSearch("search.archeologische-complexen", () => searchArcheologischeComplexen(term, signal, tracker, page), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
     // Scheepswrakken zijn geen archeologie in de CEO-zin, maar delen het
     // kostenprofiel (klein, snel) van deze bucket - zie 018-mass-
     // scheepswrakken.md. Geen eigen scope-waarde om de client-side
     // parallelle scope-fetches (lib/rce-client.ts) niet te hoeven uitbreiden.
-    page === 1 && (scope === "all" || scope === "archaeology-b")
-      ? optionalSearch("search.scheepswrakken", () => searchScheepswrakken(term, signal, tracker), [], signal, tracker)
+    scope === "all" || scope === "archaeology-b"
+      ? optionalSearch("search.scheepswrakken", () => searchScheepswrakken(term, signal, tracker, page), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
     // Muurschilderingen zijn evenmin archeologie, maar delen het
     // kostenprofiel (klein, snel) van deze bucket - zelfde afweging als
     // scheepswrakken hierboven (019-muurschilderingen.md). Geen eigen
     // scope-waarde om de client-side parallelle scope-fetches
     // (lib/rce-client.ts) niet te hoeven uitbreiden.
-    page === 1 && (scope === "all" || scope === "archaeology-b")
-      ? optionalSearch("search.muurschilderingen", () => searchMuurschilderingen(term, signal, tracker), [], signal, tracker)
+    scope === "all" || scope === "archaeology-b"
+      ? optionalSearch("search.muurschilderingen", () => searchMuurschilderingen(term, signal, tracker, page), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
   ]);
   const extras = [...werelderfgoed, ...gezichten, ...complexen, ...onderzoeksgebieden, ...archeologischeTerreinen, ...vondstlocaties, ...grondsporen, ...vondsten, ...archeologischeComplexen, ...scheepswrakken, ...muurschilderingen];
