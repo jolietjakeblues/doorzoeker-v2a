@@ -95,7 +95,7 @@ export async function GET(request: Request) {
     // onvolledig resultaat - bv. "0 resultaten" terwijl het object alleen in
     // de gefaalde categorie zat - hierna alsnog 5 minuten lang gecachet en
     // aan alle bezoekers geserveerd worden, alsof het een geldig antwoord was.
-    const partialFailure: SearchPartialFailure = { partial: false, failedCategories: [] };
+    const partialFailure: SearchPartialFailure = { partial: false, failedCategories: [], hasMore: false };
     const results = browse
       ? await browseRceObjects(browse, request.signal, page)
       : conceptParam
@@ -106,11 +106,22 @@ export async function GET(request: Request) {
     const pageSize = 25;
     const collectionNatures = new Set<string>(Object.values(OBJECT_KIND));
     const pagedResultCount = results.filter((result) => !collectionNatures.has(result.monumentNature ?? "")).length;
+    // pagedResultCount sluit archeologiecategorieën juist uit (via
+    // collectionNatures), dus kan voor scope=archaeology-a/-b nooit "er is
+    // meer" signaleren - daar leest partialFailure.hasMore terug wat de
+    // categoriehelper zelf al vaststelde (zie SearchPartialFailure hierboven
+    // en bv. searchScheepswrakken in rce-adapter.ts). core/heritage/all
+    // houden hun bestaande, ongewijzigde gedrag.
+    const scopeUsesCategoryHasMore = scope === "archaeology-a" || scope === "archaeology-b";
     const body = JSON.stringify({
       results,
       page: isPagedTextSearch || isPagedBrowse ? page : 1,
       pageSize,
-      hasMore: isPagedBrowse ? results.length >= pageSize : isPagedTextSearch && pagedResultCount >= pageSize,
+      hasMore: isPagedBrowse
+        ? results.length >= pageSize
+        : isPagedTextSearch
+          ? (scopeUsesCategoryHasMore ? partialFailure.hasMore : pagedResultCount >= pageSize)
+          : false,
       failedCategories: partialFailure.failedCategories.length ? partialFailure.failedCategories : undefined,
     });
     const response = new Response(body, {

@@ -750,16 +750,16 @@ kreeg.
 Twee bevindingen live herbevestigd (niet aangenomen) vóór opname hieronder.
 Nog niet opgepakt, staan op de lijst:
 
-- **Een brede vrije-tekstzoekopdracht kan de serverzijdige timeout nog
-  raken.** Live herhaald: `q=Utrecht&scope=core` gaf 504 na 20,1 seconden.
-  De timeoutverlenging uit de "Kerken"-fix (`CONCEPT_MATCH_TIMEOUT_MS`, zie
-  hierboven) geldt alleen voor de conceptmatch-functies
-  (`searchByConceptMatchQuery` en de vier losstaande varianten), niet voor
-  `searchByText`'s eigen discoverybranches - die blijven op de standaard
-  20s. Openstaande vraag: dezelfde verlenging ook daar toepassen (risico:
-  langer een Worker-invocation vasthouden, en de eerder gevonden
-  subrequest-limiet bij scope="all" lost een langere timeout sowieso niet
-  op), of eerst per categorie meten welke tak structureel traag is.
+- ~~**Een brede vrije-tekstzoekopdracht kan de serverzijdige timeout nog
+  raken.**~~ **Opgelost (14 september 2026).** Live herhaald: `q=Utrecht&scope=core`
+  gaf 504 na 20,1 seconden. `runDiscoveryBranches` (gedeeld door de
+  kern-Rijksmonumenttekstzoeking én elke archeologiecategorie) hergebruikt
+  nu dezelfde `CONCEPT_MATCH_TIMEOUT_MS` (35s) als de eerdere "Kerken"-fix
+  in plaats van de standaard 20s - elke discoverytak deelt hetzelfde
+  CONTAINS/LCASE-scankostenprofiel. De eerder genoemde subrequest-limiet
+  bij `scope="all"` is een apart, nog niet aangepakt risico (aantal
+  parallelle aanvragen, niet de duur per aanvraag) - bewust niet
+  meegenomen in deze fix.
 - **Het Werelderfgoed-overzicht (`browse=werelderfgoed`) stuurt onnodig
   grote antwoorden.** Live herhaald: 4,04 MB voor 18 objecten. Oorzaak
   gevonden: de volledige, ongegeneraliseerde WKT-geometrie zit al in het
@@ -826,37 +826,37 @@ faalt wordt nog een fout getoond.
 Twee resterende punten uit die review, nog niet opgepakt, staan op de
 lijst (reviewer-advies: idealiter vóór de v0.5.0 Beta-publicatie):
 
-- **P1: paginering (pagina 2+) dekt alleen de `core`-scope - bevestigd
-  als een echte bug, niet alleen een ontwerpkeuze (22 augustus 2026,
-  live in de code geverifieerd vóór opname hieronder).** Voor de drie
-  `heritage`-categorieën (Werelderfgoed/Gezicht/Complex) klopt de
-  bestaande code-comment wél dat dit bewust is: hun queries hebben geen
-  `LIMIT`, en met resp. 18/472/~4.200 instanties totaal levert een
-  zoekterm hier realistisch nooit veel treffers op. Maar de zeven
-  categorieën in `archaeology-a`/`archaeology-b` (Onderzoeksgebied,
-  Archeologisch terrein, Vondstlocatie, Grondspoor, Vondst, Archeologisch
-  complex, Scheepswrak) kappen hun eigen matches wél degelijk intern af
-  op 25 (`mergeDiscoveryMatches(...).slice(0, 25)` in elke helper-functie
-  in `lib/server/rce-adapter.ts`), en die scopes worden sowieso alleen op
-  pagina 1 aangeroepen (`page === 1 && ...`-gate in `searchByText`) -
-  zonder eigen paginering is alles voorbij de 25e match van zo'n
-  categorie permanent en onopgemerkt onbereikbaar. Geen hypothetisch
-  scenario: elders in dit document staat al vastgelegd dat "schoener" 42
-  scheepswrakken oplevert - 17 daarvan zouden dus nu al buiten bereik
-  vallen zodra de aangekondigde scheepstype-tekstzoekfunctie gebouwd
-  wordt. **Bewust uitgesteld naar v0.5.1 Beta** (zelfde advies als de
-  reviewer): een correcte fix vraagt paginering per scope (server +
-  client, zie `hooks/useSearchState.ts`'s `loadMore()`) - een grotere,
-  eigen architecturale wijziging, geen kleine aanpassing zoals de overige
-  punten uit deze review.
-- **P2: inconsistente samenvoegsleutel tussen de eerste pagina
-  (`item.sourceUrl || monumentNature:monumentNumber` in
-  `rce-client.ts`) en `loadMore()` (`item.monumentNumber ?? item.id` in
-  `hooks/useSearchState.ts`).** `monumentNumber` is niet globaal uniek
-  (bv. een MASS-scheepswrak-ID kan botsen met een rijksmonumentnummer) -
-  een latere `loadMore()`-pagina zou zo stilzwijgend een ongerelateerd
-  eerder resultaat kunnen overschrijven. Voorstel: één gedeelde
-  `resultIdentity(item)`-helper.
-- **P2: `loadMore()` faalt stil.** Bij een fout doet `loadMore()` alleen
-  `setHasMore(false)` - de "laad meer"-knop verdwijnt zonder foutmelding
-  of retry-optie, niet te onderscheiden van "alle resultaten geladen".
+- ~~**P1: paginering (pagina 2+) dekt alleen de `core`-scope.**~~
+  **Opgelost (14 september 2026).** Voor de drie `heritage`-categorieën
+  (Werelderfgoed/Gezicht/Complex) blijft de bewuste `page === 1`-gate
+  ongewijzigd staan (hun queries hebben geen `LIMIT`, te kleine collecties
+  om dit probleem te hebben). De zeven categorieën in
+  `archaeology-a`/`archaeology-b` (Onderzoeksgebied, Archeologisch
+  terrein, Vondstlocatie, Grondspoor, Vondst, Archeologisch complex,
+  Scheepswrak) plus Muurschildering krijgen nu allemaal een `page`-
+  parameter en een page-afgeleide slice (`start = (page-1)*25`, zelfde
+  patroon als de kern-categorie al gebruikte), de `page === 1`-gate in
+  `searchByText` is voor deze acht weggehaald. `SearchPartialFailure`
+  kreeg er een `hasMore`-veld bij zodat `route.ts` dit per scope kan
+  teruggeven (`pagedResultCount` sluit deze categorieën juist uit). Client-
+  side (`lib/rce-client.ts`) vraagt `loadMore()` nu ook de
+  heritage/archaeology-scopes op (niet langer alleen bij `page === 1`) en
+  telt `hasMore` over alle scopes samen. Live geverifieerd: "schoener"
+  ontsluit nu ook de 17 scheepswrakken voorbij de 25e match.
+- ~~**P2: inconsistente samenvoegsleutel tussen de eerste pagina
+  (`rce-client.ts`) en `loadMore()` (`hooks/useSearchState.ts`).**~~
+  **Bleek al opgelost sinds [PR #117](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/117)
+  (22 augustus 2026) - deze regel was zelf documentatiedrift, ontdekt
+  14 september 2026.** `loadMore()` gebruikt sindsdien al `resultIdentity()`
+  (`lib/heritage-view-model.ts`), met een e2e-regressietest
+  (`tests/e2e/rework.spec.ts`, "'laad meer' verliest geen resultaat...").
+  Wat nog wél resteerde: `rce-client.ts`'s eigen cross-scope-samenvoeging
+  had zijn eigen, net iets andere inline sleutel i.p.v. die gedeelde
+  helper - nu opgeruimd via een nieuwe `identityKey()`-functie waar beide
+  op steunen (14 september 2026), zodat er werkelijk één bron van waarheid
+  is.
+- ~~**P2: `loadMore()` faalt stil.**~~ **Bleek al opgelost (22 augustus
+  2026), ook documentatiedrift.** `loadMore()` zet bij een fout
+  `loadMoreError` (niet `hasMore`), met een zichtbare foutmelding en
+  retry-knop i.p.v. de knop stilzwijgend te laten verdwijnen - gedekt door
+  de e2e-test "een mislukte 'laad meer' toont een foutmelding met retry...".
