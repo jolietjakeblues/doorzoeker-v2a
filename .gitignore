@@ -20,6 +20,9 @@
 /.vinext/
 /out/
 
+# Editor/IDE config
+.claude/
+
 # misc
 .DS_Store
 *.pem
