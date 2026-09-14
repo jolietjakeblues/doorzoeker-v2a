@@ -806,6 +806,12 @@ h2 {
 .tile.wreck {
   background: #0a5c66;
 }
+/* Muurschildering (019-muurschilderingen.md) - kleur gelijk aan de
+   kaartmarker in HeritageMap.tsx, zelfde consistentiereden als .tile.wreck
+   hierboven. */
+.tile.fresco {
+  background: #8c2f39;
+}
 .tile > b {
   font-size: 36px;
   font-weight: 700;
@@ -895,6 +901,9 @@ h2 {
 }
 .heritage-card--wreck {
   border-left: 3px solid #0a5c66;
+}
+.heritage-card--fresco {
+  border-left: 3px solid #8c2f39;
 }
 .concept-link {
   border: 0;
@@ -1377,6 +1386,9 @@ h2 {
 }
 .detail-head.wreck {
   background: #0a5c66;
+}
+.detail-head.fresco {
+  background: #8c2f39;
 }
 .detail-head b {
   font-size: 56px;

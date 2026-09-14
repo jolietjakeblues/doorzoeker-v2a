@@ -80,13 +80,16 @@ export function SearchFilters({
           <p>
             Rijksmonument, Werelderfgoed, Gezicht, Complex, Archeologisch
             terrein, Vondstlocatie, Grondspoor, Vondst, Archeologisch complex,
-            Onderzoeksgebied en Scheepswrak zijn losse soorten object, geen
-            varianten van hetzelfde. Werelderfgoed en Gezicht zijn gebieden
-            waar de RCE verantwoordelijk voor is en die rijksmonumenten
-            kunnen bevatten. Een Complex is zelf geen monument, maar een
-            samenhang tussen meerdere rijksmonumenten. Een Onderzoeksgebied
-            staat los van het monumentenregister. Een Scheepswrak komt uit
-            een aparte RCE-dataset (MASS), niet uit het monumentenregister.
+            Onderzoeksgebied, Scheepswrak en Muurschildering zijn losse
+            soorten object, geen varianten van hetzelfde. Werelderfgoed en
+            Gezicht zijn gebieden waar de RCE verantwoordelijk voor is en die
+            rijksmonumenten kunnen bevatten. Een Complex is zelf geen
+            monument, maar een samenhang tussen meerdere rijksmonumenten. Een
+            Onderzoeksgebied staat los van het monumentenregister. Een
+            Scheepswrak komt uit een aparte RCE-dataset (MASS), niet uit het
+            monumentenregister. Een Muurschildering is een gebouw met een of
+            meer muurschilderingen, uit de RCE Muurschilderingendatabase -
+            vaak, maar niet altijd, ook een rijksmonument.
           </p>
         </details>
         {[
@@ -102,6 +105,7 @@ export function SearchFilters({
           "Archeologisch complex",
           "Onderzoeksgebied",
           "Scheepswrak",
+          "Muurschildering",
         ].map((option) => (
           <label key={option}>
             <input

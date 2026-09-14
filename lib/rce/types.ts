@@ -1,5 +1,6 @@
 import type { ArchaeologyConcept, ArcheologischTerrein } from "./archaeology.ts";
 import type { ComplexMembership, RceParcel } from "./monuments.ts";
+import type { Muurschildering } from "./muurschilderingen.ts";
 
 // `RceMonument.monumentNature` heeft twee rollen: voor een Rijksmonument
 // bevat het het echte SKOS-`monumentaard`-label (bv. "onroerend gebouwd"),
@@ -20,6 +21,7 @@ export const OBJECT_KIND = {
   Vondsten: "vondsten",
   ArcheologischComplex: "archeologischcomplex",
   Scheepswrak: "scheepswrak",
+  Muurschildering: "muurschildering",
 } as const;
 export type ObjectKind = (typeof OBJECT_KIND)[keyof typeof OBJECT_KIND];
 
@@ -101,6 +103,17 @@ export type RceMonument = {
   ontdekt?: string;
   licentieNaam?: string;
   licentieUrl?: string;
+  // Muurschilderingen (019-muurschilderingen.md) - eigen, losstaande dataset
+  // (rce/Muurschilderingen i.p.v. rce/cho). Primair object is het gebouw
+  // (`name`/`place` hierboven al gevuld vanuit dcterms:title/
+  // ceo:woonplaatsnaam); dit velleensetje is aanvullend. rijksmonumentnummer
+  // is bewust apart van `monumentNumber` (dat blijft dit gebouws eigen
+  // Omeka-item-ID, de sleutel voor detail-/kaartidentiteit) - het is de
+  // exacte join-sleutel naar een bestaand Rijksmonument-record, niet dit
+  // record z'n eigen identiteit.
+  muurschilderingRijksmonumentnummer?: string;
+  muurschilderingGeometrieBron?: "eigen" | "rijksmonument";
+  muurschilderingen?: Muurschildering[];
 };
 
 export type MonumentImage = { url: string; title?: string; license?: string; sourceUrl?: string };

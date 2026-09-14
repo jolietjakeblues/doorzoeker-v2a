@@ -8,6 +8,7 @@ import {
   type Groenaanleg,
   type LiteratureRef,
   type MonumentImage,
+  type Muurschildering,
   type RceMonument,
   type RceParcel,
 } from "./rce.ts";
@@ -40,7 +41,8 @@ export type Item = {
     | "Vondst"
     | "Archeologisch complex"
     | "Onderzoeksgebied"
-    | "Scheepswrak";
+    | "Scheepswrak"
+    | "Muurschildering";
   monumentAard?: "Gebouwd" | "Archeologisch";
   period: string;
   description: string;
@@ -102,6 +104,9 @@ export type Item = {
   ontdekt?: string;
   licentieNaam?: string;
   licentieUrl?: string;
+  muurschilderingRijksmonumentnummer?: string;
+  muurschilderingGeometrieBron?: "eigen" | "rijksmonument";
+  muurschilderingen?: Muurschildering[];
 };
 
 export const EMPTY_ITEMS: Item[] = [];
@@ -328,6 +333,7 @@ export function typeBadge(item: {
   if (item.objectType === "Vondst") return { letter: "V", modifier: "sand" };
   if (item.objectType === "Archeologisch complex") return { letter: "A", modifier: "complex" };
   if (item.objectType === "Scheepswrak") return { letter: "R", modifier: "wreck" };
+  if (item.objectType === "Muurschildering") return { letter: "F", modifier: "fresco" };
   // Archeologisch Rijksmonument krijgt geen eigen letter (gemeld door de
   // eigenaar, 21 augustus 2026: "Het zijn Rijksmonumenten -> M") - alleen
   // de tegelkleur ("sand") maakt het onderscheid met gebouwd. Bijkomend
@@ -354,6 +360,7 @@ export function statusLabel(objectType: Item["objectType"]) {
   if (objectType === "Vondst") return "Archeologische vondst";
   if (objectType === "Archeologisch complex") return "Archeologisch complex";
   if (objectType === "Scheepswrak") return "Scheepswrak (MASS)";
+  if (objectType === "Muurschildering") return "Gebouw met muurschildering(en)";
   return "Rijksmonument";
 }
 
@@ -373,6 +380,7 @@ export function primaryIdentifier(
   if (item.objectType === "Vondst") return { label: item.monumentNumber !== item.objectNumber ? "Archis" : "CHO", value };
   if (item.objectType === "Archeologisch complex") return { label: "CHO", value };
   if (item.objectType === "Scheepswrak") return { label: "MASS", value };
+  if (item.objectType === "Muurschildering") return { label: "Muurschilderingendatabase", value };
   return { label: "Onderzoeksgebied", value };
 }
 
@@ -430,12 +438,13 @@ export function toItem(record: RceMonument): Item {
   const isVondst = record.monumentNature === OBJECT_KIND.Vondsten;
   const isArcheologischComplex = record.monumentNature === OBJECT_KIND.ArcheologischComplex;
   const isScheepswrak = record.monumentNature === OBJECT_KIND.Scheepswrak;
+  const isMuurschildering = record.monumentNature === OBJECT_KIND.Muurschildering;
   // Gezicht bewust NIET hier: ceo:wordtGetoondOp wijst voor alle 472
   // rijksbeschermde gezichten naar archisarchief.cultureelerfgoed.nl, een
   // domein dat inmiddels zelf op de root al 403/404 geeft (leeg
   // archief, geen tijdelijke storing - empirisch gecontroleerd op
   // meerdere gezichtsnummers). De link viel dus voor iedereen dood.
-  const hasOwnOfficialUrl = isWerelderfgoed || isScheepswrak;
+  const hasOwnOfficialUrl = isWerelderfgoed || isScheepswrak || isMuurschildering;
   const objectType: Item["objectType"] = isWerelderfgoed
     ? "Werelderfgoed"
     : isGezicht
@@ -456,6 +465,8 @@ export function toItem(record: RceMonument): Item {
                 ? "Archeologisch complex"
               : isScheepswrak
                 ? "Scheepswrak"
+              : isMuurschildering
+                ? "Muurschildering"
               : "Rijksmonument";
   const monumentAard: Item["monumentAard"] =
     objectType === "Rijksmonument"
@@ -486,6 +497,8 @@ export function toItem(record: RceMonument): Item {
             ? `Archeologisch complex ${record.monumentNumber}`
           : isScheepswrak
             ? `Scheepswrak ${record.monumentNumber}`
+          : isMuurschildering
+            ? `Gebouw met muurschildering(en) ${record.monumentNumber}`
           : `Rijksmonument ${record.monumentNumber}`),
     kind: functionName || "Functie niet opgenomen",
     address:
@@ -557,6 +570,9 @@ export function toItem(record: RceMonument): Item {
     ontdekt: record.ontdekt,
     licentieNaam: record.licentieNaam,
     licentieUrl: record.licentieUrl,
+    muurschilderingRijksmonumentnummer: record.muurschilderingRijksmonumentnummer,
+    muurschilderingGeometrieBron: record.muurschilderingGeometrieBron,
+    muurschilderingen: record.muurschilderingen,
     matchSource: record.matchSource,
     matchedText,
     matchScore: record.matchScore,
@@ -655,7 +671,8 @@ export function parseUrlState(search: string) {
       objectType === "Vondst" ||
       objectType === "Archeologisch complex" ||
       objectType === "Onderzoeksgebied" ||
-      objectType === "Scheepswrak"
+      objectType === "Scheepswrak" ||
+      objectType === "Muurschildering"
         ? objectType
         : "Alle",
     monumentAard:

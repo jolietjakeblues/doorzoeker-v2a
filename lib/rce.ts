@@ -39,3 +39,4 @@ export * from "./rce/enrichment.ts";
 export * from "./rce/iiif.ts";
 export * from "./rce/types.ts";
 export * from "./rce/scheepswrakken.ts";
+export * from "./rce/muurschilderingen.ts";
