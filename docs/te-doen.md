@@ -6,6 +6,15 @@ PR's #55-#60 en twee reviews (functioneel + security) op `main`
 `/accessibility-review`-bevindingen, drie zaterdag-fixes, en een
 design critique). Wordt maandag verder opgepakt.
 
+**Bijgewerkt op 14 september 2026** na een lange stilstand van dit
+document (laatste inhoudelijke update was 22 augustus) - zie de nieuwe
+sectie "Sinds 22 augustus 2026" onderaan voor alles wat in de tussentijd
+is gebouwd. Bij deze update ook de "scheepstype"-regel hieronder
+gecorrigeerd: die was per ongeluk blijven staan als open punt terwijl
+[PR #102](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/102) 'm
+al op 21 augustus 2026 oploste - precies het soort documentatiedrift dat
+dit document zelf al eerder bij andere punten signaleerde.
+
 ## Domeinnaam
 
 15. ~~**Sitenaam wordt `doorzoekerfgoed.nl`.**~~ **Afgerond (17 augustus
@@ -671,23 +680,17 @@ kreeg.
   verzoek van de eigenaar ("Het zijn Rijksmonumenten -> M") deelt een
   archeologisch Rijksmonument nu weer gewoon de `M` van een gebouwd
   Rijksmonument - alleen de tegelkleur (`sand`) maakt nog onderscheid.
-- **Scheepstype nog niet doorzoekbaar op tekst (gemeld door de eigenaar,
+- ~~**Scheepstype nog niet doorzoekbaar op tekst (gemeld door de eigenaar,
   20 augustus 2026: "schoener ed. dat zou toch moeten lukken op
-  'tekst'").** `SCHEEPSWRAK_SOURCES` in `lib/rce/scheepswrakken.ts` heeft
-  maar één discovery-branch (`sdo:name`) plus de exacte MASS-ID-kortsluiting
-  bij een numerieke term - een bewuste scope-keuze uit
-  018-mass-scheepswrakken.md ("beslissing 3: eerst alleen het detail
-  bouwen, geen apart scheepstype-facet"). Een zoekterm als "schoener" of
-  "logger" matcht dus nu alleen als dat woord toevallig in de náám van het
-  wrak staat, niet als het het `schema:additionalType` is.
-  Empirisch gecontroleerd (20 augustus 2026): `schema:additionalType` is
-  gevuld voor 2.483 van de 2.587 scheepswrakken (96%), over 134
-  verschillende typen - ruim voldoende gevuld om als volwaardige
-  discovery-bron toe te voegen, zelfde patroon als de bestaande
-  `DISCOVERY_SOURCES`-branches bij Rijksmonumenten
-  (`buildRceDiscoveryQueries`). "Schoener" (42) en "Logger" (30, zie de
-  badge-letter-melding hierboven) zijn allebei ruim vertegenwoordigd.
-  Nog niet gebouwd, staat op de lijst.
+  'tekst'").**~~ **Opgelost (21 augustus 2026, [PR #102](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/102))
+  - deze regel bleef alleen als open item in dit document staan
+  (documentatiedrift, ontdekt en gecorrigeerd 14 september 2026).**
+  `SCHEEPSWRAK_SOURCES` in `lib/rce/scheepswrakken.ts` heeft nu een tweede
+  discovery-branch op `schema:additionalType` (rang 2, naast `sdo:name` op
+  rang 1), zelfde patroon als `DISCOVERY_SOURCES` bij Rijksmonumenten.
+  Live herbevestigd (14 september 2026, rechtstreeks tegen het
+  MASS-SPARQL-endpoint): "schoener" geeft meteen 10 treffers terug via
+  deze branch.
 - ~~**Klik op "Kerken" (Ontdek een thema) faalde met "De RCE Linked
   Data-service is momenteel niet bereikbaar".**~~ **Opgelost (21 augustus
   2026).** Gemeld door de eigenaar tijdens live gebruik. Met `wrangler
