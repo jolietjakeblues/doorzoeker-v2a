@@ -338,6 +338,22 @@ async function searchByNumber(monumentNumber: string, signal?: AbortSignal): Pro
   );
 }
 
+// Exact, klasse-gebonden: ceo:rijksmonumentnummer hoort uitsluitend bij
+// class:Rijksmonument, dus dit vraagt rechtstreeks naar dát ene monument -
+// geen fan-out naar complexen/archeologische terreinen/vondstlocaties/...
+// zoals searchByNumber hierboven (die is voor de vrije zoekbalk, waar een
+// kaal getal bewust ALLE objectsoorten mag raken, inclusief hun eigen
+// Archis- of complexnummer). Gebruikt door useVoorbeeldMonument
+// ("Zie de kracht van Doorzoeker") - daar moet een botsend Archis-nummer
+// bij een ander objecttype (bv. 14948, zowel het rijksmonumentnummer van de
+// showcase-kerk als het Archis-nummer van een archeologisch terrein in
+// Wieringerwaard) nooit het verkeerde object kunnen opleveren (gemeld door
+// de eigenaar, 14-09-2026).
+export async function fetchRijksmonumentByNummer(monumentNumber: string, signal?: AbortSignal): Promise<RceMonument | undefined> {
+  const [monument] = await buildMonumentsFromNumbers([monumentNumber], signal);
+  return monument;
+}
+
 // Exacte conceptzoekopdracht - geen CONTAINS-tekstmatch op een label, maar
 // een directe match op de concept-URI waarmee het record zelf (of, voor
 // waardering, het gekoppelde ArcheologischTerrein) is geclassificeerd.
