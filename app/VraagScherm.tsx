@@ -2,9 +2,11 @@
 
 import { useRef, useState, type FormEvent } from "react";
 import type { SparqlResultsDocument } from "@/lib/vraag/postprocess";
+import type { SparqlClarification } from "@/lib/server/vraag-adapter";
 
 type VraagMode = "lijst" | "telling";
-type Step = "idle" | "genereren" | "uitvoeren" | "antwoorden" | "klaar" | "fout";
+type Step = "idle" | "genereren" | "verduidelijken" | "uitvoeren" | "antwoorden" | "klaar" | "fout";
+type ClarificationChoice = { disambiguation?: Record<string, string>; limitationChoice?: string };
 
 const VOORBEELDVRAGEN: { label: string; mode: VraagMode }[] = [
   { label: "Welke rijksmonumenten staan er in Zeist?", mode: "lijst" },
@@ -48,23 +50,44 @@ export function VraagScherm() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SparqlResultsDocument | null>(null);
   const [answer, setAnswer] = useState<string | null>(null);
+  const [clarification, setClarification] = useState<SparqlClarification | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
+  const pendingClarificationRef = useRef<((choice: ClarificationChoice) => void) | null>(null);
 
-  const busy = step === "genereren" || step === "uitvoeren" || step === "antwoorden";
+  const busy = step === "genereren" || step === "verduidelijken" || step === "uitvoeren" || step === "antwoorden";
 
   function reset() {
     setError(null);
     setResults(null);
     setAnswer(null);
+    setClarification(null);
   }
 
-  async function runUitvoerenEnAntwoord(vraag: string, sparql: string, signal: AbortSignal) {
+  // Toont de verduidelijkingskaart en wacht op de keuze van de gebruiker -
+  // React-idiomatische versie van chat2thedata's frontend-patroon
+  // (waitForClarificationChoice/while(d1.clarification)), hier via een
+  // resolver-ref in plaats van een imperatieve lus in vanilla JS.
+  function waitForClarificationChoice(nieuweClarification: SparqlClarification): Promise<ClarificationChoice> {
+    setClarification(nieuweClarification);
+    setStep("verduidelijken");
+    return new Promise((resolve) => {
+      pendingClarificationRef.current = resolve;
+    });
+  }
+
+  function resolveClarification(choice: ClarificationChoice) {
+    const resolve = pendingClarificationRef.current;
+    pendingClarificationRef.current = null;
+    resolve?.(choice);
+  }
+
+  async function runUitvoerenEnAntwoord(vraag: string, sparql: string, caveats: string[], signal: AbortSignal) {
     setStep("uitvoeren");
     const uitvoerData = await postJson<{ results: SparqlResultsDocument }>("/api/vraag/uitvoeren", { query: sparql }, signal);
     setResults(uitvoerData.results);
 
     setStep("antwoorden");
-    const antwoordData = await postJson<{ answer: string }>("/api/vraag/antwoord", { question: vraag, results: uitvoerData.results }, signal);
+    const antwoordData = await postJson<{ answer: string }>("/api/vraag/antwoord", { question: vraag, results: uitvoerData.results, caveats }, signal);
     setAnswer(antwoordData.answer);
     setStep("klaar");
   }
@@ -77,11 +100,33 @@ export function VraagScherm() {
     controllerRef.current = controller;
     reset();
     setStep("genereren");
+    const trimmedQuestion = question.trim();
     try {
-      const generateData = await postJson<{ query: string }>("/api/vraag/genereer-sparql", { question: question.trim(), mode }, controller.signal);
-      setGeneratedQuery(generateData.query);
-      setQuery(generateData.query);
-      await runUitvoerenEnAntwoord(question.trim(), generateData.query, controller.signal);
+      let disambiguation: Record<string, string> | undefined;
+      let limitationChoice: string | undefined;
+      let generateData: { query?: string; caveats?: string[]; clarification?: SparqlClarification };
+      // Lus rond genereer-sparql: zolang de respons een verduidelijkingsvraag
+      // bevat (echte gemeente/provincie-naamsbotsing, of een vraag zonder
+      // eenduidige SPARQL-vertaling), toon de kaart, wacht op de keuze en
+      // POST opnieuw met de aangevulde keuze.
+      for (;;) {
+        generateData = await postJson<{ query?: string; caveats?: string[]; clarification?: SparqlClarification }>(
+          "/api/vraag/genereer-sparql",
+          { question: trimmedQuestion, mode, disambiguation, limitationChoice },
+          controller.signal,
+        );
+        if (!generateData.clarification) break;
+        const choice = await waitForClarificationChoice(generateData.clarification);
+        disambiguation = { ...disambiguation, ...choice.disambiguation };
+        limitationChoice = choice.limitationChoice ?? limitationChoice;
+        setStep("genereren");
+      }
+      setClarification(null);
+      const finalQuery = generateData.query ?? "";
+      const caveats = generateData.caveats ?? [];
+      setGeneratedQuery(finalQuery);
+      setQuery(finalQuery);
+      await runUitvoerenEnAntwoord(trimmedQuestion, finalQuery, caveats, controller.signal);
     } catch (err) {
       if (controller.signal.aborted) return;
       setError(err instanceof Error ? err.message : "Er ging iets mis.");
@@ -96,7 +141,10 @@ export function VraagScherm() {
     controllerRef.current = controller;
     reset();
     try {
-      await runUitvoerenEnAntwoord(question.trim(), query, controller.signal);
+      // Geen caveats: de gebruiker heeft de query zelf bewerkt, de
+      // oorspronkelijk gegenereerde kanttekeningen horen mogelijk niet meer
+      // bij wat er nu daadwerkelijk uitgevoerd wordt.
+      await runUitvoerenEnAntwoord(question.trim(), query, [], controller.signal);
     } catch (err) {
       if (controller.signal.aborted) return;
       setError(err instanceof Error ? err.message : "Er ging iets mis.");
@@ -167,6 +215,26 @@ export function VraagScherm() {
         </ol>
       )}
 
+      {step === "verduidelijken" && clarification && (
+        <div className="vraag-verduidelijking">
+          <p>{clarification.message}</p>
+          <div className="vraag-verduidelijking-opties">
+            {clarification.type === "entity_ambiguity"
+              ? clarification.options.map((optie) => (
+                  <button key={optie.id} type="button" onClick={() => resolveClarification({ disambiguation: { [optie.termLabel]: optie.id } })}>
+                    {optie.label}
+                  </button>
+                ))
+              : clarification.options.map((optie) => (
+                  <button key={optie.id} type="button" onClick={() => resolveClarification({ limitationChoice: optie.id })}>
+                    {optie.label}
+                    <span className="vraag-verduidelijking-caveat">{optie.caveat}</span>
+                  </button>
+                ))}
+          </div>
+        </div>
+      )}
+
       {error && <p className="vraag-fout">{error}</p>}
 
       {generatedQuery && (
@@ -192,7 +260,11 @@ export function VraagScherm() {
       {answer && (
         <div className="vraag-antwoord">
           <strong>Antwoord</strong>
-          <p>{answer}</p>
+          {answer.split("\n\n").map((segment, index) => (
+            <p key={index} className={segment.startsWith("Let op:") ? "vraag-antwoord-kanttekening" : undefined}>
+              {segment}
+            </p>
+          ))}
         </div>
       )}
 
@@ -241,11 +313,11 @@ export function VraagScherm() {
       )}
 
       <p className="vraag-bron">
-        Deze assistent is gebaseerd op{" "}
-        <a href="https://github.com/cultureelerfgoed/ldv-talk-to-your-data-test" target="_blank" rel="noreferrer">
-          ldv-talk-to-your-data-test
+        Deze assistent bouwt voort op{" "}
+        <a href="https://github.com/jolietjakeblues/chat2thedata" target="_blank" rel="noreferrer">
+          chat2thedata
         </a>
-        , een project van de Rijksdienst voor het Cultureel Erfgoed.
+        , een eigen (niet-officieel) project van de bouwer van Doorzoeker.
       </p>
     </section>
   );

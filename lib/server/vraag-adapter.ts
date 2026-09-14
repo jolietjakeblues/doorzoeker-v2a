@@ -1,13 +1,22 @@
 // Orkestratie voor de "Stel een vraag"-assistent (/vraag): vraag -> SPARQL
 // -> resultaten -> Nederlands antwoord. Zie lib/vraag/prompts.ts voor de
-// herkomst van de kennisbank (ldv-talk-to-your-data-test).
+// herkomst van de kennisbank (ldv-talk-to-your-data-test) en
+// lib/vraag/semantic-resolver.ts/answerability.ts voor de deterministische
+// resolutie-/beantwoordbaarheidslaag die daar sinds 14-09-2026 vóór draait
+// (poort van chat2thedata, de doorontwikkelde opvolger daarvan).
 import { AnthropicTruncatedError, callClaude, type McpServerConfig } from "../vraag/anthropic-client.ts";
 import { DATAMODEL_RULES, LIJST_PROMPT, TELLING_PROMPT } from "../vraag/prompts.ts";
 import { dedupeByRm, hasCount, LIJST_LIMIT, postprocessSparql, translateProvincieUris, type SparqlResultsDocument, type VraagMode } from "../vraag/postprocess.ts";
-import { validateQuery } from "../vraag/semantic-validator.ts";
+import { describePropertyChoice, validateQuery } from "../vraag/semantic-validator.ts";
 import { SparqlSyntaxInvalidError, validateSyntax } from "../vraag/syntax-validator.ts";
 import { applySpatialFilterLocally, extractSpatialFilter, isFallbackCandidateSetIncomplete, isSpatialFailure, SpatialFallbackIncompleteError, stripSpatialFilter, widenLimitForFallback } from "../vraag/spatial-fallback.ts";
+import { detectLimitation, describeLimitation, type AnswerabilityLimitationClarification } from "../vraag/answerability.ts";
+import { buildSemanticContext, describeAmbiguity, resolveQuestion, type EntityAmbiguityClarification, type ResolutionResult } from "../vraag/semantic-resolver.ts";
 import { fetchSparql, RCE_CHO_ENDPOINT } from "./sparql-client.ts";
+
+export type SparqlClarification = EntityAmbiguityClarification | AnswerabilityLimitationClarification;
+export type GenerateSparqlOptions = { disambiguation?: Record<string, string>; limitationChoice?: string };
+export type GenerateSparqlResult = { status: "ok"; query: string; caveats: string[] } | { status: "clarification"; clarification: SparqlClarification };
 
 // De eigenaars eigen, zelfgebouwde MCP-server (github.com/jolietjakeblues/
 // rce-cho-mcp, gehost op Render) - geeft Claude tijdens het genereren
@@ -43,40 +52,87 @@ async function generateOnce(question: string, mode: VraagMode, maxTokens: number
   return postprocessSparql(raw, mode);
 }
 
-export async function generateSparqlQuery(question: string, mode: VraagMode, signal?: AbortSignal): Promise<string> {
+export async function generateSparqlQuery(question: string, mode: VraagMode, signal?: AbortSignal, options?: GenerateSparqlOptions): Promise<GenerateSparqlResult> {
+  // Deterministische resolutielaag, vóór elke Anthropic-aanroep (poort van
+  // chat2thedata's sparql_generator.generate()). Een netwerkfout hier is
+  // geen harde storing van /vraag - de vraag gaat gewoon door zonder
+  // semantische context, zelfde degradatiepatroon als de MCP-terugval in
+  // anthropic-client.ts.
+  let resolution: ResolutionResult;
+  try {
+    resolution = await resolveQuestion(question, options?.disambiguation, signal);
+  } catch (error) {
+    console.warn(JSON.stringify({ event: "vraag.semantische-resolutie.mislukt", message: error instanceof Error ? error.message : "onbekend" }));
+    resolution = { resolved: [], ambiguous: [] };
+  }
+  if (resolution.ambiguous.length > 0) {
+    return { status: "clarification", clarification: describeAmbiguity(resolution.ambiguous) };
+  }
+
+  // Beantwoordbaarheidscheck: sommige vragen hebben geen eenduidige SPARQL-
+  // vertaling omdat de brondata de relatie inconsistent modelleert (zie
+  // lib/vraag/answerability.ts). Zonder gekozen deelinterpretatie: meteen
+  // een verduidelijkingsvraag teruggeven, geen Anthropic-aanroep.
+  let limitationCaveat: string | undefined;
+  let chosenHint: string | undefined;
+  const limitation = detectLimitation(question);
+  if (limitation) {
+    if (!options?.limitationChoice) {
+      return { status: "clarification", clarification: describeLimitation(limitation) };
+    }
+    const chosen = limitation.partialOptions.find((option) => option.id === options.limitationChoice);
+    if (chosen) {
+      limitationCaveat = chosen.caveat;
+      chosenHint = chosen.promptHint;
+    }
+  }
+
+  const semanticContext = buildSemanticContext(resolution.resolved);
+  let promptInput = semanticContext ? `${question}\n\n${semanticContext}` : question;
+  if (chosenHint) promptInput = `${promptInput}\n\n${chosenHint}`;
+
+  const toResult = (finalQuery: string): GenerateSparqlResult => {
+    const propertyChoiceCaveat = describePropertyChoice(question, finalQuery);
+    const caveats = [limitationCaveat, propertyChoiceCaveat].filter((caveat): caveat is string => Boolean(caveat));
+    return { status: "ok", query: finalQuery, caveats };
+  };
+
   let query: string;
   try {
-    query = await generateOnce(question, mode, SPARQL_MAX_TOKENS, signal);
+    query = await generateOnce(promptInput, mode, SPARQL_MAX_TOKENS, signal);
   } catch (error) {
     // Eén herkansing met meer budget bij afkapping - de afgekapte tekst
     // wordt nooit doorgezet naar RCE, want die zou toch als 400 terugkomen.
     if (!(error instanceof AnthropicTruncatedError)) throw error;
-    query = await generateOnce(question, mode, SPARQL_MAX_TOKENS_RETRY, signal);
+    query = await generateOnce(promptInput, mode, SPARQL_MAX_TOKENS_RETRY, signal);
   }
   // Zelfde correctie-aanroep als sparql_generator.py: als een lijstvraag toch
   // een COUNT opleverde, één keer opnieuw genereren met een aangescherpte
-  // vraag, in plaats van de foute query te tonen.
+  // vraag, in plaats van de foute query te tonen. Zelfde (bestaande) gedrag
+  // als vóór deze wijziging: geen aparte volledigheids-/syntaxcheck op dit
+  // pad.
   if (mode === "lijst" && hasCount(query)) {
-    return generateOnce(`${question} (geef een lijst van individuele monumenten, geen telling)`, mode, SPARQL_MAX_TOKENS, signal);
+    return toResult(await generateOnce(`${promptInput} (geef een lijst van individuele monumenten, geen telling)`, mode, SPARQL_MAX_TOKENS, signal));
   }
   // Gratis, deterministische volledigheidscheck (poort van
   // semantic_validator.py): vangt het geval waarin Claude een onderdeel van
   // een meerledige vraag stilzwijgend laat vallen. Bij fouten: precies één
-  // corrigerende hergeneratie met de gevonden fouten erbij, zelfde patroon
-  // als de COUNT-correctie hierboven en de bron zijn eigen "CORRIGEER DE
-  // VORIGE QUERY"-aanroep.
+  // corrigerende hergeneratie met de gevonden fouten erbij (op basis van
+  // promptInput, niet de kale question, zodat de opgeloste semantische
+  // context niet wegvalt - zelfde als sparql_generator.py's prompt_input),
+  // zelfde patroon als de COUNT-correctie hierboven en de bron zijn eigen
+  // "CORRIGEER DE VORIGE QUERY"-aanroep.
   const errors = [...validateQuery(question, query), ...validateSyntax(query)];
   if (errors.length > 0) {
-    const correctie = `${question}\n\nCORRIGEER DE VORIGE QUERY, DEZE MISTE ONDERDELEN UIT DE VRAAG:\n- ${errors.join("\n- ")}`;
-    const corrected = await generateOnce(correctie, mode, SPARQL_MAX_TOKENS, signal);
+    const correctie = `${promptInput}\n\nCORRIGEER DE VORIGE QUERY, DEZE MISTE ONDERDELEN UIT DE VRAAG:\n- ${errors.join("\n- ")}`;
+    query = await generateOnce(correctie, mode, SPARQL_MAX_TOKENS, signal);
     // Gratis en deterministisch (geen extra Anthropic-aanroep) - voorkomt
     // dat een na de correctiepoging nog steeds kapotte query alsnog naar
     // het RCE-endpoint gaat, waar hij toch als 400 terug zou komen.
-    const remainingSyntaxErrors = validateSyntax(corrected);
+    const remainingSyntaxErrors = validateSyntax(query);
     if (remainingSyntaxErrors.length > 0) throw new SparqlSyntaxInvalidError(remainingSyntaxErrors[0]);
-    return corrected;
   }
-  return query;
+  return toResult(query);
 }
 
 // Live geconstateerd (28-08-2026, "kerken in de 19e-eeuwse Schil
@@ -120,7 +176,7 @@ export async function executeVraagQuery(query: string, signal?: AbortSignal): Pr
   }
 }
 
-export async function generateAntwoord(question: string, results: SparqlResultsDocument, signal?: AbortSignal): Promise<string> {
+export async function generateAntwoord(question: string, results: SparqlResultsDocument, caveats: string[] = [], signal?: AbortSignal): Promise<string> {
   const bindings = results.results?.bindings ?? [];
   const vars = results.head?.vars ?? [];
   const total = bindings.length;
@@ -144,5 +200,12 @@ data staat. Ging de vraag om een telling? Noem dan het totaal (${total})
 duidelijk. Geen technische termen, geen URI's, geen opsomming van kolomnamen.
 Maximaal 4 zinnen.`;
 
-  return callClaude(prompt, { maxTokens: ANTWOORD_MAX_TOKENS, signal });
+  const answer = await callClaude(prompt, { maxTokens: ANTWOORD_MAX_TOKENS, signal });
+  // Kanttekeningen (bv. een gekozen deelinterpretatie uit
+  // lib/vraag/answerability.ts, of een toelichting op een vaag
+  // "soort/aard/type"-property-pad) NA de Claude-aanroep toevoegen, niet in
+  // de prompt gevouwen - garandeert dat de gecureerde tekst letterlijk blijft
+  // staan i.p.v. geparafraseerd of weggelaten te worden. Poort van
+  // chat2thedata's answer_generator.generate()'s caveats-parameter.
+  return caveats.reduce((text, caveat) => `${text}\n\nLet op: ${caveat}`, answer);
 }

@@ -9,6 +9,11 @@
 // - `fixGemeentePad` is nieuw: een vangnet voor als Claude toch het foute,
 //   uit de brontekst overgenomen BRK/gemeentenaam-pad genereert ondanks de
 //   gecorrigeerde prompt.
+//
+// `fixMissingWhereWrapper` is later toegevoegd, poort van chat2thedata (de
+// doorontwikkelde opvolger van ldv-talk-to-your-data-test/talk2thegraph) -
+// zie lib/vraag/semantic-resolver.ts en lib/vraag/answerability.ts voor de
+// rest van die portage.
 import { PROVINCIE_NAAM, PROVINCIE_URI, SPARQL_PREFIXES } from "./prompts.ts";
 
 export type VraagMode = "lijst" | "telling";
@@ -32,6 +37,42 @@ export function extractSparql(raw: string): string {
   const match = raw.match(/\b(PREFIX|SELECT|ASK|CONSTRUCT|DESCRIBE)\b/i);
   if (match && typeof match.index === "number") return raw.slice(match.index).trim();
   return raw.trim();
+}
+
+const MISSING_WHERE_RE = /SELECT\b[^{]*?(\bGRAPH\s+\S+\s*\{)/i;
+
+// Herstel een ontbrekende WHERE/accolade rond een top-level GRAPH-blok.
+// Sommige modellen genereren af en toe
+//     SELECT (COUNT(DISTINCT ?rm) AS ?aantal)
+//     GRAPH graph:instanties-rce { ... }
+// zonder omliggende WHERE { } - dat is geen geldige SPARQL: GRAPH mag alleen
+// binnen een group graph pattern ({ }) staan. Staat er tussen SELECT en
+// GRAPH al een { (dus WHERE { GRAPH ... of kaal { GRAPH ...), dan is de
+// query al goed gevormd en wordt niets aangepast. Poort van chat2thedata's
+// fix_missing_where_wrapper.
+export function fixMissingWhereWrapper(query: string): string {
+  const match = MISSING_WHERE_RE.exec(query);
+  if (!match) return query;
+
+  const graphBraceStart = match.index + match[0].length - 1;
+  let depth = 0;
+  let closePos: number | undefined;
+  for (let i = graphBraceStart; i < query.length; i++) {
+    if (query[i] === "{") depth++;
+    else if (query[i] === "}") {
+      depth--;
+      if (depth === 0) {
+        closePos = i;
+        break;
+      }
+    }
+  }
+  if (closePos === undefined) return query;
+
+  const insertWhereAt = match.index + match[0].length - match[1].length;
+  const withWhereOpen = `${query.slice(0, insertWhereAt)}WHERE {\n${query.slice(insertWhereAt)}`;
+  const adjustedClose = closePos + "WHERE {\n".length;
+  return `${withWhereOpen.slice(0, adjustedClose + 1)}\n}${withWhereOpen.slice(adjustedClose + 1)}`;
 }
 
 export function injectPrefixes(query: string): string {
@@ -134,6 +175,7 @@ export function balanceBraces(query: string): string {
 
 export function postprocessSparql(rawQuery: string, mode: VraagMode): string {
   let query = extractSparql(rawQuery);
+  query = fixMissingWhereWrapper(query);
   query = injectPrefixes(query);
   query = fixGemeentePad(query);
   query = fixProvinciePad(query);

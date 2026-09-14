@@ -11,6 +11,10 @@ export const runtime = "edge";
 // gebruikelijke 30/min.
 const rateLimiter = createRateLimiter(5);
 
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return typeof value === "object" && value !== null && !Array.isArray(value) && Object.values(value).every((entry) => typeof entry === "string");
+}
+
 export async function POST(request: Request) {
   return withRceErrorHandling({ event: "vraag.genereer-sparql.error", message: "De vraag-assistent is momenteel niet bereikbaar." }, async (startedAt) => {
     let body: unknown;
@@ -19,18 +23,20 @@ export async function POST(request: Request) {
     } catch {
       return Response.json({ error: "Ongeldig verzoek." }, { status: 400 });
     }
-    const { question, mode } = body as { question?: unknown; mode?: unknown };
+    const { question, mode, disambiguation, limitationChoice } = body as { question?: unknown; mode?: unknown; disambiguation?: unknown; limitationChoice?: unknown };
     if (typeof question !== "string" || question.trim().length < 3 || question.length > 300) {
       return Response.json({ error: "Stel een vraag van 3 tot 300 tekens." }, { status: 400 });
     }
     if (mode !== "lijst" && mode !== "telling") {
       return Response.json({ error: "Ongeldige modus." }, { status: 400 });
     }
+    const parsedDisambiguation = isStringRecord(disambiguation) ? disambiguation : undefined;
+    const parsedLimitationChoice = typeof limitationChoice === "string" && limitationChoice.length > 0 ? limitationChoice : undefined;
     if (!rateLimiter.consume(request)) return rateLimitedResponse();
 
-    let query: string;
+    let result;
     try {
-      query = await generateSparqlQuery(question.trim(), mode, request.signal);
+      result = await generateSparqlQuery(question.trim(), mode, request.signal, { disambiguation: parsedDisambiguation, limitationChoice: parsedLimitationChoice });
     } catch (error) {
       // Eigen, eerlijke melding i.p.v. withRceErrorHandling's generieke
       // "niet bereikbaar" - dit is geen storing maar een vraag waarvoor
@@ -44,6 +50,17 @@ export async function POST(request: Request) {
       }
       throw error;
     }
-    return Response.json({ query }, { headers: { "Cache-Control": NO_STORE, "Server-Timing": `vraag;dur=${Date.now() - startedAt}` } });
+    // Een verduidelijkingsvraag is geen fout maar een verwachte "meer input
+    // nodig"-uitkomst (echte gemeente/provincie-naamsbotsing, of een vraag
+    // zonder eenduidige SPARQL-vertaling) - gewoon 200, matcht chat2thedata's
+    // app.py-gedrag. De browser POST't hierna opnieuw met de gekozen
+    // disambiguation/limitationChoice.
+    if (result.status === "clarification") {
+      return Response.json({ clarification: result.clarification }, { headers: { "Cache-Control": NO_STORE } });
+    }
+    return Response.json(
+      { query: result.query, caveats: result.caveats },
+      { headers: { "Cache-Control": NO_STORE, "Server-Timing": `vraag;dur=${Date.now() - startedAt}` } },
+    );
   });
 }
