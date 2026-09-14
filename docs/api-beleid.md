@@ -16,7 +16,15 @@ conceptzoekopdracht nu 35s (`CONCEPT_MATCH_TIMEOUT_MS`,
 `lib/server/rce-adapter.ts`), en elke route via `withRceErrorHandling`
 onderscheidt een `TimeoutError` voortaan van een echte connectiviteitsfout:
 504 met een eerlijker bericht in plaats van 502 "niet bereikbaar" (zie
-`lib/server/route-error-handling.ts`).
+`lib/server/route-error-handling.ts`). Bijgewerkt 14 september 2026
+(documentatie-audit): zes routes gebouwd tussen 22 augustus en 14 september
+stonden nog niet in de tabel - `omschrijving-onderwerp`,
+`werelderfgoed-geometrie` en `rijksmonument` onder `/api/rce`, plus de hele
+`/api/vraag/*`-naamsruimte (LLM-kosten, eigen strenger rate limit). Ook
+`/api/rce/search`'s eigen discoverytakken (kern-tekstzoeking en elke
+archeologiecategorie) kregen dezelfde 35s-marge als de conceptmatchquery's
+hierboven, en paginering (pagina 2+) dekt sinds diezelfde datum ook de
+archeologiecategorieën, niet meer alleen Rijksmonumenten.
 
 ## Doel
 
@@ -38,6 +46,12 @@ controleerbaar wanneer routes of databronnen veranderen.
 | `/api/rce/op-deze-dag` | Eén of meer datumquery's plus verrijking | Succes tot volgende UTC-dag, leeg maximaal 300 seconden | Geen limiter; geen gebruikersinvoer en één gedeeld dagresultaat |
 | `/api/rce/verras-me` | Eén willekeurige-kandidaat-query plus verrijking (foto, groenaanleg, MSP, literatuur, gebeurtenissen) | Nooit gecachet (`no-store`) - elke aanroep hoort een andere willekeurige suggestie te geven | **Geen limiter (bewust aanvaard, 21 augustus 2026, gevonden tijdens een documentatie-audit).** Geen gebruikersinvoer en kleine blootstelling; in tegenstelling tot de andere routes hierboven expliciet zonder best-effortlimiter gelaten in plaats van vergeten - zie ook de overweging bij `/api/rce/op-deze-dag` |
 | `/api/terms/suggest` | Twee parallelle thesaurusquery's (RN2 en gekoppelde CHT/ABR-begrippen) plus gebruiksmeting (bijgewerkt 21-08-2026: was één thesaurusquery, de CHT/ABR-tak is toegevoegd en faalt open als hij uitvalt) | Browser 60 seconden, gedeeld 300 seconden | Geen limiter zolang verkeersmetingen geen misbruik of bronbelasting tonen |
+| `/api/rce/omschrijving-onderwerp` | Eén query naar de archiefdagen-/OmschrijvingenOnderwerp-graphs, lazy per geopend Rijksmonument-detail | Browser 60 seconden, gedeeld 300 seconden | 30/minuut, best effort per isolate |
+| `/api/rce/werelderfgoed-geometrie` | Eén geometriequery, lazy bij het openen van de kaartweergave van een Werelderfgoed/Gezicht | Browser 60 seconden, gedeeld 300 seconden | 30/minuut, best effort per isolate |
+| `/api/rce/rijksmonument` | Eén exacte, klasse-gebonden lookup (details/percelen/facetten) op `ceo:rijksmonumentnummer` - geen fan-out naar andere objectsoorten (14-09-2026) | Browser 60 seconden, gedeeld 300 seconden bij een gevonden monument; `no-store` bij geen treffer | 30/minuut, best effort per isolate |
+| `/api/vraag/genereer-sparql` | Eén Anthropic-aanroep (Claude, optioneel met MCP-toolgebruik) plus postprocessing/validatie | `no-store` - elke vraag is uniek | **5/minuut**, strenger dan standaard: elke aanroep kost echt geld (LLM-tokens), in tegenstelling tot de gratis RCE-SPARQL-routes hierboven |
+| `/api/vraag/uitvoeren` | De (mogelijk door de gebruiker bewerkte) SPARQL-query tegen RCE, met lokale ruimtelijke terugval bij een geometriefout | `no-store` | 5/minuut, zelfde reden als `genereer-sparql` - deelt dezelfde kostengevoelige naamsruimte |
+| `/api/vraag/antwoord` | Eén Anthropic-aanroep om de resultaten in leesbaar Nederlands samen te vatten | `no-store` | 5/minuut, zelfde reden als `genereer-sparql` |
 
 Ongeldige invoer bereikt de RCE-bron niet. Upstreamfouten en niet-zoekbare
 invoer krijgen `no-store` waar de route bewust leeg of met een fout antwoordt.
