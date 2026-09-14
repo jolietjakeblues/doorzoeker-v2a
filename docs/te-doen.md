@@ -6,6 +6,15 @@ PR's #55-#60 en twee reviews (functioneel + security) op `main`
 `/accessibility-review`-bevindingen, drie zaterdag-fixes, en een
 design critique). Wordt maandag verder opgepakt.
 
+**Bijgewerkt op 14 september 2026** na een lange stilstand van dit
+document (laatste inhoudelijke update was 22 augustus) - zie de nieuwe
+sectie "Sinds 22 augustus 2026" onderaan voor alles wat in de tussentijd
+is gebouwd. Bij deze update ook de "scheepstype"-regel hieronder
+gecorrigeerd: die was per ongeluk blijven staan als open punt terwijl
+[PR #102](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/102) 'm
+al op 21 augustus 2026 oploste - precies het soort documentatiedrift dat
+dit document zelf al eerder bij andere punten signaleerde.
+
 ## Domeinnaam
 
 15. ~~**Sitenaam wordt `doorzoekerfgoed.nl`.**~~ **Afgerond (17 augustus
@@ -671,23 +680,17 @@ kreeg.
   verzoek van de eigenaar ("Het zijn Rijksmonumenten -> M") deelt een
   archeologisch Rijksmonument nu weer gewoon de `M` van een gebouwd
   Rijksmonument - alleen de tegelkleur (`sand`) maakt nog onderscheid.
-- **Scheepstype nog niet doorzoekbaar op tekst (gemeld door de eigenaar,
+- ~~**Scheepstype nog niet doorzoekbaar op tekst (gemeld door de eigenaar,
   20 augustus 2026: "schoener ed. dat zou toch moeten lukken op
-  'tekst'").** `SCHEEPSWRAK_SOURCES` in `lib/rce/scheepswrakken.ts` heeft
-  maar één discovery-branch (`sdo:name`) plus de exacte MASS-ID-kortsluiting
-  bij een numerieke term - een bewuste scope-keuze uit
-  018-mass-scheepswrakken.md ("beslissing 3: eerst alleen het detail
-  bouwen, geen apart scheepstype-facet"). Een zoekterm als "schoener" of
-  "logger" matcht dus nu alleen als dat woord toevallig in de náám van het
-  wrak staat, niet als het het `schema:additionalType` is.
-  Empirisch gecontroleerd (20 augustus 2026): `schema:additionalType` is
-  gevuld voor 2.483 van de 2.587 scheepswrakken (96%), over 134
-  verschillende typen - ruim voldoende gevuld om als volwaardige
-  discovery-bron toe te voegen, zelfde patroon als de bestaande
-  `DISCOVERY_SOURCES`-branches bij Rijksmonumenten
-  (`buildRceDiscoveryQueries`). "Schoener" (42) en "Logger" (30, zie de
-  badge-letter-melding hierboven) zijn allebei ruim vertegenwoordigd.
-  Nog niet gebouwd, staat op de lijst.
+  'tekst'").**~~ **Opgelost (21 augustus 2026, [PR #102](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/102))
+  - deze regel bleef alleen als open item in dit document staan
+  (documentatiedrift, ontdekt en gecorrigeerd 14 september 2026).**
+  `SCHEEPSWRAK_SOURCES` in `lib/rce/scheepswrakken.ts` heeft nu een tweede
+  discovery-branch op `schema:additionalType` (rang 2, naast `sdo:name` op
+  rang 1), zelfde patroon als `DISCOVERY_SOURCES` bij Rijksmonumenten.
+  Live herbevestigd (14 september 2026, rechtstreeks tegen het
+  MASS-SPARQL-endpoint): "schoener" geeft meteen 10 treffers terug via
+  deze branch.
 - ~~**Klik op "Kerken" (Ontdek een thema) faalde met "De RCE Linked
   Data-service is momenteel niet bereikbaar".**~~ **Opgelost (21 augustus
   2026).** Gemeld door de eigenaar tijdens live gebruik. Met `wrangler
@@ -860,3 +863,83 @@ lijst (reviewer-advies: idealiter vóór de v0.5.0 Beta-publicatie):
 - **P2: `loadMore()` faalt stil.** Bij een fout doet `loadMore()` alleen
   `setHasMore(false)` - de "laad meer"-knop verdwijnt zonder foutmelding
   of retry-optie, niet te onderscheiden van "alle resultaten geladen".
+
+## Sinds 22 augustus 2026 (dit document lag stil, hieronder wat er wél gebeurde)
+
+Chronologisch, kort - de PR's zelf hebben de volledige onderbouwing.
+
+- ~~**"Stel een vraag" (`/vraag`): NL-taal-naar-SPARQL-assistent.**~~
+  **Gebouwd en in stappen uitgebreid, alles gemerged:**
+  - Fase 1 ([PR #126](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/126)):
+    vraag → gegenereerde/bewerkbare SPARQL → resultaten → NL-antwoord, poort
+    van de eigenaars eigen `ldv-talk-to-your-data-test`. Drie snelle
+    vervolgfixes dezelfde week (#127-#129): "Bekijk in Doorzoeker"-link per
+    resultaat, drie correctheidsbugs in de SPARQL-generatie, een
+    cirkelroute-bugfix op `/vraag` zelf.
+  - [PR #130](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/130):
+    `/vraag` gebruikt nu de eigenaars eigen `rce-cho`-MCP-server (via
+    Anthropic's MCP-connector) voor URI-resolutie i.p.v. alleen
+    CONTAINS/LCASE-labelmatches - loste het "Utrechtse Heuvelrug ≠ gemeente
+    Utrecht"-probleem op.
+  - [PR #134](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/134):
+    lokale ruimtelijke terugval (eigen ray-casting punt-in-polygoon in
+    `lib/rce/geometry.ts`) wanneer RCE's `geof:sfWithin` een
+    `TopologyException` geeft - met een eerlijke 422 i.p.v. een mogelijk
+    vals-negatief antwoord als de terugvalquery geen eigen scoping-filter
+    had.
+  - [PR #136](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/136):
+    semantische volledigheidscheck (`lib/vraag/semantic-validator.ts`) -
+    vangt het geval waarin de LLM een deel van een meerledige vraag
+    (functie, gezicht, exact gevraagd aantal) stilzwijgend laat vallen; één
+    corrigerende hergeneratie bij een gevonden fout.
+  - [PR #139](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/139):
+    SPARQL-syntaxvalidatie met een echte grammatica-parser
+    (`@traqula/parser-sparql-1-2`) i.p.v. alleen de bestaande, mechanische
+    `balanceBraces`-noodgreep.
+  - Beide bronprojecten (`ldv-talk-to-your-data-test` én het rijkere
+    eigen vervolg `ldv-talk-2-your-data`) zijn hiermee leeg qua nog-over-
+    te-zetten ideeën, op de eigen wens van de eigenaar na (zie hieronder).
+- ~~**Issue #125: inzoombare IIIF-foto's.**~~ **Opgelost, [PR #140](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/140).**
+  Gemeld door Bob Coret. Bleek meteen bouwbaar: de RCE-beeldhost
+  (`images.memorix.nl`) heeft de IIIF Image API 2.0 al aanstaan, geen
+  aanpassing bij RCE/de leverancier nodig. Een "Vergroten"-knop op de
+  detailkop klapt uit naar een `openseadragon`-viewer. Bobs verdergaande
+  wens (IIIF Presentation API + metadata-viewer zoals Tify) blijft open -
+  dat moet de leverancier van de beeldbank zelf aanzetten.
+- ~~**Slice 019: Muurschilderingen als nieuwe erfgoedcategorie.**~~
+  **Gebouwd, [PR #141](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/141).**
+  Nieuwe, losstaande module (`lib/rce/muurschilderingen.ts`), zelfde opzet
+  als scheepswrakken (slice 018): gebouw als primair object, discovery op
+  naam/plaats/maker plus exact rijksmonumentnummer, coördinaat-fallback via
+  het rijksmonument-centroid. Nog geen afbeeldingen (licentie nog niet
+  bevestigd door RCE) en geen Reliwiki/PDOK-geocoding - bewust uitgesteld,
+  zie `docs/vertical-slices/019-muurschilderingen.md`.
+- ~~**Showcase-widget toonde soms het verkeerde object bij een
+  nummerbotsing.**~~ **Opgelost, [PR #148](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/148).**
+  Gemeld door de eigenaar: "Zie de kracht van Doorzoeker" toonde af en toe
+  "Archeologisch terrein 14948" (Wieringerwaard) in plaats van het bedoelde
+  RM 14948 (de kerk in Elst) - 14948 is toevallig zowel het
+  rijksmonumentnummer van de kerk als het Archis-nummer van dat terrein, en
+  de widget vertrouwde op de arrayvolgorde van een generieke, dubbelzinnige
+  nummerzoekopdracht. Terecht scherp bekritiseerd als de verkeerde
+  oplossing (een filter achteraf i.p.v. een correcte vraag): nieuwe,
+  klasse-gebonden route `/api/rce/rijksmonument` (`fetchRijksmonumentByNummer`)
+  vraagt nu rechtstreeks naar `ceo:rijksmonumentnummer` op `class:Rijksmonument`,
+  geen fan-out naar andere objectsoorten meer voor deze widget.
+- ~~**Dependabot-alert (hoog): `sharp`/`libheif`-kwetsbaarheid.**~~
+  **Opgelost, [PR #149](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/149).**
+  `sharp` is een transitieve dev-only dependency via `miniflare`
+  (`@cloudflare/vite-plugin`/`wrangler`), nooit in de productie-Worker en
+  nergens door Doorzoeker zelf aangeroepen - geen acuut risico, wel
+  opgeruimd door beide pakketten te bumpen naar een `miniflare`-versie met
+  `sharp@0.35.4`.
+- **`.claude/` uit versiebeheer gehaald** ([PR #145](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/145)/[#146](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/146),
+  door de eigenaar zelf). `.claude/launch.json` (de lokale dev-server-
+  configuratie voor de Browser-preview) bestaat daardoor niet meer in de
+  repo - moet lokaal opnieuw aangemaakt worden als 'ie ontbreekt (zie een
+  eerdere sessie voor de inhoud, simpel `npm run dev`-op-poort-3000-config).
+- **Routinematige dependency-bumps** (#120-122, #131, #133, #135, #137,
+  #138, #142-144, #147): allemaal kleine/patch-versies via Dependabot of
+  handmatig, geen van invloed op deze lijst. Drie major-upgrades staan
+  bewust nog open als losse Dependabot-PR's (TypeScript 7, ESLint 10 ×2) -
+  zie TD-10 hierboven en `docs/beheerbesluiten.md`.
