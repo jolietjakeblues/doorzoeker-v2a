@@ -753,16 +753,16 @@ kreeg.
 Twee bevindingen live herbevestigd (niet aangenomen) vóór opname hieronder.
 Nog niet opgepakt, staan op de lijst:
 
-- **Een brede vrije-tekstzoekopdracht kan de serverzijdige timeout nog
-  raken.** Live herhaald: `q=Utrecht&scope=core` gaf 504 na 20,1 seconden.
-  De timeoutverlenging uit de "Kerken"-fix (`CONCEPT_MATCH_TIMEOUT_MS`, zie
-  hierboven) geldt alleen voor de conceptmatch-functies
-  (`searchByConceptMatchQuery` en de vier losstaande varianten), niet voor
-  `searchByText`'s eigen discoverybranches - die blijven op de standaard
-  20s. Openstaande vraag: dezelfde verlenging ook daar toepassen (risico:
-  langer een Worker-invocation vasthouden, en de eerder gevonden
-  subrequest-limiet bij scope="all" lost een langere timeout sowieso niet
-  op), of eerst per categorie meten welke tak structureel traag is.
+- ~~**Een brede vrije-tekstzoekopdracht kan de serverzijdige timeout nog
+  raken.**~~ **Opgelost (14 september 2026).** Live herhaald: `q=Utrecht&scope=core`
+  gaf 504 na 20,1 seconden. `runDiscoveryBranches` (gedeeld door de
+  kern-Rijksmonumenttekstzoeking én elke archeologiecategorie) hergebruikt
+  nu dezelfde `CONCEPT_MATCH_TIMEOUT_MS` (35s) als de eerdere "Kerken"-fix
+  in plaats van de standaard 20s - elke discoverytak deelt hetzelfde
+  CONTAINS/LCASE-scankostenprofiel. De eerder genoemde subrequest-limiet
+  bij `scope="all"` is een apart, nog niet aangepakt risico (aantal
+  parallelle aanvragen, niet de duur per aanvraag) - bewust niet
+  meegenomen in deze fix.
 - **Het Werelderfgoed-overzicht (`browse=werelderfgoed`) stuurt onnodig
   grote antwoorden.** Live herhaald: 4,04 MB voor 18 objecten. Oorzaak
   gevonden: de volledige, ongegeneraliseerde WKT-geometrie zit al in het
@@ -829,117 +829,37 @@ faalt wordt nog een fout getoond.
 Twee resterende punten uit die review, nog niet opgepakt, staan op de
 lijst (reviewer-advies: idealiter vóór de v0.5.0 Beta-publicatie):
 
-- **P1: paginering (pagina 2+) dekt alleen de `core`-scope - bevestigd
-  als een echte bug, niet alleen een ontwerpkeuze (22 augustus 2026,
-  live in de code geverifieerd vóór opname hieronder).** Voor de drie
-  `heritage`-categorieën (Werelderfgoed/Gezicht/Complex) klopt de
-  bestaande code-comment wél dat dit bewust is: hun queries hebben geen
-  `LIMIT`, en met resp. 18/472/~4.200 instanties totaal levert een
-  zoekterm hier realistisch nooit veel treffers op. Maar de zeven
-  categorieën in `archaeology-a`/`archaeology-b` (Onderzoeksgebied,
-  Archeologisch terrein, Vondstlocatie, Grondspoor, Vondst, Archeologisch
-  complex, Scheepswrak) kappen hun eigen matches wél degelijk intern af
-  op 25 (`mergeDiscoveryMatches(...).slice(0, 25)` in elke helper-functie
-  in `lib/server/rce-adapter.ts`), en die scopes worden sowieso alleen op
-  pagina 1 aangeroepen (`page === 1 && ...`-gate in `searchByText`) -
-  zonder eigen paginering is alles voorbij de 25e match van zo'n
-  categorie permanent en onopgemerkt onbereikbaar. Geen hypothetisch
-  scenario: elders in dit document staat al vastgelegd dat "schoener" 42
-  scheepswrakken oplevert - 17 daarvan zouden dus nu al buiten bereik
-  vallen zodra de aangekondigde scheepstype-tekstzoekfunctie gebouwd
-  wordt. **Bewust uitgesteld naar v0.5.1 Beta** (zelfde advies als de
-  reviewer): een correcte fix vraagt paginering per scope (server +
-  client, zie `hooks/useSearchState.ts`'s `loadMore()`) - een grotere,
-  eigen architecturale wijziging, geen kleine aanpassing zoals de overige
-  punten uit deze review.
-- **P2: inconsistente samenvoegsleutel tussen de eerste pagina
-  (`item.sourceUrl || monumentNature:monumentNumber` in
-  `rce-client.ts`) en `loadMore()` (`item.monumentNumber ?? item.id` in
-  `hooks/useSearchState.ts`).** `monumentNumber` is niet globaal uniek
-  (bv. een MASS-scheepswrak-ID kan botsen met een rijksmonumentnummer) -
-  een latere `loadMore()`-pagina zou zo stilzwijgend een ongerelateerd
-  eerder resultaat kunnen overschrijven. Voorstel: één gedeelde
-  `resultIdentity(item)`-helper.
-- **P2: `loadMore()` faalt stil.** Bij een fout doet `loadMore()` alleen
-  `setHasMore(false)` - de "laad meer"-knop verdwijnt zonder foutmelding
-  of retry-optie, niet te onderscheiden van "alle resultaten geladen".
-
-## Sinds 22 augustus 2026 (dit document lag stil, hieronder wat er wél gebeurde)
-
-Chronologisch, kort - de PR's zelf hebben de volledige onderbouwing.
-
-- ~~**"Stel een vraag" (`/vraag`): NL-taal-naar-SPARQL-assistent.**~~
-  **Gebouwd en in stappen uitgebreid, alles gemerged:**
-  - Fase 1 ([PR #126](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/126)):
-    vraag → gegenereerde/bewerkbare SPARQL → resultaten → NL-antwoord, poort
-    van de eigenaars eigen `ldv-talk-to-your-data-test`. Drie snelle
-    vervolgfixes dezelfde week (#127-#129): "Bekijk in Doorzoeker"-link per
-    resultaat, drie correctheidsbugs in de SPARQL-generatie, een
-    cirkelroute-bugfix op `/vraag` zelf.
-  - [PR #130](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/130):
-    `/vraag` gebruikt nu de eigenaars eigen `rce-cho`-MCP-server (via
-    Anthropic's MCP-connector) voor URI-resolutie i.p.v. alleen
-    CONTAINS/LCASE-labelmatches - loste het "Utrechtse Heuvelrug ≠ gemeente
-    Utrecht"-probleem op.
-  - [PR #134](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/134):
-    lokale ruimtelijke terugval (eigen ray-casting punt-in-polygoon in
-    `lib/rce/geometry.ts`) wanneer RCE's `geof:sfWithin` een
-    `TopologyException` geeft - met een eerlijke 422 i.p.v. een mogelijk
-    vals-negatief antwoord als de terugvalquery geen eigen scoping-filter
-    had.
-  - [PR #136](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/136):
-    semantische volledigheidscheck (`lib/vraag/semantic-validator.ts`) -
-    vangt het geval waarin de LLM een deel van een meerledige vraag
-    (functie, gezicht, exact gevraagd aantal) stilzwijgend laat vallen; één
-    corrigerende hergeneratie bij een gevonden fout.
-  - [PR #139](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/139):
-    SPARQL-syntaxvalidatie met een echte grammatica-parser
-    (`@traqula/parser-sparql-1-2`) i.p.v. alleen de bestaande, mechanische
-    `balanceBraces`-noodgreep.
-  - Beide bronprojecten (`ldv-talk-to-your-data-test` én het rijkere
-    eigen vervolg `ldv-talk-2-your-data`) zijn hiermee leeg qua nog-over-
-    te-zetten ideeën, op de eigen wens van de eigenaar na (zie hieronder).
-- ~~**Issue #125: inzoombare IIIF-foto's.**~~ **Opgelost, [PR #140](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/140).**
-  Gemeld door Bob Coret. Bleek meteen bouwbaar: de RCE-beeldhost
-  (`images.memorix.nl`) heeft de IIIF Image API 2.0 al aanstaan, geen
-  aanpassing bij RCE/de leverancier nodig. Een "Vergroten"-knop op de
-  detailkop klapt uit naar een `openseadragon`-viewer. Bobs verdergaande
-  wens (IIIF Presentation API + metadata-viewer zoals Tify) blijft open -
-  dat moet de leverancier van de beeldbank zelf aanzetten.
-- ~~**Slice 019: Muurschilderingen als nieuwe erfgoedcategorie.**~~
-  **Gebouwd, [PR #141](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/141).**
-  Nieuwe, losstaande module (`lib/rce/muurschilderingen.ts`), zelfde opzet
-  als scheepswrakken (slice 018): gebouw als primair object, discovery op
-  naam/plaats/maker plus exact rijksmonumentnummer, coördinaat-fallback via
-  het rijksmonument-centroid. Nog geen afbeeldingen (licentie nog niet
-  bevestigd door RCE) en geen Reliwiki/PDOK-geocoding - bewust uitgesteld,
-  zie `docs/vertical-slices/019-muurschilderingen.md`.
-- ~~**Showcase-widget toonde soms het verkeerde object bij een
-  nummerbotsing.**~~ **Opgelost, [PR #148](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/148).**
-  Gemeld door de eigenaar: "Zie de kracht van Doorzoeker" toonde af en toe
-  "Archeologisch terrein 14948" (Wieringerwaard) in plaats van het bedoelde
-  RM 14948 (de kerk in Elst) - 14948 is toevallig zowel het
-  rijksmonumentnummer van de kerk als het Archis-nummer van dat terrein, en
-  de widget vertrouwde op de arrayvolgorde van een generieke, dubbelzinnige
-  nummerzoekopdracht. Terecht scherp bekritiseerd als de verkeerde
-  oplossing (een filter achteraf i.p.v. een correcte vraag): nieuwe,
-  klasse-gebonden route `/api/rce/rijksmonument` (`fetchRijksmonumentByNummer`)
-  vraagt nu rechtstreeks naar `ceo:rijksmonumentnummer` op `class:Rijksmonument`,
-  geen fan-out naar andere objectsoorten meer voor deze widget.
-- ~~**Dependabot-alert (hoog): `sharp`/`libheif`-kwetsbaarheid.**~~
-  **Opgelost, [PR #149](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/149).**
-  `sharp` is een transitieve dev-only dependency via `miniflare`
-  (`@cloudflare/vite-plugin`/`wrangler`), nooit in de productie-Worker en
-  nergens door Doorzoeker zelf aangeroepen - geen acuut risico, wel
-  opgeruimd door beide pakketten te bumpen naar een `miniflare`-versie met
-  `sharp@0.35.4`.
-- **`.claude/` uit versiebeheer gehaald** ([PR #145](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/145)/[#146](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/146),
-  door de eigenaar zelf). `.claude/launch.json` (de lokale dev-server-
-  configuratie voor de Browser-preview) bestaat daardoor niet meer in de
-  repo - moet lokaal opnieuw aangemaakt worden als 'ie ontbreekt (zie een
-  eerdere sessie voor de inhoud, simpel `npm run dev`-op-poort-3000-config).
-- **Routinematige dependency-bumps** (#120-122, #131, #133, #135, #137,
-  #138, #142-144, #147): allemaal kleine/patch-versies via Dependabot of
-  handmatig, geen van invloed op deze lijst. Drie major-upgrades staan
-  bewust nog open als losse Dependabot-PR's (TypeScript 7, ESLint 10 ×2) -
-  zie TD-10 hierboven en `docs/beheerbesluiten.md`.
+- ~~**P1: paginering (pagina 2+) dekt alleen de `core`-scope.**~~
+  **Opgelost (14 september 2026).** Voor de drie `heritage`-categorieën
+  (Werelderfgoed/Gezicht/Complex) blijft de bewuste `page === 1`-gate
+  ongewijzigd staan (hun queries hebben geen `LIMIT`, te kleine collecties
+  om dit probleem te hebben). De zeven categorieën in
+  `archaeology-a`/`archaeology-b` (Onderzoeksgebied, Archeologisch
+  terrein, Vondstlocatie, Grondspoor, Vondst, Archeologisch complex,
+  Scheepswrak) plus Muurschildering krijgen nu allemaal een `page`-
+  parameter en een page-afgeleide slice (`start = (page-1)*25`, zelfde
+  patroon als de kern-categorie al gebruikte), de `page === 1`-gate in
+  `searchByText` is voor deze acht weggehaald. `SearchPartialFailure`
+  kreeg er een `hasMore`-veld bij zodat `route.ts` dit per scope kan
+  teruggeven (`pagedResultCount` sluit deze categorieën juist uit). Client-
+  side (`lib/rce-client.ts`) vraagt `loadMore()` nu ook de
+  heritage/archaeology-scopes op (niet langer alleen bij `page === 1`) en
+  telt `hasMore` over alle scopes samen. Live geverifieerd: "schoener"
+  ontsluit nu ook de 17 scheepswrakken voorbij de 25e match.
+- ~~**P2: inconsistente samenvoegsleutel tussen de eerste pagina
+  (`rce-client.ts`) en `loadMore()` (`hooks/useSearchState.ts`).**~~
+  **Bleek al opgelost sinds [PR #117](https://github.com/jolietjakeblues/doorzoeker-v2a/pull/117)
+  (22 augustus 2026) - deze regel was zelf documentatiedrift, ontdekt
+  14 september 2026.** `loadMore()` gebruikt sindsdien al `resultIdentity()`
+  (`lib/heritage-view-model.ts`), met een e2e-regressietest
+  (`tests/e2e/rework.spec.ts`, "'laad meer' verliest geen resultaat...").
+  Wat nog wél resteerde: `rce-client.ts`'s eigen cross-scope-samenvoeging
+  had zijn eigen, net iets andere inline sleutel i.p.v. die gedeelde
+  helper - nu opgeruimd via een nieuwe `identityKey()`-functie waar beide
+  op steunen (14 september 2026), zodat er werkelijk één bron van waarheid
+  is.
+- ~~**P2: `loadMore()` faalt stil.**~~ **Bleek al opgelost (22 augustus
+  2026), ook documentatiedrift.** `loadMore()` zet bij een fout
+  `loadMoreError` (niet `hasMore`), met een zichtbare foutmelding en
+  retry-knop i.p.v. de knop stilzwijgend te laten verdwijnen - gedekt door
+  de e2e-test "een mislukte 'laad meer' toont een foutmelding met retry...".

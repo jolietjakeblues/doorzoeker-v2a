@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   CONCEPT_FIELDS,
+  identityKey,
   linkedConcepts,
   parseUrlState,
   pickVergelijkbareRijksmonumenten,
   primaryFunctionConcept,
   primaryIdentifier,
+  resultIdentity,
   toItem,
   typeConceptForLabel,
 } from "../lib/heritage-view-model.ts";
@@ -22,6 +24,34 @@ const baseRecord = {
   postalCode: "",
   sourceUrl: "https://linkeddata.cultureelerfgoed.nl/rm:10015422",
 };
+
+test("identityKey geeft de sourceUrl terug als die er is, ongeacht kind/monumentNumber", () => {
+  assert.equal(identityKey({ sourceUrl: "https://x", kind: "Scheepswrak", monumentNumber: "12345", id: "genegeerd" }), "https://x");
+});
+
+test("identityKey valt terug op kind:monumentNumber zonder sourceUrl", () => {
+  assert.equal(identityKey({ kind: "Scheepswrak", monumentNumber: "12345" }), "Scheepswrak:12345");
+});
+
+test("identityKey valt terug op id als monumentNumber ontbreekt", () => {
+  assert.equal(identityKey({ kind: "Vondst", id: "cho-1" }), "Vondst:cho-1");
+});
+
+test("resultIdentity steunt op identityKey (objectType als kind) - zelfde uitkomst als vóór de extractie", () => {
+  const item = { objectType: "Scheepswrak", monumentNumber: "12345", id: "cho-1", sourceUrl: "" };
+  assert.equal(resultIdentity(item), identityKey({ sourceUrl: "", kind: "Scheepswrak", monumentNumber: "12345", id: "cho-1" }));
+  assert.equal(resultIdentity(item), "Scheepswrak:12345");
+});
+
+test("resultIdentity en rce-client.ts's eigen cross-scope-sleutel disambigueren hetzelfde botsende monumentNumber (Rijksmonument vs. Scheepswrak, ander 'kind'-veld maar zelfde patroon)", () => {
+  // rce-client.ts gebruikt monumentNature (ruwe server-DTO) i.p.v.
+  // objectType (view-model) als "kind" - andere waarde, maar beide
+  // implementaties steunen nu op dezelfde identityKey()-vorm, dus blijven
+  // per definitie consistent type-gescoped.
+  const rijksmonumentKey = identityKey({ kind: "onroerend gebouwd", monumentNumber: "12345" });
+  const scheepswrakKey = identityKey({ kind: "scheepswrak", monumentNumber: "12345" });
+  assert.notEqual(rijksmonumentKey, scheepswrakKey);
+});
 
 test("currentFunctionNames wordt net als originalFunctionNames opgeschoond van een (code)-staart (gemeld door de eigenaar: 'Gemaal(M)', 'Kapel(K1)' bleven overal onopgeschoond staan)", () => {
   const item = toItem({

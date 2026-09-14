@@ -616,6 +616,37 @@ test("'laad meer' verliest geen resultaat bij een monumentnummer dat botst met e
   await expect(page.getByText("Rijksmonument eerste pagina")).toBeVisible();
 });
 
+test("'laad meer' bij een tekstzoekopdracht ontsluit scheepswrakken voorbij de 25e match (archaeology-b, P1, 14-09-2026: 'schoener' leverde 42 scheepswrakken op, 17 daarvan voorheen permanent onbereikbaar)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const url = new URL(route.request().url());
+    const scope = url.searchParams.get("scope");
+    const requestedPage = Number(url.searchParams.get("page") ?? "1");
+    if (scope !== "archaeology-b") return route.fulfill({ json: { results: [], page: requestedPage, hasMore: false } });
+    const count = requestedPage === 1 ? 25 : 2;
+    return route.fulfill({ json: {
+      results: Array.from({ length: count }, (_, index) => ({
+        ...records[0],
+        choNumber: `wrak-${requestedPage}-${index}`,
+        sourceUrl: `https://mass.example/scheepswrak/${requestedPage}-${index}`,
+        monumentNature: "scheepswrak",
+        monumentNumber: `${requestedPage}${String(index).padStart(3, "0")}`,
+        name: `Schoener pagina ${requestedPage}, nummer ${index + 1}`,
+      })),
+      page: requestedPage,
+      hasMore: requestedPage === 1,
+    } });
+  });
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("schoener");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(page.getByText("Schoener pagina 1, nummer 1", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Laad 25 volgende resultaten" })).toBeVisible();
+  await page.getByRole("button", { name: "Laad 25 volgende resultaten" }).click();
+  await expect(page.getByText("Schoener pagina 2, nummer 1", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Laad 25 volgende resultaten" })).toHaveCount(0);
+});
+
 test("een mislukte 'laad meer' toont een foutmelding met retry i.p.v. de knop stilzwijgend te laten verdwijnen (P2, externe review 22-08-2026)", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   let pageTwoAttempts = 0;

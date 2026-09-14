@@ -12,6 +12,25 @@ test("rejects invalid application API input before contacting RCE", async () => 
   assert.equal(response.status, 400);
 });
 
+test("discoverytakken (kern-Rijksmonumenttekstzoeking) gebruiken de langere 35s-timeout, niet de standaard 20s (14-09-2026: q=Utrecht&scope=core gaf live een 504 na 20,1s)", async (context) => {
+  const originalFetch = globalThis.fetch;
+  const originalTimeout = AbortSignal.timeout;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    AbortSignal.timeout = originalTimeout;
+  });
+  const timeoutCalls = [];
+  AbortSignal.timeout = (ms) => {
+    timeoutCalls.push(ms);
+    return originalTimeout(ms);
+  };
+  globalThis.fetch = async () => Response.json({ results: { bindings: [] } });
+
+  const response = await GET(new Request("https://doorzoeker.test/api/rce/search?q=Utrecht&page=1&scope=core", { headers: { "cf-connecting-ip": "test-discovery-timeout" } }));
+  assert.equal(response.status, 200);
+  assert.ok(timeoutCalls.includes(35_000), `verwachtte minstens één AbortSignal.timeout(35000)-aanroep, kreeg: ${JSON.stringify(timeoutCalls)}`);
+});
+
 test("rejects a 1-teken vrije-tekstzoekopdracht zonder de RCE-dienst te raadplegen (securityassessment 17-08-2026: dit is de duurst mogelijke CONTAINS-scan)", async (context) => {
   const originalFetch = globalThis.fetch;
   let fetchCalled = false;
@@ -542,6 +561,63 @@ test("noemt de gefaalde categorie in de respons zodat '0 resultaten' niet verwar
   assert.equal(response.headers.get("cache-control"), "no-store");
   const document = await response.json();
   assert.deepEqual(document.failedCategories, ["Scheepswrak"]);
+});
+
+test("scheepswrakken pagineren nu ook voorbij de 25e match (P1, 14-09-2026: 'schoener' leverde live 42 scheepswrakken op, 17 daarvan voorheen permanent onbereikbaar - de page===1-gate is hier expliciet weg)", async (context) => {
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalCaches === undefined) delete globalThis.caches;
+    else globalThis.caches = originalCaches;
+  });
+  globalThis.caches = { default: { match() { return undefined; }, put() {} } };
+  // 30 scheepswrak-discoverytreffers, zero-padded ID's ("01".."30") zodat
+  // lexicale sortering (monumentNumber-tiebreak in mergeDiscoveryMatches)
+  // ook numeriek klopt.
+  const ids = Array.from({ length: 30 }, (_, index) => String(index + 1).padStart(2, "0"));
+  globalThis.fetch = async (input) => {
+    const url = decodeURIComponent(String(input));
+    if (url.startsWith(BIBLIOTHEEK_SPARQL)) return Response.json({ results: { bindings: [] } });
+    if (url.startsWith(SPARQL)) return Response.json({ results: { bindings: [] } });
+    if (url.startsWith(MUUR_SPARQL)) return Response.json({ results: { bindings: [] } });
+    if (!url.startsWith(MASS_SPARQL)) return Response.json({ results: { bindings: [] } });
+    // Detailquery (GROUP BY ?v) - alle 30 teruggeven, de route filtert zelf
+    // op de opgevraagde pagina-slice.
+    if (url.includes("GROUP BY ?v")) {
+      return Response.json({ results: { bindings: ids.map((id) => ({
+        v: { value: `https://mass.cultureelerfgoed.nl/id/${id}` },
+        naam: { value: `Schoener ${id}` },
+        lat: { value: "53.0" },
+        lng: { value: "5.0" },
+      })) } });
+    }
+    // Discoveryquery - alleen de sdo:name-tak (rang 1) vult, de
+    // scheepstype-tak blijft leeg (mergeDiscoveryMatches dedupliceert toch
+    // op monumentNumber, maar zo blijft de test expliciet over welke tak
+    // de 30 treffers levert).
+    if (url.includes("sdo.org/name")) {
+      return Response.json({ results: { bindings: ids.map((id) => ({
+        v: { value: `https://mass.cultureelerfgoed.nl/id/${id}` },
+        match: { value: "Schoener" },
+      })) } });
+    }
+    return Response.json({ results: { bindings: [] } });
+  };
+
+  const page1 = await GET(new Request("https://doorzoeker.test/api/rce/search?q=schoener&page=1&scope=archaeology-b", { headers: { "cf-connecting-ip": "test-scheepswrak-paginering" } }));
+  assert.equal(page1.status, 200);
+  const document1 = await page1.json();
+  assert.equal(document1.results.length, 25);
+  assert.equal(document1.results[0].monumentNumber, "01");
+  assert.equal(document1.hasMore, true);
+
+  const page2 = await GET(new Request("https://doorzoeker.test/api/rce/search?q=schoener&page=2&scope=archaeology-b", { headers: { "cf-connecting-ip": "test-scheepswrak-paginering" } }));
+  assert.equal(page2.status, 200);
+  const document2 = await page2.json();
+  assert.equal(document2.results.length, 5);
+  assert.deepEqual(document2.results.map((r) => r.monumentNumber), ["26", "27", "28", "29", "30"]);
+  assert.equal(document2.hasMore, false);
 });
 
 test("cachet een geslaagde tekstzoekopdracht nog altijd normaal (geen regressie door de partialFailure-tracker)", async (context) => {

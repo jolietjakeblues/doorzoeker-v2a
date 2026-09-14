@@ -452,6 +452,17 @@ export function useSearchState() {
         ? await browseRceObjects(activeBrowseKind, request.signal, nextPage)
         : await searchRceMonuments(active, request.signal, nextPage);
       if (!request.isCurrent()) return;
+      // searchRceMonuments vraagt op pagina 2+ nu ook heritage/archaeology-
+      // scopes op (niet langer alleen core, zie P1-paginering-fix
+      // 14-09-2026) en gooit alleen als ÉLKE scope faalt - een falende
+      // core-scope naast trivial-lege, wél geslaagde overige scopes zou
+      // anders stilzwijgend als "niets nieuws, geen fout" verschijnen i.p.v.
+      // de bestaande foutmelding+retry (P2, externe review 22-08-2026).
+      // failedCategories expliciet checken behoudt die garantie.
+      const failedCategories = (response as { failedCategories?: string[] }).failedCategories;
+      if (failedCategories?.length) {
+        throw new Error(`Categorieën konden niet geladen worden: ${failedCategories.join(", ")}`);
+      }
       const additions = response.results.map((record) => toItem(record));
       setRemoteResults((current) => {
         const merged = new Map((current ?? []).map((item) => [resultIdentity(item), item]));

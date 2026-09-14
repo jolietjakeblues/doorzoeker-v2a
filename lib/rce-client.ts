@@ -1,5 +1,5 @@
 import type { ArcheologischeContext, ComplexMember, GezichtLidmaatschap, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, RceMonument, VondstlocatieInhoud, WerelderfgoedLidmaatschap } from "@/lib/rce";
-import type { ConceptField } from "@/lib/heritage-view-model";
+import { identityKey, type ConceptField } from "@/lib/heritage-view-model";
 
 export type SearchResponse = { results: RceMonument[]; page?: number; pageSize?: number; hasMore?: boolean; failedCategories?: string[] };
 // Welke "Soort object"-categorieën (SearchFilters.tsx) in elke scope zitten -
@@ -30,8 +30,14 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
     if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`, { cause: response.status });
     return await response.json() as SearchResponse;
   };
+  // Welke scopes aangevraagd worden hangt alleen af van de vorm van de
+  // zoekterm, niet van het paginanummer - anders bleef loadMore() (page > 1)
+  // voor een vrije-tekstzoekopdracht permanent op de core-scope hangen,
+  // ook als "archaeology-a"/"archaeology-b" verderop meer te bieden hadden
+  // (P1, 14-09-2026: "schoener" leverde 42 scheepswrakken op, 17 daarvan
+  // onbereikbaar via loadMore()).
   const includeOtherScopes =
-    page === 1 && !/^\d{1,6}$/.test(query.trim()) && !/^\d{4}\s?[A-Za-z]{2}$/.test(query.trim());
+    !/^\d{1,6}$/.test(query.trim()) && !/^\d{4}\s?[A-Za-z]{2}$/.test(query.trim());
   const scopes = includeOtherScopes
     ? (["core", "heritage", "archaeology-a", "archaeology-b"] as const)
     : (["core"] as const);
@@ -43,12 +49,14 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
   const byId = new Map<string, RceMonument>();
   const failedCategories = new Set<string>();
   let core: SearchResponse | undefined;
+  let anyHasMore = false;
   settled.forEach((result, index) => {
     const scope = scopes[index];
     if (result.status === "fulfilled") {
       if (scope === "core") core = result.value;
+      if (result.value.hasMore) anyHasMore = true;
       for (const item of result.value.results)
-        byId.set(item.sourceUrl || `${item.monumentNature}:${item.monumentNumber}`, item);
+        byId.set(identityKey({ sourceUrl: item.sourceUrl, kind: item.monumentNature ?? "", monumentNumber: item.monumentNumber }), item);
       for (const category of result.value.failedCategories ?? []) failedCategories.add(category);
     } else {
       for (const category of SCOPE_CATEGORIES[scope]) failedCategories.add(category);
@@ -61,7 +69,9 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
     throw (settled[0] as PromiseRejectedResult).reason;
   return {
     results: [...byId.values()],
-    hasMore: core?.hasMore ?? false,
+    // Niet langer alleen core?.hasMore: een archeologiecategorie kan op
+    // haar eentje ook meer te bieden hebben terwijl core al uitgeput is.
+    hasMore: anyHasMore,
     page: core?.page ?? page,
     failedCategories: [...failedCategories],
   };

@@ -384,6 +384,17 @@ export function primaryIdentifier(
   return { label: "Onderzoeksgebied", value };
 }
 
+// Kale sleutellogica achter resultIdentity() hieronder - ook rechtstreeks
+// bruikbaar op de ruwe server-DTO (RceMonument, met monumentNature i.p.v.
+// objectType) zoals rce-client.ts's eigen cross-scope-dedup binnen
+// searchRceMonuments doet. Eén gedeelde implementatie i.p.v. twee
+// bijna-identieke handgeschreven kopieën van hetzelfde
+// `a || `${b}:${c}`-patroon (14-09-2026, opgeruimd tijdens dezelfde sessie
+// als de paginerings- en timeoutfix hieronder).
+export function identityKey(item: { sourceUrl?: string; kind: string; monumentNumber?: string; id?: string }): string {
+  return item.sourceUrl || `${item.kind}:${item.monumentNumber ?? item.id}`;
+}
+
 // Eén bron van waarheid voor "is dit hetzelfde object" bij het samenvoegen
 // van resultaten (bv. loadMore() in useSearchState.ts) - monumentNumber
 // alléén is niet globaal uniek (bv. een MASS-scheepswrak-ID kan numeriek
@@ -393,7 +404,7 @@ export function primaryIdentifier(
 // 22-08-2026: loadMore() gebruikte voorheen alleen monumentNumber ?? id,
 // zonder dat voorvoegsel).
 export function resultIdentity(item: Item): string {
-  return item.sourceUrl || `${item.objectType}:${item.monumentNumber ?? item.id}`;
+  return identityKey({ sourceUrl: item.sourceUrl, kind: item.objectType, monumentNumber: item.monumentNumber, id: item.id });
 }
 
 export function toItem(record: RceMonument): Item {
