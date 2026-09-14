@@ -24,7 +24,8 @@ Deze repository is een schone herbouw van Doorzoeker. De originele [Doorzoeker](
 - archeologische vondstlocaties;
 - archeologische grondsporen;
 - archeologische onderzoeksgebieden;
-- scheepswrakken (MASS-dataset).
+- scheepswrakken (MASS-dataset);
+- muurschilderingen (Muurschilderingendatabase).
 
 Archeologie bestaat uit meer dan onderzoeksgebieden en monumenten. Bij
 Rijksmonumenten toont Doorzoeker de archeologische terreinen die daar in de
@@ -62,6 +63,13 @@ scheepstype, met een exacte MASS-nummerlookup bij een numerieke term. Het
 detail toont scheepstype, een gesaneerde omschrijving met afbeeldingen, het
 ontdekt-jaar (indien aanwezig) en een vaste bronvermelding met licentie; er
 is geen `Bekijk alles`-browsemodus voor deze categorie.
+Muurschilderingen komen uit de eveneens losstaande Muurschilderingendatabase
+en zijn zelfstandig vindbaar op gebouwnaam, plaats en maker, met een exacte
+rijksmonumentnummerlookup. Het gebouw is het primaire object; heeft het geen
+eigen kaartcoördinaat, dan toont Doorzoeker de rijksmonument-centroid als
+fallback in plaats van het object van de kaart te laten verdwijnen. Nog geen
+afbeeldingen (licentie voor beeldmateriaal nog niet bevestigd door RCE) en
+geen `Bekijk alles`-browsemodus.
 
 Zie [Functionele dekking](docs/functionele-dekking.md) voor het precieze
 onderscheid tussen zelfstandige objecten, gekoppelde lijsten en tellingen.
@@ -96,6 +104,24 @@ koppeling levert op de detailpagina van een Rijksmonument het veld
 "Onderwerp (uit omschrijving)" op: elk concept toont daar zijn
 herkomstthesaurus (CHT, ABR of RN) naast het label.
 
+## Stel een vraag
+
+Naast doorzoeken kan Doorzoeker ook een vraag in gewone taal beantwoorden,
+via de losse pagina `/vraag`. Claude zet de vraag om in een SPARQL-query
+(zichtbaar en bewerkbaar vóór uitvoering), voert die uit tegen dezelfde RCE
+Linked Data als de rest van de applicatie, en vat het resultaat in
+leesbaar Nederlands samen. Twee modi: een lijst van monumenten of alleen een
+telling. Bij het genereren gebruikt Claude ook de eigenaars eigen
+`rce-cho`-MCP-server voor concept-/URI-resolutie (bv. om "Utrechtse
+Heuvelrug" niet per ongeluk als gemeente Utrecht te laten meetellen), met
+een automatische terugval naar de statische kennisbank als die server niet
+bereikbaar is. Een lokale ruimtelijke berekening vangt op wanneer een
+ruimtelijke SPARQL-vergelijking op de RCE-Virtuoso-dienst zelf vastloopt, en
+een deterministische volledigheids- en syntaxcontrole vraagt Claude één keer
+om een correctie als de query een deel van de vraag lijkt te missen. Deze
+functie is geen vervanging van doorzoeken, maar een derde manier om dezelfde
+brondata te bereiken - naast Doorzoeker zelf en de RCE-MCP-server.
+
 ## Kaart en geometrie
 
 De kaart ondersteunt `Point`, `Polygon` en `MultiPolygon`. Polygonen behouden
@@ -114,7 +140,9 @@ Afhankelijk van het objecttype toont Doorzoeker onder meer:
 - register- en locatiegegevens;
 - oorspronkelijke en huidige functies;
 - kadastrale percelen;
-- een Beeldbankfoto met bron en rechten;
+- een Beeldbankfoto met bron en rechten, met een "Vergroten"-knop die - waar
+  de RCE-beeldbank een IIIF Image API-endpoint publiceert - een inzoombare
+  weergave opent;
 - historische groenaanleg en MSP-indicatie;
 - complexverbanden en een doorklikbare ledenlijst;
 - literatuur uit de RCE-bibliotheek;
@@ -146,8 +174,20 @@ SPARQL. De objecten en hun relaties zijn gemodelleerd volgens de
 - `rce/bibliotheek`: gekoppelde publicaties;
 - `rce/mass`: scheepswrakken - een losstaande dataset met een eigen
   `schema.org`-vocabulaire, geen CEO;
-- RCE-MCP: hulpmiddel voor onderzoek en queryontwikkeling, geen verplichte
-  runtime-laag van de webapp.
+- `rce/Muurschilderingen`: muurschilderingen - eveneens een losstaande
+  dataset, geen CEO;
+- `images.memorix.nl` (de RCE-beeldbank): naast de gewone thumbnail-URL ook
+  een IIIF Image API-endpoint, gebruikt voor de inzoombare fotoweergave;
+- RCE-MCP (`rce-cho-mcp`, door de eigenaar zelf gebouwd en gehost): naast
+  hulpmiddel voor onderzoek en queryontwikkeling ook actief gebruikt tijdens
+  het genereren van een SPARQL-query in "Stel een vraag" hierboven, via
+  Anthropic's MCP-connector - optioneel, niet-blokkerend (automatische
+  terugval als de server niet bereikbaar is).
+
+"Stel een vraag" praat daarnaast met de Anthropic Messages API (Claude) om
+een vraag in gewone taal naar SPARQL te vertalen en het resultaat samen te
+vatten - de enige plek in de applicatie die een externe LLM aanroept, en
+dus ook de enige plek met een substantieel kostenprofiel per gebruikersactie.
 
 De browser praat alleen met taakgerichte routes onder `/api`. Willekeurige
 SPARQL wordt niet vanuit de browser doorgestuurd. De serveradapters verzorgen
@@ -166,7 +206,17 @@ hooks scheiden URL-herstel, request-lifecycle, filtering en detailverrijking.
 - `lib/rce/terms.ts` en `lib/rce/concepts.ts`: thesauri en exacte conceptzoeking;
 - `lib/rce/enrichment.ts`: beeld, groenaanleg, MSP, gebeurtenissen en Op deze dag;
 - `lib/rce/scheepswrakken.ts`: scheepswrakken (MASS, losstaand van CEO);
+- `lib/rce/muurschilderingen.ts`: muurschilderingen (eigen dataset,
+  losstaand van CEO);
+- `lib/rce/iiif.ts`: afleiding van een IIIF-endpoint uit een
+  Beeldbankfoto-URL, voor de inzoombare fotoweergave;
 - `lib/rce/types.ts`, `geometry.ts` en `sparql.ts`: gedeelde basis.
+
+`app/vraag/page.tsx` en `app/VraagScherm.tsx` vormen de losse "Stel een
+vraag"-pagina; `lib/vraag/` en `lib/server/vraag-adapter.ts` de eigen
+domeinlogica en server-adapter daarachter - een apart subsysteem met een
+eigen risicoprofiel (LLM-kosten, een externe Anthropic-aanroep) en dus een
+eigen, strenger rate limit dan de rest van de applicatie.
 
 Zie [Consolidatieplan](docs/consolidatieplan.md) voor de gemaakte grenzen en
 [Beheerbesluiten](docs/beheerbesluiten.md) voor de uitgestelde major-updates
@@ -175,7 +225,11 @@ en de licentiekeuze.
 ## Nog niet gebouwd
 
 - de geometrie van historische groenaanleg als aparte kaartlaag;
-- de functies uit verticale slices die uitdrukkelijk de status `Plan` hebben.
+- de functies uit verticale slices die uitdrukkelijk de status `Plan` hebben;
+- afbeeldingen bij muurschilderingen (licentie nog niet bevestigd door RCE);
+- de IIIF Presentation API voor Beeldbankfoto's (metadata naast de foto,
+  bv. via een viewer als Tify) - moet de leverancier van de beeldbank zelf
+  aanzetten, buiten wat Doorzoeker zelf kan regelen.
 
 ## Documentatie
 
