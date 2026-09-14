@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { fetchArcheologischeContext, fetchLigtIn, searchRceMonuments } from "@/lib/rce-client";
 import { toItem, type Item } from "@/lib/heritage-view-model";
-import type { ArcheologischeContext, WerelderfgoedLidmaatschap } from "@/lib/rce";
+import { OBJECT_KIND, type ArcheologischeContext, type WerelderfgoedLidmaatschap } from "@/lib/rce";
+
+// Voor een echt Rijksmonument bevat monumentNature het SKOS-monumentaard-
+// label (bv. "onroerend gebouwd"); voor elk ander objecttype is het een van
+// de vaste OBJECT_KIND-discriminatiewaarden (zie lib/rce/types.ts). Zelfde
+// patroon als app/api/rce/search/route.ts's collectionNatures-check.
+const COLLECTION_NATURES = new Set<string>(Object.values(OBJECT_KIND));
 
 // Rijksmonument 14948 (Sint-Maartenskerk, Elst) - door de eigenaar gekozen
 // als vaste showcase omdat het in één record de volle breedte van de
@@ -47,7 +53,16 @@ export function useVoorbeeldMonument() {
     ])
       .then(([response, gebieden, ligtIn]) => {
         if (controller.signal.aborted) return;
-        const record = response.results[0];
+        // searchRceMonuments geeft bij een numerieke zoekopdracht ALLE
+        // objecttypen terug (rijksmonumentnummer, complexnummer, Archis-
+        // nummer, ...), niet alleen Rijksmonumenten - "14948" is toevallig
+        // zowel het rijksmonumentnummer van deze kerk als het Archis-nummer
+        // van een compleet ander archeologisch terrein in Wieringerwaard.
+        // results[0] pakken zou dus, afhankelijk van welke deelzoekopdracht
+        // toevallig als eerste terugkomt, het verkeerde object kunnen tonen
+        // (live gemeld door de eigenaar, 14-09-2026). Expliciet filteren op
+        // een écht Rijksmonument (COLLECTION_NATURES uitsluiten) voorkomt dat.
+        const record = response.results.find((result) => !COLLECTION_NATURES.has(result.monumentNature ?? ""));
         if (record) onLoaded({ item: toItem(record), gebieden, werelderfgoed: ligtIn.werelderfgoed });
       })
       .catch(() => {})
