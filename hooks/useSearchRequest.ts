@@ -41,6 +41,19 @@ export function useSearchRequest() {
     };
   }, []);
 
+  // Externe review (15-09-2026): reset() in useSearchState.ts leegde de
+  // schermstate zonder de actieve fetch te annuleren of ongeldig te maken -
+  // een oude, nog lopende aanvraag kon ná een reset alsnog slagen en
+  // stilzwijgend oude resultaten terugzetten (isCurrent() bleef true, want
+  // searchSequence was niet verhoogd). cancel() doet wat beginRequest() ook
+  // doet aan annulering/ongeldigmaking, maar start zelf geen nieuwe
+  // aanvraag.
+  const cancel = useCallback(() => {
+    searchController.current?.abort();
+    searchController.current = null;
+    searchSequence.current += 1;
+  }, []);
+
   useEffect(() => () => searchController.current?.abort(), []);
 
   return {
@@ -59,5 +72,6 @@ export function useSearchRequest() {
     loadMoreError,
     setLoadMoreError,
     beginRequest,
+    cancel,
   };
 }

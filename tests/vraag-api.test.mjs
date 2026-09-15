@@ -324,7 +324,7 @@ test("uitvoeren: voert de query uit tegen het RCE-endpoint en dedupliceert op ?r
       });
     },
   });
-  const response = await uitvoeren(jsonRequest("https://doorzoeker.test/api/vraag/uitvoeren", { query: "SELECT DISTINCT ?rm ?naam WHERE { ?rm a ceo:Rijksmonument }" }));
+  const response = await uitvoeren(jsonRequest("https://doorzoeker.test/api/vraag/uitvoeren", { query: "PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>\nSELECT DISTINCT ?rm ?naam WHERE { ?rm a ceo:Rijksmonument }" }));
   assert.equal(response.status, 200);
   const document = await response.json();
   assert.equal(document.results.results.bindings.length, 1);
@@ -352,7 +352,7 @@ test("uitvoeren: valt terug op een lokale ruimtelijke berekening als geof:sfWith
       });
     },
   });
-  const response = await uitvoeren(jsonRequest("https://doorzoeker.test/api/vraag/uitvoeren", { query: "SELECT ?rm WHERE { ?rm a ceo:Rijksmonument . FILTER(geof:sfWithin(?rmWkt, ?gezichtWkt)) }" }));
+  const response = await uitvoeren(jsonRequest("https://doorzoeker.test/api/vraag/uitvoeren", { query: "PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>\nPREFIX geof: <http://www.opengis.net/def/function/geosparql/>\nSELECT ?rm WHERE { ?rm a ceo:Rijksmonument . FILTER(geof:sfWithin(?rmWkt, ?gezichtWkt)) }" }));
   assert.equal(response.status, 200);
   const document = await response.json();
   assert.equal(document.results.results.bindings.length, 1);
@@ -372,11 +372,15 @@ test("uitvoeren: 422 met een eerlijke melding als de terugvalquery het verruimde
       // plafond geraakt betekent dat er mogelijk kandidaten buiten de set
       // vielen - dan hoort Doorzoeker niet zomaar 0 (of een ander getal)
       // als definitief antwoord te presenteren.
-      const bindings = Array.from({ length: FALLBACK_CANDIDATE_LIMIT }, (_, i) => ({ rm: { type: "uri", value: `https://example.org/rm/${i}` } }));
-      return Response.json({ head: { vars: ["rm"] }, results: { bindings } });
+      const bindings = Array.from({ length: FALLBACK_CANDIDATE_LIMIT }, (_, i) => ({
+        rm: { type: "uri", value: `https://example.org/rm/${i}` },
+        rmWkt: { type: "literal", value: "POINT(5 5)" },
+        gezichtWkt: { type: "literal", value: "POLYGON((0 0, 0 10, 10 10, 10 0, 0 0))" },
+      }));
+      return Response.json({ head: { vars: ["rm", "rmWkt", "gezichtWkt"] }, results: { bindings } });
     },
   });
-  const response = await uitvoeren(jsonRequest("https://doorzoeker.test/api/vraag/uitvoeren", { query: "SELECT ?rm WHERE { ?rm a ceo:Rijksmonument . FILTER(geof:sfWithin(?rmWkt, ?gezichtWkt)) }" }));
+  const response = await uitvoeren(jsonRequest("https://doorzoeker.test/api/vraag/uitvoeren", { query: "PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>\nPREFIX geof: <http://www.opengis.net/def/function/geosparql/>\nSELECT ?rm WHERE { ?rm a ceo:Rijksmonument . FILTER(geof:sfWithin(?rmWkt, ?gezichtWkt)) }" }));
   assert.equal(response.status, 422);
   const document = await response.json();
   assert.match(document.error, /specifieker/);
@@ -386,6 +390,35 @@ test("uitvoeren: 400 bij een lege query", async (context) => {
   withMocks(context, { fetchImpl: async () => { throw new Error("fetch had niet aangeroepen mogen worden"); } });
   const response = await uitvoeren(jsonRequest("https://doorzoeker.test/api/vraag/uitvoeren", { query: "  " }));
   assert.equal(response.status, 400);
+});
+
+test("uitvoeren: 400 bij een SERVICE-federatie naar een extern endpoint (securityreview 15-09-2026)", async (context) => {
+  withMocks(context, { fetchImpl: async () => { throw new Error("fetch had niet aangeroepen mogen worden - dit hoort geweigerd te worden vóór enige RCE-aanroep"); } });
+  const response = await uitvoeren(
+    jsonRequest("https://doorzoeker.test/api/vraag/uitvoeren", { query: "SELECT ?s WHERE { SERVICE <https://example.invalid/sparql> { ?s ?p ?o } }" }),
+  );
+  assert.equal(response.status, 400);
+});
+
+test("uitvoeren: 400 bij een niet-SELECT-query (ASK/CONSTRUCT/DESCRIBE)", async (context) => {
+  withMocks(context, { fetchImpl: async () => { throw new Error("fetch had niet aangeroepen mogen worden"); } });
+  const response = await uitvoeren(jsonRequest("https://doorzoeker.test/api/vraag/uitvoeren", { query: "ASK { ?s ?p ?o }" }));
+  assert.equal(response.status, 400);
+});
+
+test("uitvoeren: dwingt een buitenste LIMIT af, ook als de ingediende query er zelf geen heeft (securityreview 15-09-2026)", async (context) => {
+  let sentQuery;
+  withMocks(context, {
+    fetchImpl: async (_input, init) => {
+      sentQuery = decodeURIComponent(String(init?.body ?? "").replace(/^query=/, ""));
+      return Response.json({ head: { vars: ["s"] }, results: { bindings: [] } });
+    },
+  });
+  const response = await uitvoeren(
+    jsonRequest("https://doorzoeker.test/api/vraag/uitvoeren", { query: "PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>\nSELECT ?s WHERE { ?s a ceo:Rijksmonument }" }),
+  );
+  assert.equal(response.status, 200);
+  assert.match(sentQuery, /LIMIT 200\s*$/);
 });
 
 test("antwoord: geeft het Anthropic-antwoord terug", async (context) => {
@@ -413,6 +446,64 @@ test("antwoord: voegt meegegeven kanttekeningen als 'Let op: ...'-alinea's toe n
   assert.equal(response.status, 200);
   const document = await response.json();
   assert.equal(document.answer, "In Zeist staan verschillende rijksmonumenten.\n\nLet op: Voorbeeldkanttekening.");
+});
+
+test("antwoord: bij een telling met één 'aantal'-rij krijgt de prompt de echte waarde, niet het aantal rijen (securityreview 15-09-2026)", async (context) => {
+  let sentPrompt;
+  withMocks(context, {
+    fetchImpl: async (_input, init) => {
+      sentPrompt = JSON.parse(init.body).messages[0].content;
+      return anthropicResponse("Er staan 42 kerken in Utrecht.");
+    },
+  });
+  const results = { head: { vars: ["aantal"] }, results: { bindings: [{ aantal: { type: "literal", value: "42" } }] } };
+  const response = await antwoord(
+    jsonRequest("https://doorzoeker.test/api/vraag/antwoord", { question: "Hoeveel kerken zijn er in Utrecht?", results, mode: "telling" }),
+  );
+  assert.equal(response.status, 200);
+  assert.doesNotMatch(sentPrompt, /totaal \(1\)/, "de prompt mag niet het aantal RIJEN (1) als totaal presenteren");
+  assert.match(sentPrompt, /kolom "aantal"/);
+});
+
+test("antwoord: bij een gegroepeerde telling claimt de prompt niet het aantal groepen als totaal", async (context) => {
+  let sentPrompt;
+  withMocks(context, {
+    fetchImpl: async (_input, init) => {
+      sentPrompt = JSON.parse(init.body).messages[0].content;
+      return anthropicResponse("De meeste rijksmonumenten staan in Noord-Holland.");
+    },
+  });
+  const results = {
+    head: { vars: ["provincie", "aantal"] },
+    results: {
+      bindings: [
+        { provincie: { type: "literal", value: "Noord-Holland" }, aantal: { type: "literal", value: "9000" } },
+        { provincie: { type: "literal", value: "Zeeland" }, aantal: { type: "literal", value: "3000" } },
+      ],
+    },
+  };
+  const response = await antwoord(
+    jsonRequest("https://doorzoeker.test/api/vraag/antwoord", { question: "Hoeveel rijksmonumenten per provincie?", results, mode: "telling" }),
+  );
+  assert.equal(response.status, 200);
+  assert.match(sentPrompt, /GEGROEPEERDE telling/);
+  assert.match(sentPrompt, /NIET.*totale aantal/);
+});
+
+test("antwoord: bij lijst-modus blijft het bestaande gedrag (rijaantal als totaal) ongewijzigd", async (context) => {
+  let sentPrompt;
+  withMocks(context, {
+    fetchImpl: async (_input, init) => {
+      sentPrompt = JSON.parse(init.body).messages[0].content;
+      return anthropicResponse("In Zeist staan verschillende rijksmonumenten.");
+    },
+  });
+  const results = { head: { vars: ["rm"] }, results: { bindings: [{ rm: { type: "uri", value: "https://example.org/rm/1" } }] } };
+  const response = await antwoord(
+    jsonRequest("https://doorzoeker.test/api/vraag/antwoord", { question: "Welke rijksmonumenten staan er in Zeist?", results, mode: "lijst" }),
+  );
+  assert.equal(response.status, 200);
+  assert.doesNotMatch(sentPrompt, /GEGROEPEERDE telling/);
 });
 
 test("antwoord: 400 bij ontbrekende resultaten", async (context) => {

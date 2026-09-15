@@ -87,7 +87,7 @@ export function VraagScherm() {
     setResults(uitvoerData.results);
 
     setStep("antwoorden");
-    const antwoordData = await postJson<{ answer: string }>("/api/vraag/antwoord", { question: vraag, results: uitvoerData.results, caveats }, signal);
+    const antwoordData = await postJson<{ answer: string }>("/api/vraag/antwoord", { question: vraag, results: uitvoerData.results, mode, caveats }, signal);
     setAnswer(antwoordData.answer);
     setStep("klaar");
   }

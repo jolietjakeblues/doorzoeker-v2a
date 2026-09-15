@@ -23,6 +23,9 @@
 # Editor/IDE config
 .claude/
 
+#review
+.review_15-09-2026/
+
 # misc
 .DS_Store
 *.pem

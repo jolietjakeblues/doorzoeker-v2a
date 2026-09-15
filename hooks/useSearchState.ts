@@ -105,6 +105,7 @@ export function useSearchState() {
     loadMoreError,
     setLoadMoreError,
     beginRequest,
+    cancel,
   } = useSearchRequest();
   const [activeBrowseKind, setActiveBrowseKind] = useState<BrowseKind | undefined>();
   const pendingSelectedId = useRef(EMPTY_URL_STATE.selectedId);
@@ -223,6 +224,7 @@ export function useSearchState() {
   async function executeSearch(
     term: string,
     termIdentity = selectedTerm?.label === term ? selectedTerm : undefined,
+    targetPage = 1,
   ) {
     beginHistoryEntry();
     const request = beginRequest();
@@ -257,11 +259,41 @@ export function useSearchState() {
     try {
       const response = await searchRceMonuments(term, request.signal);
       if (!request.isCurrent()) return;
-      const items = response.results.map((record) => toItem(record));
+      let items = response.results.map((record) => toItem(record));
+      let page = 1;
+      let hasMoreNow = response.hasMore;
+      let failedCategoriesNow = response.failedCategories ?? [];
+      // Herstel van een gedeelde URL met ?pagina=N (securityreview 15-09-2026,
+      // P2): bewust GEEN herhaalde loadMore()-aanroepen - die hook-functie
+      // leest resultPage/active uit de React-state van het RENDER-moment
+      // waarop-i gedefinieerd is, dus meerdere aanroepen binnen deze functie
+      // zouden telkens dezelfde (verouderde) pagina berekenen. In plaats
+      // daarvan hier lokaal doorlussen met gewone variabelen, en pas aan het
+      // eind ÉÉN keer de React-state zetten.
+      while (page < targetPage && hasMoreNow) {
+        const more = await searchRceMonuments(term, request.signal, page + 1);
+        if (!request.isCurrent()) return;
+        if (more.failedCategories?.length) {
+          // Stop met wat al geladen is i.p.v. een onopgemerkt onvolledige
+          // restore door te zetten - zelfde garantie als loadMore().
+          failedCategoriesNow = more.failedCategories;
+          hasMoreNow = more.hasMore;
+          break;
+        }
+        page += 1;
+        const merged = new Map(items.map((item) => [resultIdentity(item), item]));
+        for (const record of more.results) {
+          const item = toItem(record);
+          merged.set(resultIdentity(item), item);
+        }
+        items = [...merged.values()];
+        hasMoreNow = more.hasMore;
+      }
       setRemoteResults(items);
       applyPendingSelection(items);
-      setHasMore(response.hasMore);
-      setFailedCategories(response.failedCategories ?? []);
+      setHasMore(hasMoreNow);
+      setResultPage(page);
+      setFailedCategories(failedCategoriesNow);
       setRemoteState("success");
     } catch (error) {
       if (request.isAborted() || !request.isCurrent())
@@ -355,7 +387,7 @@ export function useSearchState() {
   // Werelderfgoed en Gezicht zijn anders te vinden dan Rijksmonumenten: er is
   // geen zoekterm voor "laat alles zien", dus browsen ze de volledige (kleine)
   // collectie in plaats van op naam te matchen.
-  async function browseType(kind: BrowseKind) {
+  async function browseType(kind: BrowseKind, targetPage = 1) {
     beginHistoryEntry();
     const request = beginRequest();
     setQuery("");
@@ -424,10 +456,28 @@ export function useSearchState() {
     try {
       const response = await browseRceObjects(kind, request.signal);
       if (!request.isCurrent()) return;
-      const items = response.results.map((record) => toItem(record));
+      let items = response.results.map((record) => toItem(record));
+      let page = 1;
+      let hasMoreNow = response.hasMore;
+      // Herstel van een gedeelde URL met ?pagina=N - zelfde lokale-lus-aanpak
+      // als executeSearch hierboven, om dezelfde stale-closure-valkuil van
+      // herhaalde loadMore()-aanroepen te vermijden.
+      while (page < targetPage && hasMoreNow) {
+        const more = await browseRceObjects(kind, request.signal, page + 1);
+        if (!request.isCurrent()) return;
+        page += 1;
+        const merged = new Map(items.map((item) => [resultIdentity(item), item]));
+        for (const record of more.results) {
+          const item = toItem(record);
+          merged.set(resultIdentity(item), item);
+        }
+        items = [...merged.values()];
+        hasMoreNow = more.hasMore;
+      }
       setRemoteResults(items);
       applyPendingSelection(items);
-      setHasMore(response.hasMore);
+      setHasMore(hasMoreNow);
+      setResultPage(page);
       setRemoteState("success");
     } catch {
       if (request.isAborted() || !request.isCurrent())
@@ -484,15 +534,20 @@ export function useSearchState() {
 
   function restoreUrlState(initial: SearchUrlState) {
     pendingSelectedId.current = initial.selectedId;
+    // ?pagina=N herstellen (securityreview 15-09-2026, P2): executeSearch/
+    // browseType krijgen de doelpagina rechtstreeks mee en lopen er zelf
+    // (met lokale variabelen) naartoe - zie de toelichting daar. Geen
+    // paginering voor een conceptzoekopdracht (server capt al op 25,
+    // bestaand gedrag).
     if (initial.browseKind)
-      void browseType(initial.browseKind);
+      void browseType(initial.browseKind, initial.page);
     else if (initial.conceptUri && initial.conceptField)
       void executeConceptSearch(
         { uri: initial.conceptUri, label: initial.query || "Gekozen begrip" },
         initial.conceptField,
       );
     else if (initial.query)
-      void executeSearch(initial.query, initial.selectedTerm);
+      void executeSearch(initial.query, initial.selectedTerm, initial.page);
     else reset();
     setObjectType(initial.objectType);
     setMonumentAard(initial.monumentAard);
@@ -507,6 +562,11 @@ export function useSearchState() {
     setMapViewport(initial.mapViewport);
   }
   function reset() {
+    // Annuleer/ongeldig-maak eerst een eventuele nog lopende aanvraag
+    // (securityreview 15-09-2026, P2) - anders kan een oude, trage fetch
+    // ná deze reset alsnog zijn eigen isCurrent()-check doorstaan en
+    // stilzwijgend oude resultaten terugzetten.
+    cancel();
     setQuery("");
     setActive("");
     setActiveConceptUri(undefined);

@@ -7,6 +7,7 @@ import {
   isFallbackCandidateSetIncomplete,
   isSpatialErrorBody,
   isSpatialFailure,
+  projectAllVariablesForFallback,
   stripSpatialFilter,
   widenLimitForFallback,
 } from "../lib/vraag/spatial-fallback.ts";
@@ -95,6 +96,32 @@ test("isFallbackCandidateSetIncomplete signaleert wanneer het verruimde plafond 
 test("widenLimitForFallback verruimt een bestaande LIMIT en voegt er anders een toe", () => {
   assert.match(widenLimitForFallback("SELECT ?rm WHERE { ?rm a ceo:Rijksmonument }\nLIMIT 200", 5000), /LIMIT 5000/);
   assert.match(widenLimitForFallback("SELECT ?rm WHERE { ?rm a ceo:Rijksmonument }", 5000), /LIMIT 5000$/);
+});
+
+test("projectAllVariablesForFallback vervangt de buitenste SELECT-projectie door * (securityreview 15-09-2026: WKT-variabelen niet altijd geprojecteerd)", () => {
+  const query = "PREFIX ceo: <http://x/ceo#>\nSELECT DISTINCT ?rm ?nummer WHERE {\n  ?rm a ceo:Rijksmonument .\n  ?rm ceo:heeftGeometrie/geo:asWKT ?rmWkt .\n}";
+  const result = projectAllVariablesForFallback(query);
+  assert.match(result, /SELECT DISTINCT \*\s*WHERE/);
+  assert.doesNotMatch(result, /\?rm \?nummer WHERE/);
+  assert.match(result, /PREFIX ceo:/, "PREFIX-declaraties vóór SELECT blijven staan");
+  assert.match(result, /\?rm ceo:heeftGeometrie\/geo:asWKT \?rmWkt/, "de WHERE-inhoud blijft ongewijzigd");
+});
+
+test("projectAllVariablesForFallback behoudt SELECT zonder DISTINCT als zodanig", () => {
+  const result = projectAllVariablesForFallback("SELECT ?rm WHERE { ?rm a ceo:Rijksmonument }");
+  assert.match(result, /^SELECT \*\s*WHERE/);
+});
+
+test("projectAllVariablesForFallback laat een geneste subquery-SELECT met rust, vervangt alleen de buitenste", () => {
+  const query = "SELECT ?rm ?nummer WHERE { { SELECT ?rm WHERE { ?rm a ceo:Rijksmonument } LIMIT 5 } ?rm ?p ?nummer }";
+  const result = projectAllVariablesForFallback(query);
+  assert.match(result, /^SELECT \*\s*WHERE/);
+  assert.match(result, /SELECT \?rm WHERE \{ \?rm a ceo:Rijksmonument \}/, "de geneste subquery-SELECT blijft ongewijzigd");
+});
+
+test("projectAllVariablesForFallback laat een query zonder herkenbare WHERE met rust", () => {
+  const query = "ASK { ?s ?p ?o }";
+  assert.equal(projectAllVariablesForFallback(query), query);
 });
 
 test("applySpatialFilterLocally houdt alleen rijen die daadwerkelijk binnen het gebied liggen", () => {
