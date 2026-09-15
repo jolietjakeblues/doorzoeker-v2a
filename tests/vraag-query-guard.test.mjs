@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { Parser } from "@traqula/parser-sparql-1-2";
 import { assertSafeVraagQuery, enforceOuterLimit, UnsafeSparqlError } from "../lib/vraag/query-guard.ts";
 
 test("assertSafeVraagQuery accepteert een gewone SELECT-query", () => {
@@ -65,4 +66,39 @@ test("enforceOuterLimit laat een al kleine buitenste LIMIT met rust", () => {
 test("enforceOuterLimit voegt een LIMIT toe als er helemaal geen LIMIT is", () => {
   const result = enforceOuterLimit("SELECT ?s WHERE { ?s ?p ?o }", 200);
   assert.match(result, /LIMIT 200\s*$/);
+});
+
+test("assertSafeVraagQuery weigert SERVICE genest in FILTER EXISTS (hercontrole 15-09-2026)", () => {
+  const query = "SELECT ?s WHERE { ?s ?p ?o FILTER EXISTS { SERVICE <https://example.invalid/sparql> { ?a ?b ?c } } }";
+  assert.throws(() => assertSafeVraagQuery(query), UnsafeSparqlError);
+});
+
+test("assertSafeVraagQuery weigert SERVICE genest in FILTER NOT EXISTS", () => {
+  const query = "SELECT ?s WHERE { ?s ?p ?o FILTER NOT EXISTS { SERVICE <https://example.invalid/sparql> { ?a ?b ?c } } }";
+  assert.throws(() => assertSafeVraagQuery(query), UnsafeSparqlError);
+});
+
+test("assertSafeVraagQuery weigert SERVICE genest in BIND(EXISTS{...})", () => {
+  const query = "SELECT ?s WHERE { ?s ?p ?o BIND(EXISTS { SERVICE <https://example.invalid/sparql> { ?a ?b ?c } } AS ?hit) }";
+  assert.throws(() => assertSafeVraagQuery(query), UnsafeSparqlError);
+});
+
+test("assertSafeVraagQuery weigert SERVICE genest in een EXISTS in de SELECT-projectie", () => {
+  const query = "SELECT ?s (EXISTS { SERVICE <https://example.invalid/sparql> { ?a ?b ?c } } AS ?hit) WHERE { ?s ?p ?o }";
+  assert.throws(() => assertSafeVraagQuery(query), UnsafeSparqlError);
+});
+
+test("enforceOuterLimit behoudt een afsluitende OFFSET bij het verlagen van een te grote buitenste LIMIT (hercontrole 15-09-2026)", () => {
+  const result = enforceOuterLimit("SELECT ?s WHERE { ?s ?p ?o } LIMIT 500 OFFSET 10", 200);
+  assert.match(result, /LIMIT 200 OFFSET 10\s*$/);
+  assert.doesNotMatch(result, /LIMIT 500/);
+  assert.doesNotThrow(() => new Parser().parse(result));
+});
+
+test("enforceOuterLimit behoudt commentaar ná een te grote buitenste LIMIT", () => {
+  const result = enforceOuterLimit("SELECT ?s WHERE { ?s ?p ?o } LIMIT 500 # comment", 200);
+  assert.doesNotMatch(result, /LIMIT 500/);
+  assert.match(result, /LIMIT 200/);
+  assert.match(result, /# comment/);
+  assert.doesNotThrow(() => new Parser().parse(result));
 });

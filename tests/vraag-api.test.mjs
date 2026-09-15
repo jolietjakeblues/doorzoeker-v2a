@@ -421,6 +421,129 @@ test("uitvoeren: dwingt een buitenste LIMIT af, ook als de ingediende query er z
   assert.match(sentQuery, /LIMIT 200\s*$/);
 });
 
+test("uitvoeren: accepteert een buitenste LIMIT met een afsluitende OFFSET zonder een dubbele LIMIT te produceren (hercontrole 15-09-2026)", async (context) => {
+  let sentQuery;
+  withMocks(context, {
+    fetchImpl: async (_input, init) => {
+      sentQuery = decodeURIComponent(String(init?.body ?? "").replace(/^query=/, ""));
+      return Response.json({ head: { vars: ["s"] }, results: { bindings: [] } });
+    },
+  });
+  const response = await uitvoeren(
+    jsonRequest(
+      "https://doorzoeker.test/api/vraag/uitvoeren",
+      { query: "PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>\nSELECT ?s WHERE { ?s a ceo:Rijksmonument } LIMIT 500 OFFSET 10" },
+      "test-vraag-hercontrole-offset",
+    ),
+  );
+  assert.equal(response.status, 200);
+  assert.match(sentQuery, /LIMIT 200 OFFSET 10/);
+  assert.equal((sentQuery.match(/LIMIT/gi) ?? []).length, 1);
+});
+
+test("uitvoeren: 400 bij SERVICE genest in FILTER EXISTS (hercontrole 15-09-2026)", async (context) => {
+  withMocks(context, { fetchImpl: async () => { throw new Error("fetch had niet aangeroepen mogen worden"); } });
+  const response = await uitvoeren(
+    jsonRequest("https://doorzoeker.test/api/vraag/uitvoeren", {
+      query: "SELECT ?s WHERE { ?s ?p ?o FILTER EXISTS { SERVICE <https://example.invalid/sparql> { ?a ?b ?c } } }",
+    }),
+  );
+  assert.equal(response.status, 400);
+});
+
+test("uitvoeren: ruimtelijke terugval op een telling herstelt de echte COUNT i.p.v. 200 losse detailrijen (hercontrole 15-09-2026)", async (context) => {
+  withMocks(context, {
+    fetchImpl: async (_input, init) => {
+      const body = decodeURIComponent(String(init?.body ?? "").replace(/^query=/, ""));
+      if (body.includes("geof:sfWithin")) {
+        return new Response(JSON.stringify({ message: "TopologyException" }), { status: 500 });
+      }
+      // 250 kandidaten, allemaal daadwerkelijk binnen het gebied - ruim
+      // onder FALLBACK_CANDIDATE_LIMIT, dus geen "plafond geraakt"-fout.
+      const bindings = Array.from({ length: 250 }, (_, i) => ({
+        rm: { type: "uri", value: `https://example.org/rm/${i}` },
+        rmWkt: { type: "literal", value: "POINT(5 5)" },
+        gezichtWkt: { type: "literal", value: "POLYGON((0 0, 0 10, 10 10, 10 0, 0 0))" },
+      }));
+      return Response.json({ head: { vars: ["rm", "rmWkt", "gezichtWkt"] }, results: { bindings } });
+    },
+  });
+  const response = await uitvoeren(
+    jsonRequest(
+      "https://doorzoeker.test/api/vraag/uitvoeren",
+      {
+        query:
+          "PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>\nPREFIX geof: <http://www.opengis.net/def/function/geosparql/>\nSELECT (COUNT(DISTINCT ?rm) AS ?aantal) WHERE { ?rm a ceo:Rijksmonument . FILTER(geof:sfWithin(?rmWkt, ?gezichtWkt)) }",
+      },
+      "test-vraag-hercontrole-count-fallback",
+    ),
+  );
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.deepEqual(document.results.head.vars, ["aantal"]);
+  assert.equal(document.results.results.bindings.length, 1);
+  assert.equal(document.results.results.bindings[0].aantal.value, "250");
+});
+
+test("uitvoeren: ruimtelijke terugval op een lijstquery met LIMIT 5 geeft ten hoogste 5 rijen met alleen de oorspronkelijke kolommen (hercontrole 15-09-2026)", async (context) => {
+  withMocks(context, {
+    fetchImpl: async (_input, init) => {
+      const body = decodeURIComponent(String(init?.body ?? "").replace(/^query=/, ""));
+      if (body.includes("geof:sfWithin")) {
+        return new Response(JSON.stringify({ message: "TopologyException" }), { status: 500 });
+      }
+      const bindings = Array.from({ length: 20 }, (_, i) => ({
+        rm: { type: "uri", value: `https://example.org/rm/${i}` },
+        rmWkt: { type: "literal", value: "POINT(5 5)" },
+        gezichtWkt: { type: "literal", value: "POLYGON((0 0, 0 10, 10 10, 10 0, 0 0))" },
+      }));
+      return Response.json({ head: { vars: ["rm", "rmWkt", "gezichtWkt"] }, results: { bindings } });
+    },
+  });
+  const response = await uitvoeren(
+    jsonRequest(
+      "https://doorzoeker.test/api/vraag/uitvoeren",
+      {
+        query:
+          "PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>\nPREFIX geof: <http://www.opengis.net/def/function/geosparql/>\nSELECT ?rm WHERE { ?rm a ceo:Rijksmonument . FILTER(geof:sfWithin(?rmWkt, ?gezichtWkt)) } LIMIT 5",
+      },
+      "test-vraag-hercontrole-list-fallback",
+    ),
+  );
+  assert.equal(response.status, 200);
+  const document = await response.json();
+  assert.deepEqual(document.results.head.vars, ["rm"]);
+  assert.equal(document.results.results.bindings.length, 5);
+  for (const row of document.results.results.bindings) {
+    assert.deepEqual(Object.keys(row), ["rm"]);
+  }
+});
+
+test("uitvoeren: ruimtelijke terugval op een GEGROEPEERDE telling geeft een eerlijke fout i.p.v. een stilzwijgend fout resultaat (hercontrole 15-09-2026)", async (context) => {
+  withMocks(context, {
+    fetchImpl: async (_input, init) => {
+      const body = decodeURIComponent(String(init?.body ?? "").replace(/^query=/, ""));
+      if (body.includes("geof:sfWithin")) {
+        return new Response(JSON.stringify({ message: "TopologyException" }), { status: 500 });
+      }
+      throw new Error("de vereenvoudigde terugvalquery had niet uitgevoerd mogen worden voor een niet-herstelbare vorm");
+    },
+  });
+  const response = await uitvoeren(
+    jsonRequest(
+      "https://doorzoeker.test/api/vraag/uitvoeren",
+      {
+        query:
+          "PREFIX ceo: <https://linkeddata.cultureelerfgoed.nl/def/ceo#>\nPREFIX geof: <http://www.opengis.net/def/function/geosparql/>\nSELECT ?gemeente (COUNT(DISTINCT ?rm) AS ?aantal) WHERE { ?rm a ceo:Rijksmonument . FILTER(geof:sfWithin(?rmWkt, ?gezichtWkt)) } GROUP BY ?gemeente",
+      },
+      "test-vraag-hercontrole-group-fallback",
+    ),
+  );
+  assert.equal(response.status, 422);
+  const document = await response.json();
+  assert.match(document.error, /niet betrouwbaar/);
+});
+
 test("antwoord: geeft het Anthropic-antwoord terug", async (context) => {
   withMocks(context, {
     fetchImpl: async (input) => {

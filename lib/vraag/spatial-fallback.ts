@@ -11,6 +11,7 @@
 // ruimtelijke FILTER en berekent de relatie hier lokaal; rijen met
 // ontbrekende of onherstelbare geometrie worden overgeslagen in plaats van
 // de hele aanvraag te laten mislukken.
+import { Parser } from "@traqula/parser-sparql-1-2";
 import { doesIntersect, isWithin, parseWktGeometry } from "../rce/geometry.ts";
 import type { SparqlBinding, SparqlResultsDocument } from "./postprocess.ts";
 
@@ -108,6 +109,117 @@ export class SpatialFallbackIncompleteError extends Error {}
 
 export function isFallbackCandidateSetIncomplete(rawBindingCount: number, limit: number = FALLBACK_CANDIDATE_LIMIT): boolean {
   return rawBindingCount >= limit;
+}
+
+// Hercontrole (15-09-2026): projectAllVariablesForFallback hierboven maakt
+// van de buitenste SELECT altijd `*` - nodig om de WKT-variabelen te
+// pakken, maar dat verliest de oorspronkelijke queryvorm (een telling
+// wordt dan losse detailrijen zonder "aantal"-kolom, een LIMIT 5 wordt
+// LIJST_LIMIT rijen). analyzeOuterShape leest de ORSPRONKELIJKE (nog niet
+// vereenvoudigde) query en legt vast wat er ná de lokale ruimtelijke
+// filtering hersteld moet worden; restoreOuterShape voert dat herstel uit
+// op de gefilterde kandidatenrijen. Alleen wat betrouwbaar zonder een
+// volwaardige SPARQL-expressie-evaluator terug te rekenen is wordt
+// ondersteund (platte projectie, COUNT zonder GROUP BY) - een GEGROEPEERDE
+// telling of een ander aggregaat/berekende kolom levert bewust
+// "unsupported" op, zodat de aanroeper een eerlijke fout kan geven i.p.v.
+// giswerk te presenteren als antwoord.
+export type OuterShape =
+  | { kind: "wildcard" }
+  | { kind: "list"; variables: string[]; distinct: boolean; limit: number | undefined }
+  | { kind: "count"; alias: string; distinct: boolean; variable: string | undefined }
+  | { kind: "unsupported"; reason: string };
+
+type ProjectionTerm = { type?: string; subType?: string; value?: string };
+type BindProjection = {
+  type?: string;
+  subType?: string;
+  expression?: { subType?: string; aggregation?: string; distinct?: boolean; expression?: unknown[] };
+  variable?: ProjectionTerm;
+};
+// Zelfde reden als query-guard.ts's ParsedSelectQuery: het @traqula-
+// uniontype vernauwt niet betrouwbaar na een runtime-check, dus een
+// minimale, losse vorm met alleen de velden die hier nodig zijn.
+type ParsedOuterQuery = {
+  variables?: unknown[];
+  distinct?: boolean;
+  solutionModifiers?: { group?: unknown; limitOffset?: { limit?: number } };
+};
+
+export function analyzeOuterShape(query: string): OuterShape {
+  let ast: ParsedOuterQuery;
+  try {
+    ast = new Parser().parse(query) as ParsedOuterQuery;
+  } catch {
+    return { kind: "unsupported", reason: "de query kon niet opnieuw geparsed worden" };
+  }
+  if (ast.solutionModifiers?.group) {
+    return { kind: "unsupported", reason: "een gegroepeerde telling/projectie (GROUP BY) kan niet betrouwbaar lokaal herberekend worden" };
+  }
+  const variables = ast.variables ?? [];
+  if (variables.length === 1 && (variables[0] as ProjectionTerm).type === "wildcard") {
+    return { kind: "wildcard" };
+  }
+  if (variables.length === 1) {
+    const item = variables[0] as BindProjection;
+    if (item.type === "pattern" && item.subType === "bind" && item.expression?.subType === "aggregate") {
+      if (item.expression.aggregation !== "count") {
+        return { kind: "unsupported", reason: `een ${item.expression.aggregation ?? "onbekend"}-aggregaat kan niet betrouwbaar lokaal herberekend worden` };
+      }
+      const alias = item.variable?.value;
+      if (!alias) return { kind: "unsupported", reason: "de telling heeft geen herkenbare kolomnaam" };
+      const countArg = item.expression.expression?.[0] as ProjectionTerm | undefined;
+      const variable = countArg?.type === "term" && countArg.subType === "variable" ? countArg.value : undefined;
+      return { kind: "count", alias, distinct: Boolean(item.expression.distinct), variable };
+    }
+  }
+  const plainVariables: string[] = [];
+  for (const raw of variables) {
+    const term = raw as ProjectionTerm;
+    if (term.type === "term" && term.subType === "variable" && term.value) {
+      plainVariables.push(term.value);
+    } else {
+      return { kind: "unsupported", reason: "een berekende projectiekolom kan niet betrouwbaar lokaal herberekend worden" };
+    }
+  }
+  return { kind: "list", variables: plainVariables, distinct: Boolean(ast.distinct), limit: ast.solutionModifiers?.limitOffset?.limit };
+}
+
+export function restoreOuterShape(data: SparqlResultsDocument, shape: Exclude<OuterShape, { kind: "unsupported" }>, ceilingLimit: number): SparqlResultsDocument {
+  const rows = data.results?.bindings ?? [];
+  if (shape.kind === "wildcard") {
+    return { head: data.head, results: { bindings: rows.slice(0, ceilingLimit) } };
+  }
+  if (shape.kind === "count") {
+    const countVariable = shape.variable;
+    let count: number;
+    if (countVariable === undefined) {
+      count = rows.length;
+    } else {
+      const values = rows.map((row) => row[countVariable]?.value).filter((value): value is string => value !== undefined);
+      count = shape.distinct ? new Set(values).size : values.length;
+    }
+    return {
+      head: { vars: [shape.alias] },
+      results: { bindings: [{ [shape.alias]: { type: "literal", value: String(count) } }] },
+    };
+  }
+  const projected: SparqlBinding[] = [];
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const kept: SparqlBinding = {};
+    for (const variable of shape.variables) {
+      if (row[variable] !== undefined) kept[variable] = row[variable];
+    }
+    if (shape.distinct) {
+      const key = JSON.stringify(shape.variables.map((variable) => kept[variable]?.value ?? null));
+      if (seen.has(key)) continue;
+      seen.add(key);
+    }
+    projected.push(kept);
+  }
+  const limit = Math.min(shape.limit ?? ceilingLimit, ceilingLimit);
+  return { head: { vars: [...shape.variables] }, results: { bindings: projected.slice(0, limit) } };
 }
 
 // Filtert bindings lokaal op de ruimtelijke relatie. Rijen met ontbrekende,
