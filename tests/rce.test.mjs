@@ -357,7 +357,9 @@ test("discovers names, addresses, functions, types and descriptions as separate 
   for (const { query } of queries) {
     assert.match(query, /graph\/instanties-rce/);
     assert.match(query, /ceo:heeftJuridischeStatus/);
-    assert.match(query, /woonhuis \\"K\\"/);
+    // Multi-term: elk los woord uit de zoekterm wordt een eigen, AND'de
+    // CONTAINS-clausule (zie buildContainsClause, lib/rce/sparql.ts).
+    assert.match(query, /CONTAINS\(LCASE\(STR\(\?match\)\), LCASE\("woonhuis"\)\) && CONTAINS\(LCASE\(STR\(\?match\)\), LCASE\("\\"K\\""\)\)/);
     // Each source is its own query: no UNION, no ORDER BY, no cross-source
     // scoring in SPARQL. That's what keeps every one of them fast on a
     // 58M-triple graph instead of timing out like the combined query did.
@@ -776,7 +778,13 @@ test("looks up Complexen by naam and derives a kaartpositie from the hoofdobject
   assert.match(query, /ceo:heeftRijksmonument \?lidValue/);
   assert.match(query, /ceo:heeftHoofdobject \?hoofdobjectValue/);
   assert.match(query, /\?hoofdobjectValue ceo:heeftGeometrie\/geo:asWKT \?wktValue/);
-  assert.match(query, /rijnoord/);
+  assert.match(query, /CONTAINS\(LCASE\(STR\(\?naamValue\)\), LCASE\("Rijnoord"\)\)/);
+});
+
+test("includes the buitenplaats-OPTIONAL (ceox:RCEBuitenplaats) in the Complexen query", () => {
+  const query = buildComplexenQuery("Rijnoord");
+  assert.match(query, /GRAPH <https:\/\/linkeddata\.cultureelerfgoed\.nl\/graph\/buitenplaatsen> \{ \?complex ceox:RCEBuitenplaats true \. \}/);
+  assert.match(query, /\(SAMPLE\(\?buitenplaatsValue\) AS \?buitenplaats\)/);
 });
 
 test("drops the naam-FILTER in the Complexen query when browsing without a term", () => {
@@ -786,7 +794,16 @@ test("drops the naam-FILTER in the Complexen query when browsing without a term"
 
 test("escapes the search term in the Complexen query", () => {
   const query = buildComplexenQuery('Rijnoord" . ?s ?p ?o #');
-  assert.match(query, /rijnoord\\" \. \?s \?p \?o #/);
+  // Exact-match takken (complexnummer/choi) gebruiken de hele, geëscapete term.
+  assert.match(query, /STR\(\?complexnummer\) = "Rijnoord\\" \. \?s \?p \?o #"/);
+  // De CONTAINS-tak splitst nu per woord (multi-term) - elk los woord is
+  // zelf ook correct geëscapet.
+  assert.match(query, /CONTAINS\(LCASE\(STR\(\?naamValue\)\), LCASE\("Rijnoord\\""\)\)/);
+});
+
+test("splits the Complexen naam-zoekterm op woorden en AND't elk woord als eigen CONTAINS-clausule (multi-term)", () => {
+  const query = buildComplexenQuery("Rijnoord kasteel");
+  assert.match(query, /CONTAINS\(LCASE\(STR\(\?naamValue\)\), LCASE\("Rijnoord"\)\) && CONTAINS\(LCASE\(STR\(\?naamValue\)\), LCASE\("kasteel"\)\)/);
 });
 
 test("parses Complexen results into RceMonument-shaped records", () => {
@@ -808,6 +825,20 @@ test("parses Complexen results into RceMonument-shaped records", () => {
   assert.equal(complex.description, "Complex van 3 rijksmonumenten.");
   assert.equal(complex.lat, 51.95);
   assert.equal(complex.lng, 5.9);
+  assert.equal(complex.buitenplaats, undefined);
+});
+
+test("parses a Complex's buitenplaats-vlag (ceox:RCEBuitenplaats) from the OPTIONAL binding", () => {
+  const document = { results: { bindings: [{
+    complex: { value: "https://linkeddata.cultureelerfgoed.nl/cho-kennis/id/complex/65305" },
+    choi: { value: "65305" },
+    complexnummer: { value: "519572" },
+    naam: { value: "Buiten Rustoord" },
+    aantalLeden: { value: "1" },
+    buitenplaats: { value: "true", type: "literal", datatype: "http://www.w3.org/2001/XMLSchema#boolean" },
+  }] } };
+  const [complex] = parseComplexenResults(document);
+  assert.equal(complex.buitenplaats, true);
 });
 
 test("falls back to a generic omschrijving when a Complex has no formele omschrijving", () => {
@@ -1157,7 +1188,7 @@ test("looks up a built complex by complexnummer or CHO-nummer", () => {
   const query = buildComplexenQuery("512036");
   assert.match(query, /STR\(\?complexnummer\) = "512036"/);
   assert.match(query, /STR\(\?choi\) = "512036"/);
-  assert.match(query, /CONTAINS\(LCASE\(STR\(\?naamValue\)\), "512036"\)/);
+  assert.match(query, /CONTAINS\(LCASE\(STR\(\?naamValue\)\), LCASE\("512036"\)\)/);
 });
 
 test("discovers zelfstandige archeologische terreinen via CHO-nummer, Archis-nummer, naam, plaats, omschrijving en waardering", () => {

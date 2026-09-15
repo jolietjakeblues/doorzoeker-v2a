@@ -13,16 +13,16 @@ export function requestSignal(signal?: AbortSignal, timeoutMs: number = REQUEST_
 // zelfde les als het oorspronkelijke, nu verwijderde Werelderfgoed-
 // offline-script). `method: "POST"` stuurt de querytekst in de request-body
 // in plaats van de querystring.
-async function fetchSparqlOnce(endpoint: string, query: string, signal?: AbortSignal, timeoutMs?: number, method: "GET" | "POST" = "GET") {
+async function fetchSparqlOnce(endpoint: string, query: string, signal?: AbortSignal, timeoutMs?: number, method: "GET" | "POST" = "GET", extraHeaders?: Record<string, string>) {
   const response = method === "POST"
     ? await fetch(endpoint, {
         method: "POST",
-        headers: { Accept: "application/sparql-results+json", "Content-Type": "application/x-www-form-urlencoded" },
+        headers: { Accept: "application/sparql-results+json", "Content-Type": "application/x-www-form-urlencoded", ...extraHeaders },
         body: `query=${encodeURIComponent(query)}`,
         signal: requestSignal(signal, timeoutMs),
       })
     : await fetch(`${endpoint}?query=${encodeURIComponent(query)}`, {
-        headers: { Accept: "application/sparql-results+json" },
+        headers: { Accept: "application/sparql-results+json", ...extraHeaders },
         signal: requestSignal(signal, timeoutMs),
       });
   if (!response.ok) {
@@ -68,10 +68,13 @@ function delay(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
-export async function fetchSparql(query: string, signal?: AbortSignal, endpoint: string = RCE_CHO_ENDPOINT, timeoutMs?: number, method?: "GET" | "POST") {
+// `extraHeaders` is optioneel en alleen nodig voor een niet-RCE-endpoint
+// (bv. Wikidata's gebruiksbeleid vraagt een herkenbare User-Agent bij
+// geautomatiseerd gebruik) - RCE's eigen endpoints vragen dit niet.
+export async function fetchSparql(query: string, signal?: AbortSignal, endpoint: string = RCE_CHO_ENDPOINT, timeoutMs?: number, method?: "GET" | "POST", extraHeaders?: Record<string, string>) {
   for (let attempt = 1; ; attempt++) {
     try {
-      return await fetchSparqlOnce(endpoint, query, signal, timeoutMs, method);
+      return await fetchSparqlOnce(endpoint, query, signal, timeoutMs, method, extraHeaders);
     } catch (error) {
       const status = error instanceof Error ? error.cause : undefined;
       if (typeof status !== "number" || status < 500 || attempt >= MAX_ATTEMPTS) throw error;

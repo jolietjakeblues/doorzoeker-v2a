@@ -24,7 +24,10 @@ stonden nog niet in de tabel - `omschrijving-onderwerp`,
 `/api/rce/search`'s eigen discoverytakken (kern-tekstzoeking en elke
 archeologiecategorie) kregen dezelfde 35s-marge als de conceptmatchquery's
 hierboven, en paginering (pagina 2+) dekt sinds diezelfde datum ook de
-archeologiecategorieën, niet meer alleen Rijksmonumenten.
+archeologiecategorieën, niet meer alleen Rijksmonumenten. Bijgewerkt 15
+september 2026: nieuwe route `/api/rce/wikidata` (lazy Wikidata-koppeling
+via property P359 op een geopend Rijksmonument-detail) toegevoegd aan de
+tabel.
 
 ## Doel
 
@@ -49,6 +52,7 @@ controleerbaar wanneer routes of databronnen veranderen.
 | `/api/rce/omschrijving-onderwerp` | Eén query naar de archiefdagen-/OmschrijvingenOnderwerp-graphs, lazy per geopend Rijksmonument-detail | Browser 60 seconden, gedeeld 300 seconden | 30/minuut, best effort per isolate |
 | `/api/rce/werelderfgoed-geometrie` | Eén geometriequery, lazy bij het openen van de kaartweergave van een Werelderfgoed/Gezicht | Browser 60 seconden, gedeeld 300 seconden | 30/minuut, best effort per isolate |
 | `/api/rce/rijksmonument` | Eén exacte, klasse-gebonden lookup (details/percelen/facetten) op `ceo:rijksmonumentnummer` - geen fan-out naar andere objectsoorten (14-09-2026) | Browser 60 seconden, gedeeld 300 seconden bij een gevonden monument; `no-store` bij geen treffer | 30/minuut, best effort per isolate |
+| `/api/rce/wikidata` | Eén query naar Wikidata's eigen publieke SPARQL-endpoint (`query.wikidata.org`, niet RCE), lazy per geopend Rijksmonument-detail (15-09-2026) | Browser 60 seconden, gedeeld 300 seconden | 30/minuut, best effort per isolate - eerste route die een extern, niet-RCE endpoint aanroept, zelfde risicoprofiel als de overige lazy-detailroutes |
 | `/api/vraag/genereer-sparql` | Eén Anthropic-aanroep (Claude, optioneel met MCP-toolgebruik) plus postprocessing/validatie | `no-store` - elke vraag is uniek | **5/minuut**, strenger dan standaard: elke aanroep kost echt geld (LLM-tokens), in tegenstelling tot de gratis RCE-SPARQL-routes hierboven |
 | `/api/vraag/uitvoeren` | De (mogelijk door de gebruiker bewerkte) SPARQL-query tegen RCE, met lokale ruimtelijke terugval bij een geometriefout | `no-store` | 5/minuut, zelfde reden als `genereer-sparql` - deelt dezelfde kostengevoelige naamsruimte |
 | `/api/vraag/antwoord` | Eén Anthropic-aanroep om de resultaten in leesbaar Nederlands samen te vatten | `no-store` | 5/minuut, zelfde reden als `genereer-sparql` |

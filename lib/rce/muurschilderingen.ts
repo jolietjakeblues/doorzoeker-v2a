@@ -8,7 +8,7 @@
 // Primair object is het gebouw (beslissing 1 in 019-muurschilderingen.md),
 // met de schilderingen erin als onderdeel van het detail - niet de
 // schilderingen zelf als los doorzoekbaar object.
-import { escapeSparqlString } from "./sparql.ts";
+import { buildContainsClause, escapeSparqlString } from "./sparql.ts";
 import { scoreDiscoveryMatch, type DiscoveryMatch } from "./monuments.ts";
 import { wktToLatLng } from "./geometry.ts";
 
@@ -92,7 +92,7 @@ export function buildMuurschilderingDiscoveryQueries(term: string): { bron: stri
 SELECT DISTINCT ?v ?match WHERE {
   ?v a gtm:Gebouw .
   ${pattern}
-  FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))
+  FILTER(${buildContainsClause("?match", term)})
 }
 LIMIT 100`,
   }));
@@ -106,7 +106,7 @@ SELECT DISTINCT ?v ?match WHERE {
   ?maker a ?makerType ; dcterms:title ?match .
   ?painting dcterms:creator ?maker ; schema:location ?v .
   ?v a gtm:Gebouw .
-  FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))
+  FILTER(${buildContainsClause("?match", term)})
 }
 LIMIT 100`,
   });

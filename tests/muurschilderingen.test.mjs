@@ -41,7 +41,12 @@ test("een niet-numerieke term triggert geen exacte rijksmonumentnummer-tak", () 
 
 test("aanhalingstekens in de zoekterm blijven binnen de stringliteral (SPARQL-injectie voorkomen)", () => {
   const queries = buildMuurschilderingDiscoveryQueries('") } UNION { ?x a ?y . FILTER(CONTAINS(STR(?y), "');
-  assert.match(queries[0].query, /LCASE\("\\"\) \} UNION \{ \?x a \?y \. FILTER\(CONTAINS\(STR\(\?y\), \\""\)\)/);
+  const query = queries[0].query;
+  // Multi-term (elk woord een eigen, AND'de CONTAINS-clausule) breekt deze
+  // payload vanzelf al op in losse, onschuldige tokens - het eerste woord
+  // bevat de aanhalingstekens en moet zelf ook correct geëscapet zijn.
+  assert.match(query, /LCASE\("\\"\)"\)/);
+  assert.doesNotMatch(query, /"\) \} UNION \{/);
 });
 
 test("parseMuurschilderingDiscoveryResults haalt het item-ID uit de URI als monumentNumber", () => {

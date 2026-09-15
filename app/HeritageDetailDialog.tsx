@@ -40,8 +40,9 @@ export function HeritageDetailDialog({
   onSearch,
   onConceptSearch,
 }: HeritageDetailDialogProps) {
-  const { complexMembers, ligtIn, omschrijvingOnderwerp, werelderfgoedGeometrie } = enrichment;
+  const { complexMembers, ligtIn, wikidata, omschrijvingOnderwerp, werelderfgoedGeometrie } = enrichment;
   const ligtInLoaded = ligtIn && ligtIn.monumentNumber === selected.monumentNumber ? ligtIn : undefined;
+  const wikidataLoaded = wikidata && wikidata.monumentNumber === selected.monumentNumber ? wikidata : undefined;
   const omschrijvingOnderwerpLoaded =
     omschrijvingOnderwerp && omschrijvingOnderwerp.choUri === selected.linkedDataUrl
       ? omschrijvingOnderwerp
@@ -421,6 +422,22 @@ export function HeritageDetailDialog({
                   Aangewezen via het Monumenten Selectie Project (circa
                   1997-2002)
                 </dd>
+              </div>
+            ) : null}
+            {wikidataLoaded?.item ? (
+              <div>
+                <dt>Wikidata</dt>
+                <dd>
+                  <a href={wikidataLoaded.item.itemUrl} target="_blank" rel="noreferrer">
+                    {wikidataLoaded.item.label ?? "Bekijk op Wikidata"}
+                  </a>
+                </dd>
+              </div>
+            ) : null}
+            {selected.buitenplaats ? (
+              <div>
+                <dt>Buitenplaats</dt>
+                <dd>Onderdeel van het cultuurhistorisch register historische buitenplaatsen.</dd>
               </div>
             ) : null}
           </dl>

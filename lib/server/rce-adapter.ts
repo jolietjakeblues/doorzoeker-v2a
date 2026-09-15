@@ -33,6 +33,7 @@ import {
   buildVerwervingConceptQuery,
   buildMspIndicatieQuery,
   buildOmschrijvingOnderwerpQuery,
+  escapeSparqlString,
   buildOnderzoeksgebiedAggregatenQuery,
   buildOnderzoeksgebiedComplexenQuery,
   buildOnderzoeksgebiedVondstlocatiesQuery,
@@ -235,6 +236,34 @@ export async function fetchLigtIn(monumentNumber: string, signal?: AbortSignal):
 export async function fetchOmschrijvingOnderwerp(choUri: string, signal?: AbortSignal): Promise<{ uri: string; label: string; bron: string }[]> {
   const document = await fetchSparql(buildOmschrijvingOnderwerpQuery(choUri), signal);
   return parseOmschrijvingOnderwerpResults(document);
+}
+
+// Wikidata-property P359 ("Rijksmonument ID") - live geverifieerd (15
+// september 2026): 63.175 gekoppelde items, vrijwel 1-op-1 met Doorzoekers
+// ~63.103 actieve rijksmonumenten. Ander, extern endpoint dan de rest van
+// Doorzoeker - geen owl:sameAs terug in de CHO-data zelf, dus een losse
+// lazy lookup per geopend Rijksmonument-detail, zelfde patroon als
+// fetchLigtIn/fetchOmschrijvingOnderwerp hierboven. Wikidata's
+// gebruiksbeleid vraagt een herkenbare User-Agent bij geautomatiseerd
+// gebruik (RCE's eigen endpoint vraagt dit niet) - vandaar de extraHeaders.
+const WIKIDATA_ENDPOINT = "https://query.wikidata.org/sparql";
+const WIKIDATA_USER_AGENT = "Doorzoeker/1.0 (https://doorzoekerfgoed.nl/)";
+
+export async function fetchWikidataItem(monumentNumber: string, signal?: AbortSignal): Promise<{ itemUrl: string; label?: string } | null> {
+  const query = `PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+PREFIX wikibase: <http://wikiba.se/ontology#>
+PREFIX bd: <http://www.bigdata.com/rdf#>
+SELECT ?item ?itemLabel WHERE {
+  ?item wdt:P359 "${escapeSparqlString(monumentNumber)}" .
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "nl,en". }
+}
+LIMIT 1`;
+  const document = (await fetchSparql(query, signal, WIKIDATA_ENDPOINT, undefined, undefined, { "User-Agent": WIKIDATA_USER_AGENT })) as {
+    results?: { bindings?: { item?: { value?: string }; itemLabel?: { value?: string } }[] };
+  };
+  const binding = document.results?.bindings?.[0];
+  if (!binding?.item?.value) return null;
+  return { itemUrl: binding.item.value, label: binding.itemLabel?.value };
 }
 
 // Lazy per-record ophaalslag - zie de toelichting bij browseRceObjects

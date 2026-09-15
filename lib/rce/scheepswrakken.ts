@@ -3,7 +3,7 @@
 // rce/cho) mét een eigen, aangepast `sdo:`-vocabulaire i.p.v. de
 // CEO-ontologie - vandaar een volledig losstaande module, net als
 // archaeology.ts t.o.v. monuments.ts.
-import { escapeSparqlString } from "./sparql.ts";
+import { buildContainsClause, escapeSparqlString } from "./sparql.ts";
 import { scoreDiscoveryMatch, type DiscoveryMatch } from "./monuments.ts";
 
 export const MASS_ENDPOINT = "https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/mass/sparql";
@@ -57,7 +57,7 @@ export function buildScheepswrakDiscoveryQueries(term: string): { bron: string; 
 SELECT DISTINCT ?v ?match WHERE {
   ?v a sdo:Vehicle .
   ${pattern}
-  FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))
+  FILTER(${buildContainsClause("?match", term)})
 }
 LIMIT 100`,
   }));

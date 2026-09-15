@@ -1,6 +1,6 @@
 import { OBJECT_KIND, type RceMonument } from "./types.ts";
 import { wktToLatLng } from "./geometry.ts";
-import { escapeSparqlString } from "./sparql.ts";
+import { buildContainsClause, escapeSparqlString } from "./sparql.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const RM_TYPE = `${CEO}Rijksmonument`;
@@ -79,7 +79,6 @@ const DISCOVERY_SOURCES: { bron: string; rang: number; pattern: string }[] = [
 ];
 
 export function buildRceDiscoveryQueries(term: string): { bron: string; query: string }[] {
-  const needle = escapeSparqlString(term.trim());
   return DISCOVERY_SOURCES.map(({ bron, pattern }) => ({
     bron,
     query: `PREFIX ceo: <${CEO}>
@@ -89,7 +88,7 @@ SELECT DISTINCT ?rmnr ?match WHERE {
   ?cho a ceo:Rijksmonument ; ceo:rijksmonumentnummer ?rmnr ;
        ceo:heeftJuridischeStatus <${RIJKSMONUMENT_STATUS}> .
   ${pattern}
-  FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))
+  FILTER(${buildContainsClause("?match", term)})
  }
 }
 LIMIT 100`,
@@ -685,16 +684,18 @@ export function parseGezichtResults(document: unknown): RceMonument[] {
 // is het monument dat het complex inhoudelijk bepaalt, in plaats van een
 // gemiddelde over alle leden die een groot landgoed kunstmatig "midden op
 // het erf" zou kunnen laten landen.
+const BUITENPLAATSEN_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/buitenplaatsen";
+
 export function buildComplexenQuery(term: string) {
-  const needle = escapeSparqlString(term.toLocaleLowerCase("nl"));
   const filter = term
     ? `FILTER(
-      CONTAINS(LCASE(STR(?naamValue)), "${needle}") ||
+      ${buildContainsClause("?naamValue", term)} ||
       STR(?complexnummer) = "${escapeSparqlString(term)}" ||
       STR(?choi) = "${escapeSparqlString(term)}"
     )`
     : "";
   return `PREFIX ceo: <${CEO}>
+PREFIX ceox: <${CEOX}>
 PREFIX geo: <http://www.opengis.net/ont/geosparql#>
 SELECT ?complex ?choi ?complexnummer
   (SAMPLE(STR(?naamValue)) AS ?naam)
@@ -702,6 +703,7 @@ SELECT ?complex ?choi ?complexnummer
   (SAMPLE(STR(?registratiedatumValue)) AS ?registratiedatum)
   (SAMPLE(STR(?wktValue)) AS ?wkt)
   (COUNT(DISTINCT ?lidValue) AS ?aantalLeden)
+  (SAMPLE(?buitenplaatsValue) AS ?buitenplaats)
 WHERE {
   GRAPH <${INSTANCES_GRAPH}> {
     ?complex a ceo:Complex ; ceo:complexnummer ?complexnummer ; ceo:cultuurhistorischObjectnummer ?choi .
@@ -713,6 +715,10 @@ WHERE {
       ?complex ceo:heeftHoofdobject ?hoofdobjectValue .
       OPTIONAL { ?hoofdobjectValue ceo:heeftGeometrie/geo:asWKT ?wktValue . }
     }
+  }
+  OPTIONAL {
+    GRAPH <${BUITENPLAATSEN_GRAPH}> { ?complex ceox:RCEBuitenplaats true . }
+    BIND(true AS ?buitenplaatsValue)
   }
   ${filter}
 }
@@ -741,6 +747,7 @@ export function parseComplexenResults(document: unknown): RceMonument[] {
       lng: coordinates?.lng,
       lat: coordinates?.lat,
       wkt: wkt || undefined,
+      buitenplaats: binding.buitenplaats?.value === "true" || undefined,
     };
   });
 }
