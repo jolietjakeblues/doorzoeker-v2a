@@ -9,7 +9,7 @@ import { DATAMODEL_RULES, LIJST_PROMPT, TELLING_PROMPT } from "../vraag/prompts.
 import { dedupeByRm, hasCount, LIJST_LIMIT, postprocessSparql, translateProvincieUris, type SparqlBinding, type SparqlResultsDocument, type VraagMode } from "../vraag/postprocess.ts";
 import { describePropertyChoice, validateQuery } from "../vraag/semantic-validator.ts";
 import { SparqlSyntaxInvalidError, validateSyntax } from "../vraag/syntax-validator.ts";
-import { applySpatialFilterLocally, extractSpatialFilter, isFallbackCandidateSetIncomplete, isSpatialFailure, projectAllVariablesForFallback, SpatialFallbackIncompleteError, stripSpatialFilter, widenLimitForFallback } from "../vraag/spatial-fallback.ts";
+import { analyzeOuterShape, applySpatialFilterLocally, extractSpatialFilter, isFallbackCandidateSetIncomplete, isSpatialFailure, projectAllVariablesForFallback, restoreOuterShape, SpatialFallbackIncompleteError, stripSpatialFilter, widenLimitForFallback } from "../vraag/spatial-fallback.ts";
 import { detectLimitation, describeLimitation, type AnswerabilityLimitationClarification } from "../vraag/answerability.ts";
 import { buildSemanticContext, describeAmbiguity, resolveQuestion, type EntityAmbiguityClarification, type ResolutionResult } from "../vraag/semantic-resolver.ts";
 import { assertSafeVraagQuery, enforceOuterLimit } from "../vraag/query-guard.ts";
@@ -161,6 +161,20 @@ export async function executeVraagQuery(query: string, signal?: AbortSignal): Pr
     if (!spatialFilter || !isSpatialFailure(error)) throw error;
     console.info(JSON.stringify({ event: "vraag.ruimtelijke-terugval", relation: spatialFilter.relation, message: error instanceof Error ? error.message : "onbekend" }));
 
+    // Hercontrole (15-09-2026): de vorm van de OORSPRONKELIJKE query (vóór
+    // de simplificatie hieronder) vastleggen - nodig om na de lokale
+    // ruimtelijke filtering de bedoelde telling/projectie/limiet te
+    // herstellen (zie restoreOuterShape verderop). Een vorm die niet
+    // betrouwbaar lokaal terug te rekenen is (bv. een GEGROEPEERDE
+    // telling) krijgt meteen een eerlijke fout - dat bespaart ook de
+    // extra round-trip naar RCE hieronder.
+    const outerShape = analyzeOuterShape(query);
+    if (outerShape.kind === "unsupported") {
+      throw new SpatialFallbackIncompleteError(
+        `De ruimtelijke vergelijking kon niet lokaal herberekend worden voor deze queryvorm (${outerShape.reason}). Probeer de vraag anders te formuleren.`,
+      );
+    }
+
     // projectAllVariablesForFallback: de oorspronkelijke SELECT projecteerde
     // de WKT-variabelen mogelijk niet expliciet (ze zijn wél gebonden in
     // WHERE, anders had de FILTER er nooit op kunnen werken) - zonder deze
@@ -193,11 +207,12 @@ export async function executeVraagQuery(query: string, signal?: AbortSignal): Pr
     }
     const { data, skipped } = applySpatialFilterLocally(rawData, spatialFilter);
     if (skipped) console.info(JSON.stringify({ event: "vraag.ruimtelijke-terugval.overgeslagen", skipped }));
-    // De vereenvoudigde query had een verruimde LIMIT (widenLimitForFallback)
-    // om na de lokale filtering nog genoeg relevante rijen over te houden -
-    // knip het eindresultaat terug naar het normale plafond.
-    if (data.results?.bindings) data.results.bindings = data.results.bindings.slice(0, LIJST_LIMIT);
-    return dedupeByRm(translateProvincieUris(data));
+    // Herstelt de oorspronkelijke telling/projectie/limiet uit de
+    // gefilterde kandidatenrijen (zie de uitleg bij analyzeOuterShape
+    // hierboven) - vervangt de eerdere kale .slice(0, LIJST_LIMIT), die de
+    // vereenvoudigde SELECT *-vorm ongewijzigd liet staan.
+    const restored = restoreOuterShape(data, outerShape, LIJST_LIMIT);
+    return dedupeByRm(translateProvincieUris(restored));
   }
 }
 

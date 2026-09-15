@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { doesIntersect, isWithin, parseWktGeometry } from "../lib/rce.ts";
 import {
+  analyzeOuterShape,
   applySpatialFilterLocally,
   extractSpatialFilter,
   isFallbackCandidateSetIncomplete,
   isSpatialErrorBody,
   isSpatialFailure,
   projectAllVariablesForFallback,
+  restoreOuterShape,
   stripSpatialFilter,
   widenLimitForFallback,
 } from "../lib/vraag/spatial-fallback.ts";
@@ -153,4 +155,121 @@ test("applySpatialFilterLocally slaat rijen met ontbrekende of onleesbare geomet
   const { data: filtered, skipped } = applySpatialFilterLocally(data, { relation: "sfWithin", objectVar: "rmWkt", areaVar: "gezichtWkt" });
   assert.equal(filtered.results.bindings.length, 0);
   assert.equal(skipped, 2);
+});
+
+// Hercontrole (15-09-2026): analyzeOuterShape/restoreOuterShape herstellen
+// de oorspronkelijke telling/projectie/limiet ná een ruimtelijke terugval
+// (die de SELECT tijdelijk naar * vervangt om de WKT-variabelen te pakken,
+// zie projectAllVariablesForFallback hierboven).
+
+test("analyzeOuterShape herkent een platte lijstprojectie met DISTINCT en LIMIT", () => {
+  const shape = analyzeOuterShape("SELECT DISTINCT ?rm ?naam WHERE { ?rm a <http://x/Rijksmonument> } LIMIT 5");
+  assert.deepEqual(shape, { kind: "list", variables: ["rm", "naam"], distinct: true, limit: 5 });
+});
+
+test("analyzeOuterShape herkent COUNT(DISTINCT ?rm) AS ?aantal", () => {
+  const shape = analyzeOuterShape("SELECT (COUNT(DISTINCT ?rm) AS ?aantal) WHERE { ?rm a <http://x/Rijksmonument> }");
+  assert.deepEqual(shape, { kind: "count", alias: "aantal", distinct: true, variable: "rm" });
+});
+
+test("analyzeOuterShape herkent COUNT(?rm) AS ?aantal zonder DISTINCT", () => {
+  const shape = analyzeOuterShape("SELECT (COUNT(?rm) AS ?aantal) WHERE { ?rm a <http://x/Rijksmonument> }");
+  assert.deepEqual(shape, { kind: "count", alias: "aantal", distinct: false, variable: "rm" });
+});
+
+test("analyzeOuterShape herkent COUNT(*) AS ?aantal", () => {
+  const shape = analyzeOuterShape("SELECT (COUNT(*) AS ?aantal) WHERE { ?rm a <http://x/Rijksmonument> }");
+  assert.deepEqual(shape, { kind: "count", alias: "aantal", distinct: false, variable: undefined });
+});
+
+test("analyzeOuterShape herkent SELECT *", () => {
+  assert.deepEqual(analyzeOuterShape("SELECT * WHERE { ?rm a <http://x/Rijksmonument> }"), { kind: "wildcard" });
+});
+
+test("analyzeOuterShape geeft 'unsupported' voor een GEGROEPEERDE telling (GROUP BY)", () => {
+  const shape = analyzeOuterShape("SELECT ?gemeente (COUNT(DISTINCT ?rm) AS ?aantal) WHERE { ?rm a <http://x/Rijksmonument> } GROUP BY ?gemeente");
+  assert.equal(shape.kind, "unsupported");
+});
+
+test("analyzeOuterShape geeft 'unsupported' voor een niet-COUNT-aggregaat", () => {
+  const shape = analyzeOuterShape("SELECT (SUM(?x) AS ?totaal) WHERE { ?rm <http://x/waarde> ?x }");
+  assert.equal(shape.kind, "unsupported");
+});
+
+test("analyzeOuterShape geeft 'unsupported' voor een berekende BIND-projectiekolom", () => {
+  const shape = analyzeOuterShape("SELECT (STR(?rm) AS ?label) WHERE { ?rm a <http://x/Rijksmonument> }");
+  assert.equal(shape.kind, "unsupported");
+});
+
+test("restoreOuterShape (list): behoudt alleen de oorspronkelijk geprojecteerde kolommen, dedupliceert en knipt op de oorspronkelijke limiet", () => {
+  const data = {
+    head: { vars: ["rm", "naam", "rmWkt"] },
+    results: {
+      bindings: [
+        { rm: { type: "uri", value: "urn:rm:1" }, naam: { type: "literal", value: "A" }, rmWkt: { type: "literal", value: "POINT(1 1)" } },
+        { rm: { type: "uri", value: "urn:rm:1" }, naam: { type: "literal", value: "A" }, rmWkt: { type: "literal", value: "POINT(1 1)" } },
+        { rm: { type: "uri", value: "urn:rm:2" }, naam: { type: "literal", value: "B" }, rmWkt: { type: "literal", value: "POINT(2 2)" } },
+        { rm: { type: "uri", value: "urn:rm:3" }, naam: { type: "literal", value: "C" }, rmWkt: { type: "literal", value: "POINT(3 3)" } },
+      ],
+    },
+  };
+  const shape = { kind: "list", variables: ["rm", "naam"], distinct: true, limit: 2 };
+  const result = restoreOuterShape(data, shape, 200);
+  assert.deepEqual(result.head.vars, ["rm", "naam"]);
+  assert.equal(result.results.bindings.length, 2);
+  for (const row of result.results.bindings) {
+    assert.deepEqual(Object.keys(row).sort(), ["naam", "rm"]);
+  }
+  assert.equal(result.results.bindings[0].rm.value, "urn:rm:1");
+  assert.equal(result.results.bindings[1].rm.value, "urn:rm:2");
+});
+
+test("restoreOuterShape (count, distinct): telt distincte waarden van de opgetelde variabele", () => {
+  const data = {
+    head: { vars: ["rm"] },
+    results: {
+      bindings: [
+        { rm: { type: "uri", value: "urn:rm:1" } },
+        { rm: { type: "uri", value: "urn:rm:1" } },
+        { rm: { type: "uri", value: "urn:rm:2" } },
+      ],
+    },
+  };
+  const shape = { kind: "count", alias: "aantal", distinct: true, variable: "rm" };
+  const result = restoreOuterShape(data, shape, 200);
+  assert.deepEqual(result.head.vars, ["aantal"]);
+  assert.equal(result.results.bindings.length, 1);
+  assert.equal(result.results.bindings[0].aantal.value, "2");
+});
+
+test("restoreOuterShape (count, niet-distinct): telt alle gebonden rijen", () => {
+  const data = {
+    head: { vars: ["rm"] },
+    results: {
+      bindings: [
+        { rm: { type: "uri", value: "urn:rm:1" } },
+        { rm: { type: "uri", value: "urn:rm:1" } },
+        { rm: { type: "uri", value: "urn:rm:2" } },
+      ],
+    },
+  };
+  const shape = { kind: "count", alias: "aantal", distinct: false, variable: "rm" };
+  const result = restoreOuterShape(data, shape, 200);
+  assert.equal(result.results.bindings[0].aantal.value, "3");
+});
+
+test("restoreOuterShape (count, COUNT(*)): telt alle rijen ongeacht een specifieke variabele", () => {
+  const data = { head: { vars: ["rm"] }, results: { bindings: [{ rm: { type: "uri", value: "urn:rm:1" } }, { rm: { type: "uri", value: "urn:rm:2" } }] } };
+  const shape = { kind: "count", alias: "aantal", distinct: false, variable: undefined };
+  const result = restoreOuterShape(data, shape, 200);
+  assert.equal(result.results.bindings[0].aantal.value, "2");
+});
+
+test("restoreOuterShape (wildcard): laat de rijen ongewijzigd, knipt alleen op het plafond", () => {
+  const data = {
+    head: { vars: ["rm", "rmWkt"] },
+    results: { bindings: [{ rm: { type: "uri", value: "urn:rm:1" }, rmWkt: { type: "literal", value: "POINT(1 1)" } }] },
+  };
+  const result = restoreOuterShape(data, { kind: "wildcard" }, 200);
+  assert.deepEqual(result, data);
 });
