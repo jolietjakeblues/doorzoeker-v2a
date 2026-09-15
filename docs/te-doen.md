@@ -493,7 +493,20 @@ actie, alleen genoteerd).
   loste alleen de eerlijkheid over per-batch tellingen op, niet de
   onderliggende beperking zelf.
 - **Verticale slice 011**: "In de buurt" (geolocatie-gebaseerd ontdekken)
-  - plan, niet gebouwd.
+  - plan, niet gebouwd. **Verkend (15 september 2026):** geen losse lat/
+    lng-datatypeproperties in de CHO-data (alleen WKT via `ceo:heeftGeometrie`/
+    `geo:asWKT`, al goed te parsen via `lib/rce/geometry.ts`), dus geen
+    goedkope numerieke bounding-box-FILTER zonder de WKT te parsen. Geen
+    bestaande adres/postcode->coördinaten-integratie (PDOK wordt nu alleen
+    als kaarttegel gebruikt, niet voor geocoding). Voorgestelde aanpak:
+    browser Geolocation API voor de positie van de bezoeker (geen nieuwe
+    externe afhankelijkheid), een voorfilter op de dichtstbijzijnde
+    gemeente(n) (zelfde soort resolutie als `lib/vraag/semantic-resolver.ts`
+    of gewoon een CONTAINS op de bekende gemeentenaam), en dan lokaal
+    Haversine-afstand berekenen en sorteren op de al opgehaalde WKT-punten -
+    geen nieuwe SPARQL-geofunctie nodig, dus geen risico op de bekende
+    Virtuoso-topologiefouten (`geof:sfWithin`/`sfIntersects`). Nog niet
+    gepland, alleen technisch haalbaar bevonden.
 - ~~**Verticale slice 017**~~ **Afgerond (19 augustus 2026).** Archeologische
   context bij een Rijksmonument (overlap met een Onderzoeksgebied, bv.
   rijksmonument 14948 in Elst dat boven een Romeins tempelcomplex staat) -
@@ -576,15 +589,35 @@ kreeg.
 
 - **Wikidata-koppeling via rijksmonumentnummer.** De CHO-data bevat geen
   rechtstreekse `owl:sameAs`-koppeling naar Wikidata; een link zou een
-  losse lookup vereisen. Nog te verifiëren welke Wikidata-property het
-  rijksmonumentnummer vasthoudt. Voorbeelden van de eigenaar:
-  <https://www.wikidata.org/wiki/Q11721989> en
-  <https://www.wikidata.org/wiki/Q17464661>.
+  losse lookup vereisen. **Verkend en bevestigd (15 september 2026), live
+  tegen Wikidata's eigen SPARQL-endpoint:** de property is
+  `wdt:P359` ("Rijksmonument ID"), 63.175 Wikidata-items hebben 'm - vrijwel
+  1-op-1 met Doorzoekers ~63.103 actieve rijksmonumenten. Test op
+  rijksmonument 14948 gaf meteen het juiste item terug (Q1771094, "Grote
+  Kerk"), zelfde monument als de voorbeelden van de eigenaar
+  (<https://www.wikidata.org/wiki/Q11721989>,
+  <https://www.wikidata.org/wiki/Q17464661>). Geen omgekeerde koppeling in
+  de CHO-data nodig - één lazy `SELECT ?item WHERE { ?item wdt:P359
+  "<nummer>" }`-aanroep naar `query.wikidata.org/sparql` per geopend
+  detail, zelfde lazy-verrijkingspatroon als `/api/rce/omschrijving-
+  onderwerp`/`ligt-in`. Nieuwe, externe (maar gratis en publieke)
+  afhankelijkheid.
 - **SKOS-matchrelaties benutten, niet alleen `skos:exactMatch`.** De
   thesauri bevatten ook `skos:closeMatch`, `skos:related`,
   `skos:broadMatch` en `skos:narrowMatch`. Toepassing: bv. een architect-
   of actorconcept koppelen aan een equivalent elders (RKDartists,
-  Wikidata).
+  Wikidata). **Verkend (15 september 2026):** flink gevuld - 15.149
+  `exactMatch`, 3.249 `related`, 1.244 `closeMatch`, 927 `narrowMatch`, 913
+  `broadMatch`, 126 `relatedMatch`. Grootste doelen: intern
+  (`data.cultureelerfgoed.nl`, ~10.080 - koppelingen tussen de eigen
+  thesauri onderling, zie ook de nieuw ontdekte `bebouwdeomgeving`-thesaurus
+  hieronder), Getty AAT (2.524), hdl.handle.net (2.332), dbpedia (1.848+),
+  `id.erfgoed.net` (Vlaams onroerend erfgoed, 777), Kadaster BRT (298),
+  RKD (171, relevant voor architect-/actorconcepten). **Wikidata slechts
+  73 in totaal** - SKOS-matches zijn dus NIET de weg naar Wikidata, dat
+  gaat via P359 op het rijksmonument zelf (zie hierboven). Dekking is
+  ongelijk per thesaurus; vraagt per toepassing bekijken welke matches
+  zinvol zijn om te tonen.
 - **Vrije-tekstzoeken op meerdere willekeurige woorden.** Nu wordt in de
   praktijk op één woord gezocht, of op een vaste twee-woorden-frase die
   toevallig naast elkaar in de tekst staat. Gewenst: zoeken op twee
@@ -592,7 +625,17 @@ kreeg.
   tekst voorkomen - een echte multi-term AND-zoekopdracht. **Nadrukkelijk
   geen thesaurus-synoniemexpansie** ("kerk" ook laten matchen op
   "kerkhof") - dat was een eerdere, onjuiste aanname bij het vastleggen
-  van dit idee; expliciet gecorrigeerd door de eigenaar.
+  van dit idee; expliciet gecorrigeerd door de eigenaar. **Verkend en
+  technisch bevestigd (15 september 2026):** elke bestaande tekstbron in
+  `buildRceDiscoveryQueries` (`lib/rce/monuments.ts`) gebruikt precies één
+  `FILTER(CONTAINS(LCASE(...), LCASE("...")))`. Live getest: een simpele
+  AND van twee CONTAINS-clausules op hetzelfde `?match`-veld
+  (`CONTAINS(...,"toren") && CONTAINS(...,"kerk")`) werkt direct en snel,
+  geen timeout. Kleine, gerichte wijziging: `term` op spaties splitsen, N
+  CONTAINS'en AND'en per bron. Geldt per tekstveld (bv. beide woorden in
+  dezelfde omschrijving), niet cross-veld (woord 1 in naam, woord 2 in
+  omschrijving) - dat laatste zou een duurdere JOIN-architectuur vergen en
+  is niet wat gevraagd is ("dezelfde tekst").
 - ~~**Tekst toevoegen over het belang van Linked Open Data voor
   Doorzoeker.**~~ **Opgelost (18 augustus 2026).** Nieuwe, publieke
   `public/achtergrond.html` - een losstaande, statische pagina (geen deel
@@ -626,6 +669,63 @@ kreeg.
   - los van `rce/cho`: `Archaeological-Knowledge-Bank`, `histgeo`,
     `Bebouwde-omgeving-referentienetwerk`;
   - binnen `rce/cho`: `actorenrol`, `linies`, `buitenplaatsen`.
+  - **De vier `rce/cho`-graphs hierboven verkend (15 september 2026)** -
+    grotendeels minder onverkend dan gedacht:
+    - `actorenrol` (45.484 triples): blijkt **al** de brongraph achter de
+      bestaande architect-/actorfunctionaliteit
+      (`ceo:heeftGebeurtenis`→`ceo:heeftActorEnRol`, live bevestigd via
+      rijksmonument 42057) - niets nieuws te bouwen, deze regel was zelf
+      stale documentatie.
+    - `buitenplaatsen` (1.062 triples): **geen eigen objectklasse** - een
+      simpele `ceox:RCEBuitenplaats = true`-vlag op bestaande
+      `ceo:Complex`-instanties. Goedkoop te ontsluiten als badge/filter op
+      complexen die al getoond worden.
+    - `linies` (580 triples): eigen `ceox:Linies`-klasse,
+      `schema.org`-vocabulaire net als de bestaande MASS-scheepswrakken/
+      Muurschilderingen-adapters (zelfde bekende bouwpatroon dus:
+      naam/alternateName/identifier/url + geometrie). Coördinaten staan
+      alleen als `asWKT-RD` (Rijksdriehoek), niet WGS84 - conversie nodig
+      (`convert_rd_to_wgs84` bestaat al als hulpmiddel). Klein object,
+      vergelijkbare bouwomvang als Muurschilderingen destijds.
+    - `bebouwdeomgeving` (30.814 triples): bleek zelf een **thesaurus**
+      (2.227 SKOS-concepten, 2 conceptschema's - het "Bebouwde Omgeving
+      Referentienetwerk"), geen objectdataset. Relevant als extra
+      begrippenbron (heeft zelf al `skos:exactMatch` naar CHT, zie de
+      SKOS-matchrelaties-bullet hierboven), niet als nieuwe zoekcategorie.
+  - **`Archaeological-Knowledge-Bank` verkend (15 september 2026)** - dit
+    is GEEN named graph binnen `rce/cho` maar een volledig apart dataset/
+    endpoint: `https://api.linkeddata.cultureelerfgoed.nl/datasets/rce/
+    Archaeological-Knowledge-Bank/sparql` (rce-cho MCP-tools werken hier
+    niet op, wel losse SPARQL-aanroepen). Een full-text-doorzoekbare
+    verzameling van **51.047 gedigitaliseerde archeologische
+    veldrapporten** (opgravingsrapporten, PDF's op
+    `archisarchief.cultureelerfgoed.nl/Archis2/Archeorapporten/...`),
+    potentieel vergelijkbaar in waarde met de bestaande Bibliotheek-adapter
+    maar dan voor archeologie. Per document (`akb:report/document`):
+    `dcterms:title`/`akb:report/internalTitle`, `schema:keywords` (mix van
+    vrije trefwoorden EN CHT-/semnet-conceptURI's), `schema:spatialCoverage`
+    (plaatsnamen - **let op, ruis bevestigd**: het adres van het
+    opgravingsbureau zelf komt ook als plaatsnaam mee, bv. "Maastricht" bij
+    een rapport over een opgraving in Gelderland, omdat het bureau
+    "Souterrains" in Maastricht zetelt - geen betrouwbare, schone locatie
+    zonder nadere filtering), `akb:report/archRegion` (een fysisch-
+    geografische archeoregio-classificatie zoals "Overijssels-Gelders
+    zandgebied" - GEEN bestuurlijke gemeente/provincie), `akb:report/
+    abstract` en `dcterms:description` (de laatste bevat de **volledige
+    OCR-tekst** van het rapport, dus zeer groot per document),
+    `akb:report/reportLink` (directe PDF-URL). **Geen schone, directe
+    URI-join gevonden** naar Doorzoekers bestaande archeologie-CHO-objecten
+    (Vondstlocatie/ArcheologischOnderzoeksgebied/ArcheologischComplex) - een
+    koppeling zou via plaatsnaam-matching moeten (met de hierboven genoemde
+    ruis) of mogelijk via het Archis-rapportnummer dat in het PDF-pad zit
+    (bv. "AR13402" in de sample-URL) tegen bestaande `archis2...nummer`-
+    velden - **nog niet geverifieerd of die matchen, volgende stap bij
+    verder onderzoek**. Zou een eigen, losstaande zoekbron kunnen worden
+    (net als de Bibliotheek-adapter: gekoppeld op trefwoord/plaatsnaam, niet
+    op een gegarandeerde CHO-URI), niet een verrijking van bestaande
+    objecten. `histgeo` en `Bebouwde-omgeving-referentienetwerk` (als apart
+    dataset, niet de zojuist gevonden gelijknamige `rce/cho`-graph) blijven
+    nog volledig onverkend.
   - **`gezicht_hvdl` en `werelderfgoed_hvdl` onderzocht en uitgebreid (20
     augustus 2026):** beide graphs waren al deels aangesloten (alleen
     `wordtGetoondOp`/type/jaar). Toegevoegd: `oppervlakteInHectare` voor
@@ -863,3 +963,52 @@ lijst (reviewer-advies: idealiter vóór de v0.5.0 Beta-publicatie):
   `loadMoreError` (niet `hasMore`), met een zichtbare foutmelding en
   retry-knop i.p.v. de knop stilzwijgend te laten verdwijnen - gedekt door
   de e2e-test "een mislukte 'laad meer' toont een foutmelding met retry...".
+
+## Prioritering van de vijf brainstorm-vervolgideeën (15 september 2026)
+
+Alle vijf hierboven bijgewerkte punten (in de buurt, multi-term
+vrije-tekstzoeken, Wikidata, SKOS-matchrelaties, de onverkende graphs) zijn
+nu live geverifieerd, nog geen van alle gepland of gebouwd. Prioritering op
+waarde-t.o.v.-moeite, gebaseerd op wat de verkenning opleverde:
+
+1. **Multi-term vrije-tekstzoeken** - kleinste, veiligste wijziging (één
+   functie, `buildRceDiscoveryQueries` in `lib/rce/monuments.ts`, geen
+   nieuwe databron), raakt direct de zoekopdracht die iedereen gebruikt.
+   Beste waarde-per-moeite van de vijf.
+2. **Wikidata-koppeling (P359)** - klein, hoge waarde (vrijwel volledige
+   dekking, 63.175 van ~63.103 monumenten), laag risico (externe, optionele
+   lazy-verrijking die net als de bestaande lazy-routes gewoon leeg kan
+   blijven bij een storing).
+3. **Buitenplaats-badge/filter** - triviaal goedkoop (één bestaande
+   boolean-vlag op complexen die al getoond worden), bescheiden zichtbare
+   waarde. Voor de hand liggend om te combineren met #1/#2 als kleine
+   batch.
+4. **"In de buurt" (geolocatie)** - concrete aanpak nu bekend
+   (Geolocatie-API + gemeentevoorfilter + lokale Haversine-sortering, geen
+   nieuwe SPARQL-geofunctie), maar substantiëler: nieuwe UI
+   (locatietoestemming, afstandsweergave), geen 1-op-1 te kopiëren
+   precedent. Middelgroot, eigen stukje werk.
+5. **Linies (Defensielinies)** - klein dataset (580 triples), bekend
+   bouwpatroon (zelfde `schema.org`-aanpak als MASS/Muurschilderingen), maar
+   een hele nieuwe objectcategorie in de UI (kaartlaag, detailkaart, icoon,
+   filters) voor een verhoudingsgewijs kleine dataset - afnemende
+   meeropbrengst na scheepswrakken/Muurschilderingen. Middelgroot, lagere
+   prioriteit dan 1-4.
+6. **SKOS-matchrelaties** - waardevol maar ongelijk gevuld per thesaurus;
+   vraagt eerst een eigen ontwerpkeuze (welke matchtypes, welke doelen
+   tonen, waar in de UI) vóór er iets te plannen valt - meer een open
+   ontwerpvraag dan een afgebakend bouwstuk.
+7. **Archaeological-Knowledge-Bank (51.047 archeologische
+   veldrapporten)** - potentieel de grootste losse waarde van de vijf (een
+   volledig nieuwe, omvangrijke bron - een "Bibliotheek" voor archeologie),
+   maar ook het minst bouwrijp: geen bevestigde schone koppeling naar
+   bestaande CHO-archeologieobjecten (het mogelijke Archis-rapportnummer-
+   spoor in de PDF-URL's, bv. "AR13402", is nog niet geverifieerd tegen
+   bestaande `archis2...nummer`-velden). Aanbeveling: eerst dat
+   join-onderzoek afmaken vóór dit als bouwstuk gepland wordt, niet in één
+   moeite met de andere vier.
+8. **`bebouwdeomgeving`-thesaurus** - geen zelfstandig punt, alleen
+   relevant in combinatie met #6 (SKOS-matchrelaties).
+9. **`histgeo` en `Bebouwde-omgeving-referentienetwerk`** (als apart
+   dataset) - nog volledig onverkend, geen actie mogelijk vóór een
+   vervolgverkenning.
