@@ -168,6 +168,18 @@ export async function fetchLigtIn(monumentNumber: string, signal?: AbortSignal) 
   return await response.json() as LigtInResponse;
 }
 
+// Zelfde lazy-aanpak als fetchLigtIn hierboven, maar tegen een ander, extern
+// endpoint (Wikidata) - zie fetchWikidataItem in lib/server/rce-adapter.ts.
+export async function fetchWikidataItem(monumentNumber: string, signal?: AbortSignal) {
+  const response = await fetch(`/api/rce/wikidata?rijksmonumentnummer=${encodeURIComponent(monumentNumber)}`, {
+    headers: { Accept: "application/json" },
+    signal,
+  });
+  if (!response.ok) throw new Error(`Doorzoeker-API antwoordde met ${response.status}`);
+  const document = await response.json() as { item: { itemUrl: string; label?: string } | null };
+  return document.item;
+}
+
 // Zelfde lazy-aanpak als fetchLigtIn hierboven - zie de toelichting bij
 // buildOmschrijvingOnderwerpQuery (lib/rce/monuments.ts) voor waarom dit niet
 // meer in de gewone zoekresultaten zit.

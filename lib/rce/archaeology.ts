@@ -1,7 +1,7 @@
 import { scoreDiscoveryMatch, type DiscoveryMatch } from "./monuments.ts";
 import { OBJECT_KIND, type RceMonument } from "./types.ts";
 import { wktToLatLng } from "./geometry.ts";
-import { escapeSparqlString } from "./sparql.ts";
+import { buildContainsClause, escapeSparqlString } from "./sparql.ts";
 
 const CEO = "https://linkeddata.cultureelerfgoed.nl/def/ceo#";
 const INSTANCES_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/instanties-rce";
@@ -156,7 +156,6 @@ const ARCHEOLOGISCH_ONDERZOEK_SOURCES: { bron: string; rang: number; pattern: st
 ];
 
 export function buildArcheologischOnderzoekDiscoveryQueries(term: string): { bron: string; query: string }[] {
-  const needle = escapeSparqlString(term.trim());
   return ARCHEOLOGISCH_ONDERZOEK_SOURCES.map(({ bron, pattern }) => ({
     bron,
     query: `PREFIX ceo: <${CEO}>
@@ -164,7 +163,7 @@ SELECT DISTINCT ?choi ?match WHERE {
  GRAPH <${INSTANCES_GRAPH}> {
   ?gebied a ceo:ArcheologischOnderzoeksgebied ; ceo:cultuurhistorischObjectnummer ?choi .
   ${pattern}
-  FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))
+  FILTER(${buildContainsClause("?match", term)})
  }
 }
 LIMIT 100`,
@@ -396,7 +395,7 @@ SELECT DISTINCT ?choi ?match WHERE {
   ${pattern}
   ${(bron === "Archis-monumentnummer" || bron.startsWith("CHO-nummer")) && /^\d+$/.test(term.trim())
     ? `FILTER(STR(?match) = "${needle}")`
-    : `FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))`}
+    : `FILTER(${buildContainsClause("?match", term)})`}
  }
 }
 LIMIT 100`,
@@ -502,7 +501,7 @@ SELECT DISTINCT ?choi ?match WHERE {
   ${pattern}
   ${(bron.startsWith("Archis-") || bron.startsWith("CHO-nummer")) && /^\d+$/.test(term.trim())
     ? `FILTER(STR(?match) = "${needle}")`
-    : `FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))`}
+    : `FILTER(${buildContainsClause("?match", term)})`}
  }
 }
 LIMIT 100`,
@@ -609,7 +608,7 @@ SELECT DISTINCT ?choi ?match WHERE {
   ${pattern}
   ${bron.startsWith("CHO-") && /^\d+$/.test(term.trim())
     ? `FILTER(STR(?match) = "${needle}")`
-    : `FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))`}
+    : `FILTER(${buildContainsClause("?match", term)})`}
  }
 }
 LIMIT 100`,
@@ -723,7 +722,7 @@ SELECT DISTINCT ?choi ?match WHERE {
  GRAPH <${INSTANCES_GRAPH}> {
   ?vondst a ceo:Vondsten ; ceo:cultuurhistorischObjectnummer ?choi .
   ${effectivePattern}
-  ${exactNumber ? "" : `FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))`}
+  ${exactNumber ? "" : `FILTER(${buildContainsClause("?match", term)})`}
  }
 }
 LIMIT 100` };
@@ -827,7 +826,7 @@ SELECT DISTINCT ?choi ?match WHERE {
  GRAPH <${INSTANCES_GRAPH}> {
   ?complex a ceo:ArcheologischComplex ; ceo:cultuurhistorischObjectnummer ?choi .
   ${effective}
-  ${exact ? "" : `FILTER(CONTAINS(LCASE(STR(?match)), LCASE("${needle}")))`}
+  ${exact ? "" : `FILTER(${buildContainsClause("?match", term)})`}
  }
 }
 LIMIT 100` };

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchComplexMembers, fetchLigtIn, fetchOmschrijvingOnderwerp, fetchOnderzoeksgebiedVerrijking, fetchVondstlocatieInhoud, fetchWerelderfgoedGeometrie, searchByFunctieConcept } from "@/lib/rce-client";
+import { fetchComplexMembers, fetchLigtIn, fetchOmschrijvingOnderwerp, fetchOnderzoeksgebiedVerrijking, fetchVondstlocatieInhoud, fetchWerelderfgoedGeometrie, fetchWikidataItem, searchByFunctieConcept } from "@/lib/rce-client";
 import type { ComplexMember, GezichtLidmaatschap, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, VondstlocatieInhoud, WerelderfgoedLidmaatschap } from "@/lib/rce";
 import { pickVergelijkbareRijksmonumenten, toItem, type Item } from "@/lib/heritage-view-model";
 
@@ -17,6 +17,7 @@ export function useSelectedDetailEnrichment(selected: Item | null) {
   const [vondstlocatieInhoud, setVondstlocatieInhoud] = useState<({ locatieUri: string; error?: boolean } & VondstlocatieInhoud) | null>(null);
   const [vergelijkbareRijksmonumenten, setVergelijkbareRijksmonumenten] = useState<{ conceptUri: string; conceptLabel: string; items: Item[]; error?: boolean } | null>(null);
   const [ligtIn, setLigtIn] = useState<{ monumentNumber: string; gezicht: GezichtLidmaatschap[]; werelderfgoed: WerelderfgoedLidmaatschap[]; error?: boolean } | null>(null);
+  const [wikidata, setWikidata] = useState<{ monumentNumber: string; item: { itemUrl: string; label?: string } | null; error?: boolean } | null>(null);
   const [omschrijvingOnderwerp, setOmschrijvingOnderwerp] = useState<{ choUri: string; concepten: { uri: string; label: string; bron: string }[]; error?: boolean } | null>(null);
   const [werelderfgoedGeometrie, setWerelderfgoedGeometrie] = useState<{ choUri: string; wkt?: string; error?: boolean } | null>(null);
 
@@ -80,6 +81,16 @@ export function useSelectedDetailEnrichment(selected: Item | null) {
   }, [selected]);
 
   useEffect(() => {
+    if (selected?.objectType !== "Rijksmonument" || !selected.monumentNumber) return;
+    const monumentNumber = selected.monumentNumber;
+    const controller = new AbortController();
+    fetchWikidataItem(monumentNumber, controller.signal)
+      .then((item) => { if (!controller.signal.aborted) setWikidata({ monumentNumber, item }); })
+      .catch(() => { if (!controller.signal.aborted) setWikidata({ monumentNumber, item: null, error: true }); });
+    return () => controller.abort();
+  }, [selected]);
+
+  useEffect(() => {
     if (selected?.objectType !== "Rijksmonument" || !selected.linkedDataUrl) return;
     const choUri = selected.linkedDataUrl;
     const controller = new AbortController();
@@ -103,5 +114,5 @@ export function useSelectedDetailEnrichment(selected: Item | null) {
     return () => controller.abort();
   }, [selected]);
 
-  return { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten, ligtIn, omschrijvingOnderwerp, werelderfgoedGeometrie };
+  return { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten, ligtIn, wikidata, omschrijvingOnderwerp, werelderfgoedGeometrie };
 }

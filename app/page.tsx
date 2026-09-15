@@ -89,7 +89,7 @@ export default function Home() {
     }
     selectTermSuggestion(suggestion);
   });
-  const { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten, ligtIn, omschrijvingOnderwerp, werelderfgoedGeometrie } =
+  const { complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten, ligtIn, wikidata, omschrijvingOnderwerp, werelderfgoedGeometrie } =
     useSelectedDetailEnrichment(selected);
   const archeologischeContext = useArcheologischeContext(selected);
   const opDezeDag = useOpDezeDag();
@@ -295,7 +295,7 @@ export default function Home() {
         <HeritageDetailDialog
           selected={selected}
           dialogRef={detailDialogRef}
-          enrichment={{ complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten, ligtIn, omschrijvingOnderwerp, werelderfgoedGeometrie }}
+          enrichment={{ complexMembers, onderzoeksgebiedVerrijking, vondstlocatieInhoud, vergelijkbareRijksmonumenten, ligtIn, wikidata, omschrijvingOnderwerp, werelderfgoedGeometrie }}
           archeologischeContext={archeologischeContext}
           voorbeeldGebieden={
             voorbeeldResult

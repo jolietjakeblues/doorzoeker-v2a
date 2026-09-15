@@ -998,6 +998,68 @@ test("'Onderwerp (uit omschrijving)' wordt lazy opgehaald per record, niet meer 
   expect(omschrijvingOnderwerpCalls).toBe(1);
 });
 
+test("een Wikidata-koppeling wordt lazy opgehaald per Rijksmonument-detail en toont een link naar het gevonden item", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: { page: 1, hasMore: false, results: [records[0]] },
+  }));
+  let wikidataCalls = 0;
+  await page.route("**/api/rce/wikidata**", (route) => {
+    wikidataCalls += 1;
+    return route.fulfill({ json: { item: { itemUrl: "http://www.wikidata.org/entity/Q1771094", label: "Grote Kerk" } } });
+  });
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("architect");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  // De zoekresultaten zelf mogen geen aanroep naar de nieuwe route maken -
+  // pas het openen van een detail triggert de lazy-fetch.
+  expect(wikidataCalls).toBe(0);
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+  const dialog = page.getByRole("dialog");
+  const wikidataLink = dialog.getByRole("link", { name: "Grote Kerk" });
+  await expect(wikidataLink).toBeVisible();
+  await expect(wikidataLink).toHaveAttribute("href", "http://www.wikidata.org/entity/Q1771094");
+  await expect(wikidataLink).toHaveAttribute("target", "_blank");
+  expect(wikidataCalls).toBe(1);
+});
+
+test("een Rijksmonument zonder Wikidata-item toont geen Wikidata-rij", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: { page: 1, hasMore: false, results: [records[0]] },
+  }));
+  await page.route("**/api/rce/wikidata**", (route) => route.fulfill({ json: { item: null } }));
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("architect");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Wikidata", { exact: true })).toHaveCount(0);
+});
+
+test("een buitenplaats-Complex toont een Buitenplaats-rij in de detaildialoog", async ({ page }) => {
+  const buitenplaatsComplex = { ...records[1], buitenplaats: true };
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: { page: 1, hasMore: false, results: [buitenplaatsComplex] },
+  }));
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Historisch boerderijcomplex" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Buitenplaats", { exact: true })).toBeVisible();
+});
+
+test("een gewoon Complex (zonder de buitenplaats-vlag) toont geen Buitenplaats-rij", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: { page: 1, hasMore: false, results: [records[1]] },
+  }));
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Historisch boerderijcomplex" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Buitenplaats", { exact: true })).toHaveCount(0);
+});
+
 test("'Archeologische context'-knop toont een waarschuwing, laadstatus en doorklikbaar resultaat (017-archeologische-context-onderzoeksgebied)", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", (route) => route.fulfill({

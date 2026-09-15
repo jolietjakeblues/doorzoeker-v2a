@@ -4,7 +4,8 @@
 - Datum: 2026-08-06
 - Bijgewerkt: 2026-09-14 (routelijst en schema-aantal geactualiseerd, MASS/
   Muurschilderingen/beeldbank-IIIF en "Stel een vraag" toegevoegd - zie
-  "Uitbreiding: Stel een vraag" onderaan)
+  "Uitbreiding: Stel een vraag" onderaan). Bijgewerkt 2026-09-15: eerste
+  externe, niet-RCE datakoppeling toegevoegd (`/api/rce/wikidata`).
 
 ## Context
 
@@ -29,6 +30,12 @@ datasets blijven achter afzonderlijke serveradapters:
 - RCE-MCP als optioneel hulpmiddel voor onderzoek en beheer, niet als
   verplichte runtime-laag - sinds 28-08-2026 óók actief gebruikt tijdens het
   genereren van een SPARQL-query in "Stel een vraag", zie onderaan;
+- sinds 15-09-2026: een lazy Wikidata-koppeling (`/api/rce/wikidata`) - de
+  EERSTE keer dat Doorzoeker een extern, niet-RCE linked-data-endpoint
+  aanroept (`query.wikidata.org`, niet `linkeddata.cultureelerfgoed.nl`).
+  Zelfde randvoorwaarden als de overige lazy-verrijkingen hieronder (harde
+  timeout, mag een gewone zoekopdracht niet blokkeren, faalt naar `null`
+  i.p.v. de rest van het detail te breken);
 - eventueel later een zoekindex, maar alleen als metingen aantonen dat de
   live aanpak tekortschiet.
 
@@ -73,6 +80,10 @@ velden mogen een exacte conceptzoekroute gebruiken.
 - `GET /api/rce/rijksmonument`: exacte, klasse-gebonden lookup op
   `ceo:rijksmonumentnummer` (`class:Rijksmonument`) - geen fan-out naar
   andere objectsoorten zoals de vrije zoekbalk bij een kaal getal wel doet;
+- `GET /api/rce/wikidata`: koppeling naar het Wikidata-item van een
+  Rijksmonument via property P359, lazy per geopend detail - de EERSTE
+  route die een extern, niet-RCE linked-data-endpoint aanroept (zie
+  Randvoorwaarden hieronder);
 - `GET /api/rce/op-deze-dag`: dagelijkse Rijksmonumentselectie;
 - `GET /api/rce/verras-me`: willekeurige Rijksmonumentselectie op klik;
 - `GET /api/terms/suggest`: RN2-woordsuggesties voor de CHO-zoekbalk;

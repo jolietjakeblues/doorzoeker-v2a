@@ -74,6 +74,7 @@ export type Item = {
   image?: MonumentImage;
   groenaanleg?: Groenaanleg;
   msp?: boolean;
+  buitenplaats?: boolean;
   monumentAardConcept?: { uri: string; label: string };
   literature?: LiteratureRef[];
   gebeurtenissen?: Gebeurtenis[];
@@ -552,6 +553,7 @@ export function toItem(record: RceMonument): Item {
     image: record.image,
     groenaanleg: record.groenaanleg,
     msp: record.msp,
+    buitenplaats: record.buitenplaats,
     literature: record.literature,
     gebeurtenissen: record.gebeurtenissen,
     archaeologicalValuation: record.archaeologicalValuation,

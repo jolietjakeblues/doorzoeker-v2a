@@ -57,11 +57,12 @@ test("scheepstype-discovery matcht op een scheepstype zoals 'schoener', niet all
 
 test("aanhalingstekens in de zoekterm blijven binnen de stringliteral (SPARQL-injectie voorkomen)", () => {
   const queries = buildScheepswrakDiscoveryQueries('") } UNION { ?x a ?y . FILTER(CONTAINS(STR(?y), "');
-  // Het payload-fragment mag in de query-tekst voorkomen zolang het
-  // geëscaped binnen de stringliteral van LCASE(...) blijft - dat is de
-  // hele bedoeling van escapeSparqlString(). De ontsnappende aanhalings-
-  // tekens zelf moeten wél geëscaped zijn (\").
-  assert.match(queries[0].query, /LCASE\("\\"\) \} UNION \{ \?x a \?y \. FILTER\(CONTAINS\(STR\(\?y\), \\""\)\)/);
+  const query = queries[0].query;
+  // Multi-term (elk woord een eigen, AND'de CONTAINS-clausule) breekt deze
+  // payload vanzelf al op in losse, onschuldige tokens - het eerste woord
+  // bevat de aanhalingstekens en moet zelf ook correct geëscapet zijn.
+  assert.match(query, /LCASE\("\\"\)"\)/);
+  assert.doesNotMatch(query, /"\) \} UNION \{/);
 });
 
 test("parseScheepswrakDiscoveryResults haalt het MASS-ID uit de URI als monumentNumber", () => {
