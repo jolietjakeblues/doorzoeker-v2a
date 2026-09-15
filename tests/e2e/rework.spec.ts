@@ -1620,8 +1620,8 @@ test("een gedeelde URL met ?pagina=3 herstelt daadwerkelijk pagina 3, niet allee
 
 test("'Terug naar de startpagina' tijdens een lopende zoekopdracht laat geen oude resultaten meer verschijnen (securityreview 15-09-2026)", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
-  let resolveSearch;
-  const searchPromise = new Promise((resolve) => { resolveSearch = resolve; });
+  let resolveSearch: () => void = () => {};
+  const searchPromise = new Promise<void>((resolve) => { resolveSearch = resolve; });
   await page.route("**/api/rce/search**", async (route) => {
     await searchPromise;
     return route.fulfill({ json: { results: [records[0]], page: 1, hasMore: false } });
