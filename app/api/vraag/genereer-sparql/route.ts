@@ -3,6 +3,7 @@ import { createRateLimiter, rateLimitedResponse } from "../../../../lib/server/r
 import { withRceErrorHandling } from "../../../../lib/server/route-error-handling.ts";
 import { NO_STORE } from "../../../../lib/server/http-cache.ts";
 import { SparqlSyntaxInvalidError } from "../../../../lib/vraag/syntax-validator.ts";
+import { UnsafeSparqlError } from "../../../../lib/vraag/query-guard.ts";
 
 export const runtime = "edge";
 
@@ -43,6 +44,15 @@ export async function POST(request: Request) {
       // ook na de correctiepoging geen geldige SPARQL is gelukt (zie
       // lib/vraag/syntax-validator.ts).
       if (error instanceof SparqlSyntaxInvalidError) {
+        return Response.json(
+          { error: "Kon voor deze vraag geen geldige SPARQL-query genereren. Probeer de vraag anders te formuleren." },
+          { status: 422, headers: { "Cache-Control": NO_STORE } },
+        );
+      }
+      // Structurele veiligheidsafwijzing (lib/vraag/query-guard.ts) - zeldzaam
+      // op dit pad (de kennisbank vraagt Claude nooit om SERVICE/FROM), maar
+      // zelfde eerlijke 422 i.p.v. de generieke 502 als het toch voorkomt.
+      if (error instanceof UnsafeSparqlError) {
         return Response.json(
           { error: "Kon voor deze vraag geen geldige SPARQL-query genereren. Probeer de vraag anders te formuleren." },
           { status: 422, headers: { "Cache-Control": NO_STORE } },

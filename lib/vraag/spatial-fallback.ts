@@ -30,6 +30,28 @@ export function stripSpatialFilter(query: string): string {
   return query.replace(SPATIAL_FILTER_RE, "");
 }
 
+// Externe review (15-09-2026): stripSpatialFilter verwijdert alleen de
+// FILTER-tekst, maar past de SELECT-projectie niet aan. De object-/gebied-
+// WKT-variabelen zijn wél gebonden in WHERE (anders had de FILTER er nooit
+// op kunnen werken), maar staan mogelijk niet in de oorspronkelijke SELECT-
+// lijst - dan geeft de terugvalquery rijen zonder WKT-waarde terug,
+// verwijdert applySpatialFilterLocally ze allemaal, en meldt de adapter
+// stilzwijgend 0 resultaten terwijl er wél treffers bestaan. Vervangt
+// daarom bij de terugval alleen de BUITENSTE SELECT-projectielijst (vóór de
+// eerste "WHERE {" - textueel altijd de buitenste; een geneste subquery-
+// SELECT staat pas ná dat punt) door `*`, zodat gegarandeerd alle gebonden
+// variabelen (dus ook de WKT's) terugkomen. Deze query wordt uitsluitend
+// intern gebruikt om applySpatialFilterLocally te voeden, nooit aan de
+// gebruiker getoond - een brede projectie is hier veilig.
+const OUTER_SELECT_RE = /\bSELECT\b(?:\s+DISTINCT\b)?[\s\S]*?(?=\bWHERE\s*\{)/i;
+
+export function projectAllVariablesForFallback(query: string): string {
+  const match = OUTER_SELECT_RE.exec(query);
+  if (!match) return query;
+  const distinct = /\bDISTINCT\b/i.test(match[0]) ? "DISTINCT " : "";
+  return `${query.slice(0, match.index)}SELECT ${distinct}*${query.slice(match.index + match[0].length)}`;
+}
+
 // Foutmeldingen die op een probleem met de ruimtelijke berekening zelf
 // wijzen (ongeldige geometrie, JTS/GEOS-topologiefout), niet op een fout in
 // de query - bij zo'n fout is de lokale terugval zinvol. Zelfde

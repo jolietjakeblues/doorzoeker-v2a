@@ -3,6 +3,8 @@ import { createRateLimiter, rateLimitedResponse } from "../../../../lib/server/r
 import { withRceErrorHandling } from "../../../../lib/server/route-error-handling.ts";
 import { NO_STORE } from "../../../../lib/server/http-cache.ts";
 import { SpatialFallbackIncompleteError } from "../../../../lib/vraag/spatial-fallback.ts";
+import { assertSafeVraagQuery, enforceOuterLimit, UnsafeSparqlError } from "../../../../lib/vraag/query-guard.ts";
+import { LIJST_LIMIT } from "../../../../lib/vraag/postprocess.ts";
 
 export const runtime = "edge";
 
@@ -20,9 +22,24 @@ export async function POST(request: Request) {
     } catch {
       return Response.json({ error: "Ongeldig verzoek." }, { status: 400 });
     }
-    const { query } = body as { query?: unknown };
-    if (typeof query !== "string" || query.trim().length === 0 || query.length > MAX_QUERY_LENGTH) {
+    const { query: rawQuery } = body as { query?: unknown };
+    if (typeof rawQuery !== "string" || rawQuery.trim().length === 0 || rawQuery.length > MAX_QUERY_LENGTH) {
       return Response.json({ error: "Ongeldige of te lange SPARQL-query." }, { status: 400 });
+    }
+    // Deze route ontvangt een mogelijk door de gebruiker bewerkte query (of
+    // kan rechtstreeks aangeroepen worden, buiten genereer-sparql om) -
+    // dezelfde structurele controle als de generatiestap toepassen, niet
+    // aannemen dat een geslaagde generatiestap ooit heeft meegekeken
+    // (securityreview 15-09-2026).
+    let query: string;
+    try {
+      assertSafeVraagQuery(rawQuery);
+      query = enforceOuterLimit(rawQuery, LIJST_LIMIT);
+    } catch (error) {
+      if (error instanceof UnsafeSparqlError) {
+        return Response.json({ error: error.message }, { status: 400, headers: { "Cache-Control": NO_STORE } });
+      }
+      throw error;
     }
     if (!rateLimiter.consume(request)) return rateLimitedResponse();
 

@@ -6,12 +6,13 @@
 // (poort van chat2thedata, de doorontwikkelde opvolger daarvan).
 import { AnthropicTruncatedError, callClaude, type McpServerConfig } from "../vraag/anthropic-client.ts";
 import { DATAMODEL_RULES, LIJST_PROMPT, TELLING_PROMPT } from "../vraag/prompts.ts";
-import { dedupeByRm, hasCount, LIJST_LIMIT, postprocessSparql, translateProvincieUris, type SparqlResultsDocument, type VraagMode } from "../vraag/postprocess.ts";
+import { dedupeByRm, hasCount, LIJST_LIMIT, postprocessSparql, translateProvincieUris, type SparqlBinding, type SparqlResultsDocument, type VraagMode } from "../vraag/postprocess.ts";
 import { describePropertyChoice, validateQuery } from "../vraag/semantic-validator.ts";
 import { SparqlSyntaxInvalidError, validateSyntax } from "../vraag/syntax-validator.ts";
-import { applySpatialFilterLocally, extractSpatialFilter, isFallbackCandidateSetIncomplete, isSpatialFailure, SpatialFallbackIncompleteError, stripSpatialFilter, widenLimitForFallback } from "../vraag/spatial-fallback.ts";
+import { applySpatialFilterLocally, extractSpatialFilter, isFallbackCandidateSetIncomplete, isSpatialFailure, projectAllVariablesForFallback, SpatialFallbackIncompleteError, stripSpatialFilter, widenLimitForFallback } from "../vraag/spatial-fallback.ts";
 import { detectLimitation, describeLimitation, type AnswerabilityLimitationClarification } from "../vraag/answerability.ts";
 import { buildSemanticContext, describeAmbiguity, resolveQuestion, type EntityAmbiguityClarification, type ResolutionResult } from "../vraag/semantic-resolver.ts";
+import { assertSafeVraagQuery, enforceOuterLimit } from "../vraag/query-guard.ts";
 import { fetchSparql, RCE_CHO_ENDPOINT } from "./sparql-client.ts";
 
 export type SparqlClarification = EntityAmbiguityClarification | AnswerabilityLimitationClarification;
@@ -91,10 +92,18 @@ export async function generateSparqlQuery(question: string, mode: VraagMode, sig
   let promptInput = semanticContext ? `${question}\n\n${semanticContext}` : question;
   if (chosenHint) promptInput = `${promptInput}\n\n${chosenHint}`;
 
+  // Zelfde structurele controle als /api/vraag/uitvoeren toepast op een
+  // (mogelijk door de gebruiker bewerkte) query - hier op ELK exitpunt van
+  // deze functie, ook het COUNT-in-lijstmodus-correctiepad hieronder dat de
+  // gewone validateQuery/validateSyntax-stap overslaat (securityreview
+  // 15-09-2026: "laat de generatiestap en uitvoerroute dezelfde controles
+  // gebruiken").
   const toResult = (finalQuery: string): GenerateSparqlResult => {
-    const propertyChoiceCaveat = describePropertyChoice(question, finalQuery);
+    const safeQuery = enforceOuterLimit(finalQuery, LIJST_LIMIT);
+    assertSafeVraagQuery(safeQuery);
+    const propertyChoiceCaveat = describePropertyChoice(question, safeQuery);
     const caveats = [limitationCaveat, propertyChoiceCaveat].filter((caveat): caveat is string => Boolean(caveat));
-    return { status: "ok", query: finalQuery, caveats };
+    return { status: "ok", query: safeQuery, caveats };
   };
 
   let query: string;
@@ -152,8 +161,24 @@ export async function executeVraagQuery(query: string, signal?: AbortSignal): Pr
     if (!spatialFilter || !isSpatialFailure(error)) throw error;
     console.info(JSON.stringify({ event: "vraag.ruimtelijke-terugval", relation: spatialFilter.relation, message: error instanceof Error ? error.message : "onbekend" }));
 
-    const simplifiedQuery = widenLimitForFallback(stripSpatialFilter(query));
+    // projectAllVariablesForFallback: de oorspronkelijke SELECT projecteerde
+    // de WKT-variabelen mogelijk niet expliciet (ze zijn wél gebonden in
+    // WHERE, anders had de FILTER er nooit op kunnen werken) - zonder deze
+    // stap zou applySpatialFilterLocally hieronder élke rij als "geen WKT"
+    // wegfilteren en stilzwijgend 0 resultaten teruggeven terwijl er wél
+    // treffers bestaan (securityreview 15-09-2026).
+    const simplifiedQuery = projectAllVariablesForFallback(widenLimitForFallback(stripSpatialFilter(query)));
     const rawData = (await fetchSparql(simplifiedQuery, signal, RCE_CHO_ENDPOINT, EXECUTE_TIMEOUT_MS, "POST")) as SparqlResultsDocument;
+    const rawVars = rawData.head?.vars ?? [];
+    if (!rawVars.includes(spatialFilter.objectVar) || !rawVars.includes(spatialFilter.areaVar)) {
+      // De FILTER-variabelen zijn dan nooit gebonden in WHERE - een echte
+      // queryfout, geen technische RCE-beperking. Doorgaan zou
+      // applySpatialFilterLocally alsnog alles laten wegfilteren en een
+      // vals "0 resultaten" opleveren.
+      throw new SpatialFallbackIncompleteError(
+        "De ruimtelijke vergelijking kon niet lokaal herberekend worden: de gegenereerde query bindt de benodigde geometrieën niet. Probeer de vraag anders te formuleren.",
+      );
+    }
     const rawCount = rawData.results?.bindings?.length ?? 0;
     if (isFallbackCandidateSetIncomplete(rawCount)) {
       // De vereenvoudigde query had geen eigen scoping meer (bv. geen
@@ -176,11 +201,34 @@ export async function executeVraagQuery(query: string, signal?: AbortSignal): Pr
   }
 }
 
-export async function generateAntwoord(question: string, results: SparqlResultsDocument, caveats: string[] = [], signal?: AbortSignal): Promise<string> {
+// Externe review (15-09-2026): de vaste "noem het totaal (${bindings.
+// length})"-instructie hieronder verwarde een telling met het aantal
+// TERUGGEGEVEN RIJEN - een gewone COUNT-telling geeft precies één rij terug
+// met het echte aantal in de kolom "aantal" (bv. aantal=42), dus
+// bindings.length is dan altijd 1, niet 42. Een gegroepeerde telling (per
+// gemeente/provincie/functie) geeft juist N rijen, één per groep, elk met
+// zijn eigen "aantal" - daar is bindings.length het aantal GROEPEN, niet
+// een zinvol totaal. Leidt de instructie daarom af uit de daadwerkelijke
+// resultaatvorm (kolomnaam "aantal", die TELLING_PROMPT overal afdwingt),
+// niet blind uit bindings.length - dat dekt ook het geval waarin een
+// gebruiker de gegenereerde query bewerkt zonder de modusknop aan te
+// passen.
+function describeTellingInstructions(vars: string[], bindings: SparqlBinding[]): string {
+  if (!vars.includes("aantal")) {
+    return `Ging de vraag om een telling? Noem dan het totaal (${bindings.length}) duidelijk.`;
+  }
+  if (bindings.length === 1) {
+    return `Dit is een telling. Het totale aantal staat in de kolom "aantal" van de data hierboven - noem dat getal duidelijk (NIET het aantal rijen, dat is hier altijd 1).`;
+  }
+  return `Dit is een GEGROEPEERDE telling met ${bindings.length} groepen. Noem "${bindings.length}" NIET als het totale aantal - dat is het aantal groepen. Beschrijf in plaats daarvan de aantallen per groep uit de kolom "aantal" in de data hierboven, bijvoorbeeld de grootste groepen.`;
+}
+
+export async function generateAntwoord(question: string, results: SparqlResultsDocument, mode: VraagMode, caveats: string[] = [], signal?: AbortSignal): Promise<string> {
   const bindings = results.results?.bindings ?? [];
   const vars = results.head?.vars ?? [];
   const total = bindings.length;
   const sample = bindings.slice(0, 15);
+  const tellingInstructie = mode === "telling" ? describeTellingInstructions(vars, bindings) : "";
 
   // Bewust een andere, minder mechanische prompt dan het origineel: live
   // getest (28-08-2026) leest het Python-antwoord als een opsomming ("De
@@ -196,8 +244,8 @@ ${JSON.stringify(sample, null, 1)}
 Beantwoord de vraag in vloeiend, natuurlijk Nederlands, alsof je het aan een
 geïnteresseerde bezoeker vertelt. Gebruik concrete namen en details uit de
 data om het antwoord levendig te maken, maar verzin niets dat niet in de
-data staat. Ging de vraag om een telling? Noem dan het totaal (${total})
-duidelijk. Geen technische termen, geen URI's, geen opsomming van kolomnamen.
+data staat. ${tellingInstructie}
+Geen technische termen, geen URI's, geen opsomming van kolomnamen.
 Maximaal 4 zinnen.`;
 
   const answer = await callClaude(prompt, { maxTokens: ANTWOORD_MAX_TOKENS, signal });

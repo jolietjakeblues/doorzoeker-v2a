@@ -1582,6 +1582,65 @@ test("de detaildialoog houdt focus vast en herstelt hem na Escape", async ({
   await expect(opener).toBeFocused();
 });
 
+test("een gedeelde URL met ?pagina=3 herstelt daadwerkelijk pagina 3, niet alleen pagina 1 (securityreview 15-09-2026)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const requestedPage = Number(new URL(route.request().url()).searchParams.get("page") ?? "1");
+    return route.fulfill({
+      json: {
+        results: [{
+          ...records[0],
+          choNumber: `cho-pagina-${requestedPage}`,
+          sourceUrl: `https://linkeddata.cultureelerfgoed.nl/cho-pagina-${requestedPage}`,
+          monumentNumber: `pagina-${requestedPage}`,
+          name: `Rijksmonument op pagina ${requestedPage}`,
+        }],
+        page: requestedPage,
+        hasMore: requestedPage < 3,
+      },
+    });
+  });
+
+  await page.goto("/?q=Goirle&pagina=3");
+  await page.waitForLoadState("networkidle");
+  // Paginering is cumulatief (zelfde model als handmatig op "laad meer"
+  // klikken) - pagina 1 t/m 3 horen alle drie zichtbaar te zijn. Vóór de
+  // fix bleef dit steken op alleen pagina 1 (bevestigd, securityreview
+  // 15-09-2026): executeSearch reset altijd naar pagina 1 en negeerde het
+  // "pagina"-URL-veld volledig.
+  await expect(page.getByText("Rijksmonument op pagina 1")).toBeVisible();
+  await expect(page.getByText("Rijksmonument op pagina 2")).toBeVisible();
+  await expect(page.getByText("Rijksmonument op pagina 3")).toBeVisible();
+  // Pagina 3 heeft geen hasMore meer, dus de knop is weg - én de URL blijft
+  // "pagina=3" tonen i.p.v. dat de URL-synchronisatie 'm terugzet naar
+  // pagina 1 zodra het herstel is afgerond.
+  await expect(page.getByRole("button", { name: "Laad 25 volgende resultaten" })).toHaveCount(0);
+  await expect.poll(() => new URL(page.url()).searchParams.get("pagina")).toBe("3");
+});
+
+test("'Terug naar de startpagina' tijdens een lopende zoekopdracht laat geen oude resultaten meer verschijnen (securityreview 15-09-2026)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  let resolveSearch;
+  const searchPromise = new Promise((resolve) => { resolveSearch = resolve; });
+  await page.route("**/api/rce/search**", async (route) => {
+    await searchPromise;
+    return route.fulfill({ json: { results: [records[0]], page: 1, hasMore: false } });
+  });
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("architect");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Terug naar de startpagina" }).click();
+  await expect(page).toHaveURL(/^[^?]*\/?$/);
+
+  // Laat de vertraagde zoekopdracht nu alsnog antwoorden - vóór de fix kon
+  // dit oude antwoord de zojuist geleegde startpagina alsnog met het oude
+  // monument vullen (bevestigd, securityreview 15-09-2026).
+  resolveSearch();
+  await page.waitForTimeout(300);
+  await expect(page.getByText("Woonhuis van de architect")).toHaveCount(0);
+  await expect(page).toHaveURL(/^[^?]*\/?$/);
+});
+
 test("de kaartpositie blijft in de URL staan na herladen", async ({ page }) => {
   await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
   await page.getByRole("button", { name: "Doorzoek RCE" }).click();

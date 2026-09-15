@@ -23,17 +23,21 @@ export async function POST(request: Request) {
     } catch {
       return Response.json({ error: "Ongeldig verzoek." }, { status: 400 });
     }
-    const { question, results, caveats } = body as { question?: unknown; results?: unknown; caveats?: unknown };
+    const { question, results, mode, caveats } = body as { question?: unknown; results?: unknown; mode?: unknown; caveats?: unknown };
     if (typeof question !== "string" || question.trim().length < 3 || question.length > 300) {
       return Response.json({ error: "Ongeldige vraag." }, { status: 400 });
     }
     if (!isSparqlResultsDocument(results) || rawBody.length > MAX_RESULTS_JSON_LENGTH) {
       return Response.json({ error: "Ongeldige of te grote resultatenset." }, { status: 400 });
     }
+    // "lijst" als veilige terugval bij een ontbrekend/ongeldig veld (oudere
+    // client, of een los API-verzoek) - describeTellingInstructions wordt
+    // dan simpelweg niet toegepast, zelfde gedrag als vóór deze wijziging.
+    const parsedMode: "lijst" | "telling" = mode === "telling" ? "telling" : "lijst";
     const parsedCaveats = Array.isArray(caveats) ? caveats.filter((caveat): caveat is string => typeof caveat === "string" && caveat.length > 0) : [];
     if (!rateLimiter.consume(request)) return rateLimitedResponse();
 
-    const answer = await generateAntwoord(question.trim(), results, parsedCaveats, request.signal);
+    const answer = await generateAntwoord(question.trim(), results, parsedMode, parsedCaveats, request.signal);
     return Response.json({ answer }, { headers: { "Cache-Control": NO_STORE, "Server-Timing": `vraag;dur=${Date.now() - startedAt}` } });
   });
 }
