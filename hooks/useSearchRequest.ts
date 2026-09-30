@@ -18,6 +18,12 @@ export function useSearchRequest() {
   // scheepswrakken" niet te onderscheiden van "geen enkel scheepswrak kon
   // geladen worden" (gemeld door de eigenaar, 21-08-2026).
   const [failedCategories, setFailedCategories] = useState<string[]>([]);
+  // Bugfix 30-09-2026: apart van failedCategories - een categorie die zelf
+  // wél resultaten teruggaf, maar waarvan één deelbron (bv. Rijksmonument's
+  // "formele omschrijving") wegviel. "0 rijksmonumenten" en "sommige
+  // rijksmonumenten konden gemist zijn" zagen er anders identiek uit (zie
+  // lib/server/rce-adapter.ts's runDiscoveryBranches).
+  const [partialCategories, setPartialCategories] = useState<string[]>([]);
   const [resultPage, setResultPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -63,6 +69,8 @@ export function useSearchRequest() {
     setRemoteState,
     failedCategories,
     setFailedCategories,
+    partialCategories,
+    setPartialCategories,
     resultPage,
     setResultPage,
     hasMore,

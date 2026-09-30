@@ -96,6 +96,8 @@ export function useSearchState() {
     setRemoteState,
     failedCategories,
     setFailedCategories,
+    partialCategories,
+    setPartialCategories,
     resultPage,
     setResultPage,
     hasMore,
@@ -250,6 +252,7 @@ export function useSearchState() {
     setHasMore(false);
     setLoadMoreError(false);
     setFailedCategories([]);
+    setPartialCategories([]);
     if (!term) {
       setRemoteResults(null);
       setRemoteState("idle");
@@ -263,6 +266,11 @@ export function useSearchState() {
       let page = 1;
       let hasMoreNow = response.hasMore;
       let failedCategoriesNow = response.failedCategories ?? [];
+      // Anders dan failedCategoriesNow: een partiële categorie stopt de
+      // paginalus niet (er kwamen immers wel resultaten terug), dus
+      // accumuleert over eventuele opeenvolgende pagina's heen i.p.v. de
+      // laatste te vervangen.
+      const partialCategoriesNow = new Set(response.partialCategories ?? []);
       // Herstel van een gedeelde URL met ?pagina=N (securityreview 15-09-2026,
       // P2): bewust GEEN herhaalde loadMore()-aanroepen - die hook-functie
       // leest resultPage/active uit de React-state van het RENDER-moment
@@ -280,6 +288,7 @@ export function useSearchState() {
           hasMoreNow = more.hasMore;
           break;
         }
+        for (const category of more.partialCategories ?? []) partialCategoriesNow.add(category);
         page += 1;
         const merged = new Map(items.map((item) => [resultIdentity(item), item]));
         for (const record of more.results) {
@@ -294,6 +303,7 @@ export function useSearchState() {
       setHasMore(hasMoreNow);
       setResultPage(page);
       setFailedCategories(failedCategoriesNow);
+      setPartialCategories([...partialCategoriesNow]);
       setRemoteState("success");
     } catch (error) {
       if (request.isAborted() || !request.isCurrent())
@@ -335,6 +345,7 @@ export function useSearchState() {
     setHasMore(false);
     setLoadMoreError(false);
     setFailedCategories([]);
+    setPartialCategories([]);
     setRemoteState("loading");
     try {
       const records =
@@ -452,6 +463,7 @@ export function useSearchState() {
     setHasMore(false);
     setLoadMoreError(false);
     setFailedCategories([]);
+    setPartialCategories([]);
     setRemoteState("loading");
     try {
       const response = await browseRceObjects(kind, request.signal);
@@ -512,6 +524,13 @@ export function useSearchState() {
       const failedCategories = (response as { failedCategories?: string[] }).failedCategories;
       if (failedCategories?.length) {
         throw new Error(`Categorieën konden niet geladen worden: ${failedCategories.join(", ")}`);
+      }
+      // Anders dan failedCategories hierboven geen harde stop: er kwamen
+      // hier wel resultaten binnen, alleen mogelijk niet allemaal - gewoon
+      // toevoegen aan de al zichtbare melding.
+      const newPartialCategories = (response as { partialCategories?: string[] }).partialCategories;
+      if (newPartialCategories?.length) {
+        setPartialCategories((current) => [...new Set([...current, ...newPartialCategories])]);
       }
       const additions = response.results.map((record) => toItem(record));
       setRemoteResults((current) => {
@@ -591,6 +610,7 @@ export function useSearchState() {
     setHasMore(false);
     setLoadMoreError(false);
     setFailedCategories([]);
+    setPartialCategories([]);
   }
 
   // Herhaalt de laatst geprobeerde actie (tekstzoekopdracht, conceptzoekopdracht
@@ -639,6 +659,7 @@ export function useSearchState() {
     setFilters,
     remoteState,
     failedCategories,
+    partialCategories,
     resultPage,
     hasMore,
     loadingMore,
