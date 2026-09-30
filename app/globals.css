@@ -1720,10 +1720,30 @@ h2 {
 
 @media (max-width: 800px) {
   header {
-    height: 64px;
+    height: auto;
+    min-height: 64px;
+    flex-wrap: wrap;
+    row-gap: 4px;
+    padding-block: 10px;
   }
   header p {
     display: none;
+  }
+  /* Front-end kwaliteitscontrole (30-09-2026): op smalle schermen (bv.
+     375px) hadden "Stel een vraag"/"Achtergrond" niet genoeg breedte naast
+     het wordmerk, waardoor de linktekst woord-voor-woord afbrak (3 regels)
+     en over de Bèta-ribbon heen liep. white-space:nowrap voorkomt het
+     afbreken binnen een link; flex-wrap op zowel header als header-links
+     laat de links als geheel naar een nette tweede regel vallen i.p.v.
+     te clippen tegen de vaste headerhoogte. */
+  .header-links {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    row-gap: 4px;
+  }
+  header p a,
+  .achtergrond-link {
+    white-space: nowrap;
   }
   .hero {
     padding-top: 32px;
