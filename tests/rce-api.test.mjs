@@ -488,6 +488,42 @@ test("onderzoeksgebied-discovery degradeert per brontak, niet per categorie (TD-
   assert.equal(response.status, 200);
   const document = await response.json();
   assert.ok(document.results.some((item) => item.monumentNumber === "10001077"), "de CHO-nummer-tak had ondanks de falende woonplaats-tak moeten surfacen");
+  // Bugfix 30-09-2026: de falende woonplaats-tak bleef voorheen volledig
+  // onzichtbaar (alleen tracker.partial werd gezet) - nu hoort Onderzoeksgebied
+  // als "mogelijk onvolledig" gemeld te worden, ook al kwamen er via de
+  // andere takken wel resultaten terug. De mock hierboven matcht op
+  // "woonplaatsnaam ?match", een patroon dat elke archeologiecategorie
+  // (Onderzoeksgebied, Archeologisch terrein, Vondstlocatie, Grondspoor,
+  // Vondst, Archeologisch complex) in zijn eigen "woonplaats"-tak gebruikt -
+  // dat laat ze hier bewust allemaal meedegraderen, niet alleen Onderzoeksgebied.
+  assert.ok(document.partialCategories.includes("Onderzoeksgebied"));
+});
+
+test("Rijksmonument-discovery degradeert per brontak zonder dit te melden (bugfix 30-09-2026: 'moutmolen' toonde 0 rijksmonumenten i.p.v. de 2 echte matches via 'formele omschrijving', zonder enig signaal dat die tak gefaald was)", async (context) => {
+  const originalFetch = globalThis.fetch;
+  const originalCaches = globalThis.caches;
+  context.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalCaches === undefined) delete globalThis.caches;
+    else globalThis.caches = originalCaches;
+  });
+  globalThis.caches = { default: { match() { return undefined; }, put() {} } };
+  globalThis.fetch = async (input) => {
+    const url = decodeURIComponent(String(input));
+    if (url.startsWith(BIBLIOTHEEK_SPARQL)) return Response.json({ results: { bindings: [] } });
+    // De "formele omschrijving"-discoverytak (buildRceDiscoveryQueries) is
+    // de enige met "heeftOmschrijving" in het patroon - de overige 7 takken
+    // slagen (leeg).
+    if (url.includes("heeftOmschrijving")) return new Response("tijdelijk niet bereikbaar", { status: 503 });
+    return Response.json({ results: { bindings: [] } });
+  };
+
+  const response = await GET(new Request("https://doorzoeker.test/api/rce/search?q=moutmolen&page=1&scope=core", { headers: { "cf-connecting-ip": "test-rijksmonument-discovery-branch-fail" } }));
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  const document = await response.json();
+  assert.deepEqual(document.partialCategories, ["Rijksmonument"]);
+  assert.equal(document.failedCategories, undefined);
 });
 
 test("cachet een tekstzoekopdracht niet als een categorie tijdelijk faalt (gemeld door de eigenaar: doorklik naar CHO 10001066 gaf 0 resultaten)", async (context) => {
