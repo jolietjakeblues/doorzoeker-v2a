@@ -12,7 +12,13 @@ const SCOPE_CATEGORIES: Record<string, string[]> = {
   core: ["Rijksmonument"],
   heritage: ["Werelderfgoed", "Gezicht", "Complex"],
   "archaeology-a": ["Onderzoeksgebied", "Archeologisch terrein", "Vondstlocatie"],
-  "archaeology-b": ["Grondspoor", "Vondst", "Archeologisch complex", "Scheepswrak", "Muurschildering"],
+  "archaeology-b": ["Grondspoor", "Vondst", "Archeologisch complex"],
+  // Bugfix 01-10-2026: Scheepswrak/Muurschildering kregen een eigen scope,
+  // los van archaeology-b - die bundelde 5 categorieën (23 parallelle
+  // discoverytakken) in één Worker-invocatie en liep daarmee live tegen
+  // Cloudflare's eigen subrequest-limiet aan ("Too many subrequests by
+  // single Worker invocation" - geen RCE-fout).
+  "archaeology-c": ["Scheepswrak", "Muurschildering"],
 };
 export type BrowseKind = "rijksmonument" | "archeologischterrein" | "onderzoeksgebied" | "vondstlocatie" | "archeologischcomplex" | "vondsten" | "grondsporen" | "werelderfgoed" | "gezicht" | "complex";
 type ComplexMembersResponse = { members: ComplexMember[] };
@@ -39,7 +45,7 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
   const includeOtherScopes =
     !/^\d{1,6}$/.test(query.trim()) && !/^\d{4}\s?[A-Za-z]{2}$/.test(query.trim());
   const scopes = includeOtherScopes
-    ? (["core", "heritage", "archaeology-a", "archaeology-b"] as const)
+    ? (["core", "heritage", "archaeology-a", "archaeology-b", "archaeology-c"] as const)
     : (["core"] as const);
   // Alle scopes tegelijk starten, niet core eerst afwachten en pas dán de
   // rest - een trage of gefaalde core-scope blokkeerde eerder het zelfs

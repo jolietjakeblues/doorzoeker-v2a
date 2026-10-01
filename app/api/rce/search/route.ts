@@ -54,7 +54,7 @@ export async function GET(request: Request) {
     }
     const page = Number(url.searchParams.get("page") ?? "1");
     const scopeParam = url.searchParams.get("scope");
-    const scope = scopeParam === "core" || scopeParam === "heritage" || scopeParam === "archaeology-a" || scopeParam === "archaeology-b" ? scopeParam : "all";
+    const scope = scopeParam === "core" || scopeParam === "heritage" || scopeParam === "archaeology-a" || scopeParam === "archaeology-b" || scopeParam === "archaeology-c" ? scopeParam : "all";
     // Een numerieke zoekopdracht (rijksmonumentnummer, CHO-nummer) matcht
     // exact en is dus goedkoop, ook bij 1 cijfer (rijksmonument 20 bestaat
     // echt korter dan 4 cijfers - zie searchRceMonuments). Vrije tekst
@@ -107,12 +107,12 @@ export async function GET(request: Request) {
     const collectionNatures = new Set<string>(Object.values(OBJECT_KIND));
     const pagedResultCount = results.filter((result) => !collectionNatures.has(result.monumentNature ?? "")).length;
     // pagedResultCount sluit archeologiecategorieën juist uit (via
-    // collectionNatures), dus kan voor scope=archaeology-a/-b nooit "er is
+    // collectionNatures), dus kan voor scope=archaeology-a/-b/-c nooit "er is
     // meer" signaleren - daar leest partialFailure.hasMore terug wat de
     // categoriehelper zelf al vaststelde (zie SearchPartialFailure hierboven
     // en bv. searchScheepswrakken in rce-adapter.ts). core/heritage/all
     // houden hun bestaande, ongewijzigde gedrag.
-    const scopeUsesCategoryHasMore = scope === "archaeology-a" || scope === "archaeology-b";
+    const scopeUsesCategoryHasMore = scope === "archaeology-a" || scope === "archaeology-b" || scope === "archaeology-c";
     const body = JSON.stringify({
       results,
       page: isPagedTextSearch || isPagedBrowse ? page : 1,
