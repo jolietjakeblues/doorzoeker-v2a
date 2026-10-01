@@ -1,7 +1,7 @@
 import type { ArcheologischeContext, ComplexMember, GezichtLidmaatschap, OnderzoeksgebiedAggregaten, OnderzoeksgebiedComplex, OnderzoeksgebiedVondstlocatie, RceMonument, VondstlocatieInhoud, WerelderfgoedLidmaatschap } from "@/lib/rce";
 import { identityKey, type ConceptField } from "@/lib/heritage-view-model";
 
-export type SearchResponse = { results: RceMonument[]; page?: number; pageSize?: number; hasMore?: boolean; failedCategories?: string[] };
+export type SearchResponse = { results: RceMonument[]; page?: number; pageSize?: number; hasMore?: boolean; failedCategories?: string[]; partialCategories?: string[] };
 // Welke "Soort object"-categorieën (SearchFilters.tsx) in elke scope zitten -
 // alleen gebruikt als een hele scope-aanroep hieronder afwijst (bv. een
 // netwerkfout, geen 200), want dan levert de server zelf geen
@@ -48,6 +48,13 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
   const settled = await Promise.allSettled(scopes.map((scope) => requestScope(scope)));
   const byId = new Map<string, RceMonument>();
   const failedCategories = new Set<string>();
+  // Bugfix 30-09-2026: apart van failedCategories (categorie volledig
+  // onbereikbaar, 0 resultaten) - een categorie kan ook deels resultaten
+  // teruggeven terwijl één van zijn deelbronnen wegviel (zie
+  // runDiscoveryBranches in lib/server/rce-adapter.ts). Alleen een
+  // GESLAAGDE scope-aanroep (result.status === "fulfilled") kan dit melden -
+  // een volledig gefaalde scope komt al in failedCategories terecht.
+  const partialCategories = new Set<string>();
   let core: SearchResponse | undefined;
   let anyHasMore = false;
   settled.forEach((result, index) => {
@@ -58,6 +65,7 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
       for (const item of result.value.results)
         byId.set(identityKey({ sourceUrl: item.sourceUrl, kind: item.monumentNature ?? "", monumentNumber: item.monumentNumber }), item);
       for (const category of result.value.failedCategories ?? []) failedCategories.add(category);
+      for (const category of result.value.partialCategories ?? []) partialCategories.add(category);
     } else {
       for (const category of SCOPE_CATEGORIES[scope]) failedCategories.add(category);
     }
@@ -74,6 +82,7 @@ export async function searchRceMonuments(query: string, signal?: AbortSignal, pa
     hasMore: anyHasMore,
     page: core?.page ?? page,
     failedCategories: [...failedCategories],
+    partialCategories: [...partialCategories],
   };
 }
 

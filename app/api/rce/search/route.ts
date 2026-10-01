@@ -95,7 +95,7 @@ export async function GET(request: Request) {
     // onvolledig resultaat - bv. "0 resultaten" terwijl het object alleen in
     // de gefaalde categorie zat - hierna alsnog 5 minuten lang gecachet en
     // aan alle bezoekers geserveerd worden, alsof het een geldig antwoord was.
-    const partialFailure: SearchPartialFailure = { partial: false, failedCategories: [], hasMore: false };
+    const partialFailure: SearchPartialFailure = { partial: false, failedCategories: [], partialCategories: [], hasMore: false };
     const results = browse
       ? await browseRceObjects(browse, request.signal, page)
       : conceptParam
@@ -123,6 +123,7 @@ export async function GET(request: Request) {
           ? (scopeUsesCategoryHasMore ? partialFailure.hasMore : pagedResultCount >= pageSize)
           : false,
       failedCategories: partialFailure.failedCategories.length ? partialFailure.failedCategories : undefined,
+      partialCategories: partialFailure.partialCategories.length ? partialFailure.partialCategories : undefined,
     });
     const response = new Response(body, {
       headers: {

@@ -699,6 +699,25 @@ test("een categorie die stil faalt (bv. Scheepswrak via de losstaande MASS-diens
   await expect(page.getByText("Woonhuis van de architect")).toBeVisible();
 });
 
+test("een categorie die deels degradeert (één discoverytak faalt, andere takken slagen wel) krijgt een eigen 'mogelijk onvolledig'-melding, niet 'kon niet worden geladen' (bugfix 30-09-2026: 'moutmolen' toonde 0 rijksmonumenten i.p.v. 2 echte matches, zonder enig signaal dat de 'formele omschrijving'-tak gefaald was)", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => {
+    const url = new URL(route.request().url());
+    const scope = url.searchParams.get("scope");
+    if (scope === "core") {
+      return route.fulfill({ json: { results: [{ ...records[0] }], page: 1, hasMore: false, partialCategories: ["Rijksmonument"] } });
+    }
+    return route.fulfill({ json: { results: [] } });
+  });
+
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("moutmolen");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await expect(page.getByText("Rijksmonument is mogelijk niet volledig doorzocht.")).toBeVisible();
+  await expect(page.getByText("Rijksmonument kon niet worden geladen.")).toHaveCount(0);
+  // De wél geladen resultaten blijven gewoon zichtbaar naast de waarschuwing.
+  await expect(page.getByText("Woonhuis van de architect")).toBeVisible();
+});
+
 test("een falende Rijksmonument-scope (core) blokkeert niet het tonen van de andere, wél geslaagde scopes (P1, externe review 22-08-2026: core werd eerst afgewacht vóórdat de andere drie scopes zelfs maar werden aangevraagd)", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", (route) => {
