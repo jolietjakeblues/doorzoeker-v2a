@@ -7,6 +7,7 @@ import { HeritageResultCard } from "./HeritageResultCard";
 type SearchResultsProps = {
   remoteState: RemoteState;
   failedCategories: string[];
+  partialCategories: string[];
   results: Item[];
   mapItems: Item[];
   mapViewport?: MapViewport;
@@ -27,6 +28,7 @@ type SearchResultsProps = {
 export function SearchResults({
   remoteState,
   failedCategories,
+  partialCategories,
   results,
   mapItems,
   mapViewport,
@@ -51,6 +53,19 @@ export function SearchResults({
             ? `${failedCategories[0]} kon niet worden geladen.`
             : `${failedCategories.join(", ")} konden niet worden geladen.`}
           {" "}Andere resultaten hierbeneden zijn wel compleet. Probeer het later opnieuw.
+        </p>
+      ) : null}
+      {/* Bugfix 30-09-2026: apart van de melding hierboven - hier kwamen wél
+          resultaten terug, maar een deelbron van de categorie (bv.
+          Rijksmonument's "formele omschrijving") viel weg, dus kunnen er
+          treffers gemist zijn. "kon niet worden geladen" past daar niet bij
+          (zie lib/server/rce-adapter.ts's runDiscoveryBranches). */}
+      {remoteState === "success" && partialCategories.length > 0 ? (
+        <p className="partial-warning" role="status">
+          {partialCategories.length === 1
+            ? `${partialCategories[0]} is mogelijk niet volledig doorzocht.`
+            : `${partialCategories.join(", ")} zijn mogelijk niet volledig doorzocht.`}
+          {" "}Er kunnen treffers gemist zijn door een tijdelijke RCE-storing. Probeer het later opnieuw voor een vollediger resultaat.
         </p>
       ) : null}
       {remoteState === "idle" ? (

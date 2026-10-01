@@ -611,18 +611,25 @@ async function searchArcheologischOnderzoek(term: string, signal?: AbortSignal, 
 // terug voor scope=archaeology-a/-b, want pagedResultCount (gebaseerd op
 // collectionNatures) sluit deze categorieën juist expliciet uit en kan dit
 // zelf nooit signaleren.
-export type SearchPartialFailure = { partial: boolean; failedCategories: string[]; hasMore: boolean };
+// partialCategories (30-09-2026): een categorie kan ook "deels" mislukken
+// zonder dat de categorie zelf helemaal leeg blijft - zie runDiscoveryBranches
+// hieronder. Los van failedCategories (0 resultaten, categorie volledig
+// onbereikbaar), want die twee horen niet dezelfde melding te krijgen: "kon
+// niet worden geladen" past niet bij een categorie die wél deels resultaten
+// teruggaf.
+export type SearchPartialFailure = { partial: boolean; failedCategories: string[]; partialCategories: string[]; hasMore: boolean };
 
-// Vertaalt het interne event-label van een optionalSearch-aanroep naar de
-// naam zoals die al in het "Soort object"-filter staat (SearchFilters.tsx),
-// zodat een gefaalde categorie herkenbaar is voor de gebruiker - "0
-// scheepswrakken" en "scheepswrakken konden niet geladen worden" zagen er
-// tot 21-08-2026 identiek uit (gemeld door de eigenaar bij "schoener": de
-// MASS-dienst faalde stil, zonder enig signaal). Alleen categorieën die
-// hier één-op-één op een hele optionalSearch-aanroep in searchByText/
-// searchRceMonuments staan komen hierin - een falende losse discovery-tak
-// binnen bv. Rijksmonument-tekstzoeken (runDiscoveryBranches) blijft alleen
-// tracker.partial zetten, want die categorie zelf faalt daarbij niet heus.
+// Vertaalt het interne event-label van een optionalSearch-/discovery-
+// aanroep naar de naam zoals die al in het "Soort object"-filter staat
+// (SearchFilters.tsx), zodat een gefaalde of onvolledige categorie
+// herkenbaar is voor de gebruiker - "0 scheepswrakken" en "scheepswrakken
+// konden niet geladen worden" zagen er tot 21-08-2026 identiek uit (gemeld
+// door de eigenaar bij "schoener": de MASS-dienst faalde stil, zonder enig
+// signaal). "search.discovery" hoort hier ook bij (i.t.t. eerder): een
+// hercontrole-achtige melding (30-09-2026, "moutmolen" vond 0 in plaats van
+// 2 echte rijksmonumenten) bleek te komen doordat precies de "formele
+// omschrijving"-discoverytak van Rijksmonument-tekstzoeken wegviel, zonder
+// dat dit ooit zichtbaar werd - zie runDiscoveryBranches hieronder.
 const FAILED_CATEGORY_LABELS: Record<string, string> = {
   "search.werelderfgoed": "Werelderfgoed",
   "search.gezichten": "Gezicht",
@@ -636,6 +643,7 @@ const FAILED_CATEGORY_LABELS: Record<string, string> = {
   "search.scheepswrakken": "Scheepswrak",
   "search.muurschilderingen": "Muurschildering",
   "search.rijksmonumenten-op-nummer": "Rijksmonument",
+  "search.discovery": "Rijksmonument",
 };
 
 async function optionalSearch<T>(event: string, work: () => Promise<T>, fallback: T, signal?: AbortSignal, tracker?: SearchPartialFailure): Promise<T> {
@@ -682,8 +690,10 @@ async function runDiscoveryBranches(
     branches.map(({ bron, query }) => fetchSparql(query, signal, endpoint, CONCEPT_MATCH_TIMEOUT_MS).then((document) => parse(document, bron, term))),
   );
   if (signal?.aborted) throw signal.reason;
+  let anyBranchFailed = false;
   const branchResults = settled.flatMap((result, index) => {
     if (result.status === "fulfilled") return [result.value];
+    anyBranchFailed = true;
     console.warn(JSON.stringify({
       event: `${event}.branch.unavailable`,
       source: branches[index].bron,
@@ -695,6 +705,20 @@ async function runDiscoveryBranches(
   if (branches.length > 0 && branchResults.length === 0) {
     throw settled.find((result): result is PromiseRejectedResult => result.status === "rejected")?.reason
       ?? new Error(`Geen ${event}-bron bereikbaar`);
+  }
+  // Bugfix 30-09-2026: een enkele weggevallen discoverytak (bv. "formele
+  // omschrijving") liet de categorie zelf niet falen - branchResults bevat
+  // dan nog altijd de resultaten van de overige takken - maar was voorheen
+  // ONZICHTBAAR voor de gebruiker: alleen tracker.partial werd gezet, wat
+  // niets van dit hieronder uitleest. Een "moutmolen"-zoekopdracht kon zo
+  // stil 0 rijksmonumenten tonen terwijl er 2 echte matches bestonden, puur
+  // omdat toevallig de ene tak met het echte matchveld wegviel. Dat hoort
+  // even zichtbaar te zijn als een volledig gefaalde categorie, alleen met
+  // een eerlijkere tekst ("mogelijk onvolledig", niet "kon niet worden
+  // geladen" - er kwamen immers wel resultaten terug).
+  if (anyBranchFailed && tracker) {
+    const label = FAILED_CATEGORY_LABELS[event];
+    if (label && !tracker.partialCategories.includes(label)) tracker.partialCategories.push(label);
   }
   return branchResults;
 }
