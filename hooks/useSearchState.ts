@@ -83,6 +83,9 @@ export function useSearchState() {
     EMPTY_URL_STATE.onlyGroenaanleg,
   );
   const [onlyMsp, setOnlyMsp] = useState(EMPTY_URL_STATE.onlyMsp);
+  const [onlyTop100Wederopbouw, setOnlyTop100Wederopbouw] = useState(
+    EMPTY_URL_STATE.onlyTop100Wederopbouw,
+  );
   const [view, setView] = useState<"list" | "map">(EMPTY_URL_STATE.view);
   const [mapViewport, setMapViewport] = useState<MapViewport | undefined>(
     EMPTY_URL_STATE.mapViewport,
@@ -127,6 +130,7 @@ export function useSearchState() {
       excludedCategories,
       onlyGroenaanleg,
       onlyMsp,
+      onlyTop100Wederopbouw,
       view,
       mapViewport,
       resultPage,
@@ -165,6 +169,7 @@ export function useSearchState() {
       excludedCategories,
       onlyGroenaanleg,
       onlyMsp,
+      onlyTop100Wederopbouw,
     }),
     [
       excludedCategories,
@@ -175,25 +180,28 @@ export function useSearchState() {
       objectType,
       onlyGroenaanleg,
       onlyMsp,
+      onlyTop100Wederopbouw,
       province,
     ],
   );
-  const { results, groenaanlegCount, mspCount } = useFilteredResults(
+  const { results, groenaanlegCount, mspCount, top100WederopbouwCount } = useFilteredResults(
     baseResults,
     activeFilters,
   );
   useEffect(() => {
     // Tijdens het laden (bv. net na URL-herstel) is baseResults nog leeg en
-    // is groenaanlegCount/mspCount dus altijd 0 - dat zegt niets over de
-    // uiteindelijke resultaten. Pas na een afgeronde zoekopdracht vertelt
-    // een telling van 0 daadwerkelijk dat het filter niets zou tonen.
+    // is groenaanlegCount/mspCount/top100WederopbouwCount dus altijd 0 - dat
+    // zegt niets over de uiteindelijke resultaten. Pas na een afgeronde
+    // zoekopdracht vertelt een telling van 0 daadwerkelijk dat het filter
+    // niets zou tonen.
     if (remoteState === "loading") return;
     const timer = window.setTimeout(() => {
       if (onlyGroenaanleg && groenaanlegCount === 0) setOnlyGroenaanleg(false);
       if (onlyMsp && mspCount === 0) setOnlyMsp(false);
+      if (onlyTop100Wederopbouw && top100WederopbouwCount === 0) setOnlyTop100Wederopbouw(false);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [groenaanlegCount, mspCount, onlyGroenaanleg, onlyMsp, remoteState]);
+  }, [groenaanlegCount, mspCount, top100WederopbouwCount, onlyGroenaanleg, onlyMsp, onlyTop100Wederopbouw, remoteState]);
   function toggleCategory(label: string) {
     setExcludedCategories((current) =>
       current.includes(label)
@@ -248,6 +256,7 @@ export function useSearchState() {
     setExcludedCategories([]);
     setOnlyGroenaanleg(false);
     setOnlyMsp(false);
+    setOnlyTop100Wederopbouw(false);
     setResultPage(1);
     setHasMore(false);
     setLoadMoreError(false);
@@ -341,6 +350,7 @@ export function useSearchState() {
     setExcludedCategories([]);
     setOnlyGroenaanleg(false);
     setOnlyMsp(false);
+    setOnlyTop100Wederopbouw(false);
     setResultPage(1);
     setHasMore(false);
     setLoadMoreError(false);
@@ -459,6 +469,7 @@ export function useSearchState() {
     setExcludedCategories([]);
     setOnlyGroenaanleg(false);
     setOnlyMsp(false);
+    setOnlyTop100Wederopbouw(false);
     setResultPage(1);
     setHasMore(false);
     setLoadMoreError(false);
@@ -577,6 +588,7 @@ export function useSearchState() {
     setExcludedCategories(initial.excludedCategories);
     setOnlyGroenaanleg(initial.onlyGroenaanleg);
     setOnlyMsp(initial.onlyMsp);
+    setOnlyTop100Wederopbouw(initial.onlyTop100Wederopbouw);
     setView(initial.view);
     setMapViewport(initial.mapViewport);
   }
@@ -601,6 +613,7 @@ export function useSearchState() {
     setExcludedCategories([]);
     setOnlyGroenaanleg(false);
     setOnlyMsp(false);
+    setOnlyTop100Wederopbouw(false);
     setView("list");
     setSelected(null);
     setMapViewport(undefined);
@@ -652,6 +665,8 @@ export function useSearchState() {
     setOnlyGroenaanleg,
     onlyMsp,
     setOnlyMsp,
+    onlyTop100Wederopbouw,
+    setOnlyTop100Wederopbouw,
     selected,
     setSelected,
     choose,
@@ -667,6 +682,7 @@ export function useSearchState() {
     baseResults,
     groenaanlegCount,
     mspCount,
+    top100WederopbouwCount,
     results,
     activeConceptUri,
     activeConceptVeld,

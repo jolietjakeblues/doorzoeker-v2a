@@ -1079,6 +1079,38 @@ test("een gewoon Complex (zonder de buitenplaats-vlag) toont geen Buitenplaats-r
   await expect(dialog.getByText("Buitenplaats", { exact: true })).toHaveCount(0);
 });
 
+test("een Rijksmonument uit de Top 100 Wederopbouw (1940-1958) toont een eigen detailrij en telt mee in het filter (01-10-2026)", async ({ page }) => {
+  const top100Monument = { ...records[0], top100Wederopbouw: true };
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: { page: 1, hasMore: false, results: [top100Monument] },
+  }));
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Top 100 Wederopbouw", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  const top100Checkbox = page.getByRole("checkbox", { name: /Top 100 Wederopbouw \(1940-1958\)/ });
+  await expect(top100Checkbox).toBeVisible();
+  await expect(top100Checkbox).toHaveAccessibleName(/1$/);
+  await top100Checkbox.check();
+  await expect(page.getByText("Woonhuis van de architect")).toBeVisible();
+});
+
+test("een gewoon Rijksmonument (zonder de Top 100 Wederopbouw-vlag) toont geen eigen detailrij", async ({ page }) => {
+  await page.unroute("**/api/rce/search**");
+  await page.route("**/api/rce/search**", (route) => route.fulfill({
+    json: { page: 1, hasMore: false, results: [records[0]] },
+  }));
+  await page.getByRole("combobox", { name: "Zoeken" }).fill("Goirle");
+  await page.getByRole("button", { name: "Doorzoek RCE" }).click();
+  await page.getByRole("button", { name: "Bekijk gegevens van Woonhuis van de architect" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Top 100 Wederopbouw", { exact: true })).toHaveCount(0);
+});
+
 test("'Archeologische context'-knop toont een waarschuwing, laadstatus en doorklikbaar resultaat (017-archeologische-context-onderzoeksgebied)", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", (route) => route.fulfill({

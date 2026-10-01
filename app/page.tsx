@@ -50,6 +50,8 @@ export default function Home() {
     setOnlyGroenaanleg,
     onlyMsp,
     setOnlyMsp,
+    onlyTop100Wederopbouw,
+    setOnlyTop100Wederopbouw,
     selected,
     setSelected,
     choose,
@@ -65,6 +67,7 @@ export default function Home() {
     baseResults,
     groenaanlegCount,
     mspCount,
+    top100WederopbouwCount,
     results,
     activeConceptUri,
     activeConceptVeld,
@@ -224,6 +227,7 @@ export default function Home() {
           excludedCategories={excludedCategories}
           onlyGroenaanleg={onlyGroenaanleg}
           onlyMsp={onlyMsp}
+          onlyTop100Wederopbouw={onlyTop100Wederopbouw}
           includesRijksmonumenten={includesRijksmonumenten}
           contextProvinces={contextProvinces}
           contextMunicipalities={contextMunicipalities}
@@ -232,6 +236,7 @@ export default function Home() {
           contextCategories={contextCategories}
           groenaanlegCount={groenaanlegCount}
           mspCount={mspCount}
+          top100WederopbouwCount={top100WederopbouwCount}
           onClose={() => setFilters(false)}
           onObjectTypeChange={setObjectType}
           onMonumentAardChange={setMonumentAard}
@@ -243,6 +248,7 @@ export default function Home() {
           onClearCategories={clearExcludedCategories}
           onOnlyGroenaanlegChange={setOnlyGroenaanleg}
           onOnlyMspChange={setOnlyMsp}
+          onOnlyTop100WederopbouwChange={setOnlyTop100Wederopbouw}
           onReset={reset}
         />
         <div className="results" id="results" tabIndex={-1}>

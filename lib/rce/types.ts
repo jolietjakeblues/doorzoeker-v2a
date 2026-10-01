@@ -66,6 +66,7 @@ export type RceMonument = {
   image?: MonumentImage;
   groenaanleg?: Groenaanleg;
   msp?: boolean;
+  top100Wederopbouw?: boolean;
   buitenplaats?: boolean;
   literature?: LiteratureRef[];
   gebeurtenissen?: Gebeurtenis[];

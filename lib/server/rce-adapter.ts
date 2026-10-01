@@ -32,6 +32,7 @@ import {
   buildStijlConceptQuery,
   buildVerwervingConceptQuery,
   buildMspIndicatieQuery,
+  buildTop100WederopbouwQuery,
   buildOmschrijvingOnderwerpQuery,
   escapeSparqlString,
   buildOnderzoeksgebiedAggregatenQuery,
@@ -91,6 +92,7 @@ import {
   parseGrondsporenResults,
   parseImageResults,
   parseMspIndicatieResults,
+  parseTop100WederopbouwResults,
   parseOmschrijvingOnderwerpResults,
   parseOnderzoeksgebiedAggregatenResults,
   parseOnderzoeksgebiedComplexenResults,
@@ -166,7 +168,7 @@ async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): 
   const archaeological = monuments.filter((monument) => monument.monumentNature?.toLocaleLowerCase("nl").includes("archeolog") && monument.sourceUrl);
   const monumentNumbers = monuments.map((monument) => monument.monumentNumber).filter(Boolean);
 
-  const [terreinenByMonument, complexesByMonument, imagesByNumber, groenaanlegByMonument, mspNumbers, literatuurByNumber, gebeurtenissenByMonument] = await Promise.all([
+  const [terreinenByMonument, complexesByMonument, imagesByNumber, groenaanlegByMonument, mspNumbers, top100WederopbouwNumbers, literatuurByNumber, gebeurtenissenByMonument] = await Promise.all([
     archaeological.length
       ? timed("enrich.terrein", () => fetchSparql(buildArcheologischTerreinQuery(archaeological.map((monument) => monument.sourceUrl)), signal).then(parseArcheologischTerreinResults))
       : Promise.resolve(new Map<string, ArcheologischTerrein[]>()),
@@ -177,6 +179,9 @@ async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): 
     timed("enrich.groenaanleg", () => fetchSparql(buildGroenaanlegQuery(choUris), signal).then(parseGroenaanlegResults)),
     monumentNumbers.length
       ? timed("enrich.msp", () => fetchSparql(buildMspIndicatieQuery(monumentNumbers), signal).then(parseMspIndicatieResults))
+      : Promise.resolve(new Set<string>()),
+    monumentNumbers.length
+      ? timed("enrich.top100wederopbouw", () => fetchSparql(buildTop100WederopbouwQuery(monumentNumbers), signal).then(parseTop100WederopbouwResults))
       : Promise.resolve(new Set<string>()),
     monumentNumbers.length
       ? timed("enrich.literatuur", () => fetchLiteratuur(monumentNumbers, signal))
@@ -190,9 +195,10 @@ async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): 
     const image = imagesByNumber.get(monument.monumentNumber);
     const groenaanleg = groenaanlegByMonument.get(monument.sourceUrl);
     const msp = mspNumbers.has(monument.monumentNumber);
+    const top100Wederopbouw = top100WederopbouwNumbers.has(monument.monumentNumber);
     const literature = literatuurByNumber.get(monument.monumentNumber);
     const gebeurtenissen = gebeurtenissenByMonument.get(monument.sourceUrl);
-    if (!archaeologicalSites && !complexes && !image && !groenaanleg && !msp && !literature && !gebeurtenissen) return monument;
+    if (!archaeologicalSites && !complexes && !image && !groenaanleg && !msp && !top100Wederopbouw && !literature && !gebeurtenissen) return monument;
     return {
       ...monument,
       ...(archaeologicalSites ? { archaeologicalSites } : {}),
@@ -200,6 +206,7 @@ async function enrichMonuments(monuments: RceMonument[], signal?: AbortSignal): 
       ...(image ? { image } : {}),
       ...(groenaanleg ? { groenaanleg } : {}),
       ...(msp ? { msp } : {}),
+      ...(top100Wederopbouw ? { top100Wederopbouw } : {}),
       ...(literature ? { literature } : {}),
       ...(gebeurtenissen ? { gebeurtenissen } : {}),
     };
