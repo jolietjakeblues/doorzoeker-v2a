@@ -1043,7 +1043,14 @@ async function searchMuurschilderingen(term: string, signal?: AbortSignal, track
   });
 }
 
-export type TextSearchScope = "all" | "core" | "heritage" | "archaeology-a" | "archaeology-b";
+// Bugfix 01-10-2026: scope=archaeology-b bundelde 5 categorieën (23
+// parallelle discoverytakken + follow-upqueries) in ÉÉN Worker-invocatie -
+// live geraakt op doorzoekerfgoed.nl ("Too many subrequests by single
+// Worker invocation", Cloudflare's eigen platformlimiet, geen RCE-fout).
+// Scheepswrakken/Muurschilderingen (al apart benoemd als "geen
+// archeologie, licht kostenprofiel") krijgen daarom hun eigen, kleinere
+// scope i.p.v. mee te liften met de drie echte archeologiecategorieën.
+export type TextSearchScope = "all" | "core" | "heritage" | "archaeology-a" | "archaeology-b" | "archaeology-c";
 
 async function searchByText(term: string, signal?: AbortSignal, page = 1, scope: TextSearchScope = "all", tracker?: SearchPartialFailure): Promise<RceMonument[]> {
   const includeCore = scope === "all" || scope === "core";
@@ -1082,17 +1089,18 @@ async function searchByText(term: string, signal?: AbortSignal, page = 1, scope:
       : Promise.resolve<RceMonument[]>([]),
     // Scheepswrakken zijn geen archeologie in de CEO-zin, maar delen het
     // kostenprofiel (klein, snel) van deze bucket - zie 018-mass-
-    // scheepswrakken.md. Geen eigen scope-waarde om de client-side
-    // parallelle scope-fetches (lib/rce-client.ts) niet te hoeven uitbreiden.
-    scope === "all" || scope === "archaeology-b"
+    // scheepswrakken.md. Eigen scope sinds 01-10-2026 (zie TextSearchScope
+    // hierboven) - was eerst bewust samengevoegd met archaeology-b om de
+    // client-side scope-fetches niet uit te breiden, maar dat liet die
+    // scope juist tegen Cloudflare's subrequest-limiet aanlopen.
+    scope === "all" || scope === "archaeology-c"
       ? optionalSearch("search.scheepswrakken", () => searchScheepswrakken(term, signal, tracker, page), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
     // Muurschilderingen zijn evenmin archeologie, maar delen het
     // kostenprofiel (klein, snel) van deze bucket - zelfde afweging als
-    // scheepswrakken hierboven (019-muurschilderingen.md). Geen eigen
-    // scope-waarde om de client-side parallelle scope-fetches
-    // (lib/rce-client.ts) niet te hoeven uitbreiden.
-    scope === "all" || scope === "archaeology-b"
+    // scheepswrakken hierboven (019-muurschilderingen.md). Zelfde
+    // scope-verhuizing, zelfde reden.
+    scope === "all" || scope === "archaeology-c"
       ? optionalSearch("search.muurschilderingen", () => searchMuurschilderingen(term, signal, tracker, page), [], signal, tracker)
       : Promise.resolve<RceMonument[]>([]),
   ]);

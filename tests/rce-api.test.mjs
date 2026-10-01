@@ -592,7 +592,7 @@ test("noemt de gefaalde categorie in de respons zodat '0 resultaten' niet verwar
     return Response.json({ results: { bindings: [] } });
   };
 
-  const response = await GET(new Request("https://doorzoeker.test/api/rce/search?q=schoener&page=1&scope=archaeology-b", { headers: { "cf-connecting-ip": "test-scheepswrak-partial" } }));
+  const response = await GET(new Request("https://doorzoeker.test/api/rce/search?q=schoener&page=1&scope=archaeology-c", { headers: { "cf-connecting-ip": "test-scheepswrak-partial" } }));
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "no-store");
   const document = await response.json();
@@ -641,14 +641,14 @@ test("scheepswrakken pagineren nu ook voorbij de 25e match (P1, 14-09-2026: 'sch
     return Response.json({ results: { bindings: [] } });
   };
 
-  const page1 = await GET(new Request("https://doorzoeker.test/api/rce/search?q=schoener&page=1&scope=archaeology-b", { headers: { "cf-connecting-ip": "test-scheepswrak-paginering" } }));
+  const page1 = await GET(new Request("https://doorzoeker.test/api/rce/search?q=schoener&page=1&scope=archaeology-c", { headers: { "cf-connecting-ip": "test-scheepswrak-paginering" } }));
   assert.equal(page1.status, 200);
   const document1 = await page1.json();
   assert.equal(document1.results.length, 25);
   assert.equal(document1.results[0].monumentNumber, "01");
   assert.equal(document1.hasMore, true);
 
-  const page2 = await GET(new Request("https://doorzoeker.test/api/rce/search?q=schoener&page=2&scope=archaeology-b", { headers: { "cf-connecting-ip": "test-scheepswrak-paginering" } }));
+  const page2 = await GET(new Request("https://doorzoeker.test/api/rce/search?q=schoener&page=2&scope=archaeology-c", { headers: { "cf-connecting-ip": "test-scheepswrak-paginering" } }));
   assert.equal(page2.status, 200);
   const document2 = await page2.json();
   assert.equal(document2.results.length, 5);

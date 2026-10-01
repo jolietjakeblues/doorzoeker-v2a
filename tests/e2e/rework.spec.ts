@@ -616,13 +616,13 @@ test("'laad meer' verliest geen resultaat bij een monumentnummer dat botst met e
   await expect(page.getByText("Rijksmonument eerste pagina")).toBeVisible();
 });
 
-test("'laad meer' bij een tekstzoekopdracht ontsluit scheepswrakken voorbij de 25e match (archaeology-b, P1, 14-09-2026: 'schoener' leverde 42 scheepswrakken op, 17 daarvan voorheen permanent onbereikbaar)", async ({ page }) => {
+test("'laad meer' bij een tekstzoekopdracht ontsluit scheepswrakken voorbij de 25e match (archaeology-c, P1, 14-09-2026: 'schoener' leverde 42 scheepswrakken op, 17 daarvan voorheen permanent onbereikbaar)", async ({ page }) => {
   await page.unroute("**/api/rce/search**");
   await page.route("**/api/rce/search**", (route) => {
     const url = new URL(route.request().url());
     const scope = url.searchParams.get("scope");
     const requestedPage = Number(url.searchParams.get("page") ?? "1");
-    if (scope !== "archaeology-b") return route.fulfill({ json: { results: [], page: requestedPage, hasMore: false } });
+    if (scope !== "archaeology-c") return route.fulfill({ json: { results: [], page: requestedPage, hasMore: false } });
     const count = requestedPage === 1 ? 25 : 2;
     return route.fulfill({ json: {
       results: Array.from({ length: count }, (_, index) => ({
@@ -686,7 +686,7 @@ test("een categorie die stil faalt (bv. Scheepswrak via de losstaande MASS-diens
     if (scope === "core") {
       return route.fulfill({ json: { results: [{ ...records[0] }], page: 1, hasMore: false } });
     }
-    if (scope === "archaeology-b") {
+    if (scope === "archaeology-c") {
       return route.fulfill({ json: { results: [], failedCategories: ["Scheepswrak"] } });
     }
     return route.fulfill({ json: { results: [] } });
@@ -1852,7 +1852,7 @@ test("een oude verbindingsfout verdwijnt zodra een nieuwe zoekterm wordt ingevoe
 
 test("'Probeer opnieuw' herhaalt de laatst mislukte zoekopdracht (P1)", async ({ page }) => {
   // searchRceMonuments vuurt voor een tekstzoekopdracht meerdere parallelle
-  // deelverzoeken af (core/heritage/archaeology-a/archaeology-b) - een
+  // deelverzoeken af (core/heritage/archaeology-a/archaeology-b/archaeology-c) - een
   // simpele call-counter is dus onbetrouwbaar om "vóór/na retry" te
   // onderscheiden. Een expliciete vlag, omgezet ná de eerste mislukking en
   // vóór de klik op "Probeer opnieuw", is dat wel.
