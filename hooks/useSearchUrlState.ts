@@ -24,6 +24,7 @@ type SearchUrlSnapshot = {
   excludedCategories: string[];
   onlyGroenaanleg: boolean;
   onlyMsp: boolean;
+  onlyTop100Wederopbouw: boolean;
   view: "list" | "map";
   mapViewport?: MapViewport;
   resultPage: number;
@@ -81,6 +82,7 @@ export function useSearchUrlState({
       params.set("uitgesloten", snapshot.excludedCategories.join(","));
     if (snapshot.onlyGroenaanleg) params.set("groenaanleg", "1");
     if (snapshot.onlyMsp) params.set("msp", "1");
+    if (snapshot.onlyTop100Wederopbouw) params.set("top100ww", "1");
     if (snapshot.view === "map") params.set("view", "map");
     if (snapshot.view === "map" && snapshot.mapViewport) {
       params.set("lat", snapshot.mapViewport.lat.toFixed(5));
@@ -109,6 +111,7 @@ export function useSearchUrlState({
     snapshot.objectType,
     snapshot.onlyGroenaanleg,
     snapshot.onlyMsp,
+    snapshot.onlyTop100Wederopbouw,
     snapshot.province,
     snapshot.resultPage,
     snapshot.selectedId,

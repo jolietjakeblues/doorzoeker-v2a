@@ -6,6 +6,15 @@ const INSTANCES_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/instanties
 const IMAGE_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/image-1";
 const GROENAANLEG_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/groenaanleg";
 const MSP_GRAPH = "https://linkeddata.cultureelerfgoed.nl/graph/msp_indicatie";
+// "Top 100 Wederopbouw 1940-1958" (2007, informeel ook wel de
+// "Plasterklijst" genoemd naar toenmalig minister Ronald Plasterk) - niet
+// te verwarren met de oorspronkelijke Top 100 van de Rijksdienst voor de
+// Monumentenzorg uit 1990 (naoorlogse/wederopbouwperiode, geen RCE-eigen
+// classificatie voor die 1990-lijst gevonden in deze dataset). Zelfde
+// "alleen-aanwezig-als-waar"-vorm als MSP hierboven, binnen zijn eigen
+// named graph.
+const TOP100_WEDEROPBOUW_GRAPH = "https://linkeddata.cultureelerfgoed.nl/id/lijst/top100-1940-1958#instanties";
+const TOP100_WEDEROPBOUW_PROPERTY = "https://linkeddata.cultureelerfgoed.nl/id/lijst/top100-1940-1958#inTop100_1940_1958";
 // Zelfde ActorEnRol-subject-URI's als in INSTANCES_GRAPH, maar hier heeft
 // heeftActor/heeftRol een echte concept-URI (namespace term/id/rn/<uuid>,
 // zonder de "2") in plaats van de platte tekst-literal die INSTANCES_GRAPH
@@ -80,6 +89,30 @@ SELECT DISTINCT ?rmnr WHERE {
 }
 
 export function parseMspIndicatieResults(document: unknown): Set<string> {
+  const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
+  const monumentNumbers = new Set<string>();
+  if (!Array.isArray(bindings)) return monumentNumbers;
+  for (const binding of bindings) {
+    const monumentNumber = binding.rmnr?.value;
+    if (monumentNumber) monumentNumbers.add(monumentNumber);
+  }
+  return monumentNumbers;
+}
+
+// Zelfde "alleen-aanwezig-als-waar"-vorm als buildMspIndicatieQuery
+// hierboven - zie TOP100_WEDEROPBOUW_GRAPH/PROPERTY voor de herkomst.
+export function buildTop100WederopbouwQuery(monumentNumbers: string[]) {
+  const values = monumentNumbers.map((number) => `"${escapeSparqlString(number)}"`).join(" ");
+  return `PREFIX ceo: <${CEO}>
+SELECT DISTINCT ?rmnr WHERE {
+  GRAPH <${TOP100_WEDEROPBOUW_GRAPH}> {
+    VALUES ?rmnr { ${values} }
+    ?rm ceo:rijksmonumentnummer ?rmnr ; <${TOP100_WEDEROPBOUW_PROPERTY}> true .
+  }
+}`;
+}
+
+export function parseTop100WederopbouwResults(document: unknown): Set<string> {
   const bindings = (document as { results?: { bindings?: SparqlBinding[] } })?.results?.bindings;
   const monumentNumbers = new Set<string>();
   if (!Array.isArray(bindings)) return monumentNumbers;

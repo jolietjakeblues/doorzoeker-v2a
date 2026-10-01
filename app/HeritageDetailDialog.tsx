@@ -424,6 +424,15 @@ export function HeritageDetailDialog({
                 </dd>
               </div>
             ) : null}
+            {selected.top100Wederopbouw ? (
+              <div>
+                <dt>Top 100 Wederopbouw</dt>
+                <dd>
+                  Aangewezen als topmonument uit de wederopbouwperiode
+                  1940-1958 (2007)
+                </dd>
+              </div>
+            ) : null}
             {wikidataLoaded?.item ? (
               <div>
                 <dt>Wikidata</dt>

@@ -22,6 +22,7 @@ type SearchFiltersProps = {
   excludedCategories: string[];
   onlyGroenaanleg: boolean;
   onlyMsp: boolean;
+  onlyTop100Wederopbouw: boolean;
   includesRijksmonumenten: boolean;
   contextProvinces: string[];
   contextMunicipalities: string[];
@@ -30,6 +31,7 @@ type SearchFiltersProps = {
   contextCategories: string[];
   groenaanlegCount: number;
   mspCount: number;
+  top100WederopbouwCount: number;
   onClose: () => void;
   onObjectTypeChange: (value: string) => void;
   onMonumentAardChange: (value: string) => void;
@@ -41,18 +43,19 @@ type SearchFiltersProps = {
   onClearCategories: () => void;
   onOnlyGroenaanlegChange: (value: boolean) => void;
   onOnlyMspChange: (value: boolean) => void;
+  onOnlyTop100WederopbouwChange: (value: boolean) => void;
   onReset: () => void;
 };
 
 export function SearchFilters({
   open, baseResults, objectTypeResults, hasMore, objectType, monumentAard, province,
   municipality, functionFilter, matchSourceFilter, excludedCategories,
-  onlyGroenaanleg, onlyMsp, includesRijksmonumenten, contextProvinces,
+  onlyGroenaanleg, onlyMsp, onlyTop100Wederopbouw, includesRijksmonumenten, contextProvinces,
   contextMunicipalities, contextFunctions, contextMatchSources, contextCategories,
-  groenaanlegCount, mspCount, onClose, onObjectTypeChange,
+  groenaanlegCount, mspCount, top100WederopbouwCount, onClose, onObjectTypeChange,
   onMonumentAardChange, onProvinceChange, onMunicipalityChange,
   onFunctionChange, onMatchSourceChange, onToggleCategory, onClearCategories,
-  onOnlyGroenaanlegChange, onOnlyMspChange, onReset,
+  onOnlyGroenaanlegChange, onOnlyMspChange, onOnlyTop100WederopbouwChange, onReset,
 }: SearchFiltersProps) {
   return (
     <aside className={open ? "show" : ""} aria-label="Zoekfilters">
@@ -122,6 +125,7 @@ export function SearchFilters({
                   onFunctionChange("Alle");
                   onOnlyGroenaanlegChange(false);
                   onOnlyMspChange(false);
+                  onOnlyTop100WederopbouwChange(false);
                 }
               }}
             />
@@ -360,10 +364,14 @@ export function SearchFilters({
               Historische aanleg (groenaanleg) betekent dat er een tuin-
               of parkaanleg bij het monument hoort. Monumenten Selectie
               Project verwijst naar een aanwijzingsronde van de RCE tussen
-              ongeveer 1997 en 2002, gericht op gebouwen uit 1850-1940. Een
-              telling van 0 hieronder betekent niet dat dit kenmerk niet
-              bestaat voor Rijksmonumenten - het komt alleen niet voor bij
-              de resultaten die nu zijn geladen.
+              ongeveer 1997 en 2002, gericht op gebouwen uit 1850-1940. Top
+              100 Wederopbouw verwijst naar de aanwijzingsronde uit 2007 van
+              100 topmonumenten uit de wederopbouwperiode 1940-1958 (niet
+              te verwarren met de oorspronkelijke Top 100 van de Rijksdienst
+              voor de Monumentenzorg uit 1990). Een telling van 0 hieronder
+              betekent niet dat dit kenmerk niet bestaat voor
+              Rijksmonumenten - het komt alleen niet voor bij de resultaten
+              die nu zijn geladen.
             </p>
           </details>
           <label>
@@ -387,6 +395,15 @@ export function SearchFilters({
             />
             <span>Monumenten Selectie Project</span>
             <em>{formatCount(mspCount, hasMore)}</em>
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={onlyTop100Wederopbouw}
+              onChange={(event) => onOnlyTop100WederopbouwChange(event.target.checked)}
+            />
+            <span>Top 100 Wederopbouw (1940-1958)</span>
+            <em>{formatCount(top100WederopbouwCount, hasMore)}</em>
           </label>
         </fieldset>
       )}

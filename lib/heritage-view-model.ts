@@ -74,6 +74,7 @@ export type Item = {
   image?: MonumentImage;
   groenaanleg?: Groenaanleg;
   msp?: boolean;
+  top100Wederopbouw?: boolean;
   buitenplaats?: boolean;
   monumentAardConcept?: { uri: string; label: string };
   literature?: LiteratureRef[];
@@ -289,6 +290,7 @@ export const EMPTY_URL_STATE = {
   excludedCategories: [] as string[],
   onlyGroenaanleg: false,
   onlyMsp: false,
+  onlyTop100Wederopbouw: false,
   view: "list" as const,
   mapViewport: undefined as MapViewport | undefined,
   selectedId: "",
@@ -553,6 +555,7 @@ export function toItem(record: RceMonument): Item {
     image: record.image,
     groenaanleg: record.groenaanleg,
     msp: record.msp,
+    top100Wederopbouw: record.top100Wederopbouw,
     buitenplaats: record.buitenplaats,
     literature: record.literature,
     gebeurtenissen: record.gebeurtenissen,
@@ -700,6 +703,7 @@ export function parseUrlState(search: string) {
       params.get("uitgesloten")?.split(",").filter(Boolean) ?? [],
     onlyGroenaanleg: params.get("groenaanleg") === "1",
     onlyMsp: params.get("msp") === "1",
+    onlyTop100Wederopbouw: params.get("top100ww") === "1",
     view: params.get("view") === "map" ? ("map" as const) : ("list" as const),
     mapViewport,
     selectedId: params.get("object") ?? params.get("rm") ?? "",
